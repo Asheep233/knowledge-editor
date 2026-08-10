@@ -2,7 +2,40 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-08-10
+> 最后更新：2026-08-11
+
+## 2026-08-11（Phase 7 M6，v0.7.3）
+
+### 里程碑完成：M6 构建安装包（NSIS）与干净环境 7 步验收
+
+类型：Feature（里程碑）
+状态：Completed
+
+现象：Phase 7 需交付可安装的桌面分发物；此前仅有 `cargo build --release` 裸二进制，无安装/卸载路径，也无数据目录与安装目录的分离验证。
+
+原因：`phase7-plan.md` 第 11 章验收标准要求「干净环境 7 步验收全过」（安装 → 首启引导 → 打开工作区 → 编辑保存 → 关闭 → 再启动 → 数据恢复），且 7.6 设计约束要求卸载不得清除用户数据。
+
+修改：
+- `desktop/src-tauri/tauri.conf.json`：`bundle.targets=["nsis"]`；`windows.nsis.installMode="currentUser"` + `languages=["SimpChinese","English"]`。版本信息由 Cargo.toml 与顶层 `version` 提供（首版误加 productName/productVersion 等触发 schema 校验失败，按本地 `desktop\node_modules\@tauri-apps\cli\config.schema.json` 修正后通过）
+- 构建产物：`desktop/src-tauri/target/release/bundle/nsis/KnowledgeEditor_0.7.3_x64-setup.exe`（19.1MB，NSIS-3 Unicode，LZMA:23；内含主程序 18.3MB / 侧车 12.6MB / uninstall.exe）
+
+影响范围：分发与安装体验。安装目录 `%LOCALAPPDATA%\KnowledgeEditor` 与数据目录 `%APPDATA%\KnowledgeEditor` 彻底分离，卸载不影响用户数据。
+
+验证（本机完整安装验收，2026-08-11，验收前已备份 `%APPDATA%\KnowledgeEditor` 并清空模拟干净环境）：
+- 1 安装：`/S` 静默安装成功；安装位置文件、开始菜单快捷方式、注册表 Uninstall 条目（DisplayVersion 0.7.3）均确认
+- 2 首启引导：CDP 验证「欢迎使用！…使用已有工作区 / 创建新工作区」引导页正常
+- 3 打开工作区：`KE_WORKSPACE` 注入后主界面完整渲染（文件树 / 后端 v0.7.3 / 搜索 / 重建索引 / 最近 / 标签 / 附件 / 大纲 / 属性面板）
+- 4 编辑保存：CDP 在 contenteditable 编辑器末尾插入 `[M6-验收-安装版编辑保存-<ISO时间>]` 标记并点击「保存」，磁盘文件 87B → 151B 持久化（frontmatter `ke_version: 1` 保留，标记转义为 `\[…\]` 属 Markdown 语法处理，内容完整）
+- 5 关闭：WM_CLOSE（等价用户点 X）后主进程 8s 内退出，侧车无残留，`runtime.json` 已清理
+- 6 再次启动：应用正常拉起，CDP 可连
+- 7 数据恢复：最近列表恢复（新文档-2026-8-8-2）、文档内容含 M6 标记（字数 14→30）、属性面板路径/创建/修改时间正常
+- 卸载验证：安装目录、开始菜单快捷方式、注册表 Uninstall 条目全部清除；无进程残留；`%APPDATA%\KnowledgeEditor` 数据目录（runtime / workspace / app_config.json / settings.json）完整保留
+- 数据目录已从验收前备份（`ke-data-backup`）恢复原始状态
+
+环境注意（踩坑记录）：
+- tauri 2.11.5 的 `bundle.windows` 下不支持 productName / productVersion / fileVersion 等字段，版本信息必须由 Cargo.toml 与顶层 version 提供
+- 自动化冒烟中 JS `window.close()` 只销毁 WebView 页面、不触发 tao 的 CloseRequested，窗口残留且后续 WM_CLOSE 清理链路不完整；正常关闭路径须走系统 WM_CLOSE（等价用户点 X），验证通过
+- 本环境终端 PATH 不含 `taskkill`，进程清理需用 `Stop-Process` 或完整路径
 
 ## 2026-08-10（Phase 7 M5 收尾，v0.7.3）
 

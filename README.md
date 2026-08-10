@@ -2,13 +2,23 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
+当前版本 **v1.0.0**（Alpha 测试期）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+
+## 安装（Windows 桌面版）
+
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.0.0_x64-setup.exe`。
+2. 双击安装：安装到 `%LOCALAPPDATA%\KnowledgeEditor`，开始菜单创建快捷方式。
+3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
+
+程序与数据分离：文档存放在 `%APPDATA%\KnowledgeEditor\workspace\`，卸载软件不删除数据。安装包未签名，首次运行若出现「无法验证发布者」提示属正常现象（Windows 按路径记忆确认），确认即可。
+
 ## 目录结构
 
 ```
 KnowledgeEditor/
 ├── frontend/          # React + TypeScript + Tiptap + Tailwind（编辑器 UI）
 ├── backend/           # Python + FastAPI（文档 / 文件 / 搜索 / 模块服务）
-├── desktop/           # Tauri（Phase 7 启用：窗口、侧车进程、打包）
+├── desktop/           # Tauri 桌面壳（窗口、侧车进程管理、NSIS 打包）
 ├── workspace/         # 用户数据目录（Markdown 唯一事实源，可脱离软件访问）
 ├── docs/              # 设计与规范文档
 ├── scripts/           # start / stop / setup / dev / build 脚本
@@ -17,7 +27,7 @@ KnowledgeEditor/
 
 ## 快速开始（开发环境）
 
-要求：Python 3.10+、Node 20+。Rust 工具链仅在 Phase 7（Tauri 桌面化）时需要。
+要求：Python 3.10+、Node 20+。Rust 工具链仅在构建桌面安装包时需要（构建方式见 `docs/phase7-report.md` 第 6 节）。
 
 ```powershell
 # 0. 安装依赖（创建 backend/.venv，安装后端与前端依赖）
@@ -78,11 +88,12 @@ KnowledgeEditor/
 |---|---|
 | `docs/markdown-extension-spec.md` | Markdown 扩展规范（注释 / 模块 / 附件 / 视频标记） |
 | `docs/document-format.md` | 文档格式手册（ke_version / KE_KINDS / 字段顺序，当前实现为准） |
-| `docs/phase1-report.md` | Phase 1 工程初始化阶段报告 |
-| `docs/phase2-report.md` | Phase 2 编辑器核心阶段报告 |
-| `docs/phase6-report.md` | Phase 6 搜索与可靠性增强阶段报告 |
-| `docs/phase6e-report.md` | Phase 6E 发布前冻结审计与桌面化准备报告（API 冻结清单 / 迁移测试 / 侧车交接） |
 | `docs/phase0-architecture.html` | Phase 0 架构设计（技术方案 / 数据结构 / 风险分析） |
+| `docs/phase7-plan.md` | Phase 7 桌面化实施规划（总纲 / 里程碑 / 决策点） |
+| `docs/phase7-report.md` | Phase 7 实施报告（桌面化与回归发布 v1.0.0，含构建方式与已知限制） |
+| `docs/v0x-journey-report.md` | v0.x 全流程总报告（Phase 0 设计 → v1.0.0 发布） |
+| `docs/phase6u-report.md` | Phase 6U 报告（v0.6.0 后 → v0.7.3，真实环境迭代） |
+| `docs/phase6e-report.md` | Phase 6E 冻结审计（API 冻结清单 / 迁移测试 / 侧车交接） |
 
 ## 阶段状态
 
@@ -91,24 +102,32 @@ KnowledgeEditor/
 | Phase 0 | 架构设计 | 已完成（6 项决策点已确认） |
 | Phase 1 | 工程初始化 | 已完成（见 `docs/phase1-report.md`） |
 | Phase 2 | 编辑器核心 | 已完成（见 `docs/phase2-report.md`） |
+| Phase 3 | Markdown 文档系统 | 已完成（见 `docs/phase3-report.md`） |
+| Phase 4 | Workspace 与知识库管理 | 已完成（见 `docs/phase4-report.md`） |
 | Phase 5 | 模块系统 | 已完成（见 `docs/phase5-report.md`） |
 | Phase 5E | 开发环境统一启动与进程管理 | 已完成（见 `docs/phase5e-report.md`） |
 | Phase 6 | 搜索与可靠性增强 | 已完成（见 `docs/phase6-report.md`） |
 | Phase 6E | 发布前冻结审计与桌面化准备 | 已完成（基线版本 v0.6.0，见 `docs/phase6e-report.md`） |
-| Phase 7–8 | 桌面化（Tauri）/ 搜索增强 | 未开始 |
+| Phase 6U | 真实环境测试迭代 | 已完成（v0.6.1 → v0.7.3，见 `docs/phase6u-report.md`） |
+| Phase 7 | 桌面化与发布（Tauri） | 已完成（v1.0.0，2026-08-11，见 `docs/phase7-report.md`） |
+| Phase 8 | 搜索增强 | 未开始 |
+
+版本约定：v1.0.0 及以后版本算入 Alpha 测试期，版本号按 v1.x.y 递增；UI 阶段徽标对外统一为 Alpha。
 
 ## 功能速览
 
 - 全文搜索：左侧栏顶部全局搜索（300ms 防抖、回车确认、结果高亮上下文片段），搜索区内置「重建索引」按钮（`POST /api/index/rebuild`）。
 - 异常恢复：启动时检测未恢复的编辑内容并弹窗，可恢复（草稿写回原 Markdown + 刷新索引）或丢弃；保存失败保留编辑内容并支持重试。
 - 历史版本：编辑区工具栏「历史」按钮，查看最近 30 份自动快照（只读预览），可一键恢复；恢复前如有未保存修改会先提醒。快照存于 `Drafts/backup`（不进入索引、不属于事实源）。
-- 附件（v0.6.1）：工具栏「附件」按钮或直接拖拽文件到编辑区上传（图片/视频/文件按类型归档存储）；右侧「附件」面板查看全部附件与引用关系，孤儿附件（未被任何 Markdown 引用）仅支持手动删除、绝不自动，被引用附件后端返回 409 拒绝删除。
-- 信息块与脚注（v0.6.2/v0.6.3/v0.6.4/v0.6.5/v0.7.0）：信息块左上角徽章文字可自定义（默认「信息」）；「注释」弹窗支持两种脚注样式——原样式（正文上标 [n] + 文末灰底脚注区域）或纯 Markdown（正文同样插入上标 [n]，文末 # 参考 + [n] 内容为普通段落、无连接、可自由编辑），选择会被记住。v0.6.4 起插入上标不再产生多余换行（光标停留上标后同一行），上标编号可点击直接修改（仅影响正文显示，不影响底部参考栏）。v0.6.5 修复光标状态与 DOM 错位问题：插入后光标准确落于上标之后，按 Backspace 不会再误删上标（主动删除上标仍为正常操作），上标样式行高调整消除行尾视觉错位。v0.7.0 信息块内容改为 PM 可编辑内容：块内文字可直接插入注释上标（不再因整块选中被替换删除），Markdown 存储改为包裹格式 `<!-- ke-note: {json} -->` + `<!-- /ke-note -->`，旧格式自动迁移兼容。v0.7.1（phase 6U）修复信息块内无法输入文本（wrapper 误设禁编辑导致块内 contentDOM 继承不可编辑，改为控件单独禁编辑）；徽章颜色与块背景同步同一色系，徽章默认空文本（不再显示「信息」占位）。v0.7.2 修复信息块内占位文字「输入信息块内容…」错误渲染到每个空颜色按钮上（CSS 属性选择器误命中 contenteditable="false" 的空控件；内容区占位符改由内容是否为空驱动，输入文字后自动消失）。
-- 文档属性（v0.7.3）：修复保存正文后右边栏「属性」的创建/修改时间、字数、大小显示为「—」——保存接口此前未返回这些元信息，前端保存成功后用空值整体替换了文档状态；现保存响应与读取接口一致返回完整元信息。
+- 附件：工具栏「附件」按钮或直接拖拽文件到编辑区上传（图片/视频/文件按类型归档存储）；右侧「附件」面板查看全部附件与引用关系，孤儿附件（未被任何 Markdown 引用）仅支持手动删除、绝不自动，被引用附件后端返回 409 拒绝删除。
+- 信息块与脚注：信息块左上角徽章文字可自定义；「注释」弹窗支持两种脚注样式（原样式：正文上标 + 文末灰底脚注区域；纯 Markdown：上标 + 普通段落，可自由编辑），选择会被记住。信息块内容为可编辑内容节点，Markdown 存储为包裹格式 `<!-- ke-note: {json} -->` + `<!-- /ke-note -->`。
+- 文档属性：右侧「属性」面板展示文档创建/修改时间、字数、大小，保存后即时刷新。
+- 桌面版（v1.0.0）：原生窗口与应用图标、原生菜单（文件 / 编辑 / 视图 / 帮助）、最近工作区列表、设置面板（默认工作区、自动保存间隔、主题、维护），后端以侧车随程序启动，无需安装 Python。
 
 ## 设计原则
 
 1. 真正的所见即所得：编辑态真源是结构化文档模型，Markdown 只是存储格式。
 2. GUI 优先：任何需要记忆语法的功能都提供图形化操作（如可视化公式编辑）。
-3. 数据主权：Markdown 文件是唯一事实源，SQLite 索引可整体重建。
-4. 前端不直接操作系统文件，所有文件访问经后端服务。
+3. 数据主权：Markdown 文件是唯一事实源，SQLite 索引可整体重建，卸载软件不删数据。
+4. 可扩展性预留：KE 扩展节点注册表与扩展规范，未知标记不破坏文档。
+5. 工程纪律：前端不直接操作系统文件，所有文件访问经后端服务。

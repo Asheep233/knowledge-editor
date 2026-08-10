@@ -26,6 +26,7 @@
 - 窗口监控（50ms 枚举可见顶层窗口）覆盖退出全程：WM_CLOSE 后无任何 WindowsTerminal / Terminal 新窗口（修复前同场景捕获 7 个 WindowsTerminal + 7 个 tasklist 一一对应）
 - 退出：WM_CLOSE 后 6s 内主进程与侧车全部退出，无进程残留，runtime.json 已清理
 - 附注：修复版安装目录（D:\KnowledgeEditor）在本终端沙箱环境中 backend 无法启动（PyInstaller onefile 报 "Could not create temporary directory!"，属 vmcache 对工作区外路径的限制，backend 文件哈希与工作区运行版完全一致、复制到工作区后运行正常）；用户真实环境无此限制（用户反馈的弹窗即证明退出链路完整走通）。修复效果以用户下次真实环境手动测试为准。
+- 用户实测（2026-08-11，真实环境安装版）：应用正常启动、后端正常，点 X 退出不再弹任何终端窗口，全部验证通过。修复闭环。
 
 ### 里程碑完成：M6 构建安装包（NSIS）与干净环境 7 步验收
 

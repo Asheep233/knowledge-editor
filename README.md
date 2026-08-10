@@ -4,6 +4,8 @@
 
 当前版本 **v1.0.0**（Alpha 测试期）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
+本项目开发过程包含 AI Agent 协作，透明性声明见 [docs/agent-collaboration.md](docs/agent-collaboration.md)。
+
 ## 安装（Windows 桌面版）
 
 1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.0.0_x64-setup.exe`。
@@ -94,6 +96,7 @@ KnowledgeEditor/
 | `docs/v0x-journey-report.md` | v0.x 全流程总报告（Phase 0 设计 → v1.0.0 发布） |
 | `docs/phase6u-report.md` | Phase 6U 报告（v0.6.0 后 → v0.7.3，真实环境迭代） |
 | `docs/phase6e-report.md` | Phase 6E 冻结审计（API 冻结清单 / 迁移测试 / 侧车交接） |
+| `docs/agent-collaboration.md` | AI Agent 协作声明（开发过程透明度说明） |
 
 ## 阶段状态
 

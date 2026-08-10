@@ -4,6 +4,26 @@
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
 > 最后更新：2026-08-11
 
+## 2026-08-11（发布：AI Agent 协作声明）
+
+### 基础设施：新增 AI Agent 协作声明并同步 README
+
+类型：Feature（基础设施）
+状态：Completed
+
+现象：GitHub 仓库面向访客，需声明项目开发过程包含 AI Agent 协作，保证透明度。
+
+原因：用户要求上传协作声明并顺带更新 README。
+
+修改：
+- 新增 `docs/agent-collaboration.md`：协作方式（用户指示 + Agent 辅助 + 实测合入）、协作范围表、透明度与数据主权（Markdown 唯一事实源不变）、时间范围（初始开发 2026-08-08 ~ 08-11，Alpha 迭代延续）
+- `README.md`：标题区加入声明引用行；文档索引登记 `docs/agent-collaboration.md`
+- `PROJECT_STATE.md`：文档索引登记
+
+影响范围：对外文档；代码与数据无变化。
+
+验证：git 提交推送后 GitHub 页面可见；声明链接可访问（docs/ 下相对路径）。
+
 ## 2026-08-11（发布：GitHub Releases 分发）
 
 ### 基础设施：创建 GitHub Releases 并上传各版本安装包

@@ -97,3 +97,4 @@
 | `docs/v0x-journey-report.md` | v0.x 全流程总报告（Phase 0 设计 → v1.0.0 发布，呼应 phase0-architecture.html） |
 | `CHANGELOG_DEV.md` | 开发日志（Bug/Feature/Refactor/Test 逐条记录） |
 | `docs/markdown-extension-spec.md` / `docs/document-format.md` | Markdown 扩展规范 / 文档格式手册 |
+| `docs/agent-collaboration.md` | AI Agent 协作声明（开发过程透明度说明，README 已引用） |

@@ -4,6 +4,26 @@
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
 > 最后更新：2026-08-11
 
+## 2026-08-11（发布：GitHub Releases 分发）
+
+### 基础设施：创建 GitHub Releases 并上传各版本安装包
+
+类型：Feature（基础设施）
+状态：Completed
+
+现象：GitHub 仓库仅有 v0.7.3 / v1.0.0 标签，无 Release 分发页面，安装包仅存于本地构建目录。
+
+原因：用户要求「在 release 里加上每个版本的安装包」，建立版本分发渠道。
+
+修改：
+- 创建 Release v0.7.3：上传 `KnowledgeEditor_0.7.3_x64-setup.exe`（20,020,814 B，M6 修复版，用户真实环境实测通过）
+- 创建 Release v1.0.0：上传 `KnowledgeEditor_1.0.0_x64-setup.exe`（20,472,183 B）
+- 工具：gh CLI 2.97.0（已登录 Asheep233），安装位置 `C:\Program Files\GitHub CLI\gh.exe`（当前终端 PATH 不含，需显式调用；git 需注入 `C:\Program Files\Git\cmd`）
+
+影响范围：版本分发渠道；代码与数据无变化。
+
+验证：`gh release view` 确认两 Release 资产 `state=uploaded`，大小与本地一致；Release 页 https://github.com/Asheep233/knowledge-editor/releases
+
 ## 2026-08-11（Phase 7 M7，v1.0.0）
 
 ### 里程碑完成：M7 回归发布 v1.0.0（发布前版本号统一修正，进入 Alpha 测试）

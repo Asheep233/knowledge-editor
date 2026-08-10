@@ -103,6 +103,7 @@ fn read_runtime() -> Option<serde_json::Value> {
 fn is_alive(pid: u32) -> bool {
     Command::new("tasklist")
         .args(["/FI", &format!("PID eq {}", pid)])
+        .creation_flags(CREATE_NO_WINDOW)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()

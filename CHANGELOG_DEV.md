@@ -6,6 +6,27 @@
 
 ## 2026-08-11（Phase 7 M6，v0.7.3）
 
+### Bug 修复：退出时连续弹出并消失空白终端窗口
+
+类型：Bug Fix
+状态：Completed
+
+现象：用户在本机真实环境手动测试安装包（KnowledgeEditor_0.7.3_x64-setup.exe），应用正常启动，但点 X 退出时会连续迅速弹出并消失几个空白 PowerShell 窗口（实际为 Windows 11 上的 Windows Terminal，内部为空，一闪而过）。
+
+原因：`sidecar.rs` 的 `is_alive()` 每 250ms 轮询进程存活状态时调用 `tasklist`（控制台程序），但漏加 `CREATE_NO_WINDOW` 创建标志。GUI 主程序进程中启动控制台程序且不带该标志时，Windows 会为新进程分配新控制台，Windows 11 上表现为弹出 Windows Terminal 窗口。退出优雅等待期约 5s / 250ms ≈ 20 次轮询，实际进程提前退出约 7 次轮询，与用户看到"连续几个"完全吻合。全仓库 `Command::new` 共 3 处（taskkill / tasklist / explorer），仅 `tasklist` 这一处漏标志。
+
+修改：
+- `desktop/src-tauri/src/sidecar.rs`：`is_alive()` 的 `Command::new("tasklist")` 增加 `.creation_flags(CREATE_NO_WINDOW)`
+- 重新构建：`npm run tauri -- build` 产出修复版 `KnowledgeEditor_0.7.3_x64-setup.exe`（主程序时间戳 00:41:12）
+
+影响范围：仅退出清理路径的进程存活轮询；不影响 taskkill 强杀与 explorer 打开目录（两处本就带标志或是 GUI 程序）。
+
+验证（本机，修复版主程序 + backend 正常启动环境）：
+- 启动修复版 → 1s 内 backend health ok、runtime.json 生成（backend pid / port 8000 / version 0.7.3）
+- 窗口监控（50ms 枚举可见顶层窗口）覆盖退出全程：WM_CLOSE 后无任何 WindowsTerminal / Terminal 新窗口（修复前同场景捕获 7 个 WindowsTerminal + 7 个 tasklist 一一对应）
+- 退出：WM_CLOSE 后 6s 内主进程与侧车全部退出，无进程残留，runtime.json 已清理
+- 附注：修复版安装目录（D:\KnowledgeEditor）在本终端沙箱环境中 backend 无法启动（PyInstaller onefile 报 "Could not create temporary directory!"，属 vmcache 对工作区外路径的限制，backend 文件哈希与工作区运行版完全一致、复制到工作区后运行正常）；用户真实环境无此限制（用户反馈的弹窗即证明退出链路完整走通）。修复效果以用户下次真实环境手动测试为准。
+
 ### 里程碑完成：M6 构建安装包（NSIS）与干净环境 7 步验收
 
 类型：Feature（里程碑）

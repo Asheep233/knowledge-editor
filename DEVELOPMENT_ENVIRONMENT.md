@@ -84,13 +84,14 @@
 - Python 3.10.11（当前环境直接使用，未建 venv）
 - requirements.txt：fastapi、uvicorn[standard]、pydantic、python-multipart；测试：pytest、httpx
 - 测试命令：`python -m pytest backend/tests -q`（从项目根）
+- 桌面侧车打包：PyInstaller 6.22.0，从项目根运行 `pyinstaller backend/knowledgeeditor-backend.spec`（spec 已入库，含 11 个 uvicorn hidden-import 与 pathex；产物 `backend/dist/knowledgeeditor-backend.exe`，重命名为 `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe` 放入 `desktop/src-tauri/binaries/` 供 externalBin 使用）
 
 ### Desktop（`desktop/src-tauri/`）
 
 - Tauri v2（`tauri = { version = "2", features = ["custom-protocol"] }`，M3.1 修复）
 - Rust 1.97.1
 - sidecar：`binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（externalBin，release 复制为 knowledgeeditor-backend.exe）
-- 打包：NSIS → `KnowledgeEditor_0.7.3_x64-setup.exe`
+- 打包：NSIS → `KnowledgeEditor_1.0.0_x64-setup.exe`（版本号随 Cargo.toml/tauri.conf.json 同步）
 - 前端资源：内嵌 `frontend/dist-build`（frontendDist）
 
 ## 本机特殊环境（必须知晓）

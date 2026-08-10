@@ -11,6 +11,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .tmp-esbuild/
+backend/build/
 
 # 临时复现文件
 repro.html

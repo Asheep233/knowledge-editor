@@ -1,6 +1,6 @@
 [package]
 name = "knowledgeeditor"
-version = "0.7.3"
+version = "1.0.0"
 description = "Knowledge Editor desktop shell (Tauri v2)"
 edition = "2021"
 

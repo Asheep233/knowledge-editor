@@ -29,4 +29,6 @@
 # v0.7.3：修复保存正文后右边栏「属性」创建/修改时间、字数、大小显示为「—」——
 #         PUT /articles/{id} 此前未返回 created_at/updated_at/size/word_count，
 #         前端保存成功后用空值整体替换文档状态；现保存响应与 get/meta 接口一致返回完整元信息
-__version__ = "0.7.3"
+# v1.0.0（Phase 7 M7，进入 Alpha 测试）：桌面端发布基线。UI 左上角阶段徽标由 Phase 6 改为 Alpha；
+#         版本号由 0.7.3 升为 1.0.0（v1.0.0 起算入 Alpha 测试期，发布前统一修正）
+__version__ = "1.0.0"

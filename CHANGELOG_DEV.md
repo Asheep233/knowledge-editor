@@ -4,6 +4,37 @@
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
 > 最后更新：2026-08-11
 
+## 2026-08-11（Phase 7 M7，v1.0.0）
+
+### 里程碑完成：M7 回归发布 v1.0.0（发布前版本号统一修正，进入 Alpha 测试）
+
+类型：Feature（里程碑）
+状态：Completed
+
+现象：用户指示「接下来 v1.0.0 及以后的版本算入 Alpha 测试」，要求进入 M7 并在最终发布前完成版本号修正：UI 左上角阶段徽标 Phase 6 → Alpha；右上角后端版本 v0.7.3 → v1.0.0。
+
+原因：Phase 7 桌面化全部里程碑（M0-M6）已完成，发布 v1.0.0 前需统一版本标识：UI 阶段徽标由内部 Phase 编号改为公开测试阶段名（Alpha），全链路版本号（后端 / 前端 / 桌面工程 / 安装包）对齐为 1.0.0，作为 Alpha 测试期的发布基线。
+
+修改：
+- `frontend/src/App.tsx`：左上角阶段徽标 `Phase 6` → `Alpha`；右上角「后端 v${health?.version}」由后端 health 数据源驱动，无需前端改动（后端版本即显示版本）
+- `backend/app/__init__.py`：`__version__` 0.7.3 → 1.0.0（全链路版本唯一数据源），注释追加 v1.0.0 / Alpha 说明
+- `frontend/src/version.ts`、`frontend/package.json`、`frontend/package-lock.json`（2 处）：0.7.3 → 1.0.0
+- `desktop/package.json`、`desktop/package-lock.json`（2 处）：0.7.3 → 1.0.0
+- `desktop/src-tauri/Cargo.toml`、`Cargo.lock`（仅本 crate `knowledgeeditor`；第三方 cfb 依赖 0.7.3 保持不动）、`desktop/src-tauri/tauri.conf.json`：0.7.3 → 1.0.0
+- `DEVELOPMENT_ENVIRONMENT.md`：产物名 `KnowledgeEditor_0.7.3_x64-setup.exe` → `KnowledgeEditor_1.0.0_x64-setup.exe`（附注版本随 Cargo.toml/tauri.conf.json 同步）
+- 历史记录保留 0.7.3：CHANGELOG_DEV / docs / README 中的 0.7.3 属历史记录，不改
+- 后端重新打包：PyInstaller 6.22.0 `--onefile` + 11 个 uvicorn hidden-import，产物 12,637,983 B（旧 12,637,746 B），替换 `desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（SHA256 0CF4DCBA… 与 dist 一致）
+
+影响范围：全链路版本标识（UI 徽标、后端 health version、前端 / 桌面工程版本、安装包文件名与注册表 DisplayVersion）；数据格式与 API 无变化。
+
+验证（本机，2026-08-11）：
+- 后端：`backend\.venv\Scripts\python.exe -c "from app import __version__"` → 1.0.0；重新打包产物启动 health 200 且 `"version":"1.0.0"`
+- 前端：`npm run build` 13.52s 成功；vitest 70/70 通过
+- 桌面构建：`npm run tauri -- build`，编译日志 `Compiling knowledgeeditor v1.0.0`，产出 `desktop/src-tauri/target/release/bundle/nsis/KnowledgeEditor_1.0.0_x64-setup.exe`
+- UI 效果（左上角 Alpha 徽标 + 右上角「后端 v1.0.0」）待用户实测确认
+
+版本约定：v1.0.0 及以后版本算入 Alpha 测试期；UI 阶段徽标对外统一为 Alpha，不再显示内部 Phase 编号。
+
 ## 2026-08-11（Phase 7 M6，v0.7.3）
 
 ### Bug 修复：退出时连续弹出并消失空白终端窗口

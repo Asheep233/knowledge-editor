@@ -41,6 +41,19 @@
 - 用途：dev 运行与 release 打包（`npm run tauri -- build`）
 - 验证命令：`npm run tauri -- --version`
 
+### Git / GitHub CLI
+
+- 版本：Git for Windows（`C:\Program Files\Git\cmd\git.exe`）、GitHub CLI（`C:\Program Files\GitHub CLI\gh.exe`）
+- 用途：项目版本管理；远程备份（GitHub 私有仓库）
+- 安装方式：用户手动安装（Git for Windows + GitHub CLI）
+- 远程仓库：`https://github.com/Asheep233/knowledge-editor`（private，默认分支 master，账号 Asheep233，token scopes 含 repo/workflow，gh 已登录 keyring）
+- 网络：GitHub 直连不稳定（20.205.243.166 等 IP 偶发不可达），依赖本机 Clash 代理 `127.0.0.1:7890`；git 全局已配 `http.proxy/https.proxy=127.0.0.1:7890`；gh 命令前需设环境变量 `HTTPS_PROXY/HTTP_PROXY`（会话级，不持久）
+- 特殊配置：
+  - `maintenance.auto=false`（本仓库已禁用）：Windows 上首次 commit 触发 git 自动 repack 会异常卡顿（CPU 高占用、输出挂起），禁用后可避免
+  - 本环境终端 PATH 不含 git/gh，调用需完整路径或在命令前追加 `$env:PATH = 'C:\Program Files\Git\cmd;' + $env:PATH`
+- 缺少影响：无法提交/推送代码，失去远程备份
+- 验证命令：`git --version`、`gh auth status`、`git remote -v`
+
 ## 镜像源（网络受限环境必需）
 
 - crates.io 镜像（M0 配置，位于 `%LOCALAPPDATA%\cargo\config.toml`，用户级全局生效）：

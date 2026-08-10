@@ -6,6 +6,32 @@
 
 ## 2026-08-10（Phase 7 M5 收尾，v0.7.3）
 
+### 基础设施：项目纳入 git 版本管理并推送 GitHub 私有仓库
+
+类型：Feature（基础设施）
+状态：Completed
+
+现象：项目此前无版本管理，源码无 git 兜底；回收站排查后确认需要建立远程备份。
+
+原因：源码一旦误删无法恢复；开发环境文档（DEVELOPMENT_ENVIRONMENT.md）要求项目可迁移、可恢复。
+
+修改：
+- 完善 `.gitignore`：新增 `node_modules.ghostbak/`、`dist-build/`、`.esbuild/`、`repro.html`；`desktop/target/` 修正为 `**/target/`（实际路径是 `desktop/src-tauri/target/`，原规则未命中导致 10.5GB 构建产物被暂存）；workspace 运行时数据（Articles/Drafts/Modules 内容、vite-cache、index.db 等）改为仅保留目录结构与 `.gitkeep`
+- `git init` + 首次提交：`f86dcf2 chore: 初始化仓库，纳入版本管理 v0.7.3`（219 个文件，master 分支）
+- 创建远程私有仓库并推送：`https://github.com/Asheep233/knowledge-editor`（private，账号 Asheep233）
+- 全局配置：git 身份（Asheep233 / noreply 邮箱）、`http.proxy/https.proxy=127.0.0.1:7890`（Clash）、本仓库禁用 `maintenance.auto`
+
+影响范围：全仓库；后续开发流程增加「提交 → 推送」步骤；.gitignore 生效后 workspace 运行时数据不再入库（本地不受影响）。
+
+验证：`git log` 显示提交存在；`git status` 干净；`gh api repos/Asheep233/knowledge-editor` 返回 private=True、default_branch=master、pushed_at 为当日；远程文件数与本地 219 个一致（workspace 仅 3 个 .gitkeep）。
+
+环境注意（踩坑记录）：
+- 首次 `git commit` 触发 `git maintenance run --auto`，repack 进程 CPU 占用异常（>700 秒）导致命令输出挂起；commit 实际已成功，禁用自动维护后正常
+- 本环境终端 PATH 不含 git/gh，gh 调用 git 需先 `$env:PATH = 'C:\Program Files\Git\cmd;' + $env:PATH`
+- GitHub 直连不稳定，gh 命令前需设 `HTTPS_PROXY/HTTP_PROXY=http://127.0.0.1:7890`（会话级）
+
+## 2026-08-10（Phase 7 M5 收尾，v0.7.3）
+
 ### Bug 修复：注释对话框（FootnoteDialog）白字白底，输入文字与光标不可见
 
 类型：Bug Fix

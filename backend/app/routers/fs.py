@@ -1,0 +1,239 @@
+"""文件树管理（Phase 4.2）与文件监听事件读取（Phase 4.3）。
+
+原则：
+- 真实修改文件系统；SQLite 只是索引，绝不充当虚拟文件系统；
+- 所有操作基于 workspace 相对路径，经 safe_rel_path 校验防目录穿越；
+- 受保护目录（.knowledgeeditor / Drafts）与顶层目录（Articles / Modules /
+  Attachments）本身不可删除、重命名、移动；
+- 移动规则：只改文件系统位置，不修改 Markdown 内容、不重写附件引用路径；
+  仅允许在同一顶层目录内移动（跨 Articles/Modules/Attachments 移动禁止，
+  避免索引 kind 推断歧义）。
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel, Field
+
+from .. import config
+from ..services import markdown_io
+
+router = APIRouter(prefix="/api/fs", tags=["fs"])
+
+# 顶层受保护目录（自身不可删/改名/移动；.knowledgeeditor 与 Drafts 内部也不可经 fs 操作）
+_TOP_LEVEL = {
+    config.DIR_ARTICLES,
+    config.DIR_MODULES,
+    config.DIR_ATTACHMENTS,
+    config.DIR_DRAFTS,
+}
+_FORBIDDEN_ROOT = {
+    config.DIR_INTERNAL,
+    config.DIR_DRAFTS,
+}
+
+_DOC_EXTS = {".md", ".markdown"}
+
+
+# ---------- models ----------
+
+class DirCreate(BaseModel):
+    path: str = Field(..., min_length=1, description="相对 workspace 的目录路径")
+
+
+class RenameBody(BaseModel):
+    path: str = Field(..., min_length=1)
+    new_name: str = Field(..., min_length=1, max_length=200)
+
+
+class MoveBody(BaseModel):
+    src: str = Field(..., min_length=1)
+    dst: str = Field(..., min_length=1)
+
+
+class DocCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    dir: str = ""  # 可选：Articles 下的子目录（相对路径）
+
+
+# ---------- guards ----------
+
+def _guard_rel(root: Path, rel: str) -> Path:
+    """解析相对路径并校验：必须位于 workspace 内且未被禁止。"""
+    full = markdown_io.safe_rel_path(root, rel)
+    if full is None:
+        raise HTTPException(status_code=400, detail=f"非法路径: {rel}")
+    top = full.relative_to(root).parts[0] if full != root else ""
+    if top in _FORBIDDEN_ROOT:
+        raise HTTPException(status_code=400, detail=f"受保护目录，禁止操作: {top}")
+    return full
+
+
+def _top_of(rel: str) -> str:
+    return rel.split("/", 1)[0]
+
+
+def _require_ws(request: Request) -> Path:
+    root = request.app.state.workspace_root
+    if root is None:
+        raise HTTPException(status_code=409, detail="未打开工作区")
+    return root
+
+
+def _finish(request: Request, rel: str) -> None:
+    """索引同步 + 自身写入标记（本次操作不触发外部修改提示）。"""
+    request.app.state.indexer.update_file(rel)
+    w = request.app.state.watcher
+    if w is not None:
+        w.mark_internal(rel)
+
+
+# ---------- folder ----------
+
+@router.post("/dir", status_code=201)
+def create_dir(request: Request, body: DirCreate) -> dict:
+    root = _require_ws(request)
+    rel = body.path.strip("/")
+    if not rel or not rel.startswith(tuple(d + "/" for d in _TOP_LEVEL)) or rel in _TOP_LEVEL:
+        raise HTTPException(status_code=400, detail="目录必须位于 Articles/Modules/Attachments 下")
+    full = _guard_rel(root, rel)
+    full.mkdir(parents=True, exist_ok=True)
+    return {"path": rel, "created": True}
+
+
+@router.put("/dir")
+def rename_dir(request: Request, body: RenameBody) -> dict:
+    root = _require_ws(request)
+    rel = body.path.strip("/")
+    if rel in _TOP_LEVEL:
+        raise HTTPException(status_code=400, detail="顶层目录不可重命名")
+    full = _guard_rel(root, rel)
+    if not full.is_dir():
+        raise HTTPException(status_code=404, detail="目录不存在")
+    new_name = body.new_name.strip().strip("/")
+    if not new_name or "/" in new_name:
+        raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
+    target = full.parent / new_name
+    if target.exists():
+        raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
+    old_rel = full.relative_to(root).as_posix()
+    full.rename(target)
+    new_rel = target.relative_to(root).as_posix()
+    request.app.state.indexer.update_move(old_rel, new_rel)
+    return {"from": old_rel, "to": new_rel}
+
+
+@router.delete("/dir", status_code=204)
+def delete_dir(request: Request, path: str = Query(...)) -> None:
+    root = _require_ws(request)
+    rel = path.strip("/")
+    if rel in _TOP_LEVEL:
+        raise HTTPException(status_code=400, detail="顶层目录不可删除")
+    full = _guard_rel(root, rel)
+    if not full.is_dir():
+        raise HTTPException(status_code=404, detail="目录不存在")
+    for p in sorted(full.rglob("*"), reverse=True):
+        if p.is_dir():
+            p.rmdir()
+        else:
+            rel_p = p.relative_to(root).as_posix()
+            p.unlink()
+            request.app.state.indexer.store.delete_file(rel_p)
+    full.rmdir()
+    # 目录删除：不留自身索引记录（indexer.delete_file 已清理子文件）
+
+
+# ---------- document ----------
+
+@router.post("/doc", status_code=201)
+def create_doc(request: Request, body: DocCreate) -> dict:
+    """创建 Markdown 文档（Phase 5：支持 Articles 与 Modules 顶层目录）。"""
+    root = _require_ws(request)
+    sub = body.dir.strip("/") if body.dir else ""
+    top = config.DIR_ARTICLES
+    if sub:
+        # 兼容三种写法：仅顶层（"Modules"）、相对子目录（"Math"）、完整路径（"Modules/Math"）
+        if sub == config.DIR_ARTICLES:
+            top = config.DIR_ARTICLES
+            sub = ""
+        elif sub == config.DIR_MODULES:
+            top = config.DIR_MODULES
+            sub = ""
+        elif _top_of(sub) == config.DIR_ARTICLES:
+            top = config.DIR_ARTICLES
+            sub = sub[len(config.DIR_ARTICLES) + 1:]
+        elif _top_of(sub) == config.DIR_MODULES:
+            top = config.DIR_MODULES
+            sub = sub[len(config.DIR_MODULES) + 1:]
+        else:
+            raise HTTPException(status_code=400, detail="文档只能创建在 Articles 或 Modules 下")
+        if sub:
+            _guard_rel(root, f"{top}/{sub}")
+    slug = markdown_io.slugify(body.title)
+    rel = f"{top}/{sub}/{slug}.md" if sub else f"{top}/{slug}.md"
+    full = root / rel
+    if full.exists():
+        raise HTTPException(status_code=409, detail=f"已存在同名文档: {slug}.md")
+    content = f"# {body.title}\n\n"
+    markdown_io.atomic_write(full, content)
+    _finish(request, rel)
+    return {"id": rel, "path": rel, "title": body.title, "created": True}
+
+
+@router.put("/doc")
+def rename_doc(request: Request, body: RenameBody) -> dict:
+    root = _require_ws(request)
+    rel = body.path.strip("/")
+    full = _guard_rel(root, rel)
+    if not full.is_file():
+        raise HTTPException(status_code=404, detail="文档不存在")
+    if _top_of(rel) not in (config.DIR_ARTICLES, config.DIR_MODULES):
+        raise HTTPException(status_code=400, detail="仅支持重命名 Markdown 文档")
+    new_name = body.new_name.strip()
+    if not new_name or "/" in new_name:
+        raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
+    if Path(new_name).suffix.lower() not in _DOC_EXTS:
+        new_name = f"{new_name}{full.suffix}"
+    target = full.parent / new_name
+    if target.exists():
+        raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
+    old_rel = full.relative_to(root).as_posix()
+    full.rename(target)
+    new_rel = target.relative_to(root).as_posix()
+    request.app.state.indexer.update_move(old_rel, new_rel)
+    return {"from": old_rel, "to": new_rel}
+
+
+# ---------- move ----------
+
+@router.post("/move")
+def move_path(request: Request, body: MoveBody) -> dict:
+    root = _require_ws(request)
+    src_rel, dst_rel = body.src.strip("/"), body.dst.strip("/")
+    src = _guard_rel(root, src_rel)
+    dst = _guard_rel(root, dst_rel)
+    if src.is_dir():
+        if src_rel in _TOP_LEVEL:
+            raise HTTPException(status_code=400, detail="顶层目录不可移动")
+    elif src.is_file():
+        if _top_of(src_rel) not in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_ATTACHMENTS):
+            raise HTTPException(status_code=400, detail="不支持移动该类型文件")
+    else:
+        raise HTTPException(status_code=404, detail="源路径不存在")
+    if _top_of(src_rel) != _top_of(dst_rel):
+        raise HTTPException(status_code=400, detail="仅允许在同一顶层目录内移动")
+    if dst.exists():
+        raise HTTPException(status_code=409, detail=f"目标已存在: {dst_rel}")
+    src.rename(dst)
+    request.app.state.indexer.update_move(src_rel, dst_rel)
+    return {"from": src_rel, "to": dst_rel}
+
+
+# ---------- fs events (Phase 4.3) ----------
+
+@router.get("/events")
+def fs_events(request: Request, since: int = Query(0, ge=0)) -> dict:
+    watcher = request.app.state.watcher
+    events = watcher.events_since(since) if watcher is not None else []
+    return {"events": events, "last_seq": watcher.last_seq() if watcher else 0}

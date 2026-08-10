@@ -1,0 +1,20 @@
+[package]
+name = "knowledgeeditor"
+version = "0.7.3"
+description = "Knowledge Editor desktop shell (Tauri v2)"
+edition = "2021"
+
+[lib]
+name = "knowledgeeditor_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["custom-protocol"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = "2"

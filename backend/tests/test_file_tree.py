@@ -1,0 +1,108 @@
+"""Phase 4.2 文件树管理测试：文件夹/文档 增删改移动（真实文件系统 + 索引一致）。"""
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+
+@pytest.fixture()
+def paused_watcher(client):
+    watcher = client.app.state.watcher
+    watcher.enabled = False
+    yield watcher
+    watcher.enabled = True
+
+
+def _mk_doc(client, title, content=""):
+    r = client.post("/api/articles", json={"title": title, "content": content})
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+def _fs_exists(client, rel: str) -> bool:
+    return (Path(client.app.state.workspace_root) / rel).exists()
+
+
+def _index_has(client, rel: str) -> bool:
+    return client.app.state.store.get_file(rel) is not None
+
+
+def test_folder_create_and_nested_doc(client):
+    r = client.post("/api/fs/dir", json={"path": "Articles/项目/物理"})
+    assert r.status_code == 201
+    assert _fs_exists(client, "Articles/项目/物理")
+    # 在子目录创建文档
+    r = client.post("/api/fs/doc", json={"title": "力学笔记", "dir": "Articles/项目/物理"})
+    assert r.status_code == 201
+    rel = r.json()["id"]
+    assert rel == "Articles/项目/物理/力学笔记.md"
+    assert _fs_exists(client, rel)
+    # 索引一致
+    assert _index_has(client, rel)
+    tree = client.get("/api/tree").json()
+    assert rel in tree["articles"]
+
+
+def test_folder_rename_and_index_move(client):
+    r = client.post("/api/fs/dir", json={"path": "Articles/旧目录"})
+    r = client.post("/api/fs/doc", json={"title": "重命名测试", "dir": "Articles/旧目录"})
+    rel = r.json()["id"]
+    r = client.put("/api/fs/dir", json={"path": "Articles/旧目录", "new_name": "新目录"})
+    assert r.status_code == 200
+    assert not _fs_exists(client, "Articles/旧目录")
+    assert _fs_exists(client, "Articles/新目录/重命名测试.md")
+    assert not _index_has(client, rel)
+    assert _index_has(client, "Articles/新目录/重命名测试.md")
+
+
+def test_folder_move(client):
+    client.post("/api/fs/dir", json={"path": "Articles/甲"})
+    client.post("/api/fs/dir", json={"path": "Articles/乙"})
+    client.post("/api/fs/doc", json={"title": "移动测试", "dir": "Articles/甲"})
+    r = client.post("/api/fs/move", json={"src": "Articles/甲", "dst": "Articles/乙/甲"})
+    assert r.status_code == 200, r.text
+    assert _fs_exists(client, "Articles/乙/甲/移动测试.md")
+    assert _index_has(client, "Articles/乙/甲/移动测试.md")
+
+
+def test_doc_rename(client):
+    rel = _mk_doc(client, "旧文件名")
+    r = client.put("/api/fs/doc", json={"path": rel, "new_name": "新文件名"})
+    assert r.status_code == 200
+    new_rel = r.json()["to"]
+    assert new_rel == "Articles/新文件名.md"
+    assert _fs_exists(client, new_rel) and not _fs_exists(client, rel)
+    assert _index_has(client, new_rel) and not _index_has(client, rel)
+
+
+def test_doc_move_between_folders_preserves_content(client):
+    client.post("/api/fs/dir", json={"path": "Articles/来源"})
+    client.post("/api/fs/dir", json={"path": "Articles/目标"})
+    rel = _mk_doc(client, "内容保留", "# 内容保留\n\n重要内容 ABC")
+    # 先创建到默认位置，再移动到子目录
+    r = client.post("/api/fs/move", json={"src": rel, "dst": "Articles/目标/内容保留.md"})
+    assert r.status_code == 200, r.text
+    new_rel = r.json()["to"]
+    # 只移动位置：Markdown 内容逐字节不变
+    content = (Path(client.app.state.workspace_root) / new_rel).read_text(encoding="utf-8")
+    assert "重要内容 ABC" in content
+    # 索引已更新
+    assert _index_has(client, new_rel) and not _index_has(client, rel)
+
+
+def test_cross_top_level_move_forbidden(client):
+    rel = _mk_doc(client, "跨界测试")
+    r = client.post("/api/fs/move", json={"src": rel, "dst": "Modules/跨界测试.md"})
+    assert r.status_code == 400
+    assert _fs_exists(client, rel)
+
+
+def test_doc_delete_and_index_cleanup(client):
+    rel = _mk_doc(client, "待删除")
+    r = client.delete(f"/api/articles/{rel}")
+    assert r.status_code == 204
+    assert not _fs_exists(client, rel)
+    assert not _index_has(client, rel)
+    tree = client.get("/api/tree").json()
+    assert rel not in tree["articles"]

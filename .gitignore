@@ -1,0 +1,33 @@
+# 依赖与构建产物
+node_modules/
+node_modules.ghostbak/
+dist/
+dist-build/
+.esbuild/
+*.pyc
+**/target/
+__pycache__/
+.venv/
+*.egg-info/
+.pytest_cache/
+.tmp-esbuild/
+
+# 临时复现文件
+repro.html
+
+# 应用运行时数据（索引与工作区内容不纳入版本控制，仅保留目录结构与 .gitkeep）
+workspace/*
+!workspace/.knowledgeeditor/
+!workspace/Articles/
+!workspace/Modules/
+workspace/.knowledgeeditor/*
+workspace/Articles/*
+workspace/Modules/*
+!workspace/.knowledgeeditor/.gitkeep
+!workspace/Articles/.gitkeep
+!workspace/Modules/.gitkeep
+
+# 编辑器与系统
+.DS_Store
+Thumbs.db
+*.log

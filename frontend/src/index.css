@@ -1,0 +1,403 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --ke-bg: #f6f7f9;
+  --ke-border: #e2e5ea;
+  --ke-accent: #2563eb;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system,
+    sans-serif;
+  background: var(--ke-bg);
+  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条 */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #c9ced6;
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============ 编辑器排版（Phase 2） ============ */
+.ke-editor-prose {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 28px 32px 160px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #1f2937;
+  outline: none;
+}
+.ke-editor-prose > :first-child {
+  margin-top: 0;
+}
+.ke-editor-prose p {
+  margin: 0.55em 0;
+}
+.ke-editor-prose h1 {
+  font-size: 1.75em;
+  font-weight: 700;
+  margin: 1.2em 0 0.5em;
+  line-height: 1.3;
+}
+.ke-editor-prose h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  margin: 1.1em 0 0.45em;
+  line-height: 1.35;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid #eef0f3;
+}
+.ke-editor-prose h3 {
+  font-size: 1.18em;
+  font-weight: 600;
+  margin: 0.9em 0 0.4em;
+}
+.ke-editor-prose ul,
+.ke-editor-prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.6em;
+}
+.ke-editor-prose ul {
+  list-style: disc;
+}
+.ke-editor-prose ol {
+  list-style: decimal;
+}
+.ke-editor-prose li {
+  margin: 0.2em 0;
+}
+.ke-editor-prose blockquote {
+  margin: 0.7em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid #cbd5e1;
+  color: #475569;
+  background: #f8fafc;
+  border-radius: 0 6px 6px 0;
+}
+.ke-editor-prose code {
+  font-family: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+  font-size: 0.88em;
+  background: #f1f5f9;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: #be123c;
+}
+.ke-editor-prose pre {
+  margin: 0.7em 0;
+  padding: 12px 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ke-editor-prose pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+.ke-editor-prose a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ke-editor-prose hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5em 0;
+}
+.ke-editor-prose .ProseMirror-selectednode {
+  outline: 2px solid #2563eb55;
+  border-radius: 6px;
+}
+
+/* 表格（Phase 3 GFM 表格）：
+   Tailwind preflight 会清零 table 边框，必须显式补齐，
+   否则插入的空表格在视觉上完全不可见（仅全选时露出选区）。
+   Tiptap 表格 DOM：<div.tableWrapper><table><colgroup>…<tr><th/td>… */
+.ke-editor-prose .tableWrapper {
+  margin: 0.8em 0;
+  overflow-x: auto;
+}
+.ke-editor-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.ke-editor-prose th,
+.ke-editor-prose td {
+  position: relative;
+  border: 1px solid #cbd5e1;
+  padding: 5px 10px;
+  vertical-align: top;
+  text-align: left;
+  min-width: 2.5em;
+}
+.ke-editor-prose th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+/* Tiptap 单元格选择高亮（拖选 / Shift+方向键） */
+.ke-editor-prose .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(37, 99, 235, 0.12);
+  pointer-events: none;
+}
+/* 列宽拖拽手柄（仅拖动时出现） */
+.ke-editor-prose .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #93c5fd;
+  pointer-events: none;
+}
+
+/* ============ KE 扩展节点 ============ */
+/* 只作用于真实可编辑区：排除 contenteditable="false" 的控件（颜色按钮/徽章/标题/删除），
+   否则空控件会命中 :empty 伪元素渲染出占位文字（v0.7.2 修复）。 */
+.ke-note [contenteditable]:not([contenteditable="false"]) {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* 内容区占位符：PM 空容器会内置 trailingBreak <br>，无法用 :empty 判断，
+   由 NoteNodeView 按 node.content.size === 0 驱动 ke-note-content--empty class（v0.7.2）。 */
+.ke-note-content.ke-note-content--empty::before {
+  content: "输入信息块内容…";
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* 脚注上标引用（注释功能）
+   line-height 不可设为 0：0 行高会使上标数字字形溢出当前行框，
+   在行尾（光标后紧跟 PM 的 trailingBreak）时数字视觉错位、像被挤到下一行。 */
+.ke-footnote-ref {
+  color: #2563eb;
+  font-weight: 600;
+  cursor: default;
+  margin: 0 1px;
+  font-size: 0.72em;
+  vertical-align: super;
+  user-select: none;
+  line-height: 1;
+}
+/* 上标编号：可点击进入编辑（v0.6.4） */
+.ke-footnote-num {
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.ke-footnote-num:hover {
+  background: #dbeafe;
+}
+/* 上标编号编辑框 */
+.ke-footnote-edit {
+  width: 2.2em;
+  min-width: 2.2em;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 3px;
+  font-size: inherit;
+  line-height: 1;
+  text-align: center;
+  color: inherit;
+  font-weight: inherit;
+  outline: none;
+  padding: 0 1px;
+}
+.ke-footnote-edit:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa;
+}
+
+/* 公式节点 */
+.ke-math {
+  display: inline-block;
+  vertical-align: middle;
+}
+.ke-math--block {
+  display: block;
+  text-align: center;
+  margin: 0.8em 0;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.ke-math-render {
+  cursor: text;
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.ke-math-render:hover {
+  background: #eff6ff;
+}
+.ke-math-render .katex-display {
+  margin: 0;
+}
+.ke-math-edit-btn,
+.ke-math-del-btn {
+  display: none;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 3px;
+  background: #fff;
+  border: 1px solid #e2e5ea;
+  color: #6b7280;
+}
+.ke-math-edit-btn:hover {
+  color: #2563eb;
+  border-color: #2563eb;
+}
+.ke-math-del-btn:hover {
+  color: #e11d48;
+  border-color: #e11d48;
+}
+.ProseMirror-selectednode > .ke-math .ke-math-edit-btn,
+.ProseMirror-selectednode > .ke-math .ke-math-del-btn,
+.ke-math:hover .ke-math-edit-btn,
+.ke-math:hover .ke-math-del-btn {
+  display: inline-block;
+}
+.ke-math-field {
+  width: 100%;
+  min-width: 120px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 15px;
+  background: #fff;
+  outline: none;
+}
+.ke-math-field:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px #2563eb22;
+}
+.ke-math-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+}
+.ke-math-exit {
+  color: #2563eb;
+  font-weight: 600;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  padding: 1px 8px;
+  background: #eff6ff;
+}
+.ke-math-exit:hover {
+  background: #dbeafe;
+}
+
+/* 公式编辑器（UX 优化 2：上方 LaTeX 源码 + 下方实时渲染） */
+.ke-math-editor {
+  min-width: 260px;
+  text-align: left;
+}
+.ke-math-latex-input {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+}
+.ke-math-latex-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px #2563eb22;
+  background: #fff;
+}
+.ke-math-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px dashed #e2e5ea;
+  border-radius: 6px;
+  background: #fafbfc;
+}
+.ke-math-preview-label {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #9ca3af;
+  writing-mode: vertical-lr;
+  letter-spacing: 0.1em;
+}
+.ke-math-preview-body {
+  flex: 1;
+  text-align: center;
+  overflow-x: auto;
+}
+.ke-math-tool {
+  color: #6b7280;
+  font-size: 11px;
+  border: 1px solid #e2e5ea;
+  border-radius: 4px;
+  padding: 1px 8px;
+  background: #fff;
+}
+.ke-math-tool:hover {
+  color: #2563eb;
+  border-color: #2563eb;
+}
+.ke-math-del-inline {
+  color: #e11d48;
+  font-size: 11px;
+  border: 1px solid #fecdd3;
+  border-radius: 4px;
+  padding: 1px 8px;
+  background: #fff;
+}
+.ke-math-del-inline:hover {
+  background: #fff1f2;
+}
+
+/* 空文档占位（点击直接输入正文） */
+.ke-editor-prose .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+  font-size: 15px;
+}

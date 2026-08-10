@@ -91,7 +91,9 @@
 | `docs/phase7-prep.md` | Phase 7 桌面化准备分析（环境/代码/工程/数据四类 + 执行顺序） |
 | `docs/phase7-prep-freeze-check.md` | Phase 7 前冻结与稳定性检查（检查标准 / 契约对账 / 通过标准） |
 | `docs/phase7-freeze-check-report.md` | Phase 7 前冻结与稳定性检查报告（执行结果 / 2026-08-10 通过） |
+| `docs/phase7-report.md` | Phase 7 报告（桌面化实施 / 回归发布 v1.0.0，含 8 项交付说明） |
 | `docs/phase6u-report.md` | Phase 6U 报告（v0.6.0 后 → v0.7.3，含表格优化与白屏修复） |
 | `docs/phase6e-report.md` | Phase 6E 冻结审计（API 冻结清单 / 迁移测试 / 侧车交接） |
+| `docs/v0x-journey-report.md` | v0.x 全流程总报告（Phase 0 设计 → v1.0.0 发布，呼应 phase0-architecture.html） |
 | `CHANGELOG_DEV.md` | 开发日志（Bug/Feature/Refactor/Test 逐条记录） |
 | `docs/markdown-extension-spec.md` / `docs/document-format.md` | Markdown 扩展规范 / 文档格式手册 |

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KnowledgeEditor v1.0.0 Alpha — 独立质量审计报告</title>
+<style>
+  :root{
+    --p0:#c0392b; --p1:#e67e22; --p2:#b7950b; --p3:#2471a3; --p4:#7f8c8d;
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1c2833; --muted:#5d6d7e; --line:#d5dbdb;
+    --good:#1e8449; --warn:#b9770e; --bad:#c0392b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.65}
+  header{background:linear-gradient(135deg,#1b2631,#2e4053);color:#fff;padding:48px 24px}
+  header .wrap{max-width:1080px;margin:0 auto}
+  header h1{margin:0 0 8px;font-size:30px}
+  header p{margin:4px 0;color:#aeb6bf}
+  .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;color:#fff;vertical-align:middle}
+  .b-p0{background:var(--p0)} .b-p1{background:var(--p1)} .b-p2{background:var(--p2)} .b-p3{background:var(--p3)} .b-p4{background:var(--p4)}
+  .b-good{background:var(--good)}
+  main{max-width:1080px;margin:0 auto;padding:24px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:28px 32px;margin:20px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  h2{font-size:22px;border-left:5px solid #2e4053;padding-left:12px;margin-top:0}
+  h3{font-size:17px;margin:24px 0 8px;color:#2e4053}
+  h4{font-size:15px;margin:16px 0 6px}
+  code{font-family:"JetBrains Mono",Consolas,monospace;background:#eef1f4;padding:1px 5px;border-radius:4px;font-size:13px}
+  pre{background:#1b2631;color:#d6dbdf;padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+  pre code{background:none;color:inherit;padding:0}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#eef1f4}
+  tr:nth-child(even) td{background:#fafbfc}
+  .finding{border:1px solid var(--line);border-left-width:6px;border-radius:8px;padding:14px 18px;margin:14px 0;background:#fdfefe}
+  .f-p0{border-left-color:var(--p0)} .f-p1{border-left-color:var(--p1)} .f-p2{border-left-color:var(--p2)} .f-p3{border-left-color:var(--p3)} .f-p4{border-left-color:var(--p4)}
+  .finding h4{margin:0 0 6px;font-size:15.5px}
+  .meta{color:var(--muted);font-size:13px;margin:2px 0}
+  .lbl{font-weight:700;color:#2e4053}
+  .ok{color:var(--good);font-weight:700} .no{color:var(--bad);font-weight:700} .mid{color:var(--warn);font-weight:700}
+  .scorebar{height:10px;border-radius:5px;background:#e5e8ec;overflow:hidden;min-width:120px}
+  .scorebar i{display:block;height:100%;border-radius:5px}
+  .callout{background:#fdf6ec;border:1px solid #f0c36d;border-radius:8px;padding:14px 18px;margin:14px 0}
+  .callout.red{background:#fdedec;border-color:#e6b0aa}
+  .callout.green{background:#eafaf1;border-color:#a9dfbf}
+  .toc{columns:2;font-size:14.5px}
+  .toc a{color:#2471a3;text-decoration:none}
+  ul.tight li,ol.tight li{margin:3px 0}
+  .small{font-size:12.5px;color:var(--muted)}
+  .verdict{font-size:17px;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>KnowledgeEditor v1.0.0 Alpha — 独立质量审计报告</h1>
+    <p>审计对象：<a style="color:#85c1e9" href="https://github.com/Asheep233/knowledge-editor">github.com/Asheep233/knowledge-editor</a> ｜ 审计日期：2026-08-12 ｜ 审计方式：全仓库静态审计 + 前端运行时验证（vitest 故障注入）+ 后端测试实测（pytest 114/117）</p>
+    <p>审计角色：桌面应用架构 / 软件质量 / QA Lead / 安全审计 ｜ 审计原则：文档声明一律视为"待验证声明"，所有结论附代码证据；推测均明确标注</p>
+    <p style="font-size:20px;margin-top:14px">总体评分：<strong style="font-size:34px;color:#f5b041">62 / 100</strong>　<span class="badge b-p1">Alpha 可用，但不能托付重要数据</span></p>
+  </div>
+</header>
+<main>
+
+<section>
+  <h2>目录</h2>
+  <div class="toc">
+    <p><a href="#s1">一、总体质量评价（评分）</a></p>
+    <p><a href="#s2">二、Executive Summary</a></p>
+    <p><a href="#s3">三、P0 / P1 严重问题</a></p>
+    <p><a href="#s4">四、P2 / P3 / P4 问题</a></p>
+    <p><a href="#s5">五、重点模块审计</a></p>
+    <p><a href="#s6">六、数据安全专项审计</a></p>
+    <p><a href="#s7">七、真实用户场景测试矩阵（24 个）</a></p>
+    <p><a href="#s8">八、最值得增加的测试</a></p>
+    <p><a href="#s9">九、架构层面的隐患</a></p>
+    <p><a href="#s10">十、v1.0.1 修复路线</a></p>
+    <p><a href="#s11">十一、最终结论：最该担心的三件事</a></p>
+    <p><a href="#appendix">附录：审计方法与可信度说明</a></p>
+  </div>
+</section>
+
+<!-- ============ 第一部分 ============ -->
+<section id="s1">
+  <h2>第一部分：总体质量评价</h2>
+  <table>
+    <tr><th style="width:130px">维度</th><th style="width:90px">得分</th><th style="width:160px">水平</th><th>评分理由（摘要）</th></tr>
+    <tr><td>功能正确性</td><td><strong>66</strong></td><td><div class="scorebar"><i style="width:66%;background:#e67e22"></i></div></td><td>核心 CRUD / 搜索 / 导入导出 / round-trip 主链路正确且有测试；但存在 4 个 P0 级确定性丢内容缺陷（frontmatter 清空、undo 串文档、切换丢输入、整库删除）。</td></tr>
+    <tr><td>可靠性</td><td><strong>58</strong></td><td><div class="scorebar"><i style="width:58%;background:#c0392b"></i></div></td><td>原子写+索引可重建是强兜底；但保存无互斥、在途响应可拽回文档、watcher 线程可静默死亡、多实例互杀后端、前端就绪竞态无恢复。</td></tr>
+    <tr><td>数据安全</td><td><strong>52</strong></td><td><div class="scorebar"><i style="width:52%;background:#c0392b"></i></div></td><td>保存链路"快照先行+原子写+恢复可逆"设计优秀；但一键清库 P0、三组 workspace 内部越权删除、删除文档无回收站/无删除快照，下限很低。</td></tr>
+    <tr><td>安全性</td><td><strong>64</strong></td><td><div class="scorebar"><i style="width:64%;background:#b7950b"></i></div></td><td>路径穿越核心防护（safe_rel_path）扎实、导入管线教科书级；扣分：SVG 存储型 XSS、Tauri 多余 shell 权限+无 CSP、本地 API 无 token、错误回显绝对路径。</td></tr>
+    <tr><td>架构质量</td><td><strong>78</strong></td><td><div class="scorebar"><i style="width:78%;background:#1e8449"></i></div></td><td>"Markdown 唯一事实源 + SQLite 可重建索引"方向正确且执行到位；模块边界清晰；扣分点为恢复登记寄生于索引库、前后端状态双镜像等设计张力。</td></tr>
+    <tr><td>代码质量</td><td><strong>76</strong></td><td><div class="scorebar"><i style="width:76%;background:#1e8449"></i></div></td><td>结构清晰、注释记录真实踩坑、模式一致；扣分：stale closure、全仓零 logging、裸 500 散落、残留调试入口、平台假设无 guard。</td></tr>
+    <tr><td>测试质量</td><td><strong>64</strong></td><td><div class="scorebar"><i style="width:64%;background:#b7950b"></i></div></td><td>117 后端 + 70 前端测试覆盖主链路，导入安全测试含真故障注入；但并发/崩溃/外部修改/磁盘满/损坏文件/迁移六大风险面零覆盖，CI 在 Linux 必红（实测复现）。</td></tr>
+    <tr><td>UX</td><td><strong>62</strong></td><td><div class="scorebar"><i style="width:62%;background:#b7950b"></i></div></td><td>保存状态指示基本诚实、危险操作多有确认；但外部修改提示是死功能、上传无反馈、错误提示无详情、桌面版"移除失效工作区"静默无效。</td></tr>
+    <tr><td>发布质量</td><td><strong>45</strong></td><td><div class="scorebar"><i style="width:45%;background:#c0392b"></i></div></td><td>CI 不碰 Windows/desktop、无 release 流水线、12.1MB sidecar exe 手工构建直接入 git（无 LFS/校验和/SBOM）、release 下零日志、无 updater、安装包未签名+UPX 易误报。</td></tr>
+    <tr style="background:#f4f6f7"><td><strong>加权总分</strong></td><td><strong>62</strong></td><td colspan="2">权重：功能正确性/可靠性/数据安全各 15%，安全性/测试/发布各 10%，架构/代码/UX 合计 25%。<span class="mid">作为 Alpha 的工程质量高于平均水平，但距离"可托付真实知识库"还有明确差距。</span></td></tr>
+  </table>
+  <div class="callout green"><span class="lbl">必须公正的肯定：</span>这不是一份"挑刺报告"。项目的基础架构决策（原子写、快照先行、索引自愈、导入暂存区、附件引用保护、路径穿越防护、退出清理三段式、脚本防误杀）都体现了真实环境踩坑后的工程成熟度，freeze-check 文化真实存在且能自曝问题。问题集中在：<strong>边界条件的内容丢失、并发/竞态防护缺失、发布基础设施薄弱</strong>。</div>
+</section>
+
+<!-- ============ 第二部分 ============ -->
+<section id="s2">
+  <h2>第二部分：Executive Summary</h2>
+  <p class="verdict">问：v1.0.0 能不能放心给真实用户使用？</p>
+  <p class="verdict" style="color:var(--p0)">答：不能"放心"。可以用于体验和评测，但不应作为唯一知识库存放重要数据——除非用户接受"随时可能静默丢失最近几秒输入、部分格式内容、甚至（在 API 误用下）整个工作区"的风险，并自行做好外部备份。</p>
+  <ul class="tight">
+    <li><strong>架构地基是对的。</strong>"Markdown=唯一事实源、SQLite=可重建索引"不是口号：原子写（tmp+同目录 os.replace）、保存前先快照、历史恢复可逆、索引损坏可自愈，都已在代码和测试中验证为真。</li>
+    <li><strong>但有 4 个 P0 级"静默数据丢失/损坏"缺陷</strong>，全部位于最高频的用户路径：编辑器保存会<strong>清空 frontmatter 的标题/标签/自定义字段</strong>；切换文档后按 Ctrl+Z 会<strong>把上一篇文档的内容灌进当前文档</strong>并随 autosave 落盘；切换文档/关闭窗口时<strong>最近一个防抖窗口（默认 3 秒）的输入无声丢失</strong>；后端 <code>DELETE /api/fs/dir?path=.</code> 可<strong>单次请求物理删除整个工作区</strong>（含全部历史版本）。</li>
+    <li><strong>"外部修改防护"整条链是死的</strong>：watcher→事件轮询→前端提示链路中，前端因 stale closure 永远不会弹出提示；用户在外部编辑器改文件后继续在 KE 里编辑，autosave 直接覆盖外部修改，无任何感知。</li>
+    <li><strong>发布链路不可复现</strong>：CI 只有 Ubuntu 上的 pytest/vitest（且实测在 Linux 上 3 个安全测试必败——"CI 全绿"从未在 CI 环境成立过）；Windows 安装包由作者本机手工构建，sidecar exe（12.1MB）以二进制直接提交进 git。</li>
+    <li><strong>结论性建议：</strong>修复第四部分列出的 4 个 P0 + 接通外部修改提示 + 修好 CI 之前，不建议扩大 Alpha 分发范围；修复后可作为"有明确已知限制"的 Alpha 发布。</li>
+  </ul>
+</section>
+
+<!-- ============ 第三部分 ============ -->
+<section id="s3">
+  <h2>第三部分：P0 / P1 严重问题</h2>
+  <p class="small">每条含：位置 / 证据 / 触发条件 / 后果 / 现有测试为何没发现 / 最小修复建议。标注 ✅ 表示已通过运行时验证（前端用临时 vitest 用例复现，验证后已删除）；标注"推测"表示需运行时验证。</p>
+
+  <h3><span class="badge b-p0">P0</span> Critical — 确定性数据丢失/损坏（4 项）</h3>
+
+  <div class="finding f-p0">
+    <h4>P0-1 编辑器保存会清空文档 frontmatter 中的 title / tags / 全部自定义字段 <span class="ok">✅已验证</span></h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/editor/ke.ts:34-37（withFrontmatter）、frontend/src/components/layout/EditorArea.tsx:113,168,195；后端佐证 backend/app/routers/documents.py:227-251</p>
+    <p><span class="lbl">证据：</span>保存链路为 <code>withFrontmatter(ed.getMarkdown(), KE_VERSION)</code>，其实现 <code>stripFrontmatter(md)</code> 后只写回 <code>ke_version</code> 一个字段；后端 PUT 将 body.content <strong>逐字节覆盖写盘</strong>，无任何合并。而右侧"属性"面板（PUT /meta）会把 title/tags 写进 frontmatter。</p>
+<pre><code>export function withFrontmatter(md: string, version = KE_VERSION): string {
+  const { content } = stripFrontmatter(md)
+  return `---\n${KE_FRONTMATTER_KEY}: ${version}\n---\n\n${content}`   // 只剩 ke_version
+}</code></pre>
+    <p><span class="lbl">触发条件：</span>用户用属性面板设置过标题/标签（或文档来自 Obsidian，含任意 YAML frontmatter），随后发生任意一次自动/手动保存——<strong>几乎必现</strong>。</p>
+    <p><span class="lbl">后果：</span>标题回退为文件名、标签从文件中静默消失、自定义 YAML 字段全部丢失。违反"编辑器状态不能与磁盘事实源不一致/不能静默丢内容"的核心约束。</p>
+    <p><span class="lbl">为什么测试没发现：</span>round-trip 测试全部基于"编辑器输出→编辑器解析"闭环，从未测过"含 title/tags frontmatter 的文件经编辑器保存后字段仍在"。</p>
+    <p><span class="lbl">最小修复：</span>withFrontmatter 改为<strong>合并</strong>语义：保留 stripFrontmatter 解析出的全部原字段，仅更新 ke_version；或后端 PUT 改为"保 body 替换"（替换正文、保留 frontmatter）。</p>
+  </div>
+
+  <div class="finding f-p0">
+    <h4>P0-2 切换文档后 Ctrl+Z 会把上一篇文档的内容灌进当前文档（跨文档串内容） <span class="ok">✅已验证</span></h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/editor/index.ts:149-151（setKeContent → editor.commands.setContent）；依赖行为 @tiptap/core setContent 未设 addToHistory:false</p>
+    <p><span class="lbl">证据：</span>Tiptap v3 的 <code>setContent</code> 实现为 <code>tr.replaceWith(0, doc.content.size, doc2)</code>，该事务<strong>进入 undo 栈</strong>；setKeContent 之后全仓未调用 <code>clearHistory</code>。运行时验证：加载文档A → setContent(文档B) → undo 后编辑器内容变回 A。</p>
+    <p><span class="lbl">触发条件：</span>打开文档 B（或恢复历史版本——同走 setKeContent）后按 Ctrl+Z 或点工具栏撤销。</p>
+    <p><span class="lbl">后果：</span>编辑器显示 A 的内容但 App 认为在编辑 B → 下一次 autosave 把 <strong>A 的内容覆盖写入 B 的文件</strong>。跨文档静默串内容，且 undo 栈保留上一篇文档全部历史可连续撤销。这是本次审计中"最隐蔽、后果最重"的前端缺陷。</p>
+    <p><span class="lbl">为什么测试没发现：</span>编辑器测试均单文档生命周期，无任何"加载→切换→undo"用例。</p>
+    <p><span class="lbl">最小修复：</span>setKeContent 内 setContent 后立即 <code>editor.commands.clearHistory()</code>（或 setContent 第三参传 <code>{ addToHistory: false }</code>）。</p>
+  </div>
+
+  <div class="finding f-p0">
+    <h4>P0-3 切换文档 / 关闭窗口丢弃未决 autosave：最近一个防抖窗口的输入静默丢失</h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/components/layout/EditorArea.tsx:139-144、216-220；frontend/src/App.tsx:200-211（openArticle 无未保存检查）；全仓无 beforeunload / onCloseRequested</p>
+    <p><span class="lbl">证据：</span>切换文档的 effect 仅 <code>clearTimeout</code> 不 flush：<code>if (debounceRef.current) window.clearTimeout(...)</code>，然后直接 <code>setKeContent</code> 加载新文档。恢复点登记只在保存路径内发生，防抖尚未触发时<strong>草稿不存在</strong>。窗口关闭同理：unmount 清理只清定时器。</p>
+    <p><span class="lbl">触发条件：</span>输入后 3 秒内（autosaveIntervalMs 默认 3000，设置里最大可调到 10 分钟）点击另一篇文档，或直接关闭窗口。localhost 下加载新文档只需几毫秒，远快于防抖窗口——<strong>高频触发</strong>。</p>
+    <p><span class="lbl">后果：</span>最多丢失一个完整防抖窗口的输入，无提示、无恢复草稿。讽刺的是：工作区切换/导入/关闭工作区都有 hasUnsaved 确认（App.tsx:285,344,367），唯独最高频的"文档间切换"和应用退出没有保护。</p>
+    <p><span class="lbl">为什么测试没发现：</span>App/EditorArea 组件层零测试；防抖/切换逻辑无任何用例。</p>
+    <p><span class="lbl">最小修复：</span>切换文档前 flush 保存（或至少把未保存内容登记为恢复草稿）；Tauri 侧用 <code>onCloseRequested</code> 通知前端 flush 后再关窗（现有 prevent_close 机制可复用）。</p>
+  </div>
+
+  <div class="finding f-p0">
+    <h4>P0-4 后端 DELETE /api/fs/dir 传 "." 可递归物理删除整个工作区（含全部历史快照）</h4>
+    <p class="meta"><span class="lbl">位置：</span>backend/app/routers/fs.py:127-144（delete_dir）、fs.py:62-70（_guard_rel）、backend/app/services/markdown_io.py:192-198（safe_rel_path）</p>
+    <p><span class="lbl">证据：</span>防护链存在但有一个洞：<code>rel = path.strip("/")</code> 后为 <code>"."</code> 或 <code>""</code> 时不属于顶层目录白名单检查范围；<code>safe_rel_path</code> 因 <code>candidate == root</code> 判定合法；<code>_guard_rel</code> 的 <code>full != root</code> 分支使 top="" 跳过保护目录检查 → 进入递归删除。pathlib 的 <code>rglob("*")</code> 会匹配隐藏文件（含 .knowledgeeditor/ 与 Drafts/backup/ 全部历史版本），最后 <code>full.rmdir()</code> 连工作区根目录一并删除。</p>
+    <p><span class="lbl">触发条件：</span><code>DELETE /api/fs/dir?path=.</code>（或 path=、path=/、path=Articles/..）。正规前端不触发，但任何本机进程/恶意网页（simple request 无需 preflight）都可发起。</p>
+    <p><span class="lbl">后果：</span>整个知识库（文章+模块+附件+全部历史版本+恢复草稿）一次 HTTP 调用不可逆删除。无确认、无回收站、无快照兜底。同族问题：rename_dir 传 path=. 会把整个 workspace 根目录改名到其父目录下。</p>
+    <p><span class="lbl">为什么测试没发现：</span>test_delete_safety.py 测了 ../、受保护目录、外部路径，唯独没测"解析后等于 root"的等价路径。</p>
+    <p><span class="lbl">最小修复：</span>_guard_rel 与 delete_dir/rename_dir 入口显式拒绝 <code>full == root</code>；delete_dir 增加"目标必须在 Articles/Modules/Attachments 之下"的父级断言。</p>
+  </div>
+
+  <h3><span class="badge b-p1">P1</span> High — 核心功能错误 / 明显一致性问题（13 项）</h3>
+
+  <div class="finding f-p1">
+    <h4>P1-1 "文档已被外部修改"提示是死功能（stale closure），且其"重新加载"路径本身也不刷新编辑器</h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/App.tsx:164-180（轮询 effect，依赖 [workspace?.open, workspace?.root] 且带 eslint-disable）、182-198（handleFsEvent）、267-276（handleReloadExternal）、EditorArea.tsx:139-144</p>
+    <p><span class="lbl">证据：</span>轮询 effect 闭包捕获的是 effect 执行时刻的 handleFsEvent；而 effect 每次执行时 article 必为 null（打开/切换工作区都会先 setArticle(null)）→ <code>const cur = article?.id</code> 永远 undefined → <code>setExtModal</code> 永不被调用。树刷新用的是稳定的 setTreeRefresh 所以表面正常，掩盖了 bug。即使修复闭包，handleReloadExternal 调 openArticle(rel) 得到相同 id，EditorArea 加载 effect 依赖 [article?.id] 不会重跑 → 编辑器内容仍不刷新。</p>
+    <p><span class="lbl">后果：</span>外部编辑器修改当前文档 → 无任何提示 → 用户继续编辑 → autosave 覆盖外部修改。整个 fs_watch 基建（轮询、事件队列、自身写入抑制）前端侧白做。代码推断确定性高，UI 行为建议运行时复核。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-2 已知 ke-* 标记 JSON 损坏或非独占行时被静默删除（与设计注释相反） <span class="ok">✅已验证</span></h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/editor/tokenizers.ts:53-83（JSON.parse 失败 return undefined）、262-276（KE_UNKNOWN_PATTERN 负向前瞻排除 note|module|attach|video|footnote）</p>
+    <p><span class="lbl">证据：</span>设计注释声称"JSON 损坏时保留原始文本"，但负向前瞻把"已知 kind + 损坏 JSON"挡在 fallback 之外；marked 将其归为 html token，@tiptap/markdown 对注释节点解析为空。运行时验证：<code>&lt;!-- ke-attach: {bad json} --&gt;</code> 独占行 → 序列化后<strong>标记整体消失</strong>；合法标记行尾追加文字 → 附件节点消失。</p>
+    <p><span class="lbl">后果：</span>第三方编辑器/手工编辑造成标记损坏，或用户在标记行尾写字 → 附件/视频/信息块/模块无声丢失，无任何 UI 提示。属于"打开后没有提示就破坏了 Markdown"的高优类型。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-3 普通 HTML 注释与原生 HTML 块在 round-trip 中被丢弃/拆解 <span class="ok">✅已验证</span></h4>
+    <p class="meta"><span class="lbl">位置：</span>@tiptap/markdown parseHTMLToken；GenericFallbackExtension 仅覆盖 ke-* 命名空间</p>
+    <p><span class="lbl">证据：</span>运行时验证：<code>&lt;!-- 普通注释 --&gt;</code> 序列化后消失；<code>&lt;div class="custom"&gt;内容&lt;/div&gt;</code> 只剩文本"内容"（标签/属性消失）。项目自测"未知标记原样保留"（markdown-roundtrip.test.ts:414-420）<strong>只断言了前后段落存在，未断言注释本身</strong>——测试名与实际保障不符。</p>
+    <p><span class="lbl">后果：</span>含 TODO 注释、从其他编辑器导入的含 HTML 文档，保存后缺块且用户不知情。无法编辑某种 Markdown 可以接受；<strong>静默破坏不能接受</strong>。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-4 autosave 与手动 Ctrl+S 无互斥锁，并发 PUT 乱序落盘，UI 仍显示"已保存"</h4>
+    <p class="meta"><span class="lbl">位置：</span>EditorArea.tsx:100-123（防抖保存）与 159-179（saveNow）；后端 documents.py:227-251（无 etag/mtime 前置校验，last-write-wins）</p>
+    <p><span class="lbl">证据：</span>两条保存路径共享 editSeqRef 但无 in-flight 锁：saveNow 只 clearTimeout 不取消在途请求；<code>editSeqRef.current === seq</code> 比对<strong>只修正 UI 标签，不阻止旧内容后落盘</strong>。后端亦无版本检查。</p>
+    <p><span class="lbl">触发条件：</span>保存 A 在途 → 用户输入/Ctrl+S 发出保存 B → A 晚于 B 到达后端 → 磁盘回退为旧内容，UI 显示已保存。localhost 乱序概率低（需运行时验证），但无机制性防护；且后端快照历史会把正确的新版本存档、磁盘留旧版，现象更迷惑。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-5 在途保存响应会把用户"拽回"上一篇文档并丢弃其未保存输入</h4>
+    <p class="meta"><span class="lbl">位置：</span>App.tsx:251-254（handleSaved 无条件 setArticle(doc)，不校验 doc.id 是否仍为当前文档）</p>
+    <p><span class="lbl">触发条件：</span>保存请求在途期间用户打开文档 B → B 加载完成 → A 的保存响应返回 → setArticle(A) → 编辑器重新加载 A，B 中已输入未保存的内容随 setKeContent 被清掉（且无草稿）。竞态窗口为毫秒级（保存前还串行 await registerRecoveryPoint 多一次 RTT），概率低但后果重。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-6 后端 documents / drafts 路由作用域越权：可删除/覆写工作区内任意文件</h4>
+    <p class="meta"><span class="lbl">位置：</span>backend/app/routers/documents.py:60-67（_article_path 只校验不越出 workspace）、254-261（delete_article 直接 unlink）；drafts.py:67-89（recovery 登记的 doc_path/draft_path 零校验入库）、92-145（restore 可覆写任意路径）</p>
+    <p><span class="lbl">证据：</span><code>DELETE /api/articles/Attachments/images/pic.png</code> 直接成功——完全绕过 attachments 路由"被引用附件 409 禁止删除"的核心保护；也可删 .knowledgeeditor/settings.json、Drafts/backup/ 全部历史快照。drafts 两步构造可删除/覆写 workspace 内任意文件。</p>
+    <p><span class="lbl">后果：</span>层层防护（附件引用检查、受保护目录）存在单一绕过面。正规前端不触发，属"唯一防护层"失效型问题。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-7 递归遍历不防目录符号链接/Junction：delete_dir 可删到 workspace 之外</h4>
+    <p class="meta"><span class="lbl">位置：</span>fs.py:136-143；indexer.py:45-82；documents.py:116-126；fs_watch.py:79-93（所有 rglob 枚举均无 symlink 检查）</p>
+    <p><span class="lbl">证据：</span>Python ≤3.12 的 pathlib.rglob 默认<strong>跟随目录符号链接</strong>（3.13 才改默认）。workspace 内若存在指向外部的 junction（Windows 上无需管理员即可创建），delete_dir 递归 unlink 的是链接目标里的真实文件。附带：indexer 对指向外部的文件符号链接 read_text，把外部文件内容吸入 FTS 索引（搜索泄露，与 Python 版本无关）。</p>
+    <p><span class="lbl">后果：</span>直接违反"删除只作用于 workspace 内"的不变量。部分推测（依赖预置链接与 Python 版本语义），文件链接泄露子项确定。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-8 删除文档无任何兜底：不进回收站、删除前不留快照</h4>
+    <p class="meta"><span class="lbl">位置：</span>documents.py:254-261（delete 路径不调用 _maybe_snapshot）；history.py:58-59（恢复端点要求文件仍存在，删除后无法经 API 恢复）</p>
+    <p><span class="lbl">后果：</span>新建即删的文档永久丢失；有快照的只能去 Drafts/backup/ 手工翻找。对比目录删除、附件删除的层层保护，<strong>最高频危险操作（删文档）反而是保护最弱的</strong>。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-9 表格单元格内 \| 转义：序列化器自己产生的转义，解析器读不回来 <span class="ok">✅已验证</span></h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/editor/extensions/TableMarkdownExtension.ts:52-64（序列化 replace(/\|/g,'\\|')）；tokenizers.ts:213-217（parseTableRow 朴素 split('|')，不识别转义）</p>
+    <p><span class="lbl">证据：</span>运行时验证：<code>| a | b \| c |</code>（2 列）→ 解析成 3 个单元格，序列化输出 <code>| a | b \ | c |</code>——用户在表格里输入 | 即触发表格结构损坏。另 cellText 只拼纯文本：单元格内粗体/链接/公式/代码保存后全部退化为字面文本；对齐语法 :---: 序列化恒输出 ---，对齐丢失。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-10 无多实例防护：第二实例会杀死第一实例的后端</h4>
+    <p class="meta"><span class="lbl">位置：</span>desktop/src-tauri/src/sidecar.rs:116-129（cleanup_stale 读全局共享的 %APPDATA%\KnowledgeEditor\runtime\runtime.json，PID 存活即 kill_tree）；Cargo.toml 无 tauri-plugin-single-instance</p>
+    <p><span class="lbl">触发条件：</span>用户双击第二次应用图标（"以为没启动成功再点一次"极其常见）。实例 B 杀掉实例 A 的 backend；A 的 watchdog 1 秒后自动拉起，与 B 竞争端口；两实例共用同一 workspace 与同一 SQLite index.db，双进程同时重建索引/写入。</p>
+    <p><span class="lbl">后果：</span>未保存内容丢失窗口 + 索引写竞争。主链路为代码直读结论；索引损坏程度需运行时验证。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-11 前端就绪竞态：4 秒放弃 vs 后端最长 30 秒握手，且 Rust 侧三个事件无人监听</h4>
+    <p class="meta"><span class="lbl">位置：</span>frontend/src/main.tsx:32-45（10×400ms≈4s 后 apiBase 永久回退为空）；sidecar.rs:293,311,331-343,376 发出 ke:runtime-ready / ke:sidecar-exited / ke:runtime-error——<strong>全仓 grep 前端无任何 listen</strong></p>
+    <p><span class="lbl">触发条件：</span>首次启动（PyInstaller onefile 解压）+ activate_workspace 全量重建索引 &gt; 4 秒（慢机器/大工作区是常态）。</p>
+    <p><span class="lbl">后果：</span>前端所有请求打到 https://tauri.localhost/api/... 失败，呈现"后端未连接"假象，后端就绪后也无恢复机制；后端彻底启动失败时 Rust 精心组装的 stderr 诊断发出但无人接收，用户看不到任何原因。事件无人监听为代码事实；首启超 4s 概率需运行时验证。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-12 桌面 release 下后端日志完全蒸发，"打开日志目录"永远指向空目录</h4>
+    <p class="meta"><span class="lbl">位置：</span>sidecar.rs:299-306（sidecar stdout/stderr 逐行 eprintln!）；main.rs:2（release 为 GUI 子系统，无控制台，eprintln 丢弃）；后端 Python 全仓无 logging/FileHandler；settings.rs:177-189 open_log_dir 打开的目录无任何代码写入</p>
+    <p><span class="lbl">后果：</span>崩溃自动重启耗尽 3 次后诊断信息进入虚空；用户/开发者事后拿不到任何日志。对 Alpha 测试期的反馈闭环是硬伤。</p>
+  </div>
+
+  <div class="finding f-p1">
+    <h4>P1-13 发布链不可复现：CI 无 Windows/desktop 任何环节，且"CI 全绿"在 Linux 上实测不成立</h4>
+    <p class="meta"><span class="lbl">位置：</span>.github/workflows/ci.yml（全文 44 行，仅 ubuntu 上 backend pytest + frontend vitest/build；无 cargo、无 PyInstaller、无 tauri build、无 release）；backend/tests/test_delete_safety.py:32-34,68-77 使用 Windows 路径语义却无 skipif——<strong>本沙箱实测 pytest 117 项收集、114 通过 / 3 失败</strong>；DEVELOPMENT_ENVIRONMENT.md:99-104 自述构建机存在"虚拟化层幽灵文件/安全软件拦截"，而发货 exe 正出自该机且以 12.1MB 二进制直接提交 git（无 LFS/校验和）</p>
+    <p><span class="lbl">后果：</span>① 文档所有"pytest 全过"均产自 Windows 本机，CI 基线从未真正守卫主分支；② 二进制无法被独立流程复现或验证；③ 安装包未签名 + PyInstaller UPX 压缩（spec:29）抬高杀软误报面；④ settings.rs 里 8 个精心编写的 Rust 单测不进任何 CI。</p>
+  </div>
+</section>
+
+<!-- ============ 第四部分 ============ -->
+<section id="s4">
+  <h2>第四部分：P2 / P3 / P4 问题（按优先级排列）</h2>
+
+  <h3><span class="badge b-p2">P2</span> Medium（节选 14 项，按风险排序）</h3>
+  <table>
+    <tr><th style="width:34%">问题</th><th style="width:22%">位置</th><th>证据 / 后果</th></tr>
+    <tr><td>PUT /articles 的 title 参数是死参数（注释声称重命名，实际不落盘）</td><td>backend/routers/documents.py:28-30,227-251</td><td>传 title 期望重命名 → 文件不改名、frontmatter 不写入，下次 GET 回退。重命名静默丢失。</td></tr>
+    <tr><td>脚注条目文本含 <code>} --&gt;</code> 时整条脚注静默丢失 ✅</td><td>frontend/editor/tokenizers.ts:240-249</td><td>非贪婪正则在第一个 } 截断 → JSON.parse 失败 → catch 静默跳过。运行时验证：重新打开后 items 为空。修复方向：复用已有 matchBalancedJson。</td></tr>
+    <tr><td>Windows 大小写绕过 fs 保护目录：小写 drafts/ 可删光全部历史快照</td><td>backend/routers/fs.py:62-70</td><td>保护名单大小写敏感而 NTFS 不敏感；delete_dir?path=drafts 在 Windows 上命中真实 Drafts/。部分推测（依赖 Windows realpath 不保大小写的已知行为）。</td></tr>
+    <tr><td>重建索引非事务 + 每文件一次 commit + 每次启动/切库全量重建</td><td>backend/services/indexer.py:90-107、store/db.py:212,258-263</td><td>重建中途崩溃留半灌状态；1 万文档 = 1 万次事务，启动线性变慢。建议单事务重建。</td></tr>
+    <tr><td>SQLite 单连接跨线程无锁、无 busy_timeout；工作区切换瞬间在途请求裸 500</td><td>backend/store/db.py:83-93；workspace.py:87-99</td><td>add_recovery 三语句序列交错可留重复恢复行（表无 UNIQUE）；外部工具占用库时写操作立即 database is locked。</td></tr>
+    <tr><td>SVG 附件以 image/svg+xml inline 直出 → API 域存储型 XSS</td><td>backend/routers/attachments.py:192-198、config.py:60</td><td>导入含 &lt;script&gt; 的 SVG 后用户直开链接 → 脚本获得 127.0.0.1 后端全部 API 能力。修复：SVG 强制 Content-Disposition: attachment。</td></tr>
+    <tr><td>Tauri 权限面过宽 + 无 CSP：shell:allow-spawn/allow-execute 前端根本未使用</td><td>desktop/src-tauri/capabilities/default.json:6-11；tauri.conf.json:24-26（"csp": null）</td><td>前端任何 XSS 可直接 shell.execute → 本地 RCE 升级链。sidecar 由 Rust 侧拉起，不需要这两个权限。</td></tr>
+    <tr><td>本地 API 无 token：浏览器→127.0.0.1 的 CSRF/simple-request 面</td><td>backend/main.py:80-86、config.py:36-45</td><td>CORS 只挡跨域读取挡不住执行；任意网页可发无 body 的 POST /api/workspace/close、/api/index/rebuild。主流 sidecar 应用普遍用启动随机 token。</td></tr>
+    <tr><td>历史快照同毫秒互相覆盖 + historyRetentionCount 设置完全是 no-op</td><td>backend/services/history_store.py:21,28-29,55-62；frontend/src/settings.ts:15（后端 grep retention 零命中）</td><td>实测 test_phase6.py:177 在本机失败（35 次快照只剩 14-16 份）——flaky 测试恰好掩盖真缺陷；设置面板保留份数是死设置，属功能性误导。</td></tr>
+    <tr><td>stale PID 回收不校验进程身份，PID 复用可误杀无关进程</td><td>desktop/sidecar.rs:103-129；scripts/stop.ps1:28-56；start.ps1:100-113</td><td>三处均"PID 存活即整树强杀"，不校验进程名/命令行（讽刺的是 stop.ps1 端口兜底分支反而做了双匹配）。概率低、影响高。</td></tr>
+    <tr><td>端口探测 TOCTOU + 崩溃重启不重新探测端口；health 超时 kill 非整树可留 PyInstaller 孤儿</td><td>desktop/sidecar.rs:72-80,265-283,321-327</td><td>bind 试探后立即释放再 spawn；重启复用旧 port；超时路径 child.kill() 只杀 bootloader，内层 Python 子进程可残留且永不入 runtime.json。</td></tr>
+    <tr><td>WorkspacePicker.removeRecent 漏用 apiBase()：桌面版"移除失效工作区"永远静默无效</td><td>frontend/components/layout/WorkspacePicker.tsx:97-99</td><td>直接 fetch('/api/...')，桌面 origin 为 tauri.localhost 必失败，catch 静默。修复一行。</td></tr>
+    <tr><td>打开文档/搜索无乱序防护（无 AbortController）</td><td>App.tsx:200-211；LeftSidebar.tsx:94-109</td><td>快速点击两篇文档时慢的旧响应可覆盖新文档。localhost 概率低，需运行时验证。</td></tr>
+    <tr><td>PyInstaller spec 可复现性：multipart 未入 hiddenimports、PyInstaller 不在 requirements.txt、依赖无锁</td><td>backend/knowledgeeditor-backend.spec:8-9,29,32；requirements.txt 全部范围版本</td><td>附件上传依赖 python-multipart 惰性 import，若 hook 未覆盖则打包后上传运行时暴雷（需对 exe 实测）；换机器重建 sidecar 必踩坑。</td></tr>
+  </table>
+
+  <h3><span class="badge b-p3">P3</span> Low（节选 12 项）</h3>
+  <table>
+    <tr><th style="width:34%">问题</th><th style="width:24%">位置</th><th>说明</th></tr>
+    <tr><td>全仓零 logging + 多处 except-pass silent failure</td><td>backend 全仓；fs_watch.py:69-75 最危险</td><td>watcher 线程非 OSError 异常静默死亡后，外部修改检测永久失效且无任何信号。所有 silent failure 无从排查。</td></tr>
+    <tr><td>原子写缺 fsync；崩溃遗留 .tmp-* 会被当正式文档索引</td><td>backend/services/markdown_io.py:169-185</td><td>掉电场景可能留 0 字节文件（写一半崩溃本身安全：旧文件完好）。落在 Articles/ 的临时文件污染索引/搜索。</td></tr>
+    <tr><td>CRLF→LF 静默转换 + BOM 不剥离</td><td>markdown_io.py:169-189</td><td>Windows 上 CRLF 文档保存后被转 LF（git diff 噪音）；BOM 文档 frontmatter 正则不命中，标题退化为文件名。</td></tr>
+    <tr><td>frontmatter 是 regex 简易解析，复杂 YAML 被静默压平</td><td>markdown_io.py:51-118</td><td>多行字符串/嵌套 map 经 set_meta 重写后丢失——对手工维护复杂 frontmatter 的用户是缓慢数据磨损。（与 P0-1 叠加后影响更大）</td></tr>
+    <tr><td>插入脚注向正文注入零宽空格 U+200B 并写入文件</td><td>frontend/editor/extensions/FootnoteExtension.ts:156,202</td><td>为修光标视觉问题把不可见字符写进 Markdown，污染 git diff/第三方编辑器/搜索。</td></tr>
+    <tr><td>附件上传无大小上限/无进度/断连留半截；导入 zip 仅按声明值限单文件 512MB</td><td>attachments.py:174-179；import_export.py:379</td><td>磁盘耗尽面；伪造 zip 头可绕过（zip bomb）。前端上传期无任何 UI 反馈。</td></tr>
+    <tr><td>大量 OSError/UnicodeDecodeError 未捕获 → 裸 500；Windows 保留名（CON/PRN）未过滤</td><td>documents.py:259、fs.py 多处、modules.py:17-34</td><td>读非 UTF-8 文档、删被占用文件、创建标题为 CON 的文章均 500；list_modules 一个坏文件拖垮整个列表。</td></tr>
+    <tr><td>错误信息直接回显 {e} 泄露绝对路径；状态码风格不一</td><td>attachments.py:150-151 等</td><td>非法路径在 documents/fs 返回 400、modules 返回 404；删除响应 200/204 混用。</td></tr>
+    <tr><td>恢复登记寄生于 index.db：索引损坏自愈删库会连带删除恢复登记</td><td>db.py:364-370 + workspace.py:50-65</td><td>"索引可重建"与"恢复登记是唯一记录"的设计张力：重建后 Drafts/recovery/ 草稿成孤儿，启动不再提示。</td></tr>
+    <tr><td>每次击键引发 App 级重渲染 + 文件树全量重建（buildFileTree 未 memo）</td><td>App.tsx:564；LeftSidebar.tsx:355-357</td><td>大工作区下输入有可感开销。保存前还串行 registerRecoveryPoint，保存延迟=2×RTT。</td></tr>
+    <tr><td>runtime.json 非原子写；数据目录选 %APPDATA%（Roaming）而非 %LOCALAPPDATA%</td><td>desktop/sidecar.rs:148-150,54-57</td><td>崩溃可留半个 JSON；索引类可重建数据在域漫游环境有同步冲突/配额风险。</td></tr>
+    <tr><td>无 updater / 无更新通道；"最近工作区"菜单仅启动时构建</td><td>tauri.conf.json；desktop/menu.rs:29-30</td><td>Alpha 期修复触达慢；运行期间新打开的工作区不进菜单。</td></tr>
+  </table>
+
+  <h3><span class="badge b-p4">P4</span> Cosmetic（4 项）</h3>
+  <ul class="tight">
+    <li>无 id 节点每次序列化生成新随机 id 且不回写 attrs，连续两次导出同文档 id 不同（Attachment/Video/Footnote/Note/Module renderMarkdown）。</li>
+    <li><code>~下标~</code> 被 marked 按 GFM 规范化为删除线 ~~...~~（语义与部分用户预期不符，文档未说明）。</li>
+    <li>repro-main.tsx 调试入口残留在 src（不入构建但会被 tsc 编译）。</li>
+    <li>ke-module source 模式序列化缺 kind 字段，与 toKeComment 输出不一致（第三方工具可能困惑）。</li>
+  </ul>
+</section>
+
+<!-- ============ 第五部分 ============ -->
+<section id="s5">
+  <h2>第五部分：重点模块审计</h2>
+  <table>
+    <tr><th style="width:130px">模块</th><th style="width:70px">评分</th><th>评价</th></tr>
+    <tr><td>Frontend</td><td>64</td><td>结构清晰、注释高质量（多处记录踩坑原因）、性能意识好（击键不全量序列化、editor 实例复用）。但 4 个 P0 中 3 个在前端；stale closure 杀死外部修改提示；App/EditorArea 组件层零测试。</td></tr>
+    <tr><td>Backend</td><td>68</td><td>核心写路径设计正确（原子写+快照先行+索引可重建）；safe_rel_path 扎实；导入管线教科书级。但 P0 整库删除、三组作用域越权、无锁无 busy_timeout、零 logging、裸 500 散落。</td></tr>
+    <tr><td>Markdown pipeline</td><td>66</td><td>主链路 round-trip 三次零漂移有测试兜底，GenericFallback/keJson 字段序/matchBalancedJson 设计严谨。但异常输入全面失守：损坏 ke-* 标记、普通 HTML 注释、表格 \|、脚注 }-->、frontmatter 合并——全部静默有损。这是项目最核心的风险面，当前只覆盖 happy path。</td></tr>
+    <tr><td>Workspace</td><td>72</td><td>创建/打开/关闭/最近列表/迁移（app_config 只复制不动源）逻辑完整；无物理删除 workspace 的 API（正确决策）。扣分：create/open 接受任意绝对路径无护栏；切换瞬间在途请求裸 500；recovery 登记随索引库一起被自愈删除。</td></tr>
+    <tr><td>Search / index</td><td>74</td><td>FTS5 trigram + 短词 LIKE 降级 + schema 版本迁移 + 损坏自愈，设计完整且有测试。扣分：重建非事务、每文件一事务、update_move 的 LIKE 前缀未转义 %/_（目录名 a_b 会误删无关索引行）、非 UTF-8 文件静默置空内容。</td></tr>
+    <tr><td>Attachment</td><td>78</td><td>服务端生成文件名（免疫穿越）、扩展名白名单、分块流式、引用扫描 409 保护、hash 去重——做得好。扣分：SVG inline 直出、无大小上限、断连半截文件、引用索引每次全量重读。</td></tr>
+    <tr><td>Autosave / recovery</td><td>52</td><td>恢复契约设计正确（保存前登记/成功清除/失败保留/启动弹窗），但防抖窗口未决输入无保护、无保存互斥、恢复登记有重复行竞态、登记随索引库丢失。是本报告 P0 最密集的区域。</td></tr>
+    <tr><td>History</td><td>70</td><td>恢复快照先行可撤销、version_id 正则防穿越、30 份修剪——设计好。但同毫秒覆盖（实测测试失败）、retention 设置是死参数、删除文档后快照成孤儿且无 API 可达。</td></tr>
+    <tr><td>Tauri / Desktop</td><td>66</td><td>sidecar 生命周期管理（握手/重启上限/SHUTTING_DOWN/退出三段式清理）体现真实踩坑后的成熟度；settings 子系统质量最高（原子写+BOM 兼容+8 单测）。但多实例互杀、事件无人监听、release 零日志、权限过宽。</td></tr>
+    <tr><td>Scripts</td><td>82</td><td>全项目最成熟的部分：幂等意识、端口占用不误杀（双匹配兜底）、编码细节（BOM）、中文修复指引。扣分：stale PID 不校验身份、setup.ps1 缺 Python 预检、执行策略未入文档。</td></tr>
+    <tr><td>Release / build</td><td>45</td><td>最大短板：CI 不碰 Windows/desktop/Rust、无 release 流水线、exe 手工构建入 git 无校验、无签名、UPX 误报面、无 updater、验收证据全部一次性手工不可重放。</td></tr>
+    <tr><td>Documentation</td><td>76</td><td>20 条核心声明核对：14 ✅ / 4 ⚠️ / 2 ❌。多数声明与代码吻合，freeze 文化真实。但发现<strong>三份文档（含两份"实测通过"的 freeze 报告）描述了代码中不存在的行为</strong>（"外部写入需重建索引才出现在文件树"——实际文件树直接遍历磁盘，1.3s 内自动出现）；document-format.md 漏 label 字段；测试通过数全是 Windows 本机口径。文档存在"报告先宣称完成、后续审计发现未落地"的模式（phase6 宣称的恢复点登记实际未接线，被 6E 自曝）。</td></tr>
+  </table>
+</section>
+
+<!-- ============ 第六部分 ============ -->
+<section id="s6">
+  <h2>第六部分：数据安全专项审计</h2>
+
+  <h3>Q1：在什么情况下用户可能丢失 Markdown 数据？</h3>
+  <table>
+    <tr><th style="width:30%">场景</th><th style="width:12%">严重度</th><th>机制与补救</th></tr>
+    <tr><td>输入后 3 秒内切换文档 / 关窗</td><td><span class="badge b-p0">P0</span></td><td>防抖未决输入直接丢弃，无草稿无提示（P0-3）。<strong>无任何补救。</strong></td></tr>
+    <tr><td>切换文档后按 Ctrl+Z</td><td><span class="badge b-p0">P0</span></td><td>上篇文档内容灌入当前文档并随 autosave 落盘（P0-2）。补救：Drafts/backup/ 里找保存前快照（若此前有过保存）。</td></tr>
+    <tr><td>设置过 title/tags 后任意一次保存</td><td><span class="badge b-p0">P0</span></td><td>frontmatter 被重写只剩 ke_version（P0-1）。补救：历史快照（若保存过不同内容）。</td></tr>
+    <tr><td>API 收到 DELETE /api/fs/dir?path=.</td><td><span class="badge b-p0">P0</span></td><td>整个工作区物理删除含全部历史（P0-4）。<strong>无任何补救。</strong>需非标准客户端/恶意网页触发。</td></tr>
+    <tr><td>文档含损坏 ke-* 标记 / 普通 HTML 注释 / 原生 HTML</td><td><span class="badge b-p1">P1</span></td><td>round-trip 静默丢块（P1-2/P1-3）。补救：历史快照（前提是该文档曾被 KE 保存过）。</td></tr>
+    <tr><td>外部编辑器修改当前打开的文档后继续编辑</td><td><span class="badge b-p1">P1</span></td><td>提示链是死的，autosave 直接覆盖外部修改（P1-1）。补救：保存前快照恰好会存下被覆盖的外部内容（半个兜底，用户无感知）。</td></tr>
+    <tr><td>误删文档</td><td><span class="badge b-p1">P1</span></td><td>无回收站、删除前无快照（P1-8）。新建即删的文档永久丢失。</td></tr>
+    <tr><td>双开应用实例</td><td><span class="badge b-p1">P1</span></td><td>互杀 backend + 双进程写同一 SQLite（P1-10）。未保存内容有丢失窗口。</td></tr>
+    <tr><td>快速连续保存触发同毫秒快照</td><td><span class="badge b-p2">P2</span></td><td>历史版本互相覆盖（实测复现）。丢的是历史而非当前内容。</td></tr>
+    <tr><td>写文件中途崩溃/掉电</td><td><span class="badge b-good">已防护</span></td><td>原子写：临时文件未 rename，旧文件完好。缺 fsync 是残余风险（P3）。</td></tr>
+  </table>
+
+  <h3>Q2：在什么情况下 SQLite 与 Markdown 不一致？</h3>
+  <ul class="tight">
+    <li><strong>保存时索引更新失败</strong>（锁/IO 错误）：文件已落盘、索引陈旧、无重试（P2）。可经 rebuild 自愈——<strong>可恢复</strong>。</li>
+    <li><strong>重建索引中途崩溃</strong>：非事务全量重建留半灌状态，运行中触发则需手动再 rebuild——<strong>可恢复</strong>。</li>
+    <li><strong>外部直接改/删 Markdown</strong>：watcher 1s 轮询增量更新索引；但 watcher 线程若因非 OSError 异常静默死亡，则索引永久停滞且无信号——<strong>需手动 rebuild，用户不知情</strong>。</li>
+    <li><strong>目录重命名且目录名含 % 或 _</strong>：update_move 的 LIKE 未转义，误删无关索引行——文件未动，<strong>rebuild 可恢复</strong>。</li>
+    <li><strong>索引库损坏</strong>：启动时自愈（关连接→删三件套→重建），有回归测试——<strong>可自动恢复，但会连带丢失恢复登记</strong>（P3-9 设计张力）。</li>
+    <li><strong>非 UTF-8 文件</strong>：indexer 静默置空内容，搜索内容悄悄丢失，无告警——<strong>修复文件后 rebuild 可恢复</strong>。</li>
+  </ul>
+
+  <h3>Q3：是否存在无法自动恢复的状态？</h3>
+  <div class="callout red">
+    <strong>存在，4 种：</strong>
+    <ol class="tight" style="margin-bottom:0">
+      <li>P0-4 整库删除（文件+快照+索引同时消失）；</li>
+      <li>P0-3 防抖窗口未决输入（从未落盘过，不存在于任何存储）；</li>
+      <li>P1-8 删除从未保存过不同内容的文档（无快照可找）；</li>
+      <li>P1-7 经 junction 误删 workspace 之外的用户文件。</li>
+    </ol>
+    其余不一致（索引陈旧/损坏/半灌）均可通过 rebuild 恢复——"Markdown=事实源"的架构承诺在索引层面经受住了验证，<strong>真正的不可恢复风险全部集中在"内容从未到达 Markdown 文件"或"Markdown 文件被删除"两类</strong>。
+  </div>
+</section>
+
+<!-- ============ 第七部分 ============ -->
+<section id="s7">
+  <h2>第七部分：真实用户场景测试矩阵（24 个）</h2>
+  <table>
+    <tr><th style="width:3%">#</th><th style="width:17%">操作</th><th style="width:17%">预期</th><th style="width:26%">实际可能行为（证据见上文）</th><th style="width:12%">风险</th><th>现有测试？</th></tr>
+    <tr><td>1</td><td>新建文档→输入→等 autosave→关闭→重开</td><td>内容完整</td><td>符合预期（原子写+登记/清除草稿链路正确）</td><td>低</td><td class="ok">部分（后端 CRUD）</td></tr>
+    <tr><td>2</td><td>输入后立刻（&lt;3s）点另一篇文档</td><td>先保存再切换</td><td><strong>最近输入静默丢失，无草稿</strong>（P0-3）</td><td><span class="badge b-p0">P0</span></td><td class="no">无</td></tr>
+    <tr><td>3</td><td>输入后立刻关窗</td><td>退出前 flush</td><td><strong>同样丢失</strong>（无 beforeunload/onCloseRequested）</td><td><span class="badge b-p0">P0</span></td><td class="no">无</td></tr>
+    <tr><td>4</td><td>打开文档 B 后按 Ctrl+Z</td><td>无操作/提示</td><td><strong>A 的内容灌入 B 并随 autosave 落盘</strong>（P0-2 ✅）</td><td><span class="badge b-p0">P0</span></td><td class="no">无</td></tr>
+    <tr><td>5</td><td>属性面板设标题/标签→继续打字</td><td>标题标签保留</td><td><strong>frontmatter 被重写清空</strong>（P0-1 ✅）</td><td><span class="badge b-p0">P0</span></td><td class="no">无</td></tr>
+    <tr><td>6</td><td>快速连续 Ctrl+S 与 autosave 交替</td><td>最终内容=最新</td><td>无互斥，旧响应可后落盘且 UI 显示已保存（P1-4，localhost 低概率）</td><td><span class="badge b-p1">P1</span></td><td class="no">无</td></tr>
+    <tr><td>7</td><td>保存在途时切换文档</td><td>响应被丢弃</td><td>被拽回上一篇文档且新文档未保存输入丢失（P1-5）</td><td><span class="badge b-p1">P1</span></td><td class="no">无</td></tr>
+    <tr><td>8</td><td>外部编辑器修改当前打开的文档</td><td>弹窗提示冲突</td><td><strong>无任何提示（stale closure），继续编辑即覆盖</strong>（P1-1）</td><td><span class="badge b-p1">P1</span></td><td class="no">无</td></tr>
+    <tr><td>9</td><td>外部程序向 workspace 添加/删除文件</td><td>树与搜索自动更新</td><td>树 1.3s 内更新✅（文档对此描述错误）；watcher 若异常死亡则永久停滞且无信号</td><td><span class="badge b-p2">P2</span></td><td class="mid">部分（watcher 单测）</td></tr>
+    <tr><td>10</td><td>删除一篇文档</td><td>可找回</td><td>直接物理删除、删除前无快照、API 无法恢复（P1-8）</td><td><span class="badge b-p1">P1</span></td><td class="mid">部分（删除安全，不测找回）</td></tr>
+    <tr><td>11</td><td>恢复历史版本</td><td>当前内容先被快照</td><td>符合预期✅（恢复快照先行可撤销，设计正确）；但恢复后 undo 栈污染同 P0-2</td><td><span class="badge b-p2">P2</span></td><td class="ok">有（后端）</td></tr>
+    <tr><td>12</td><td>同一毫秒内两次保存</td><td>各留一份历史</td><td><strong>快照互相覆盖</strong>（实测 test_phase6.py 失败）</td><td><span class="badge b-p2">P2</span></td><td class="no">测试存在但 flaky 且掩盖缺陷</td></tr>
+    <tr><td>13</td><td>粘贴含 HTML 注释/div 的 Markdown</td><td>内容保留</td><td><strong>注释消失、HTML 被拆解</strong>（P1-3 ✅）</td><td><span class="badge b-p1">P1</span></td><td class="no">无（且现有测试名不副实）</td></tr>
+    <tr><td>14</td><td>表格单元格输入 | 或加粗文字</td><td>正确往返</td><td><strong>列分裂、行内格式退化</strong>（P1-6/P1-9 ✅）</td><td><span class="badge b-p1">P1</span></td><td class="no">无</td></tr>
+    <tr><td>15</td><td>插入图片附件→删除文档</td><td>附件妥善处理</td><td>附件成孤儿但绝不自动删（设计正确✅）；SVG 直开有 XSS（P2）</td><td><span class="badge b-p2">P2</span></td><td class="ok">有（409 保护）</td></tr>
+    <tr><td>16</td><td>上传大附件中途断网/关窗</td><td>清理半截文件</td><td>半截文件残留、无大小上限、无进度提示</td><td><span class="badge b-p3">P3</span></td><td class="no">无</td></tr>
+    <tr><td>17</td><td>导入他人 zip 文档包</td><td>安全导入</td><td>暂存+zip-slip 双检+永不覆盖+精确回滚✅（教科书级）；zip bomb 头伪造可绕过</td><td><span class="badge b-p3">P3</span></td><td class="ok">有（含磁盘满故障注入）</td></tr>
+    <tr><td>18</td><td>backend 崩溃（kill 进程）</td><td>自动拉起+前端感知</td><td>Rust 侧自动拉起≤3 次✅；但前端不监听事件，无感知；崩溃时未决保存无保护</td><td><span class="badge b-p1">P1</span></td><td class="no">无（仅手工冒烟）</td></tr>
+    <tr><td>19</td><td>软件突然退出后重启</td><td>弹窗恢复草稿</td><td>符合预期✅（恢复点机制有效）——前提是退出前发生过一次保存动作；纯未决输入无草稿（P0-3）</td><td><span class="badge b-p1">P1</span></td><td class="mid">部分（缺端到端）</td></tr>
+    <tr><td>20</td><td>双击图标启动第二个实例</td><td>聚焦已有实例</td><td><strong>互杀 backend、双进程共用同一 SQLite</strong>（P1-10）</td><td><span class="badge b-p1">P1</span></td><td class="no">无</td></tr>
+    <tr><td>21</td><td>索引库文件损坏后启动</td><td>自愈</td><td>符合预期✅（关连接→删三件套→重建，有回归测试）；但恢复登记连带丢失</td><td><span class="badge b-p3">P3</span></td><td class="ok">有</td></tr>
+    <tr><td>22</td><td>万级文档工作区冷启动</td><td>秒级可用</td><td>每次启动全量重建索引、每文件一事务，启动线性变慢；叠加 P1-11 前端 4s 放弃</td><td><span class="badge b-p2">P2</span></td><td class="no">无性能测试</td></tr>
+    <tr><td>23</td><td>升级安装新版本</td><td>数据安全</td><td>NSIS currentUser 覆盖安装不碰 %APPDATA%（phase7 真机实测✅）；无 updater 需手动下载；手工验收不可重放</td><td><span class="badge b-p2">P2</span></td><td class="mid">一次性手工验收</td></tr>
+    <tr><td>24</td><td>恶意网页在浏览器打开</td><td>无法操作 KE</td><td>simple-request 可 POST close/rebuild/init 等无 body 端点（骚扰级）；配合 SVG XSS 可升级</td><td><span class="badge b-p2">P2</span></td><td class="no">无</td></tr>
+  </table>
+</section>
+
+<!-- ============ 第八部分 ============ -->
+<section id="s8">
+  <h2>第八部分：最值得增加的测试（按优先级）</h2>
+  <ol class="tight">
+    <li><strong>【自动化-前端】frontmatter 保留 round-trip</strong>：含 title/tags/自定义字段的文档经编辑器保存后字段完整。直接锁死 P0-1 的修复。</li>
+    <li><strong>【自动化-前端】setKeContent 后 undo 为空</strong>：加载 A→切 B→can().undo()===false。锁死 P0-2。</li>
+    <li><strong>【自动化-前端】EditorArea 保存链组件测试</strong>：mock client，断言 registerRecovery→save→clearRecovery 顺序、切换文档时未决防抖被 flush、保存失败进入 error 态且内容保留。锁死 P0-3/P1-5。</li>
+    <li><strong>【自动化-后端】delete_dir/rename_dir 根路径等价输入</strong>（".", "", "/", "Articles/.."）一律 400。锁死 P0-4。</li>
+    <li><strong>【自动化-前端】异常 Markdown 语料库</strong>：损坏 ke-* JSON、普通 HTML 注释、原生 HTML、表格 \|、脚注 }-->、BOM/CRLF——断言"要么正确编辑，要么原文保留，绝不静默消失"。这把 P1-2/3/9 与脚注问题一次性收口。</li>
+    <li><strong>【端到端】保存中途崩溃恢复</strong>：登记恢复点后杀进程（不落盘），重启断言 recovery 列出、restore 写回且可搜索。这是产品核心数据安全承诺，目前只测了半边。</li>
+    <li><strong>【自动化-后端】并发保存</strong>：同文档双 PUT 并发，断言最终文件=后到内容、无 .tmp 残留、无 500。验证单写者假设。</li>
+    <li><strong>【手工/E2E】外部修改冲突</strong>：文档打开期间外部写盘→断言提示出现→选择保留/重载行为正确。修复 P1-1 后必须沉淀。</li>
+    <li><strong>【自动化-后端】磁盘满注入</strong>：monkeypatch os.replace 抛 OSError，断言 5xx+原文件不变+无半文件（参照 import_export 已有注入模式）。</li>
+    <li><strong>【CI 修复】给 Windows 语义用例加 skipif(sys.platform!='win32') 或修正断言</strong>，让 ubuntu CI 真正转绿——把"CI 基线"从文档修辞变成事实；并新增 Windows runner job（哪怕只跑 pytest+vitest）。</li>
+    <li><strong>【手工】对发货 exe 做一次附件上传冒烟</strong>：验证 PyInstaller 打包包含 python-multipart（P2 推测项）。</li>
+  </ol>
+  <p class="small">原则：以上 11 项每项都对应一个已证实的风险，不为覆盖率而覆盖率。现有测试中最该先修的是 test_phase6.py 快照用例（flaky 且掩盖真缺陷）与 test_api.py:98 名不副实的 rebuild 用例。</p>
+</section>
+
+<!-- ============ 第九部分 ============ -->
+<section id="s9">
+  <h2>第九部分：架构层面的隐患（现在没出问题，但会越来越麻烦）</h2>
+  <ol class="tight">
+    <li><strong>"每次启动/切库全量重建索引"不可扩展。</strong>当前设计把 rebuild 当日常路径而非灾难恢复路径，万级文档后启动时间线性恶化，且与"前端 4 秒放弃"叠加成启动失败。方向：启动时做增量校验（mtime/size 比对），rebuild 仅用于自愈。</li>
+    <li><strong>恢复登记寄生于可丢弃的索引库。</strong>"SQLite 可随意删"与"recovery 表是唯一记录"本质矛盾。方向：恢复登记移入 workspace 内独立小文件/独立 db，与索引解耦。</li>
+    <li><strong>Markdown 扩展采用 HTML 注释内嵌 JSON，异常输入面天然脆弱。</strong>ke-* 标记的 tokenize/序列化/正则三套逻辑平行演进（本次已发现负向前瞻、非贪婪正则、平衡括号三种实现并存且行为不一），每加一种节点类型风险面翻倍。方向：统一为单一解析器+统一 fallback，并为"无法解析=原文保留"建立不可违反的全局不变量与语料库测试。</li>
+    <li><strong>前后端状态双镜像、事件驱动名存实亡。</strong>Rust 已发事件前端不听、App 与 EditorArea 各持一份 saveState、外部修改靠轮询闭包——每次新增跨层交互都在堆 stale closure 风险。方向：前端建立单一事件总线/store，消灭 eslint-disable 的依赖数组。</li>
+    <li><strong>本地 API 无认证的信任模型会随功能增长失守。</strong>现在加的是 close/rebuild（骚扰级），未来加同步、导出、执行类功能时，浏览器→localhost 的攻击面同步放大。方向：尽早引入启动随机 token（sidecar 注入前端），成本现在最低。</li>
+    <li><strong>发布基础设施与代码成熟度严重不匹配。</strong>代码已到"可修 bug"阶段，发布还在"手工拍脑袋"阶段；仓库随每次重打包线性膨胀（12MB exe 直接入库）。方向：GitHub Actions windows-latest 上跑 PyInstaller+tauri build+签名（自签亦可），产物走 Release 附件而非 git 对象。</li>
+    <li><strong>零日志体系。</strong>功能越复杂，silent failure 越多，而全栈（Python/Rust release/前端 catch）均无可观测性。方向：后端 logging 写 %APPDATA%\logs（目录已存在，只差写入），前端关键 catch 透传后端 /api/logs。</li>
+    <li><strong>文档驱动的"freeze"流程存在自我确认风险。</strong>三份文档"实测确认"了代码中不存在的行为（外部文件需重建索引才出现在文件树）——说明 freeze-check 部分环节是在验证文档自洽而非验证代码行为。方向：freeze 声明必须附可执行证据（测试名/命令输出），否则降级为"设计意图"。</li>
+  </ol>
+</section>
+
+<!-- ============ 第十部分 ============ -->
+<section id="s10">
+  <h2>第十部分：v1.0.1 修复路线</h2>
+  <h3><span class="badge b-p0">必须修</span>（不修不应扩大分发；均为小改动、高收益）</h3>
+  <table>
+    <tr><th style="width:36%">修复项</th><th>改动量与理由</th></tr>
+    <tr><td>P0-1 withFrontmatter 改合并语义</td><td>~10 行。直接消除最高频静默丢字段。</td></tr>
+    <tr><td>P0-2 setKeContent 后 clearHistory()</td><td>1 行。消除跨文档串内容。</td></tr>
+    <tr><td>P0-3 切换文档/关窗前 flush 保存（至少登记草稿）</td><td>前端 ~30 行 + Tauri onCloseRequested 接线。消除最高频丢输入。</td></tr>
+    <tr><td>P0-4 _guard_rel 拒绝 full==root + delete_dir 父级断言</td><td>~10 行 + 4 个测试。消除一键清库。</td></tr>
+    <tr><td>P1-1 修复外部修改提示链（effect 依赖/闭包 + reload 强制刷新编辑器）</td><td>~20 行。让已建好的 watcher 基建真正生效。</td></tr>
+    <tr><td>P1-2/P1-3 "无法解析=原文保留"全局不变量</td><td>tokenizers 负向前瞻放开 + HTML 注释/块走 fallback 节点。这是 Markdown pipeline 的信任根基。</td></tr>
+    <tr><td>CI 修复：Windows 语义用例 skipif + 新增 windows-latest job（pytest+vitest）</td><td>让"全绿"可移植；为后续所有修复提供真实守卫。</td></tr>
+  </table>
+  <h3><span class="badge b-p1">应该修</span>（Alpha 期内）</h3>
+  <ul class="tight">
+    <li>保存互斥锁（in-flight ref）+ handleSaved 校验 doc.id；后端 PUT 加 mtime/etag 乐观锁（低成本高收益）。</li>
+    <li>documents/drafts 路由作用域收敛（articles 限定 Articles/*.md、recovery 限定 Drafts/recovery）；rglob 遍历统一 symlink 检查。</li>
+    <li>删除文档兜底：删除前强制快照或移入 .knowledgeeditor/trash（最小方案：delete 前调 _maybe_snapshot）。</li>
+    <li>历史快照名加序号后缀消除同毫秒覆盖；historyRetentionCount 要么接线要么从设置面板删除。</li>
+    <li>多实例：引入 tauri-plugin-single-instance；stale PID 校验进程名。</li>
+    <li>后端 logging 落地 %APPDATA%\KnowledgeEditor\logs；watcher 线程异常兜底重启+前端可见告警。</li>
+    <li>SVG 附件强制 Content-Disposition: attachment；capabilities 移除 shell:allow-spawn/allow-execute；加基础 CSP。</li>
+    <li>前端监听 ke:runtime-ready/ke:runtime-error 事件，就绪竞态改为事件驱动而非 4 秒放弃。</li>
+  </ul>
+  <h3><span class="badge b-p2">可以以后修</span>（1.x 期间）</h3>
+  <ul class="tight">
+    <li>启动增量索引替代全量重建；重建单事务化；busy_timeout。</li>
+    <li>API 启动随机 token；附件大小上限与断连清理；zip 真实大小校验。</li>
+    <li>发布链：Windows CI 构建 + 签名 + exe 移出 git（Release 附件）+ updater。</li>
+    <li>CRLF/BOM 保留策略；复杂 frontmatter 的 YAML 保真；表格行内格式与对齐保留。</li>
+    <li>性能：文件树 memo、模块列表缓存、附件引用索引缓存。</li>
+  </ul>
+</section>
+
+<!-- ============ 第十一部分 ============ -->
+<section id="s11">
+  <h2>第十一部分：最终结论</h2>
+  <div class="callout red">
+    <p class="verdict" style="margin-top:0">如果我是一个真实用户，今天安装 KnowledgeEditor v1.0.0，我最应该担心的前三件事：</p>
+    <ol style="font-size:16px;line-height:2">
+      <li><strong>我打的字可能根本没被保存</strong>——输入后 3 秒内切换文档或关窗，内容无声消失且没有草稿；设置过标题/标签的文章，下一次保存就把它们抹掉。丢的不是文件，是"我以为已保存"的信任。</li>
+      <li><strong>编辑器可能悄悄改写我没碰过的内容</strong>——按一次 Ctrl+Z 可能把另一篇文章灌进当前文档；我粘贴的 HTML 注释、写坏的标记、表格里的竖线，保存后可能整块消失，全程无任何提示。</li>
+      <li><strong>出问题时我和开发者都无从查起</strong>——桌面版没有任何日志，外部修改防护是哑的，双开应用会互相杀后端；而整个安装包来自一台作者自述"有幽灵文件和杀软拦截"的机器，没有任何 CI 能复现它。</li>
+    </ol>
+    <p style="margin-bottom:0"><strong>一句话：</strong>这是一个地基正确、但门窗还没装好的 Alpha——架构值得继续投入，但 v1.0.0 只适合"有外部备份的试用者"，不适合"把知识库托付给它的人"。修完第十部分"必须修"的 7 项，这个判断可以翻转。</p>
+  </div>
+</section>
+
+<!-- ============ 附录 ============ -->
+<section id="appendix">
+  <h2>附录：审计方法与可信度说明</h2>
+  <ul class="tight">
+    <li><strong>覆盖范围</strong>：backend 全部 12 个 router + 6 个 service + store 逐行阅读；frontend 全部 editor 扩展/tokenizers/import-export + App/EditorArea/LeftSidebar 等全部组件；desktop 全部 5 个 Rust 文件 + 配置；scripts 全部 6 个；CI；docs 下 13 份核心文档；前后端全部测试文件。</li>
+    <li><strong>运行时验证</strong>：后端 pytest 在本沙箱实测（117 收集 / 114 通过 / 3 失败，失败均为 Windows 路径语义用例）；前端 vitest 70/70 通过；前端 6 个 P0/P1 发现用临时 vitest 用例做了故障注入复现（frontmatter 清空、undo 串文档、损坏标记消失、HTML 注释消失、表格 \| 分裂、脚注 }--> 丢失），验证后临时文件已删除，仓库未被修改。</li>
+    <li><strong>标注"推测/需运行时验证"的项</strong>：Windows 大小写绕过（依赖 NTFS/realpath 行为）、junction 递归删除（依赖 Python<3.13 rglob 语义）、保存乱序落盘概率、首启超 4 秒概率、双实例索引损坏程度、PyInstaller multipart 打包完整性、恶意网页 CSRF 可行性（取决于端点 Content-Type 要求）。这些均未作为事实计入评分，仅作为风险提示。</li>
+    <li><strong>威胁模型</strong>：按"个人本地软件"审计——未把 localhost 无认证本身计为漏洞（属既定信任模型），但把"启动 token 缺失"列为架构隐患；企业级安全要求（鉴权、审计日志、加密）不适用，未扣分。</li>
+    <li><strong>版本</strong>：审计基于仓库 main 分支 2026-08-12 克隆快照（v1.0.0 Alpha，六处版本号一致）。</li>
+  </ul>
+</section>
+
+<footer style="text-align:center;color:#7f8c8d;font-size:13px;padding:24px">
+  KnowledgeEditor v1.0.0 Alpha 独立质量审计 ｜ 2026-08-12 ｜ 静态审计 + 运行时验证 ｜ 所有发现附代码位置证据
+</footer>
+</main>
+</body>
+</html>

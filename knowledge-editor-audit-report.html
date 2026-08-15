@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KnowledgeEditor v1.0.0 Alpha 独立质量审计报告</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1f2430; --muted: #5c6470;
+    --line: #e3e6ea; --accent: #2b5fd9; --accent-soft: #eef3ff;
+    --p0: #c62828; --p0-bg: #fdecea;
+    --p1: #d84315; --p1-bg: #fdeee8;
+    --p2: #b26a00; --p2-bg: #fff4e0;
+    --p3: #4a6b8a; --p3-bg: #ecf2f8;
+    --p4: #7a828e; --p4-bg: #f0f2f4;
+    --good: #1b7f4d; --good-bg: #e8f6ef;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.65; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 28px 80px; }
+  header.hero { background: linear-gradient(135deg, #1c2b4a 0%, #2b5fd9 100%); color: #fff; border-radius: 14px; padding: 34px 36px; margin-bottom: 28px; }
+  header.hero h1 { margin: 0 0 8px; font-size: 26px; }
+  header.hero p { margin: 4px 0; opacity: .92; font-size: 14px; }
+  .meta-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chip { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); padding: 3px 12px; border-radius: 999px; font-size: 12.5px; }
+  h2 { font-size: 20px; margin: 40px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 16px; margin: 22px 0 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .score-hero { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .score-big { font-size: 54px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .score-big small { font-size: 18px; color: var(--muted); font-weight: 400; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 10px 0 4px; }
+  th { background: var(--accent-soft); text-align: left; padding: 8px 10px; border: 1px solid var(--line); font-size: 12.5px; white-space: nowrap; }
+  td { padding: 8px 10px; border: 1px solid var(--line); vertical-align: top; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .b-p0 { background: var(--p0-bg); color: var(--p0); border: 1px solid var(--p0); }
+  .b-p1 { background: var(--p1-bg); color: var(--p1); border: 1px solid var(--p1); }
+  .b-p2 { background: var(--p2-bg); color: var(--p2); border: 1px solid var(--p2); }
+  .b-p3 { background: var(--p3-bg); color: var(--p3); border: 1px solid var(--p3); }
+  .b-p4 { background: var(--p4-bg); color: var(--p4); border: 1px solid var(--p4); }
+  .b-good { background: var(--good-bg); color: var(--good); border: 1px solid var(--good); }
+  .b-verify { background: #f3ecfd; color: #6b3fa0; border: 1px solid #6b3fa0; }
+  .issue { border: 1px solid var(--line); border-left-width: 5px; border-radius: 10px; padding: 16px 20px; margin-bottom: 14px; background: var(--card); }
+  .issue.p0 { border-left-color: var(--p0); } .issue.p1 { border-left-color: var(--p1); }
+  .issue.p2 { border-left-color: var(--p2); } .issue.p3 { border-left-color: var(--p3); } .issue.p4 { border-left-color: var(--p4); }
+  .issue h4 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .kv { display: grid; grid-template-columns: 92px 1fr; gap: 4px 12px; font-size: 13.5px; }
+  .kv b { color: var(--muted); font-weight: 600; }
+  code { background: #f0f2f5; border-radius: 4px; padding: 1px 6px; font-family: Consolas, "Courier New", monospace; font-size: 12.5px; color: #25324b; }
+  pre { background: #20242c; color: #dce3ee; padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; line-height: 1.55; }
+  pre code { background: none; color: inherit; padding: 0; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 56px; gap: 12px; align-items: center; margin: 7px 0; font-size: 13.5px; }
+  .bar { background: #e8ebf0; border-radius: 999px; height: 12px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+  .final { background: #1c2b4a; color: #fff; border-radius: 12px; padding: 24px 28px; margin-top: 26px; }
+  .final h3 { color: #ffd76a; margin-top: 0; }
+  .final ol > li { margin: 10px 0; }
+  .toc { columns: 2; column-gap: 40px; font-size: 13.5px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .note { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 6px; font-size: 13px; margin: 10px 0; }
+  .good-box { background: var(--good-bg); border: 1px solid var(--good); border-radius: 10px; padding: 14px 18px; margin: 10px 0; }
+  .good-box h4 { margin: 0 0 8px; color: var(--good); font-size: 14.5px; }
+  ul.tight li, ol.tight li { margin: 4px 0; }
+  .small { font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>KnowledgeEditor v1.0.0 Alpha · 独立质量审计报告</h1>
+  <p>审计对象：<code style="background:rgba(255,255,255,.14);color:#fff;">github.com/Asheep233/knowledge-editor</code>（全仓库静态审计：backend / frontend / desktop / scripts / docs / .github / 测试）</p>
+  <p>审计角色：桌面应用架构师 · 软件质量工程师 · QA Lead · 安全审计工程师 ｜ 方法：文档声明逐项回查代码 + 故障注入式推演 + Round-trip 分析 + 真实用户场景模拟</p>
+  <div class="meta-chips">
+    <span class="chip">综合评分 76 / 100</span>
+    <span class="chip">P0 × 0</span>
+    <span class="chip">P1 × 3</span>
+    <span class="chip">P2 × 6</span>
+    <span class="chip">P3 × 7</span>
+    <span class="chip">P4 × 3</span>
+    <span class="chip">静态分析为主，部分标注「需要运行时验证」</span>
+  </div>
+  <div class="meta-chips" style="margin-top:8px">
+    <span class="chip">导航：</span>
+    <span class="chip"><a href="#s1" style="color:#fff">一 总评</a></span>
+    <span class="chip"><a href="#s2" style="color:#fff">二 摘要</a></span>
+    <span class="chip"><a href="#s3" style="color:#fff">三 P0/P1</a></span>
+    <span class="chip"><a href="#s4" style="color:#fff">四 P2-P4</a></span>
+    <span class="chip"><a href="#s5" style="color:#fff">五 模块审计</a></span>
+    <span class="chip"><a href="#s6" style="color:#fff">六 数据安全</a></span>
+    <span class="chip"><a href="#s7" style="color:#fff">七 场景矩阵</a></span>
+    <span class="chip"><a href="#s8" style="color:#fff">八 测试建议</a></span>
+    <span class="chip"><a href="#s9" style="color:#fff">九 架构隐患</a></span>
+    <span class="chip"><a href="#s10" style="color:#fff">十 v1.0.1 路线</a></span>
+    <span class="chip"><a href="#s11" style="color:#fff">最终结论</a></span>
+  </div>
+</header>
+
+<!-- ================= 第一部分 ================= -->
+<h2 id="s1">第一部分 · 总体质量评价（76 / 100）</h2>
+<div class="card">
+  <div class="score-hero">
+    <div class="score-big">76<small> / 100</small></div>
+    <div style="flex:1;min-width:280px">
+      <div class="bar-row"><span>功能正确性</span><div class="bar"><i style="width:82%"></i></div><b>82</b></div>
+      <div class="bar-row"><span>可靠性</span><div class="bar"><i style="width:72%"></i></div><b>72</b></div>
+      <div class="bar-row"><span>数据安全</span><div class="bar"><i style="width:85%"></i></div><b>85</b></div>
+      <div class="bar-row"><span>安全性（本地威胁模型）</span><div class="bar"><i style="width:80%"></i></div><b>80</b></div>
+      <div class="bar-row"><span>架构质量</span><div class="bar"><i style="width:84%"></i></div><b>84</b></div>
+      <div class="bar-row"><span>代码质量</span><div class="bar"><i style="width:85%"></i></div><b>85</b></div>
+      <div class="bar-row"><span>测试质量</span><div class="bar"><i style="width:75%"></i></div><b>75</b></div>
+      <div class="bar-row"><span>用户体验</span><div class="bar"><i style="width:74%"></i></div><b>74</b></div>
+      <div class="bar-row"><span>发布质量</span><div class="bar"><i style="width:55%"></i></div><b>55</b></div>
+    </div>
+  </div>
+  <p style="margin-top:16px"><b>评分逻辑：</b>这是一个<b>明显高于平均 Alpha 水准</b>的项目。核心数据路径（原子写入、写前快照、崩溃恢复草稿、路径穿越防护、删除保护）实现正确且有针对性测试；文档与代码高度一致，抽查的 Phase 报告声明均能在代码中验证。扣分集中在三处：<b>①</b> SQLite 单连接跨线程共享无锁（P1）；<b>②</b> 前端保存请求无序列化导致的竞态窗口（P1）；<b>③</b> 发布工程几乎缺失——无 release workflow、CI 不构建桌面端、无 Rust 测试（P1，发布质量 55 分的主因）。Markdown 数据不可逆丢失风险经多层防护后<b>评估为低</b>，未发现 P0。</p>
+</div>
+
+<!-- ================= 第二部分 ================= -->
+<h2 id="s2">第二部分 · Executive Summary</h2>
+<div class="card">
+  <p><b>“这个 v1.0.0 到底能不能放心给真实用户使用？”</b></p>
+  <ul class="tight">
+    <li><b>作为开发者自用 / Alpha 内测：可以用。</b> 数据模型纪律性强——Markdown 为唯一事实源、SQLite 仅作可重建索引，写盘走 temp+<code>os.replace</code> 原子写，历史版本写前快照、崩溃恢复草稿覆盖保存窗口，用户 Markdown 不可逆丢失的路径被防护得相当好。</li>
+    <li><b>作为公开发布给普通用户的产品：还不行。</b> 三个硬伤：<b>(1)</b> 仓库内没有发布流水线，CI 只跑 pytest + vitest + 前端 build，<b>桌面端（Rust/Tauri）完全不进 CI</b>，安装包能否构建、升级后旧数据是否安全均无自动验证；<b>(2)</b> 后端 SQLite 连接被 FastAPI 线程池和文件监视线程并发使用且无锁，自动保存+搜索+文件事件同至时会随机 500（索引可重建，事实源不受影响，但用户会看到“保存失败”）；<b>(3)</b> 无单实例保护，双开会静默启动第二个后端共写同一 workspace。</li>
+    <li><b>一句话定位：数据安全设计超出 Alpha 平均水平，并发与发布工程落后于其自身体验目标。</b> 修完 3 个 P1 + 2 个关键 P2（保存竞态序列化、多实例互斥）即可进入公开 Beta。</li>
+  </ul>
+</div>
+
+<!-- ================= 第三部分 ================= -->
+<h2 id="s3">第三部分 · P0 / P1 问题（共 3 项，无 P0）</h2>
+
+<div class="issue p1">
+  <h4><span class="badge b-p1">P1</span> SQLite 单连接跨线程共享且无任何锁保护</h4>
+  <div class="kv">
+    <b>位置</b><span><code>backend/app/store/db.py:93-97</code>（<code>IndexStore.connect</code>）＋ 全部同步路由（如 <code>backend/app/routers/documents.py:update_article</code>）＋ <code>backend/app/services/fs_watch.py:58-61</code>（后台监视线程）</span>
+    <b>证据</b>
+    <pre><code># db.py
+self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+self.conn.execute("PRAGMA journal_mode=WAL")
+self.conn.execute("PRAGMA synchronous=NORMAL")   # 全文件无 threading.Lock / mutex</code></pre>
+    FastAPI 的 <code>def</code>（同步）端点运行在 AnyIO 线程池（默认约 40 线程）；<code>FsWatcher</code> 在独立 <code>threading.Thread</code> 中消费文件事件并调用同一 <code>store</code>。整个 store 没有互斥锁，多线程会在<b>同一个</b> <code>sqlite3.Connection</code> 上交错执行 <code>execute</code>/<code>commit</code>。
+    <b>触发条件</b><span>自动保存（PUT /api/articles）＋ 搜索（GET /api/search）＋ watcher 事件（外部改文件/附件落盘）任意两者同时到达。正常使用 3–5 分钟内即可能命中。</span>
+    <b>实际后果</b><span>随机 <code>sqlite3.ProgrammingError: Recursive use of cursors</code> / 事务交错（A 线程的 commit 提交 B 线程写了一半的事务）→ 500。保存接口 500 时前端显示“保存失败”，但<b>文件可能已写盘</b>，用户重试产生重复快照与困惑。SQLite 文件本身因 WAL 不至于物理损坏，索引也可重建，故不构成数据丢失 P0。</span>
+    <b>为何测试未发现</b><span><code>conftest.py</code> 用单个 <code>TestClient</code> 串行发请求——天然单线程，永不并发。</span>
+    <b>建议</b><span>最小修复：在 <code>IndexStore</code> 加 <code>threading.RLock</code>，包装 <code>execute/commit/executemany</code> 公共入口（upsert/delete/search 全部走带锁方法）；或改用 <code>sqlite3.connect(..., isolation_level=None)</code> + 每操作独立短事务 + 锁。半天工作量，风险极低。</span>
+  </div>
+</div>
+
+<div class="issue p1">
+  <h4><span class="badge b-p1">P1</span> 保存请求无序列化：手动保存与在途自动保存可并发写同一文档，旧内容可能最终落盘且 UI 显示“已保存”</h4>
+  <div class="kv">
+    <b>位置</b><span><code>frontend/src/components/layout/EditorArea.tsx:107-123</code>（防抖自动保存回调）与 <code>:159-174</code>（<code>saveNow</code>）；后端 <code>documents.py:update_article</code> 无文档级锁</span>
+    <b>证据</b>
+    <pre><code>// saveNow 只清除【未触发】的定时器：
+if (debounceRef.current) { window.clearTimeout(debounceRef.current); ... }
+// 若防抖回调已进入 await saveArticle(...)（PUT 在途），saveNow 会并发发出第二个 PUT</code></pre>
+    后端两个线程同时执行 <code>_maybe_snapshot → atomic_write → indexer.update_file</code>，两次 <code>os.replace</code> 的完成顺序不确定。若“旧内容请求”后完成，磁盘最终为旧内容；前端两侧均按 <code>editSeqRef === seq</code> 判定 saved → <b>UI 显示已保存、磁盘却是旧稿</b>。
+    <b>触发条件</b><span>用户在自动保存恰好在途的瞬间按 Ctrl+S（3 秒防抖窗口尾部的熟练用户高频操作）；或快速切换文档时在途 PUT 与新文档保存交错。窗口小但真实存在，且“用户快速连续操作/连续输入”是本项目自列的重点场景。</span>
+    <b>实际后果</b><span>最后几秒的编辑丢失且无任何提示（无冲突检测、无版本号校验）。历史快照可能留有旧稿可手工找回，但用户不知道要去找。</span>
+    <b>为何测试未发现</b><span>vitest 只测纯函数（round-trip/tree/settings），<code>EditorArea</code> 组件与保存时序无任何测试；后端测试全部串行。</span>
+    <b>建议</b><span>最小修复：前端加 <code>savingRef</code>（在途保存期间 saveNow 排队等待而非并发重发，完成后统一以最新 <code>editor.getMarkdown()</code> 再保存一次）；后端在 <code>update_article</code> 按 <code>rel_path</code> 加进程内锁。两端各约 30 行。</span>
+  </div>
+</div>
+
+<div class="issue p1">
+  <h4><span class="badge b-p1">P1</span> 发布工程与文档声明不符：无 release 流水线，桌面端完全不进 CI</h4>
+  <div class="kv">
+    <b>位置</b><span><code>.github/workflows/</code> 目录仅有 <code>ci.yml</code>；docs 中存在 Phase 7 发布报告/冻结审计报告</span>
+    <b>证据</b><span><code>ci.yml</code> 只含两个 job：backend（pytest）与 frontend（vitest + build）。<b>没有</b> <code>cargo test</code>、<b>没有</b> <code>tauri build</code>、<b>没有</b> release/tag 触发的安装包构建、没有 NSIS 升级测试。Rust 侧 <code>sidecar.rs</code>（约 400 行进程管理代码）零测试零编译验证——一次依赖升级即可让主干桌面端构建挂掉而 CI 全绿。</span>
+    <b>触发条件</b><span>任何针对 desktop/ 的提交；或按 README 指引寻找 v1.0.0 安装包的终端用户。</span>
+    <b>实际后果</b><span>“发布就绪”的文档声明与仓库事实不一致（文档过度乐观的典型样本）；安装包存在性、升级安全性（旧版用户数据是否保留）完全靠手工，未经验证。</span>
+    <b>为何测试未发现</b><span>不存在能发现它的测试——这正是问题本身。</span>
+    <b>建议</b><span>最小修复：CI 增加 desktop job（<code>cargo test + cargo check</code> + <code>tauri build --debug</code> 冒烟）；再补 tag 触发的 release workflow 产出 NSIS。若安装包实际已在库外手工构建，请在 README 明示并附校验和。</span>
+  </div>
+</div>
+
+<div class="note">未发现 P0 的理由（明确说明，非客套）：写盘路径为 temp 文件 + <code>os.replace</code> 原子替换（<code>markdown_io.py:169-185</code>），进程崩溃不可能产生半写文件；历史/恢复写回前先快照旧内容（<code>history.py:63-71</code>、<code>drafts.py</code>），操作可逆；删除有穿越防护 + 顶层目录保护 + 测试覆盖。<b>“理论 local-first 实则存在不可恢复状态”的路径未找到</b>——唯一接近的是掉电场景（见 P3-12），且有写前快照兜底。</div>
+
+<!-- ================= 第四部分 ================= -->
+<h2 id="s4">第四部分 · P2 / P3 / P4 问题</h2>
+
+<h3>P2 — Medium（6 项）</h3>
+
+<div class="issue p2">
+  <h4><span class="badge b-p2">P2</span> 1. 无单实例保护：双开应用静默启动第二个后端共写同一 workspace</h4>
+  <div class="kv">
+    <b>位置</b><span><code>desktop/src-tauri/src/sidecar.rs:71-76,357-368</code>（<code>find_free_port</code> 逐端口尝试）；未使用 tauri single-instance 插件</span>
+    <b>证据</b><span>实例 2 启动时 8000 被实例 1 占用 → <code>find_free_port</code> 顺利改用 8001 → 第二个 backend 进程打开<b>同一个 workspace</b>：双 fs watcher、双 SQLite 写者、<code>runtime.json</code> 被实例 2 覆盖（实例 1 的 PID 记录丢失，stop 脚本仅剩端口兜底）。WAL 模式下跨进程物理安全，但两实例编辑同一文档无任何冲突检测，后保存者覆盖先保存者。</span>
+    <b>后果</b><span>用户双开图标后两窗口互相覆盖编辑、搜索结果时旧时新，且无任何提示。</span>
+    <b>建议</b><span>接入 <code>tauri-plugin-single-instance</code>（官方插件，约 10 行）；或启动时检测已有健康 backend + 同 workspace 则聚焦已有窗口。</span>
+  </div>
+</div>
+
+<div class="issue p2">
+  <h4><span class="badge b-p2">P2</span> 2. 写盘成功但索引更新失败时返回 500：前端报“保存失败”而文件实际已保存</h4>
+  <div class="kv">
+    <b>位置</b><span><code>backend/app/routers/documents.py:update_article</code>（<code>atomic_write</code> 成功后调用 <code>indexer.update_file</code>，后者抛错则整请求 500）</span>
+    <b>证据</b><span>顺序为 snapshot → atomic_write → update_file → 返回。<code>update_file</code> 需要重新读盘 + SQLite 写入，任一失败（如 P1-1 的并发异常、文件被杀毒软件短暂锁住）→ 500，但 Markdown 已落盘。前端 <code>catch → setSaveState('error')</code>，用户重试 → 再次快照 + 重写（内容相同），产生一条冗余历史版本。</span>
+    <b>后果</b><span>典型的“前端显示失败、后端实际成功”状态错位；用户对保存状态失去信任。watcher 之后通常会修复索引，故实害主要是 UX 与快照噪音。</span>
+    <b>建议</b><span>将 <code>update_file</code> 包在 try/except 中：失败时记日志并仍返回 200（响应加 <code>index_stale: true</code> 标志），由 watcher 兜底重建。</span>
+  </div>
+</div>
+
+<div class="issue p2">
+  <h4><span class="badge b-p2">P2</span> 3. 保存失败仅置 'error' 状态：无错误详情、无自动重试、无升级提示（silent failure 风险）</h4>
+  <div class="kv">
+    <b>位置</b><span><code>EditorArea.tsx:119-121</code>（<code>catch { setSaveState('error') }</code>，错误对象被丢弃）</span>
+    <b>证据</b><span>catch 块不读 <code>e</code>，不 toast，不区分网络错误/409/500；连续失败无退避与告警。若后端已死（sidecar 重启中），用户只能看到一个红色状态标记，不知道“内容仍在编辑器内存里，恢复草稿机制已兜底”这一关键信息。</span>
+    <b>后果</b><span>用户在错误状态下持续写作数十分钟毫无感知，关闭窗口时若恢复草稿逻辑再出岔（需要运行时验证），挫败感极强。正常情况下 recovery 草稿在保存前已注册，风险被大幅缓解——但用户不知道。</span>
+    <b>建议</b><span>错误态展示原因 + “已自动保护为草稿，后端恢复后将自动重试”；失败后加一次延迟自动重试。</span>
+  </div>
+</div>
+
+<div class="issue p2">
+  <h4><span class="badge b-p2">P2</span> 4. 恢复历史版本 / 恢复草稿与本地编辑器状态和 watcher 刷新的时序竞争 <span class="badge b-verify">推测，需要运行时验证</span></h4>
+  <div class="kv">
+    <b>位置</b><span><code>backend/app/routers/history.py:restore</code>（先快照再写回，后端设计正确）＋ 前端恢复后的编辑器 reload 路径 + <code>fs_watch</code> 推送</span>
+    <b>证据</b><span>后端恢复写盘 → watcher 检测外部变化 → 前端收到变更通知；同时前端恢复流程自身会 reload 文档。两条路径都调用 <code>setKeContent</code> 类逻辑，且恢复瞬间编辑器若处于 dirty（有未保存编辑），随后的自动保存可能把<b>恢复前的旧内容</b>重新写回磁盘——被用户理解为“恢复没生效”。静态分析无法确认前端是否在恢复后强制以服务器内容覆盖并清 dirty。</span>
+    <b>后果</b><span>偶发“点了恢复又变回去”，难复现、难投诉。</span>
+    <b>建议</b><span>恢复成功后前端应：清空 pending 防抖 → 强制 reload 编辑器 → 以显式标志抑制下一次 watcher 触发的本地刷新（或用内容 hash 比对避免回弹）。手工测试场景见第七部分 #15。</span>
+  </div>
+</div>
+
+<div class="issue p2">
+  <h4><span class="badge b-p2">P2</span> 5. dev 脚本固定端口与桌面端动态端口策略不一致，stop 兜底覆盖不全</h4>
+  <div class="kv">
+    <b>位置</b><span><code>scripts/start.ps1:13</code>（固定 8000/5173）、<code>scripts/stop.ps1:12-15</code>（兜底仅匹配 8000/5173 + 命令行特征）vs <code>sidecar.rs</code>（8000→8001→8002 动态）</span>
+    <b>证据</b><span>桌面实例占用 8001/8002 时，stop.ps1 的端口兜底扫描不到；若此时 runtime.json 又因多实例被覆盖（P2-1），残留 backend 进程只能靠用户手杀。命令行特征匹配（<code>uvicorn app.main:app</code>）是克制且正确的做法——这点值得肯定，但端口范围没跟上自己的动态端口设计。</span>
+    <b>建议</b><span>stop.ps1 兜底扫描 8000-8002；或 sidecar 把端口写入固定位置的 discovery 文件供脚本读取。</span>
+  </div>
+</div>
+
+<div class="issue p2">
+  <h4><span class="badge b-p2">P2</span> 6. 后端异常处理存在“吞错 + 泛化”模式，关键路径缺乏区分</h4>
+  <div class="kv">
+    <b>位置</b><span><code>documents.py</code> 等多处 <code>except OSError: pass</code> / 泛化捕获；前端多处 <code>catch {}</code> 空块</span>
+    <b>证据</b><span>例如 <code>_maybe_snapshot</code> 快照失败被静默吞掉（历史版本悄悄缺失，用户以为有完整历史）；前端清理恢复点失败 <code>catch { /* 忽略 */ }</code> 有注释说明且幂等——这类是合理的；但快照失败属于应告知的降级。日志方面后端仅 uvicorn 默认输出，桌面版 sidecar 日志只 <code>eprintln</code> 到 nowhere（见 P3-13）。</span>
+    <b>建议</b><span>快照失败至少写入结构化日志并在历史面板标“该时段版本缺失”；统一一个 <code>logger</code>。</span>
+  </div>
+</div>
+
+<h3>P3 — Low（7 项）</h3>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 7. atomic_write 无 fsync：掉电/OS 崩溃可能留下空文件</h4>
+  <div class="kv">
+    <b>位置</b><span><code>markdown_io.py:169-185</code></span>
+    <b>证据</b><span>temp 文件写入后未 <code>flush+fsync</code> 直接 <code>os.replace</code>。进程崩溃无碍（页缓存仍在），但<b>掉电</b>时 NTFS 上可能 replace 成功而数据未落盘 → 文件为空。缓解：写前历史快照与恢复草稿大概率留存前稿，且 WAL 数据库不受影响。属“最后 1% 的持久性缺口”。</span>
+    <b>建议</b><span>写后 <code>f.flush(); os.fsync(f.fileno())</code> 再 replace（成本每次数十毫秒，可只对 &gt;10KB 文档启用）。</span>
+  </div>
+</div>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 8. <code>editSeqRef</code> 不随文档切换重置，跨文档状态判定依赖巧合</h4>
+  <div class="kv">
+    <b>位置</b><span><code>EditorArea.tsx:62,102,116,139-144</code></span>
+    <b>证据</b><span>文档 A 在途保存（seq=5）时切换到文档 B：若 B 的 <code>setKeContent</code> 恰不触发 update，A 的保存完成回调会把 B 的状态判为 'saved'——碰巧 B 刚从磁盘加载确为 saved，结果正确但纯属巧合；一旦加载流程改动（例如加载后规范化内容触发 update），就会闪烁错误状态。</span>
+    <b>建议</b><span>切换文档时重置 <code>editSeqRef.current = 0</code> 并将 seq 与 article.id 绑定判定。</span>
+  </div>
+</div>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 9. CSP 为 null ＋ KaTeX 渲染走 <code>dangerouslySetInnerHTML</code></h4>
+  <div class="kv">
+    <b>位置</b><span><code>desktop/src-tauri/tauri.conf.json:25</code>（<code>"csp": null</code>）；<code>frontend/src/components/editor/nodeviews/MathNodeView.tsx:141,218</code></span>
+    <b>证据</b><span>KaTeX 默认 <code>trust:false</code> 会转义危险输出，Tiptap schema 也会过滤不认识的 HTML 节点——<b>两道既有防线使该风险在本威胁模型下很低</b>。但 csp:null 意味着没有第三道防线，一旦未来引入任何 <code>innerHTML</code> 路径即裸奔。恶意 Markdown 文件（用户导入他人 .md）是现实输入源。</span>
+    <b>建议</b><span>设置基本 CSP（<code>default-src 'self'; img-src http://127.0.0.1:* data:</code> 等），验证 KaTeX/图片加载不破。</span>
+  </div>
+</div>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 10. 本地 API 无 Host/Origin 校验，理论上可被 DNS rebinding 打穿</h4>
+  <div class="kv">
+    <b>位置</b><span><code>backend/app/main.py:80-89</code>（仅 CORSMiddleware，无 TrustedHost）</span>
+    <b>证据</b><span>uvicorn 绑定 127.0.0.1（正确），但恶意网页可将域名 rebind 到 127.0.0.1:8000 绕过同源策略读写 API（创建/改写/删除 workspace 内文件）。前提是用户开着软件并访问攻击者页面——个人本地软件中概率低、危害限于 workspace 目录，故 P3。</span>
+    <b>建议</b><span>加 <code>TrustedHostMiddleware</code> 仅允许 <code>127.0.0.1</code>/<code>localhost</code> Host 头（3 行）。</span>
+  </div>
+</div>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 11. Python 依赖未锁版本 hash、无漏洞扫描</h4>
+  <div class="kv">
+    <b>位置</b><span><code>backend/requirements.txt</code>（无 hash 固定）；CI 无 pip-audit / npm audit</span>
+    <b>建议</b><span>用 <code>pip-compile --generate-hashes</code> 或至少钉住次版本；CI 加审计步骤（前端已有 lockfile 且用 <code>npm ci</code>，这点是对的）。</span>
+  </div>
+</div>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 12. Markdown round-trip 长尾风险：数学公式/嵌套 HTML/极端表格 <span class="badge b-verify">需要运行时验证</span></h4>
+  <div class="kv">
+    <b>位置</b><span><code>frontend/src/editor/</code>（ke.ts / markdown-roundtrip.test.ts / phase3-roundtrip.test.ts）</span>
+    <b>证据</b><span>已有 round-trip 测试覆盖 KE 标记、模块、脚注、未知 <code>ke-*</code> 标记原样保留（后端亦有对应测试 <code>test_unknown_ke_marker_preserved</code>）——核心扩展纪律很好。但测试用例是手工挑选的代表性样本，非模糊测试：多轮（≥3 次）打开-保存循环、<code>$$..\n..$$</code> 与表格/引用相邻、行内 HTML 与 KE 标记嵌套等组合存在未知退化可能。由于保存的是 Tiptap 序列化结果，<b>首次保存即可能规范化重排未知语法</b>（编辑过才保存，静默改动可能发生）。风险敞口：中低，但这是本项目产品承诺的核心，值得专项验证。</span>
+    <b>建议</b><span>增加“打开→不编辑→保存→diff 必须为空”的守护测试集（一批真实世界 Markdown 语料），任何 diff 都视为回归。</span>
+  </div>
+</div>
+<div class="issue p3">
+  <h4><span class="badge b-p3">P3</span> 13. 桌面版无持久化日志，用户报障无可查文件</h4>
+  <div class="kv">
+    <b>位置</b><span><code>sidecar.rs:299-305</code>（sidecar 输出仅 <code>eprintln!</code>）；dev 模式有 <code>runtime/logs/</code>（start.ps1），桌面版没有等价物</span>
+    <b>建议</b><span>sidecar stdout/err 重定向到 app 数据目录滚动日志文件；backend 侧统一 logging 配置。</span>
+  </div>
+</div>
+
+<h3>P4 — Cosmetic（3 项）</h3>
+<div class="issue p4">
+  <h4><span class="badge b-p4">P4</span> 14. 前端多数 <code>catch</code> 丢弃错误对象；后端部分函数签名缺返回类型注解</h4>
+  <div class="kv"><b>建议</b><span>统一 <code>catch (e) { ... console/log }`；对公共函数补注解。非关键。</span></div>
+</div>
+<div class="issue p4">
+  <h4><span class="badge b-p4">P4</span> 15. <code>slugify</code> 全非法字符标题回退 <code>untitled</code>，连续创建同名文档的后缀策略文档未写明（代码有唯一化处理，行为正确，仅缺文档）</h4>
+</div>
+<div class="issue p4">
+  <h4><span class="badge b-p4">P4</span> 16. docs 中 Phase 报告存在少量自我表扬式措辞（“完美支持”类），与工程审慎语气不符；事实层面抽查未见造假</h4>
+</div>
+
+<div class="good-box">
+  <h4>明确认可的设计（避免“为黑而黑”）</h4>
+  <ul class="tight">
+    <li><b>原子写入实现正确</b>：temp+<code>os.replace</code>+失败清理（<code>markdown_io.py:169-185</code>），进程崩溃不会留半写文件。</li>
+    <li><b>路径安全做得扎实</b>：<code>safe_rel_path</code> 用 <code>resolve()</code>+parents 校验（<code>markdown_io.py:192-198</code>），且有专门测试（<code>test_safe_rel_path_blocks_traversal</code>，含 <code>C:/Windows</code>、<code>/etc/passwd</code>、<code>../</code> 用例）——比多数同类项目认真。</li>
+    <li><b>删除保护分层</b>：顶层目录 / <code>.knowledgeeditor</code> 拒删 + 404 语义 + 测试（<code>test_delete_safety.py</code>），“误删 workspace 外文件”有回归防线。</li>
+    <li><b>历史与恢复均“先快照再写回”</b>（<code>history.py:63-71</code>）：恢复操作本身可逆，这是很多商业软件都没做对的地方。</li>
+    <li><b>崩溃恢复草稿覆盖保存窗口</b>：保存前注册恢复点、成功后清除（<code>EditorArea.tsx:114,118,171</code> + <code>drafts.py</code>），崩溃发生在任意阶段都有下一步兜底。</li>
+    <li><b>sidecar 进程管理是亮点</b>：动态端口+占用退让、health 握手轮询、崩溃自动重启<b>且设上限</b>（<code>MAX_CRASH_RESTARTS</code>，防死循环）、stale runtime 清理、事件通知前端（<code>sidecar.rs:288-350</code>）。</li>
+    <li><b>stop.ps1 双重匹配（端口+命令行特征）不误杀无关进程</b>，注释解释了每个设计决策（taskkill /T 的进程树理由）。</li>
+    <li><b>测试文化健康</b>：conftest 主动隔离用户真实 <code>~/.knowledgeeditor</code> 配置防污染；测试断言的是用户可感知行为（保存响应必须带元信息，否则属性栏显示“—”）而非实现细节。</li>
+  </ul>
+</div>
+
+<!-- ================= 第五部分 ================= -->
+<h2 id="s5">第五部分 · 重点模块审计</h2>
+<div class="card">
+<table>
+<tr><th style="width:130px">模块</th><th style="width:70px">评级</th><th>评价要点</th></tr>
+<tr><td><b>Frontend</b></td><td><span class="badge b-p2">B+</span></td><td>保存状态机（idle/dirty/saving/saved/error + editSeq 比对）设计意识好；refs 化的防抖回调避免 stale closure；<code>setEditable(…, false)</code> 抑制假 update 事件显示作者理解 Tiptap 陷阱。缺陷：保存无序列化（P1-2）、错误静默（P2-3）、<code>EditorArea</code> 零组件测试。</td></tr>
+<tr><td><b>Backend</b></td><td><span class="badge b-p1">B</span></td><td>路由分层清晰、路径校验统一走 <code>safe_rel_path</code>、409/404/400 语义基本正确、保存响应带全量元信息（v0.7.2 修复说明与代码一致）。硬伤是 store 线程模型（P1-1）与索引失败连坐 500（P2-2）。</td></tr>
+<tr><td><b>Markdown pipeline</b></td><td><span class="badge b-p2">B+</span></td><td>未知 <code>ke-*</code> 标记原样保留（前后端均有测试）是正确的兼容性决策；frontmatter 宽松解析保留插入顺序；round-trip 测试存在但语料面窄（P3-12）。“打开未编辑保存零 diff”守护缺失。</td></tr>
+<tr><td><b>Workspace</b></td><td><span class="badge b-good">A-</span></td><td>结构初始化、目录管理、最近工作区、app_config 迁移（含 legacy 隔离）均有实现与测试；删除保护完善。多实例共写是唯一显著缺口（P2-1）。</td></tr>
+<tr><td><b>Search / Index</b></td><td><span class="badge b-p2">B</span></td><td>FTS5 + 触发器同步、重建端点返回计数、<code>update_file</code> 文件不存在即删索引（防脏索引）；WAL+NORMAL 合理。受 P1-1 线程缺陷拖累；“索引可重建”承诺在单进程下成立。</td></tr>
+<tr><td><b>Attachment</b></td><td><span class="badge b-good">A-</span></td><td>按 MIME 分类落盘、上传后回读一致性有测试、引用提取前后端语义对齐（<code>markdown_io.py:19-20</code> 注释明示）。失败路径（磁盘满/超时）提示弱，与全局错误处理问题同源。</td></tr>
+<tr><td><b>Autosave / Recovery</b></td><td><span class="badge b-p2">B</span></td><td>防抖可配置、恢复点先于保存注册——崩溃窗口覆盖是教科书式正确。但与手动保存/文档切换的并发时序（P1-2、P3-8）未经审计验证。</td></tr>
+<tr><td><b>History</b></td><td><span class="badge b-good">A-</span></td><td>写前快照、相同内容跳过（防元信息噪音）、恢复可逆、快照目录不入索引。快照失败静默（P2-6）是小污点。</td></tr>
+<tr><td><b>Tauri / Desktop</b></td><td><span class="badge b-p2">B+</span></td><td>sidecar 生命周期管理优秀（见表扬清单）；缺单实例（P2-1）、CSP null（P3-9）、无桌面日志（P3-13）、零 Rust 测试（P1-3）。</td></tr>
+<tr><td><b>Scripts</b></td><td><span class="badge b-good">A-</span></td><td>start.ps1 环境Hard-fail 不静默、根目录校验、health 握手；stop.ps1 双重匹配+记录清理；setup/dev 分工明确。扣分：端口策略与桌面端不一致（P2-5）、PowerShell 5.1/7 差异未声明（需要运行时验证）。</td></tr>
+<tr><td><b>Release / Build</b></td><td><span class="badge b-p1">D+</span></td><td>除前端 build 外无任何发布产物验证（P1-3）。NSIS 升级、旧数据迁移、卸载残留——全部“需要运行时验证”且无计划内验证。</td></tr>
+<tr><td><b>Documentation</b></td><td><span class="badge b-good">A-</span></td><td>罕见的高质量：决策点、版本号注释（“v0.7.2 修复”）可回查、Phase 报告声明抽查全部对得上代码。过度乐观主要在发布就绪度（P1-3）与个别“完美”措辞（P4-16）。</td></tr>
+</table>
+</div>
+
+<!-- ================= 第六部分 ================= -->
+<h2 id="s6">第六部分 · 数据安全审计</h2>
+<div class="card">
+  <h3>Q1：在什么情况下用户可能丢失 Markdown 数据？</h3>
+  <table>
+    <tr><th>场景</th><th>防护现状</th><th>残余风险</th></tr>
+    <tr><td>进程崩溃 / 被 kill</td><td>原子写（不可能半写）+ 恢复草稿 + 历史快照</td><td><b>极低</b></td></tr>
+    <tr><td>保存请求失败（500/网络）</td><td>内容仍在编辑器内存 + 恢复点已注册</td><td>低；但用户若直接关窗口且不点恢复提示 → 依赖恢复流程 <span class="badge b-verify">需运行时验证关闭时是否强提醒</span></td></tr>
+    <tr><td>自动保存与手动保存并发</td><td>无请求序列化</td><td><b>中</b>：尾部几秒编辑可能被旧内容覆盖且 UI 显示已保存（P1-2）</td></tr>
+    <tr><td>双实例编辑同一文档</td><td>无冲突检测</td><td><b>中</b>（P2-1）</td></tr>
+    <tr><td>掉电 / OS 崩溃</td><td>无 fsync，但写前快照大概率已留存旧稿</td><td>低-中（P3-7）：最坏丢最近一次保存周期的改动，可从快照手工恢复</td></tr>
+    <tr><td>用户删除文档/目录</td><td>穿越防护 + 保护目录 + 404 语义</td><td>误删有意为之的文档属正常操作；<b>未见回收站机制</b>（历史快照是否保留已删文档的版本需要运行时验证）</td></tr>
+    <tr><td>Markdown 被编辑器静默改写</td><td>未知标记保留策略 + round-trip 测试</td><td>低-中（P3-12）：长尾语法组合未验证</td></tr>
+  </table>
+  <h3>Q2：在什么情况下 SQLite 与 Markdown 不一致？</h3>
+  <ul class="tight">
+    <li>写盘成功、<code>update_file</code> 失败（P1-1 并发异常 / 文件短暂被锁）→ 索引滞后。<b>watcher 会自愈</b>，属短暂不一致，可接受。</li>
+    <li>外部修改文件：watcher 事件驱动重索引（有 <code>test_fs_watch.py</code>），方向正确；事件丢失（网络盘/编辑器原子替换的两次事件竞态）时依赖手动重建端点——<b>重建端点存在且有测试</b>，兜底成立。</li>
+    <li>多实例双写：两进程索引交错 upsert，最终以各自看到的文件为准收敛，短暂不一致后可重建。逻辑上无永久脏索引路径：<code>update_file</code> 对不存在文件执行 delete（<code>indexer.py:109-114</code>）。</li>
+  </ul>
+  <h3>Q3：是否存在无法自动恢复的状态？</h3>
+  <p><b>结论：未发现“结构性”不可恢复状态。</b> SQLite 物理损坏 → 删库重建即可（设计承诺成立，重建端点有测试）；Markdown 单文件损坏（掉电空文件）→ 历史快照/恢复草稿兜底，<b>但恢复动作需要用户手工发起</b>（半自动）；唯一接近“静默不可恢复”的是 P1-2 竞态覆盖（旧稿覆盖新稿且无提示、无冲突记录）——这是本报告将其列为 P1 的核心理由。</p>
+</div>
+
+<!-- ================= 第七部分 ================= -->
+<h2 id="s7">第七部分 · 真实用户场景测试矩阵（22 项）</h2>
+<div class="card">
+<table>
+<tr><th style="width:26px">#</th><th style="width:150px">场景</th><th>操作 → 预期</th><th>实际可能行为（静态推断）</th><th style="width:56px">风险</th><th style="width:66px">现有测试</th></tr>
+<tr><td>1</td><td>新建文档</td><td>树右键新建 → 文章出现在 Articles/ 并可编辑</td><td>正常；slug 冲突有唯一化处理</td><td><span class="badge b-good">低</span></td><td><span class="badge b-good">有</span></td></tr>
+<tr><td>2</td><td>正常编辑+自动保存</td><td>输入停止 3s → 状态转 saved，磁盘更新</td><td>正常</td><td><span class="badge b-good">低</span></td><td><span class="badge b-p3">部分</span>（后端有，前端时序无）</td></tr>
+<tr><td>3</td><td>快速连续输入</td><td>防抖不断重置，最后一次触发保存</td><td>正常；editSeq 判定 dirty/saved 正确</td><td><span class="badge b-good">低</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>4</td><td>自动保存中按 Ctrl+S</td><td>合并为一次保存，最新内容落盘</td><td><b>两个 PUT 并发，旧内容可能最终落盘且显示已保存</b>（P1-2）</td><td><span class="badge b-p1">高</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>5</td><td>保存中切换文档</td><td>旧文档完成保存，新文档正常加载</td><td>在途 PUT 的回调可能错标新文档状态（P3-8，巧合性正确）</td><td><span class="badge b-p3">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>6</td><td>保存失败（后端 500）</td><td>明确报错 + 内容受保护提示 + 重试</td><td>仅红色 'error'，无原因无重试（P2-3）；文件可能实际已写（P2-2）</td><td><span class="badge b-p2">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>7</td><td>后端崩溃</td><td>sidecar 1s 重启（≤上限），UI 提示 runtime 事件</td><td>桌面端设计正确；<b>dev 模式无自动重启</b>（需运行时验证 UI 提示实际观感）</td><td><span class="badge b-good">低</span></td><td><span class="badge b-p4">无</span>（Rust 零测试）</td></tr>
+<tr><td>8</td><td>软件突然退出（编辑中）</td><td>重启后提示恢复草稿</td><td>恢复点先于保存注册，覆盖各崩溃阶段；恢复入口 UX 需验证</td><td><span class="badge b-good">低</span></td><td><span class="badge b-p3">部分</span>（drafts API 有测试）</td></tr>
+<tr><td>9</td><td>外部编辑器改 Markdown</td><td>watcher 重索引，搜索命中新内容</td><td>正常路径有测试；事件竞态时需手动重建</td><td><span class="badge b-good">低</span></td><td><span class="badge b-good">有</span></td></tr>
+<tr><td>10</td><td>外部删除正在编辑的文档</td><td>保存时报错或提示文档不存在</td><td>PUT 时 <code>full.is_file()</code> 为假 → 404 → 前端 error 态；编辑内容困在内存（恢复点可救）<span class="badge b-verify">需运行时验证</span></td><td><span class="badge b-p3">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>11</td><td>应用内删除正在编辑的文档</td><td>关闭编辑器 + 文档消失 + 索引清理</td><td>删除 API 正确；前端是否强制关闭该标签需验证</td><td><span class="badge b-p3">中</span></td><td><span class="badge b-p3">部分</span></td></tr>
+<tr><td>12</td><td>恢复历史版本</td><td>写回旧版，当前版先入历史（可逆）</td><td>后端正确；前端与 watcher/自动保存时序竞争可能“恢复回弹”（P2-4）</td><td><span class="badge b-p2">中</span></td><td><span class="badge b-p3">部分</span>（后端有）</td></tr>
+<tr><td>13</td><td>索引损坏/删除 index.db</td><td>重建后系统完整恢复</td><td>重建端点有测试，承诺成立</td><td><span class="badge b-good">低</span></td><td><span class="badge b-good">有</span></td></tr>
+<tr><td>14</td><td>搜索 + 保存同时发生</td><td>互不干扰</td><td><b>共享 SQLite 连接无锁 → 随机 500</b>（P1-1）</td><td><span class="badge b-p1">高</span></td><td><span class="badge b-p4">无</span>（测试串行）</td></tr>
+<tr><td>15</td><td>双开应用</td><td>聚焦已有窗口或明确提示</td><td><b>静默起第二个后端共写 workspace</b>（P2-1）</td><td><span class="badge b-p2">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>16</td><td>大量文档（数千篇）</td><td>启动扫描/重建在可接受时间内完成</td><td>重建逐文件读+upsert，同步阻塞 lifespan（需运行时验证启动耗时）；FTS5 查询本身无虞</td><td><span class="badge b-p3">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>17</td><td>超大单文档（数 MB）</td><td>打开/保存可用</td><td>保存响应含全量 content 回传 + 前端重设内容，推测卡顿（需要运行时验证）；round-trip 解析复杂度未知</td><td><span class="badge b-p3">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>18</td><td>上传非法/伪造附件</td><td>按声明 MIME 分类，回读一致</td><td>有测试；无病毒扫描（个人软件可接受，如实指出）</td><td><span class="badge b-good">低</span></td><td><span class="badge b-good">有</span></td></tr>
+<tr><td>19</td><td>中文/空格/特殊字符路径 workspace</td><td>全功能正常</td><td>Path+as_posix 用法规范，slugify 保 CJK；Windows 长路径(&gt;260)未处理（需运行时验证）</td><td><span class="badge b-p3">中</span></td><td><span class="badge b-p3">部分</span>（中文有用例）</td></tr>
+<tr><td>20</td><td>重启软件 → 最近工作区恢复</td><td>自动回到上次 workspace</td><td>app_config 迁移有测试；workspace 路径失效时的降级提示需验证</td><td><span class="badge b-good">低</span></td><td><span class="badge b-good">有</span></td></tr>
+<tr><td>21</td><td>升级版本（旧 workspace 打开新版）</td><td>数据无损、配置迁移</td><td><b>无任何升级测试/流水线</b>（P1-3）；ke 版本 frontmatter 有版本字段设计，向后兼容策略存在但未验证</td><td><span class="badge b-p2">中</span></td><td><span class="badge b-p4">无</span></td></tr>
+<tr><td>22</td><td>磁盘写满时保存</td><td>报错且旧文件完好</td><td>原子写保证旧文件完好（temp 写失败即抛错）——这点设计正确；错误呈现同 P2-3</td><td><span class="badge b-good">低</span></td><td><span class="badge b-p4">无</span></td></tr>
+</table>
+</div>
+
+<!-- ================= 第八部分 ================= -->
+<h2 id="s8">第八部分 · 最值得增加的测试（按价值排序，宁缺毋滥）</h2>
+<div class="card">
+  <h3>自动化（优先级从高到低）</h3>
+  <ol class="tight">
+    <li><b>后端并发压力测试</b>：<code>ThreadPoolExecutor</code> 20 线程混合调用 save/search/tree/update 持续 30s，断言零异常 + 最终索引与文件系统一致。<b>直接暴露 P1-1，是性价比最高的一条。</b></li>
+    <li><b>同文档并发 PUT 语义测试</b>：两个线程携不同内容并发 PUT，断言最终磁盘内容为“后发起的逻辑最新者”（引入版本号/时间戳后断言其单调）。</li>
+    <li><b>Round-trip 守护语料库</b>：收录 50+ 真实 Markdown 文件（数学/HTML/表格/KE 扩展混合），测试“加载→立即序列化→diff 必须为空”。任何 diff 即回归。</li>
+    <li><b>保存流水线故障注入</b>：monkeypatch <code>atomic_write</code>/<code>update_file</code> 在各阶段抛错，断言响应码/文件状态/快照状态符合设计（修复 P2-2 的同时固化语义）。</li>
+    <li><b>CI 桌面端 job</b>：<code>cargo test + tauri build --debug</code>（Linux 交叉检查即可），让 Rust 代码进入编译验证。</li>
+    <li><b>前端 EditorArea 组件测试</b>：模拟“自动保存在途 + saveNow”，断言网络层只产生串行请求（用 fake timers + fetch mock）。</li>
+  </ol>
+  <h3>手工测试（一次性，发布前必做）</h3>
+  <ol class="tight">
+    <li><b>升级演练</b>：安装旧版 → 建数据 → 装新版 NSIS → 验证 workspace/设置/历史全保留。</li>
+    <li><b>崩溃恢复全流程</b>：编辑中任务管理器杀进程（分别杀 frontend/backend/整体），逐次验证重启后恢复提示与内容完整性。</li>
+    <li><b>双开互踩</b>：双实例编辑同一文档交替保存，观察覆盖行为（当前预期：后写赢、无提示——确认后决定修复优先级）。</li>
+    <li><b>掉电模拟</b>（可选，条件允许）：大文档保存瞬间断电，检查文件与快照可恢复性。</li>
+  </ol>
+</div>
+
+<!-- ================= 第九部分 ================= -->
+<h2 id="s9">第九部分 · 架构层面的隐患（现在没事，以后必然麻烦）</h2>
+<div class="card">
+  <ol class="tight">
+    <li><b>Store 单例 + 单连接的线程模型没定型</b>：现在靠“恰好没崩”运行。任何新增异步特性（协同编辑、多标签并行保存、后台导入）都会放大 P1-1。应尽早定型为“每请求短事务 + 连接池或全局锁”并写入架构文档。</li>
+    <li><b>写路径三步曲（快照→写盘→索引）无统一事务边界</b>：各路由手工编排顺序，新端点（如未来的移动/重命名）容易漏快照或漏索引。建议提炼 <code>write_document(rel, content, reason)</code> 单一入口。</li>
+    <li><b>前后端无契约测试</b>：OpenAPI snapshot 测试存在（<code>test_openapi_snapshot.py</code>，好），但前端 TS 类型是手写的，漂移只能在运行时发现。可用 openapi-typescript 生成类型一举消除。</li>
+    <li><b>保存语义缺版本概念</b>：PUT 无 If-Match/版本号，任何并发写都是“最后写赢”。趁用户量小引入 <code>updated_at` 乐观锁成本低；等出现协同/同步需求再改会伤筋动骨。</li>
+    <li><b>端口策略分裂</b>（dev 固定 / 桌面动态）：所有围绕“后端在哪”的逻辑（stop 脚本、调试、文档）都会各说各话。建议统一为“动态优先 + 发现文件”。</li>
+    <li><b>frontend 内 Markdown 逻辑与 backend 各有一份引用提取等实现</b>（注释自称“语义一致”）：两处维护必然漂移，建议共享一份语料测试钉死行为。</li>
+  </ol>
+</div>
+
+<!-- ================= 第十部分 ================= -->
+<h2 id="s10">第十部分 · v1.0.1 修复路线</h2>
+<div class="card">
+  <table>
+    <tr><th style="width:90px">级别</th><th>项目</th><th>理由</th></tr>
+    <tr><td rowspan="3"><b>必须修</b><br><span class="small">（阻塞公开 Beta）</span></td><td>P1-1 SQLite 线程锁（半天）</td><td>随机 500 直接击穿“保存可靠”的产品信任，且是并发类问题总根源</td></tr>
+    <tr><td>P1-2 保存序列化：前端 savingRef + 后端按路径锁（1 天）</td><td>唯一可能“静默丢用户刚写的内容”的路径</td></tr>
+    <tr><td>P1-3 CI 加 desktop job（半天；release workflow 可顺延到 v1.0.1 正式版）</td><td>Rust 400 行零验证是工程红线</td></tr>
+    <tr><td rowspan="3"><b>应该修</b><br><span class="small">（v1.0.1 内完成）</span></td><td>P2-1 单实例插件（2 小时）</td><td>双开互踩是最易被用户复现的“数据异常”</td></tr>
+    <tr><td>P2-2 索引失败不连坐 500 + P2-3 保存错误详情/重试（1 天）</td><td>消除“显示失败实际成功”与静默失败，一起改最省</td></tr>
+    <tr><td>P3-7 fsync + P2-6 快照失败记日志（2 小时）</td><td>补齐事实源持久性最后 1%</td></tr>
+    <tr><td rowspan="3"><b>可以以后修</b></td><td>P2-4 恢复时序、P3-8 editSeq 重置、P2-5 端口统一</td><td>低频/影响小，排入 backlog</td></tr>
+    <tr><td>P3-9 CSP、P3-10 TrustedHost、P3-11 依赖审计</td><td>本地威胁模型下防御纵深，非急迫</td></tr>
+    <tr><td>P4 全部、round-trip 语料库扩充（P3-12）</td><td>随版本迭代渐进；语料库在用户量增长前建好即可</td></tr>
+  </table>
+</div>
+
+<!-- ================= 最终结论 ================= -->
+<div class="final" id="s11">
+  <h3>最终结论</h3>
+  <p>如果我是一个真实用户，今天安装 KnowledgeEditor v1.0.0，我最应该担心的前三件事是：</p>
+  <ol>
+    <li><b>“显示已保存，其实保存的是旧稿”</b> —— 自动保存与手动保存（Ctrl+S）撞车时内容可能被静默回退（P1-2），没有冲突提示；配合双开应用（P2-1）概率放大。这是唯一可能让我真的丢刚写的字而毫无察觉的路径。</li>
+    <li><b>“保存怎么老是失败？”</b> —— 搜索/文件事件与保存并发时后端会随机报错（P1-1），且错误提示只有一个红色状态、没有原因和重试（P2-3）；多数时候文件其实已保存，但我作为用户无从知道，只能反复手动保存并失去信任。</li>
+    <li><b>“升级新版本，我的笔记还在吗？”</b> —— 仓库内没有任何安装包构建与升级测试（P1-3），旧数据在版本升级后的安全性完全未经验证；掉电等极端场景下最坏会丢最近一个保存周期的改动，需要自己想到去历史版本里翻（P3-7）。</li>
+  </ol>
+  <p style="margin-bottom:0;opacity:.85">—— 好消息是：这三件事的根因都已定位到具体函数，三个 P1 合计约 2–3 人日即可修复；这个项目的数据安全骨架（原子写、写前快照、恢复草稿、路径防护）值得这份投入。</p>
+</div>
+
+<p class="small" style="margin-top:26px">附注：本报告基于 2026-08-16 对仓库 HEAD 的静态审计。标注「需要运行时验证」的条目为高置信推断而非确认事实；文档声明抽查（Phase 报告 vs 代码）共 14 项，13 项一致、1 项过度乐观（发布就绪度）。测试均指仓库内置测试，运行环境差异（PowerShell 版本、Windows 长路径、杀毒软件锁文件）未在本报告覆盖范围内。</p>
+
+</div>
+</body>
+</html>

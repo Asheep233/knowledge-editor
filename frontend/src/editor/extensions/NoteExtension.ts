@@ -12,7 +12,7 @@ import { mergeAttributes, Node, type JSONContent, type MarkdownToken } from '@ti
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { Fragment } from 'prosemirror-model'
 import NoteNodeView from '../../components/editor/nodeviews/NoteNodeView'
-import { KE_FIELD_ORDER, keJson, newId } from '../ke'
+import { KE_FIELD_ORDER, keJson, keStableId, newId } from '../ke'
 import { keNoteTokenizer } from '../tokenizers'
 
 export interface NoteAttrs {
@@ -171,8 +171,11 @@ export const NoteExtension = Node.create({
   },
   renderMarkdown: ({ attrs, content }: JSONContent, helpers) => {
     const a = (attrs as NoteAttrs) ?? ({} as NoteAttrs)
+    // P4-1：无 id 时用关键字段 + 块内文本生成确定性 id
+    const innerText = (content ?? []).map((n) => n.text ?? '').join('')
+    const stableId = keStableId({ ...a, content: innerText } as Record<string, unknown>, ['title', 'color', 'content'])
     const payload: Record<string, unknown> = {
-      id: a.id || newId(),
+      id: a.id || stableId,
       label: a.label ?? '',
       title: a.title ?? '',
       color: a.color ?? 'blue',

@@ -1,13 +1,17 @@
+# KnowledgeEditor CI
+# 触发：push 到默认分支 master（P1-16: 原 branches:main 不会触发）+ PR。
+# 覆盖：Linux(backend pytest + frontend) / Windows(backend pytest + frontend) / Desktop(cargo test + tauri build)。
+# 注：test_delete_safety.py 的 Windows 路径语义 skipif 由 backend 子代理负责，Windows pytest 需在其落地后全绿。
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
   backend:
-    name: Backend (pytest)
+    name: Backend (pytest, Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +28,7 @@ jobs:
         run: python -m pytest
 
   frontend:
-    name: Frontend (build)
+    name: Frontend (vitest + build, Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,3 +46,108 @@ jobs:
       - name: Type check & build
         working-directory: frontend
         run: npm run build
+
+  # Windows 等价验证：后端会在 Windows 上运行，必须覆盖（P1-16）。
+  windows:
+    name: Windows (pytest + vitest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend deps
+        working-directory: backend
+        run: python -m pip install -r requirements.txt
+      - name: Run backend tests
+        working-directory: backend
+        run: python -m pytest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend unit tests (vitest)
+        working-directory: frontend
+        run: npm test
+      - name: Frontend build (ke-vite platform-aware esbuild)
+        working-directory: frontend
+        run: npm run build
+
+  # Desktop：Rust 侧车从源码可复现构建 + cargo test + tauri build。
+  # 侧车由 PyInstaller spec 产出；tauri build 本地需 MSVC/NSIS，故整 job 允许失败（P1-16 注明）。
+  desktop:
+    name: Desktop (sidecar from source + cargo + tauri)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      # 侧车可复现构建：backend + PyInstaller spec（在仓库根执行以匹配 spec 的 pathex=['backend']）。
+      - name: Install backend deps + PyInstaller
+        working-directory: backend
+        run: |
+          python -m pip install -r requirements.txt pyinstaller
+      - name: Build sidecar from source (PyInstaller)
+        run: |
+          python -m PyInstaller backend/knowledgeeditor-backend.spec --distpath desktop/src-tauri/binaries --workpath backend/build/pyinstaller --noconfirm --clean
+          # 目标文件名需带 triple 后缀（externalBin 约定）
+          Move-Item -Force desktop/src-tauri/binaries/knowledgeeditor-backend.exe desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe
+          Get-ChildItem desktop/src-tauri/binaries/knowledgeeditor-backend-*.exe | Select-Object Name,Length
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend dist (for hash manifest)
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Hash manifest (sidecar + frontend dist)
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE"
+          $binDir = Join-Path $root 'desktop\src-tauri\binaries'
+          $distDir = Join-Path $root 'frontend\dist-build'
+          $manifest = [ordered]@{ schemaVersion = 1; built_at = (Get-Date).ToString('o'); artifacts = @() }
+          Get-ChildItem $binDir -Filter 'knowledgeeditor-backend-*.exe' -ErrorAction SilentlyContinue | ForEach-Object {
+            $h = $_ | Get-FileHash -Algorithm SHA256
+            $manifest.artifacts += [ordered]@{ path = $_.FullName.Substring($root.Length + 1); size = $_.Length; sha256 = $h.Hash.ToLowerInvariant() }
+          }
+          if (Test-Path $distDir) {
+            Get-ChildItem $distDir -Recurse -File | ForEach-Object {
+              $h = $_ | Get-FileHash -Algorithm SHA256
+              $manifest.artifacts += [ordered]@{ path = $_.FullName.Substring($root.Length + 1); size = $_.Length; sha256 = $h.Hash.ToLowerInvariant() }
+            }
+          }
+          $out = Join-Path $binDir 'versions.json'
+          $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $out -Encoding UTF8
+          Write-Host "==> hash manifest written: $out"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Rust build & test
+        working-directory: desktop/src-tauri
+        run: cargo test
+      - name: Tauri dist build (NSIS)
+        working-directory: desktop
+        run: |
+          npm ci
+          npm run build
+      # P4-6：如需签名安装包，注入 Authenticode 证书后设置以下环境变量即可
+      # （get-filehash/signtool 调用见 desktop/KNOWLEDGEEDITOR_BACKEND.md）。
+      - name: Upload versions.json + installer (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-artifacts
+          path: |
+            desktop/src-tauri/binaries/versions.json
+            desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe
+          if-no-files-found: ignore

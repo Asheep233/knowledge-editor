@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -25,8 +25,13 @@ MAX_VERSIONS = 30
 _TS_RE = re.compile(r"^\d{8}-\d{6}-\d{3}$")
 
 
-def _ts() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+def _ts(prev_ts: str | None = None) -> str:
+    """当前时间戳；与上一次同毫秒时单调递增 1ms（P2-3：防同毫秒覆盖）。"""
+    now = datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    if prev_ts is not None and now <= prev_ts:
+        prev = datetime.strptime(prev_ts, "%Y%m%d-%H%M%S-%f")
+        return (prev + timedelta(milliseconds=1)).strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    return now
 
 
 class HistoryStore:
@@ -42,14 +47,21 @@ class HistoryStore:
     # ---------- 写入 ----------
 
     def snapshot(self, doc_rel: str, content: str) -> None:
-        """写入一份新快照并修剪到 MAX_VERSIONS 份。空白内容不快照。"""
+        """写入一份新快照并修剪到 MAX_VERSIONS 份。空白内容不快照。
+
+        P2-3：同毫秒连续快照时文件名单调递增，绝不互相覆盖。
+        """
         if not content.strip():
             return
         d = self._snap_dir(doc_rel)
         if d is None:
             return
         d.mkdir(parents=True, exist_ok=True)
-        markdown_io.atomic_write(d / f"{_ts()}.md", content)
+        prev: str | None = None
+        for p in d.glob("*.md"):
+            if _TS_RE.match(p.stem):
+                prev = max(prev, p.stem) if prev else p.stem
+        markdown_io.atomic_write(d / f"{_ts(prev)}.md", content)
         self._prune(d)
 
     def _prune(self, d: Path) -> None:

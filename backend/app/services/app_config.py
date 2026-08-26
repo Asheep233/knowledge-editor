@@ -16,7 +16,10 @@ app_config.json）存在，自动并入新位置（只复制，不动源文件�
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +27,9 @@ from .. import config
 
 MAX_RECENT_WORKSPACES = 10
 MAX_RECENT_DOCUMENTS = 20
+
+# P2-12：多线程/多实例并发写保护（进程内锁 + 随机临时文件名原子替换）
+_SAVE_LOCK = threading.Lock()
 
 
 def _defaults() -> dict:
@@ -65,12 +71,28 @@ class AppConfig:
             self.data = _defaults()
 
     def save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(
-            json.dumps(self.data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        tmp.replace(self.path)
+        """原子保存（P2-12：随机临时文件名 + 锁 + os.replace）。
+
+        修复旧实现固定 `.tmp` 文件名导致的并发写互相覆盖（两次保存
+        交错会丢一方数据）。多进程场景由 `os.replace` 原子性兜底。
+        """
+        with _SAVE_LOCK:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp_name = tempfile.mkstemp(
+                dir=str(self.path.parent), prefix=".app-config-", suffix=".tmp"
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(self.data, f, ensure_ascii=False, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_name, self.path)
+            except BaseException:
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
 
     # ---------- recent workspaces ----------
 

@@ -9,7 +9,7 @@
 import { mergeAttributes, Node, type JSONContent, type MarkdownToken } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { TextSelection, type Transaction } from '@tiptap/pm/state'
-import { KE_FIELD_ORDER, keJson, newId } from '../ke'
+import { KE_FIELD_ORDER, keJson, keStableId, newId } from '../ke'
 import { footnoteTokenizer } from '../tokenizers'
 import FootnoteNodeView from '../../components/editor/nodeviews/FootnoteNodeView'
 import type { FootnoteItem } from './FootnotesExtension'
@@ -222,6 +222,8 @@ export const FootnoteExtension = Node.create({
   },
   renderMarkdown: ({ attrs }: JSONContent) => {
     const a = (attrs as FootnoteAttrs) ?? ({} as FootnoteAttrs)
-    return `<!-- ke-footnote: ${keJson({ id: a.id || newId(), n: a.n || 0 }, 'footnote', KE_FIELD_ORDER.footnote)} -->`
+    // P4-1：无 id 时用编号 + 是否有内容生成确定性 id（同内容多次序列化一致）
+    const id = a.id || keStableId({ n: a.n || 0 }, ['n'])
+    return `<!-- ke-footnote: ${keJson({ id, n: a.n || 0 }, 'footnote', KE_FIELD_ORDER.footnote)} -->`
   },
 })

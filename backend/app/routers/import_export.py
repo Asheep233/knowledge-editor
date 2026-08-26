@@ -49,6 +49,10 @@ _MD_EXTS = {".md", ".markdown"}
 _ZIP_MAGIC = b"PK\x03\x04"
 _TMP_REL = f"{config.DIR_INTERNAL}/tmp"  # .knowledgeeditor/tmp（workspace 内隔离区）
 
+# 引用字面量位置正则（P3-14：_rewrite_refs 只改这些位置）
+_RE_KE_COMMENT = re.compile(r"<!--\s*ke-(?:attach|video):\s*(\{[\s\S]*?\})\s*-->")
+_RE_MD_IMAGE_SRC = re.compile(r"!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+\"[^\"]*\")?\s*\)")
+
 
 # ---------- 导出 ----------
 
@@ -222,8 +226,30 @@ def _unique_attachment_rel(root: Path, dest_rel: str) -> Optional[str]:
     return None
 
 
+# 导入上限（P2-5）：单 .md 50MB；zip 整包 512MB；解压单文件 512MB、总量 1GB
+MAX_MARKDOWN_SIZE = 50 * 1024 * 1024
+MAX_ZIP_SIZE = 512 * 1024 * 1024
+MAX_EXTRACTED_TOTAL = 1024 * 1024 * 1024
+
+
+async def _read_limited(file: UploadFile, limit: int) -> bytes:
+    """分块读取并限制总量（P2-5：超限报 413，不整包入内存先行裁剪）。"""
+    chunks: list[bytes] = []
+    total = 0
+    while chunk := await file.read(1024 * 256):
+        total += len(chunk)
+        if total > limit:
+            raise HTTPException(status_code=413, detail="文件超过大小上限")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _extract_zip_safe(zf: zipfile.ZipFile, dest: Path) -> None:
-    """解压到临时目录，拒绝 zip-slip（绝对路径 / .. / 符号链接）与超大文件。"""
+    """解压到临时目录，拒绝 zip-slip（绝对路径 / .. / 符号链接）与超大文件。
+
+    P2-5：单文件与总大小按「实际写入字节」计（info.file_size 可伪造）。
+    """
+    total = 0
     for info in zf.infolist():
         name = info.filename
         if name.startswith(("/", "\\")) or ".." in Path(name).parts:
@@ -234,11 +260,15 @@ def _extract_zip_safe(zf: zipfile.ZipFile, dest: Path) -> None:
         if info.is_dir():
             target.mkdir(parents=True, exist_ok=True)
             continue
-        if info.file_size > 512 * 1024 * 1024:  # 单文件上限 512MB
-            raise HTTPException(status_code=400, detail=f"压缩包内文件过大: {name}")
         target.parent.mkdir(parents=True, exist_ok=True)
+        written = 0
         with zf.open(info) as src, target.open("wb") as out:
-            shutil.copyfileobj(src, out, length=1024 * 256)
+            while chunk := src.read(1024 * 256):
+                written += len(chunk)
+                if written > MAX_EXTRACTED_TOTAL or total + written > MAX_EXTRACTED_TOTAL:
+                    raise HTTPException(status_code=400, detail="压缩包内容超过大小上限")
+                out.write(chunk)
+        total += written
 
 
 def _find_doc(tmp: Path) -> Optional[tuple[Path, str]]:
@@ -264,16 +294,85 @@ def _find_doc(tmp: Path) -> Optional[tuple[Path, str]]:
     return None
 
 
+def _mask_code_regions(md: str) -> str:
+    """把围栏代码块与行内代码的字符替换为 '\\x00'（等长掩码，位置不变）。
+
+    用于 P3-14：引用改写只针对正文中的引用字面量，
+    代码块/行内代码里出现的 `![...](Attachments/..)` 不是真实附件引用。
+    """
+    chars = list(md)
+    spans: list[tuple[int, int]] = []
+    for m in re.finditer(r"`[^`\n]+`", md):
+        spans.append((m.start(), m.end()))
+    for m in re.finditer(r"^(```|~~~)[^\n]*\n?[\s\S]*?\n\1[ \t]*$", md, re.M):
+        spans.append((m.start(), m.end()))
+    for s, e in spans:
+        for i in range(s, e):
+            chars[i] = "\x00"
+    return "".join(chars)
+
+
 def _rewrite_refs(md: str, mapping: dict[str, str]) -> str:
-    """按映射改写 md 中的引用路径（先 `./old` 后 `old`，长路径优先）。"""
+    """P3-14：仅改写「引用字面量位置」的路径，绝不做全局字符串替换。
+
+    改写范围严格限定为：
+    - ke-attach / ke-video 注释 JSON 的 `src` 值；
+    - 标准 Markdown 图片 `![](url)` 的 url。
+    URL 文本与代码块/行内代码里的同名字符串不受影响（先掩码代码区域，
+    命中区间含掩码字符的候选直接跳过）。未命中映射的引用保持原样。
+    """
     if not mapping:
         return md
+    masked = _mask_code_regions(md)
+
+    def _map_ref(ref: str) -> str:
+        r = ref.strip()
+        if r.startswith("./"):
+            r = r[2:]
+        return mapping.get(r, ref)
+
+    edits: list[tuple[int, int, str]] = []  # (start, end, replacement)
+
+    def fix_ke(m: re.Match) -> None:
+        raw = md[m.start() : m.end()]
+        if "\x00" in raw:
+            return  # 位于代码块/行内代码内
+        try:
+            obj = json.loads(m.group(1))
+        except ValueError:
+            return
+        src = obj.get("src")
+        if not isinstance(src, str):
+            return
+        new = _map_ref(src)
+        if new == src:
+            return
+        old_lit, new_lit = json.dumps(src), json.dumps(new)
+        for variant in (f'"src": {old_lit}', f'"src":{old_lit}', f'"src" : {old_lit}'):
+            replaced = raw.replace(variant, f'"src": {new_lit}', 1)
+            if replaced != raw:
+                edits.append((m.start(), m.end(), replaced))
+                return
+
+    def fix_img(m: re.Match) -> None:
+        url = m.group(1)
+        if "\x00" in m.group(0) or "\x00" in url:
+            return  # 位于代码块/行内代码内
+        new = _map_ref(url)
+        if new == url:
+            return
+        s = m.start(1)
+        e = m.end(1)
+        edits.append((s, e, new))
+
+    for m in _RE_KE_COMMENT.finditer(masked):
+        fix_ke(m)
+    for m in _RE_MD_IMAGE_SRC.finditer(masked):
+        fix_img(m)
+
     out = md
-    for old in sorted(mapping, key=len, reverse=True):
-        new = mapping[old]
-        if old == new:
-            continue
-        out = out.replace(f"./{old}", new).replace(old, new)
+    for s, e, repl in sorted(edits, key=lambda t: -t[0]):
+        out = out[:s] + repl + out[e:]
     return out
 
 
@@ -338,7 +437,7 @@ async def import_markdown(request: Request, file: UploadFile = File(...)) -> dic
     raw = file.filename or "untitled.md"
     if Path(raw).suffix.lower() not in _MD_EXTS:
         raise HTTPException(status_code=400, detail="仅支持 .md / .markdown 文件")
-    data = await file.read()
+    data = await _read_limited(file, MAX_MARKDOWN_SIZE)
     try:
         content = data.decode("utf-8")
     except UnicodeDecodeError:
@@ -376,7 +475,7 @@ async def import_package(request: Request, file: UploadFile = File(...)) -> dict
     raw = file.filename or "package.zip"
     if not raw.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="文档包必须是 .zip 文件")
-    data = await file.read()
+    data = await _read_limited(file, MAX_ZIP_SIZE)
     if not data.startswith(_ZIP_MAGIC):
         raise HTTPException(status_code=400, detail="文件不是有效的 zip 压缩包")
 

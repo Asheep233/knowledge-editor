@@ -55,6 +55,26 @@ describe('Phase 3E：extractAttachmentRefs', () => {
     const md = '<!-- ke-attach: {bad json} -->\n\n正文。'
     expect(extractAttachmentRefs(md)).toEqual([])
   })
+
+  it('P3-14：代码块/行内代码中的路径不被误判为附件引用', () => {
+    const md = [
+      '正文。',
+      '',
+      '```md',
+      '![x](Attachments/images/fromcode.png)',
+      '```',
+      '',
+      '文字 `![y](Attachments/images/inline.png)` 结束',
+      '',
+      '![real](Attachments/images/real.png)',
+    ].join('\n')
+    expect(extractAttachmentRefs(md)).toEqual(['Attachments/images/real.png'])
+  })
+
+  it('P3-14：URL 中的 Attachments 路径不被收集（仅真实 src 值）', () => {
+    const md = '[text](https://example.com/Attachments/fake.png) and ![远程](http://x/a.png)'
+    expect(extractAttachmentRefs(md)).toEqual([])
+  })
 })
 
 describe('Phase 3E：slugForDownload', () => {

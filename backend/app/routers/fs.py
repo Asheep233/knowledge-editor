@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from .. import config
 from ..services import markdown_io
+from ..services.references import referencing_docs
 
 router = APIRouter(prefix="/api/fs", tags=["fs"])
 
@@ -32,6 +33,15 @@ _FORBIDDEN_ROOT = {
     config.DIR_INTERNAL,
     config.DIR_DRAFTS,
 }
+_FORBIDDEN_ROOT_LOWER = {d.lower() for d in _FORBIDDEN_ROOT}
+
+# 允许 fs 操作的业务目录（删除/移动/重命名仅限其内部；P0-3 父级断言）
+_BUSINESS_TOP = {
+    config.DIR_ARTICLES,
+    config.DIR_MODULES,
+    config.DIR_ATTACHMENTS,
+}
+_BUSINESS_TOP_LOWER = {d.lower() for d in _BUSINESS_TOP}
 
 _DOC_EXTS = {".md", ".markdown"}
 
@@ -60,14 +70,29 @@ class DocCreate(BaseModel):
 # ---------- guards ----------
 
 def _guard_rel(root: Path, rel: str) -> Path:
-    """解析相对路径并校验：必须位于 workspace 内且未被禁止。"""
+    """解析相对路径并校验：必须位于 workspace 内且未被禁止。
+
+    P0-3/P2-18：根路径等价输入（"." / "" / "/"）显式拒绝；
+    受保护目录比较大小写不敏感（Windows 小写 drafts/ 同样拦截）。
+    """
     full = markdown_io.safe_rel_path(root, rel)
     if full is None:
         raise HTTPException(status_code=400, detail=f"非法路径: {rel}")
-    top = full.relative_to(root).parts[0] if full != root else ""
-    if top in _FORBIDDEN_ROOT:
+    parts = full.relative_to(root).parts
+    if not parts:
+        raise HTTPException(status_code=400, detail=f"非法路径: {rel}")
+    top = parts[0]
+    if top.lower() in _FORBIDDEN_ROOT_LOWER:
         raise HTTPException(status_code=400, detail=f"受保护目录，禁止操作: {top}")
     return full
+
+
+def _require_business_top(root: Path, full: Path) -> None:
+    """P0-3 父级断言：目标必须位于 Articles/Modules/Attachments 之下
+    （含被路径归一化绕过的情况，如 "Attachments/../Modules"）。"""
+    parts = full.relative_to(root).parts
+    if len(parts) < 2 or parts[0].lower() not in _BUSINESS_TOP_LOWER:
+        raise HTTPException(status_code=400, detail="目标必须位于 Articles/Modules/Attachments 下")
 
 
 def _top_of(rel: str) -> str:
@@ -95,7 +120,7 @@ def _finish(request: Request, rel: str) -> None:
 def create_dir(request: Request, body: DirCreate) -> dict:
     root = _require_ws(request)
     rel = body.path.strip("/")
-    if not rel or not rel.startswith(tuple(d + "/" for d in _TOP_LEVEL)) or rel in _TOP_LEVEL:
+    if not rel or not rel.startswith(tuple(d + "/" for d in _TOP_LEVEL)) or rel.lower() in _TOP_LEVEL:
         raise HTTPException(status_code=400, detail="目录必须位于 Articles/Modules/Attachments 下")
     full = _guard_rel(root, rel)
     full.mkdir(parents=True, exist_ok=True)
@@ -106,11 +131,10 @@ def create_dir(request: Request, body: DirCreate) -> dict:
 def rename_dir(request: Request, body: RenameBody) -> dict:
     root = _require_ws(request)
     rel = body.path.strip("/")
-    if rel in _TOP_LEVEL:
-        raise HTTPException(status_code=400, detail="顶层目录不可重命名")
     full = _guard_rel(root, rel)
     if not full.is_dir():
         raise HTTPException(status_code=404, detail="目录不存在")
+    _require_business_top(root, full)
     new_name = body.new_name.strip().strip("/")
     if not new_name or "/" in new_name:
         raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
@@ -128,19 +152,35 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
 def delete_dir(request: Request, path: str = Query(...)) -> None:
     root = _require_ws(request)
     rel = path.strip("/")
-    if rel in _TOP_LEVEL:
-        raise HTTPException(status_code=400, detail="顶层目录不可删除")
     full = _guard_rel(root, rel)
     if not full.is_dir():
         raise HTTPException(status_code=404, detail="目录不存在")
-    for p in sorted(full.rglob("*"), reverse=True):
-        if p.is_dir():
-            p.rmdir()
-        else:
-            rel_p = p.relative_to(root).as_posix()
-            p.unlink()
-            request.app.state.indexer.store.delete_file(rel_p)
-    full.rmdir()
+    _require_business_top(root, full)
+    # P2-15：目录内含被引用的附件时拒绝删除（与 DELETE /api/attachments 保护一致）
+    dir_rel = full.relative_to(root).as_posix()
+    if dir_rel.startswith(config.DIR_ATTACHMENTS + "/"):
+        refs = referencing_docs(root, prefix=dir_rel)
+        if refs:
+            total = sum(len(v) for v in refs.values())
+            raise HTTPException(
+                status_code=409,
+                detail=f"目录内 {len(refs)} 个附件被 {total} 个文档引用，不可删除",
+            )
+    # P1-17：walk_* 跳过符号链接/Junction，不越界删除外部真实文件
+    for p in sorted(markdown_io.walk_files(full), reverse=True):
+        rel_p = p.relative_to(root).as_posix()
+        p.unlink()
+        request.app.state.indexer.store.delete_file(rel_p)
+    for d in sorted(markdown_io.walk_dirs(full), reverse=True):
+        try:
+            d.rmdir()
+        except OSError:
+            pass  # 非空（理论不可达：文件已全部删除）或已被删除
+    try:
+        full.rmdir()
+    except OSError:
+        # 目录内残留（如并发写入）：回滚语义——保持现状并上报
+        raise HTTPException(status_code=409, detail="目录未完全清空，请重试")
     # 目录删除：不留自身索引记录（indexer.delete_file 已清理子文件）
 
 
@@ -214,11 +254,30 @@ def move_path(request: Request, body: MoveBody) -> dict:
     src = _guard_rel(root, src_rel)
     dst = _guard_rel(root, dst_rel)
     if src.is_dir():
-        if src_rel in _TOP_LEVEL:
-            raise HTTPException(status_code=400, detail="顶层目录不可移动")
+        # P0-3：目录形态同样禁止顶层目录或其路径归一化伪装
+        _require_business_top(root, src)
+        # P2-15：目录内附件被引用时不可移出（外部引用路径由身份相对性决定，
+        # 移动目录会让全部引用失效——与删除保护一致，命中引用返回 409）
+        src_rel_c = src.relative_to(root).as_posix()
+        if src_rel_c.startswith(config.DIR_ATTACHMENTS + "/"):
+            refs = referencing_docs(root, prefix=src_rel_c)
+            if refs:
+                total = sum(len(v) for v in refs.values())
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"目录内 {len(refs)} 个附件被 {total} 个文档引用，不可移动",
+                )
     elif src.is_file():
         if _top_of(src_rel) not in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_ATTACHMENTS):
             raise HTTPException(status_code=400, detail="不支持移动该类型文件")
+        # P2-15：被引用的附件文件不可移动/重命名（引用会失效）
+        if src_rel.startswith(config.DIR_ATTACHMENTS + "/"):
+            refs = referencing_docs(root, rel=src_rel)
+            if refs:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"附件被 {len(refs[src_rel])} 个文档引用，不可移动",
+                )
     else:
         raise HTTPException(status_code=404, detail="源路径不存在")
     if _top_of(src_rel) != _top_of(dst_rel):

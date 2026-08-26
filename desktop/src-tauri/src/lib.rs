@@ -7,11 +7,25 @@ mod menu;
 mod settings;
 mod sidecar;
 
-use tauri::Manager;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+use tauri::{Emitter, Manager};
+
+/// P1-14 关窗 flush 握手标记：第一次 CloseRequested 已 emit `ke:close-requested`
+/// （通知前端先 flush 未保存内容），第二次（前端已 flush 或用户再次点关闭）立即退出。
+/// 用静态标记避免重复 emit / 重复 prevent_close。
+static CLOSE_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // P1-12：多实例互斥（需在 setup 之前注册）。第二实例启动时回调聚焦已有主窗口后退出。
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(sidecar::SidecarState::default())
@@ -23,12 +37,22 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // M2 冒烟修复：cleanup_on_exit 内 taskkill 等待 + 最多 5s 轮询若在
-                // CloseRequested 处理器中同步执行，会长时间阻塞主线程、破坏 tao 的
-                // 窗口销毁流程（复现：sidecar 已清理完毕但主窗口残留不退出）。
-                // 改为 prevent_close + 隐藏窗口 + 后台线程清理，清理完成后强制退出。
-                api.prevent_close();
-                menu::request_exit(window.app_handle());
+                // P1-14 关窗 flush 握手：
+                // 第一次 CloseRequested → prevent_close + 隐藏窗口 + 通知前端 flush
+                // （`ke:close-requested`），并启动 1.5s 兜底定时器（后端已清理后强退）。
+                // 第二次（前端已 flush 或用户再次点关闭）→ 立即走统一退出清理。
+                if !CLOSE_REQUESTED.swap(true, Ordering::SeqCst) {
+                    api.prevent_close();
+                    let _ = window.hide();
+                    let _ = window.app_handle().emit("ke:close-requested", ());
+                    let app = window.app_handle().clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(Duration::from_millis(1500));
+                        menu::request_exit(&app);
+                    });
+                } else {
+                    menu::request_exit(window.app_handle());
+                }
             }
         })
         .on_menu_event(|app, event| menu::handle_event(app, event))

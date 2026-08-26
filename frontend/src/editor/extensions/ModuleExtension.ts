@@ -7,7 +7,7 @@
 import { mergeAttributes, Node, type JSONContent, type MarkdownToken } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import ModuleNodeView from '../../components/editor/nodeviews/ModuleNodeView'
-import { newId } from '../ke'
+import { keJson, KE_FIELD_ORDER, keStableId } from '../ke'
 import { keCommentTokenizer } from '../tokenizers'
 
 export interface ModuleAttrs {
@@ -104,16 +104,23 @@ export const ModuleExtension = Node.create({
   },
   renderMarkdown: ({ attrs }: JSONContent) => {
     const a = (attrs as ModuleAttrs) ?? ({} as ModuleAttrs)
-    // Phase 5 来源记录模式：插入模块生成的标记仅含 source（规范示例格式）。
-    // 旧文档标记（含 id/name/version 等）走下方兼容路径，不受影响。
-    if (a.source) {
+    // 仅 source 的标记（规范示例格式，无其它字段）：保持既有的「仅含 source」输出，
+    // 不强制扩充 kind/id（phase5 既有兼容预期）。
+    const hasOther =
+      a.id || a.name || a.version != null || (a.mode && a.mode !== 'card') || a.params != null
+    if (a.source && !hasOther) {
       return `<!-- ke-module: ${JSON.stringify({ source: a.source })} -->`
     }
-    const obj: Record<string, unknown> = { kind: 'module', id: a.id || newId() }
-    if (a.name) obj.name = a.name
-    if (a.version) obj.version = a.version
-    if (a.mode && a.mode !== 'card') obj.mode = a.mode
-    if (a.params) obj.params = a.params
-    return `<!-- ke-module: ${JSON.stringify(obj)} -->`
+    // P1-5 + P4-12：source 追加到字段对象（不再独占分支导致 id/name/version/params 丢失）；
+    // 输出保留 kind 字段；id 为空时用确定性 id（P4-1）。
+    const payload: Record<string, unknown> = {
+      id: a.id || keStableId(a as unknown as Record<string, unknown>, ['name', 'version', 'source', 'mode']),
+    }
+    if (a.name) payload.name = a.name
+    if (a.version != null) payload.version = a.version
+    if (a.mode && a.mode !== 'card') payload.mode = a.mode
+    if (a.params != null) payload.params = a.params
+    if (a.source) payload.source = a.source
+    return `<!-- ke-module: ${keJson(payload, 'module', KE_FIELD_ORDER.module)} -->`
   },
 })

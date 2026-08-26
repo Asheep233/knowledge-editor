@@ -7,9 +7,22 @@
  * - 网络 URL 与本地绝对路径保持原样，不参与附件收集（Phase 4 范围）。
  */
 
+/**
+ * 屏蔽 Markdown 中的代码片段（围栏代码块与行内代码），
+ * 使 `![...](Attachments/..)` 这类路径出现在代码里时不会被误判为真实附件引用（P3-14）。
+ * 只做字符串级屏蔽（用占位替换），不改动真实引用位置。
+ */
+function maskCodeRegions(md: string): string {
+  return md
+    .replace(/```[\s\S]*?```/g, (m) => m.replace(/[^\n]/g, ' ')) // 围栏代码块 → 保留空行，屏蔽内容
+    .replace(/`[^`\n]+`/g, ' ') // 行内代码 → 屏蔽
+}
+
 /** 从序列化 Markdown 中提取 workspace 附件相对路径（供文档包导出收集附件）。 */
 export function extractAttachmentRefs(md: string): string[] {
   const refs = new Set<string>()
+  // 先屏蔽代码区域，避免把代码中的 `![...](...)` 误判为附件引用（P3-14）
+  md = maskCodeRegions(md)
   const add = (src: string | undefined) => {
     if (!src) return
     let s = src.trim()

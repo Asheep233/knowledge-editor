@@ -1,9 +1,10 @@
 # KnowledgeEditor backend dependencies
-fastapi>=0.115,<1.0
-uvicorn[standard]>=0.30,<1.0
-pydantic>=2.7,<3.0
-python-multipart>=0.0.9,<1.0
+# P4-5：精确版本锁定（可复现构建）。升级依赖时同步更新本文件并全量跑通测试。
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+pydantic==2.13.4
+python-multipart==0.0.32
 
 # test
-pytest>=8.0,<9.0
-httpx>=0.27,<1.0
+pytest==8.4.2
+httpx==0.28.1

@@ -14,6 +14,14 @@ $svcDefs = @(
     @{ Name = 'frontend'; Port = 5173; Match = 'node_modules\vite\bin\vite.js' }
 )
 
+# P1-12：判断进程命令行是否匹配本项目特征（防止 PID 复用后误杀无关进程）。
+function Test-OurCmdline {
+    param([int]$ProcessId, [string]$Match)
+    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
+    if (-not $proc -or -not $proc.CommandLine) { return $false }
+    return ($proc.CommandLine -like "*$Match*")
+}
+
 $anyStopped = $false
 
 # ---------- 1) 按 runtime 记录停止（start.ps1 启动的进程） ----------
@@ -30,8 +38,14 @@ if (Test-Path $runtimeFile) {
             $rec = $runtime.$svc
             if (-not $rec -or -not $rec.pid) { continue }
             $procId = [int]$rec.pid
+            $matchPattern = ($svcDefs | Where-Object { $_.Name -eq $svc }).Match
 
             if (Get-Process -Id $procId -ErrorAction SilentlyContinue) {
+                # P1-12：停止前校验命令行，避免 PID 复用后误杀无关进程。
+                if (-not (Test-OurCmdline -ProcessId $procId -Match $matchPattern)) {
+                    Write-Host "  $svc PID=$procId 存活但命令行不含 '$matchPattern'（PID 可能复用），跳过不杀。" -ForegroundColor Yellow
+                    continue
+                }
                 # 优先 taskkill 停止整个进程树（vite 经 npm 启动，node 为子进程）；
                 # taskkill 不可用（受限环境）时回退 Stop-Process 停止主进程
                 $tk = Get-Command taskkill -ErrorAction SilentlyContinue

@@ -111,7 +111,35 @@ fn is_alive(pid: u32) -> bool {
         .unwrap_or(false)
 }
 
-/// 旧进程清理：扫描 runtime.json 中的 backend.pid，存活则整树停止；随后删除记录文件。
+/// P1-12：判断指定 PID 是否为本项目 sidecar（命令行含 `knowledgeeditor-backend`）。
+/// Windows 用 Get-CimInstance 读取 CommandLine，防止 PID 复用后误杀无关进程；
+/// 非 Windows 平台无 taskkill 强杀语义，退化为「PID 存活即可」的原逻辑并在注释说明。
+#[cfg(windows)]
+fn is_backend_process(pid: u32) -> bool {
+    let script = format!("(Get-CimInstance Win32_Process -Filter \"ProcessId={pid}\").CommandLine");
+    let out = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output();
+    match out {
+        Ok(o) => {
+            let cmd = String::from_utf8_lossy(&o.stdout).to_lowercase();
+            cmd.contains("knowledgeeditor-backend")
+        }
+        Err(_) => false,
+    }
+}
+
+#[cfg(not(windows))]
+fn is_backend_process(_pid: u32) -> bool {
+    // 非 Windows：不读取进程命令行，退化为「存活即可」逻辑（无法用 taskkill /T 杀树）。
+    true
+}
+
+/// 旧进程清理：扫描 runtime.json 中的 backend.pid，存活且命令行确为本项目 sidecar 时整树停止；
+/// 命令行不匹配（PID 复用/已被替换）则只删记录、不杀进程。随后删除记录文件。
 /// 端口兜底由 find_free_port 隐式完成（被占则换端口，不误杀无关服务）。
 fn cleanup_stale() {
     if let Some(runtime) = read_runtime() {
@@ -120,8 +148,15 @@ fn cleanup_stale() {
             .and_then(|b| b.get("pid"))
             .and_then(|p| p.as_u64())
         {
-            if is_alive(pid as u32) {
-                kill_tree(pid as u32);
+            let pid = pid as u32;
+            if is_alive(pid) {
+                if is_backend_process(pid) {
+                    kill_tree(pid);
+                } else {
+                    eprintln!(
+                        "[sidecar] PID {pid} 存活但命令行不含 knowledgeeditor-backend，跳过强杀（仅清理 stale 记录）"
+                    );
+                }
             }
         }
     }
@@ -150,7 +185,8 @@ fn write_runtime(pid: u32, port: u16, started_at: &str, version: &str) {
     }
 }
 
-/// 轮询 /api/health 直到 status=ok 或超时。返回 health 响应体（含 version/started_at）。
+/// 轮询 /api/health 直到 status=ok 且含 version 字段或超时。返回 health 响应体。
+/// P3-13：校验响应体含 `version`（应用标识），避免「端口被巧合占用」时握手到一个无关服务。
 fn wait_health(port: u16) -> Result<serde_json::Value, String> {
     let url = format!("http://127.0.0.1:{port}/api/health");
     let deadline = Instant::now() + HEALTH_TIMEOUT;
@@ -164,10 +200,12 @@ fn wait_health(port: u16) -> Result<serde_json::Value, String> {
                 match resp.into_string() {
                     Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
                         Ok(body) => {
-                            if body.get("status").and_then(|s| s.as_str()) == Some("ok") {
+                            let is_ke = body.get("status").and_then(|s| s.as_str()) == Some("ok")
+                                && body.get("version").and_then(|v| v.as_str()).is_some();
+                            if is_ke {
                                 return Ok(body);
                             }
-                            last_err = format!("health status != ok: {body}");
+                            last_err = format!("health 响应缺少 KE 标识: {body}");
                         }
                         Err(_) => last_err = "health 响应不是合法 JSON".into(),
                     },
@@ -263,7 +301,9 @@ fn spawn_sidecar(
             Ok((child, rx, info))
         }
         Err(_) => {
-            let _ = child.kill();
+            // P2-19：健康检查失败时应整树停止（PyInstaller onefile 中 bootloader 会再拉起子进程，
+            // 只杀 child 会留下孤儿进程），改按 PID 树 kill。
+            let _ = kill_tree(child.pid());
             // 读取 stderr 后 30 行用于诊断（事件循环刚启动，直接从 rx 短暂读取）
             let mut stderr_lines = Vec::new();
             while let Ok(event) = rx.try_recv() {
@@ -280,6 +320,28 @@ fn spawn_sidecar(
                 tail.join(" | ")
             ))
         }
+    }
+}
+
+/// 后台日志文件：%APPDATA%\KnowledgeEditor\logs\backend.log（P2-10 桌面 release 零日志）。
+fn backend_log_path() -> PathBuf {
+    data_dir().join("logs").join("backend.log")
+}
+
+/// 将侧车一行输出追加写盘（带时间戳，目录不存在则创建）。
+/// 保留 eprintln 供控制台（dev / 排障），同时落盘保证 release 无控制台时也有日志。
+fn log_backend(line: &str) {
+    use std::io::Write;
+    let path = backend_log_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = writeln!(f, "[{ts}] {line}");
     }
 }
 
@@ -301,6 +363,7 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                     for line in text.lines() {
                         if !line.trim().is_empty() {
                             eprintln!("[sidecar] {line}");
+                            log_backend(line);
                         }
                     }
                 }
@@ -323,8 +386,15 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                             "[sidecar] 进程异常退出（code={:?} signal={:?}），1s 后自动拉起（第 {}/{} 次）",
                             payload.code, payload.signal, restarts + 1, MAX_CRASH_RESTARTS
                         );
+                        // P2-19/P3-13：崩溃后原端口可能已被其他进程占用，重启前重新探测端口，
+                        // 避免「固定旧端口」导致拉起即绑定失败。
+                        let base = std::env::var("KE_PORT")
+                            .ok()
+                            .and_then(|p| p.parse::<u16>().ok())
+                            .unwrap_or(DEFAULT_PORT);
+                        let next_port = find_free_port(base, MAX_PORT_ATTEMPTS).unwrap_or(port);
                         std::thread::sleep(Duration::from_secs(1));
-                        match watch_sidecar(app_clone.clone(), port, restarts + 1) {
+                        match watch_sidecar(app_clone.clone(), next_port, restarts + 1) {
                             Ok(()) => {}
                             Err(e) => {
                                 eprintln!("[sidecar] 自动拉起失败: {e}");

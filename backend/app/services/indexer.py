@@ -1,10 +1,12 @@
 """Workspace 扫描与索引重建（决策点 3：Markdown 唯一事实源，索引可重建）。
 
-- rebuild(): 全量清空重建 files + files_fts
+- rebuild(): 全量清空重建 files + files_fts（P2-6：单事务原子提交）
 - update_file(): 单文件增量更新（保存/删除时调用）
+- reconcile(): 启动/切库增量校验（P3-3：磁盘扫描签名一致时跳过全量重建）
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -23,6 +25,9 @@ _SCAN_DIRS = {
 _DOC_EXTS = {".md", ".markdown"}
 _SKIP_NAMES = {".gitkeep"}
 
+# 扫描签名存储键（P3-3：{rel: (size, mtime_ns)} 的哈希与统计）
+_SIGNATURE_KEY = "index_scan_signature"
+
 
 def _title_of(rel_path: str, meta: dict, content: str) -> str:
     title = (meta.get("title") or "").strip()
@@ -36,14 +41,34 @@ def _title_of(rel_path: str, meta: dict, content: str) -> str:
     return Path(rel_path).stem
 
 
+def _disk_scan_snapshot(root: Path) -> dict[str, tuple[int, int]]:
+    """磁盘快照（stat 级，不读内容）：{rel: (size, mtime_ns)}。"""
+    snap: dict[str, tuple[int, int]] = {}
+    for rel, _kind in _SCAN_DIRS.items():
+        base = root / rel
+        if not base.exists():
+            continue
+        for p in markdown_io.walk_files(base):
+            try:
+                st = p.stat()
+            except OSError:
+                continue
+            snap[p.relative_to(root).as_posix()] = (st.st_size, st.st_mtime_ns)
+    return snap
+
+
+def _signature(snap: dict[str, tuple[int, int]]) -> str:
+    return json.dumps(snap, ensure_ascii=False, sort_keys=True)
+
+
 def _scan(root: Path, rel: str, kind: str) -> list[dict]:
-    """扫描单个顶层目录，返回待 upsert 的记录。"""
+    """扫描单个顶层目录，返回待 upsert 的记录（P1-17：跳过符号链接/Junction）。"""
     base = root / rel
     if not base.exists():
         return []
     records = []
-    for p in sorted(base.rglob("*")):
-        if not p.is_file() or p.name in _SKIP_NAMES:
+    for p in sorted(markdown_io.walk_files(base)):
+        if p.name in _SKIP_NAMES:
             continue
         rel_path = p.relative_to(root).as_posix()
         if kind == "attachment":
@@ -88,22 +113,49 @@ class WorkspaceIndexer:
         self.root = Path(root).resolve()
 
     def rebuild(self) -> dict:
-        """全量重建索引。返回统计信息。"""
-        self.store.clear_files()
+        """全量重建索引，单事务原子提交（P2-6）；返回统计信息。
+
+        重建完成后记录磁盘扫描签名（P3-3：下次启动可跳过全量重建）。
+        """
         counts = {"document": 0, "module": 0, "attachment": 0}
-        for rel, kind in _SCAN_DIRS.items():
-            for rec in _scan(self.root, rel, kind):
-                self.store.upsert_file(
-                    rel_path=rec["rel_path"],
-                    kind=rec["kind"],
-                    title=rec["title"],
-                    content=rec["content"],
-                    content_hash=rec["content_hash"],
-                    size=rec["size"],
-                    tags=rec["tags"],
-                    meta=rec["meta"],
-                )
-                counts[kind] += 1
+        with self.store.batch():
+            self.store.clear_files()
+            for rel, kind in _SCAN_DIRS.items():
+                for rec in _scan(self.root, rel, kind):
+                    self.store.upsert_file(
+                        rel_path=rec["rel_path"],
+                        kind=rec["kind"],
+                        title=rec["title"],
+                        content=rec["content"],
+                        content_hash=rec["content_hash"],
+                        size=rec["size"],
+                        tags=rec["tags"],
+                        meta=rec["meta"],
+                    )
+                    counts[kind] += 1
+            self.store.set_setting(_SIGNATURE_KEY, _signature(_disk_scan_snapshot(self.root)))
+        return counts
+
+    def reconcile(self) -> dict:
+        """启动/切库增量校验（P3-3）。
+
+        磁盘扫描签名（size+mtime_ns 集合）与上次重建时一致 → 跳过全量
+        重建仅返回现有统计；不一致 → 全量重建。签名校验只 stat 不读
+        内容，代价远低于逐文件解析/upsert。
+        """
+        snap = _disk_scan_snapshot(self.root)
+        sig = self.store.get_setting(_SIGNATURE_KEY)
+        if sig == _signature(snap):
+            return self._counts()
+        return self.rebuild()
+
+    def _counts(self) -> dict:
+        """当前索引统计（与 rebuild 返回结构一致：document/module/attachment）。"""
+        counts = {"document": 0, "module": 0, "attachment": 0}
+        for kind in counts:
+            n = self.store.count_files(kind)
+            if n is not None:
+                counts[kind] = n
         return counts
 
     def update_file(self, rel_path: str) -> None:
@@ -157,7 +209,7 @@ class WorkspaceIndexer:
             self.update_file(rel)
 
     def _list_files_under(self, rel: str) -> list[str]:
-        """列出 rel（文件或目录）下的全部文件相对路径（跳过 .gitkeep）。"""
+        """列出 rel（文件或目录）下的全部文件相对路径（跳过 .gitkeep，P1-17）。"""
         full = markdown_io.safe_rel_path(self.root, rel)
         if full is None or not full.exists():
             return []
@@ -165,6 +217,6 @@ class WorkspaceIndexer:
             return [full.relative_to(self.root).as_posix()]
         return [
             p.relative_to(self.root).as_posix()
-            for p in sorted(full.rglob("*"))
-            if p.is_file() and p.name not in _SKIP_NAMES
+            for p in sorted(markdown_io.walk_files(full))
+            if p.name not in _SKIP_NAMES
         ]

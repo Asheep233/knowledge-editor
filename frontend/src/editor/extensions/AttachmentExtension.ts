@@ -6,7 +6,7 @@
 import { mergeAttributes, Node, type JSONContent, type MarkdownToken } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import AttachmentNodeView from '../../components/editor/nodeviews/AttachmentNodeView'
-import { KE_FIELD_ORDER, keJson, newId } from '../ke'
+import { KE_FIELD_ORDER, keJson, keStableId } from '../ke'
 import { keCommentTokenizer } from '../tokenizers'
 
 export interface AttachmentAttrs {
@@ -93,7 +93,8 @@ export const AttachmentExtension = Node.create({
   },
   renderMarkdown: ({ attrs }: JSONContent) => {
     const a = (attrs as AttachmentAttrs) ?? ({} as AttachmentAttrs)
-    const payload: Record<string, unknown> = { ...a, id: a.id || newId() }
+    // P4-1：无 id 时用关键字段生成确定性 id（同内容多次序列化一致）
+    const payload: Record<string, unknown> = { ...a, id: a.id || keStableId(a as unknown as Record<string, unknown>, ['src', 'type', 'title']) }
     return `<!-- ke-attach: ${keJson(payload, 'attach', KE_FIELD_ORDER.attach)} -->`
   },
 })

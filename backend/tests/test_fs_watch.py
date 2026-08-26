@@ -73,7 +73,9 @@ def test_events_since_cursor(client, paused_watcher):
     paused_watcher.sniff()
     before = client.get("/api/fs/events", params={"since": 0}).json()
     since = before["last_seq"]
-    rel = _mk_doc(client, "游标事件")
+    # 直接写盘（外部创建）——自身 API 创建已被内部标记抑制（P2-20 语义）
+    rel = "Articles/游标事件.md"
+    (_ws(client) / rel).write_text("# 游标事件", encoding="utf-8")
     paused_watcher.sniff()
     after = client.get("/api/fs/events", params={"since": since}).json()
     assert any(e["rel"] == rel and e["type"] == "created" for e in after["events"])

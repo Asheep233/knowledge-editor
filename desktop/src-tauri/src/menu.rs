@@ -2,15 +2,16 @@
 //!
 //! 菜单动作对前端经 Tauri 事件广播（`ke-menu:*`），前端 App.tsx 监听后
 //! 复用既有 handler（新建文档 / 打开工作区 / 打开最近）。
-//! 「最近」子菜单在启动时从 app_config.json 读取（sidecar 写入的唯一来源），
-//! 最多展示 8 条；「关于」对话框版本取自后端 runtime 上报（三同步常量）。
+//! 「最近」子菜单不固化为启动时的静态列表（P3-21：启动构建会过期），而是仅提供
+//! 一个「最近工作区…」触发项，点击后 emit `ke-menu:refresh-recent`，由前端从后端
+//! 拉取最新的 recent_workspaces 并展示/打开——最近列表的所有权在前端。
+//! 「关于」对话框版本取自后端 runtime 上报（三同步常量）。
 
-use serde_json::json;
 use tauri::menu::{IsMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, Wry};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
-use crate::sidecar::{cleanup_on_exit, data_dir, SidecarState};
+use crate::sidecar::{cleanup_on_exit, SidecarState};
 
 /// 菜单项 ID（同时作为广播到前端的事件名）
 const MID_NEW: &str = "ke-menu:new-document";
@@ -20,10 +21,8 @@ const MID_RELOAD: &str = "ke-menu:reload";
 #[cfg(debug_assertions)]
 const MID_DEVTOOLS: &str = "ke-menu:devtools";
 const MID_ABOUT: &str = "ke-menu:about";
-
-/// 最近记录项 ID 前缀：`recent:<path>`
-const RECENT_PREFIX: &str = "recent:";
-const RECENT_MAX: usize = 8;
+/// P3-21：「最近」触发项（点击后由前端拉取最近列表，避免启动时静态列表过期）。
+const MID_RECENT: &str = "ke-menu:refresh-recent";
 
 /// 构建并挂载主菜单
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
@@ -105,6 +104,10 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
         MID_OPEN_WS => {
             let _ = app.emit(MID_OPEN_WS, ());
         }
+        // P3-21：最近列表由前端维护，菜单只通知前端刷新并展示。
+        MID_RECENT => {
+            let _ = app.emit(MID_RECENT, ());
+        }
         MID_EXIT => request_exit(app),
         MID_RELOAD => {
             if let Some(w) = app.get_webview_window("main") {
@@ -118,11 +121,7 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
             }
         }
         MID_ABOUT => show_about(app),
-        _ => {
-            if let Some(path) = id.strip_prefix(RECENT_PREFIX) {
-                let _ = app.emit("ke-menu:open-recent", json!({ "path": path }));
-            }
-        }
+        _ => {}
     }
 }
 
@@ -139,47 +138,15 @@ pub fn request_exit(app: &AppHandle) {
     });
 }
 
-/// 构建「最近」子菜单（动态填充 app_config.json 中的 recent_workspaces）
+/// 构建「最近」子菜单：单一触发项，点击后 emit `ke-menu:refresh-recent`。
+/// 最近工作区列表由前端从后端拉取（recent_workspaces），原生菜单不再捕获启动时的静态列表。
 fn build_recent_submenu(app: &AppHandle) -> tauri::Result<Submenu<Wry>> {
-    let paths = read_recent_paths();
-    let items = paths
-        .iter()
-        .take(RECENT_MAX)
-        .map(|p| MenuItem::with_id(app, format!("{RECENT_PREFIX}{p}"), p, true, None::<&str>))
-        .collect::<tauri::Result<Vec<_>>>()?;
-
-    if items.is_empty() {
-        return Submenu::with_items(
-            app,
-            "最近",
-            true,
-            &[&MenuItem::with_id(
-                app,
-                "recent:placeholder",
-                "（暂无最近记录）",
-                false,
-                None::<&str>,
-            )?],
-        );
-    }
-
-    let refs: Vec<&dyn IsMenuItem<Wry>> = items.iter().map(|i| i as &dyn IsMenuItem<Wry>).collect();
-    Submenu::with_items(app, "最近", true, &refs)
-}
-
-/// 从 app_config.json 读取最近工作区路径
-fn read_recent_paths() -> Vec<String> {
-    let path = data_dir().join("app_config.json");
-    let Ok(text) = std::fs::read_to_string(path) else {
-        return Vec::new();
-    };
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
-        return Vec::new();
-    };
-    v.get("recent_workspaces")
-        .and_then(|r| r.as_array())
-        .map(|arr| arr.iter().filter_map(|it| it.as_str().map(String::from)).collect())
-        .unwrap_or_default()
+    Submenu::with_items(
+        app,
+        "最近",
+        true,
+        &[&MenuItem::with_id(app, MID_RECENT, "最近工作区…", true, None::<&str>)?],
+    )
 }
 
 /// 关于对话框：版本取自后端 runtime 上报（三同步常量），fallback 桌面壳版本

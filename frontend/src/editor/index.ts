@@ -11,6 +11,8 @@
 import { useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
+import { history } from '@tiptap/pm/history'
+import { EditorState } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
 import { MathExtension } from './extensions/MathExtension'
 import { MathBlockExtension } from './extensions/MathBlockExtension'
@@ -27,6 +29,7 @@ import {
   TableHeader,
 } from './extensions/TableMarkdownExtension'
 import { GenericFallbackExtension, GenericFallbackInlineExtension } from './extensions/GenericFallbackExtension'
+import { HtmlPassthroughExtension, HtmlPassthroughInlineExtension } from './extensions/HtmlPassthroughExtension'
 import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
 import { uploadAttachment } from '../api/client'
 import { attachmentNode, isRealFile } from './upload'
@@ -76,9 +79,13 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
         // 注：StarterKit v3 不含 image 扩展，图片由 ImageMarkdownExtension 提供
         // （补标准 ![]() 的双向转换）。
       }),
+      // 普通 HTML 保真（P1-2）：注释 / HTML 块原样保留。放在最前（最后执行），
+      // 且只命中非 ke-* 的注释与块级元素，不会抢占具体 ke-* tokenizer。
+      HtmlPassthroughExtension,
+      HtmlPassthroughInlineExtension,
       // 兜底必须先注册（@tiptap/markdown 用 marked.use + unshift 注册 tokenizer：
       // 后注册的先执行）。因此 fallback 放在最前，确保具体 ke-* tokenizer 先执行，
-      // fallback 只兜底未知 kind（且 tokenizer 正则含负向前瞻排除已知 kind，双保险）。
+      // fallback 只兜底未知 kind 与损坏 JSON 的已知 kind。
       GenericFallbackExtension,
       GenericFallbackInlineExtension,
       // 标准 Markdown 图片：![alt](src)
@@ -145,7 +152,47 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
   })
 }
 
-/** 文档切换时重新载入 Markdown 内容 */
+/** `Branch.empty` 为 prosemirror-history 的模块级常量，只需捕获一次即可复用。 */
+let emptyHistoryBranch: unknown
+
+/**
+ * 清空 undo/redo 历史栈（P0-4）。
+ * `setContent` 的重置交易默认进入 undo 栈，导致切换文档后 Ctrl+Z 把上一文档内容
+ * 灌进当前文档。这里通过向 history 插件注入一份「空历史状态」元数据，把 undo/redo
+ * 栈一并清空（后续用户输入仍会正常记录）。
+ */
+function clearUndoRedoHistory(editor: Editor): void {
+  const histPlugin = editor.state.plugins.find((p) => {
+    const s = p.getState(editor.state) as Record<string, unknown> | undefined
+    return !!s && typeof s === 'object' && 'done' in s && 'undone' in s && 'prevTime' in s
+  })
+  if (!histPlugin) return
+  if (emptyHistoryBranch === undefined) {
+    // 用一个临时状态实例读取 history 插件的初始状态，拿到规整的 `Branch.empty`。
+    const temp = EditorState.create({ schema: editor.schema, plugins: [history()] })
+    emptyHistoryBranch = temp.plugins[0].getState(temp)?.done
+  }
+  if (emptyHistoryBranch === undefined) return
+  // 0-step 交易：仅重写 history 插件状态，不改动文档，不会触发 update 事件。
+  const tr = editor.state.tr
+  // histPlugin.key 是 history 插件的 PluginKey，向交易写入其历史状态元数据即可重置 undo/redo 栈。
+  const historyKey = (histPlugin as unknown as { key: unknown }).key
+  tr.setMeta(historyKey as never, {
+    historyState: {
+      done: emptyHistoryBranch,
+      undone: emptyHistoryBranch,
+      prevRanges: null,
+      prevTime: 0,
+      prevComposition: -1,
+    },
+  })
+  editor.view.dispatch(tr)
+}
+
+/** 文档切换时重新载入 Markdown 内容。
+ * - P0-4：加载后清空 undo/redo 历史，避免 Ctrl+Z 跨文档串内容；
+ * - P1-1：`emitUpdate: false` 抑制加载触发的 update（「打开文档即保存」消失）。 */
 export function setKeContent(editor: Editor, markdown: string): void {
-  editor.commands.setContent(markdown, { contentType: 'markdown' })
+  editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
+  clearUndoRedoHistory(editor)
 }

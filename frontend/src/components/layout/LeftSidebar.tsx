@@ -4,7 +4,7 @@
  * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（二次确认）、移动
  * - 模块 / 附件：点击打开
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   attachmentUrl,
   clearRecentDocuments,
@@ -48,6 +48,8 @@ const TOP_ARTICLES = 'Articles'
 
 export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, onFsMutation }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
+  // P2-8：文件树加载失败不再是「空」，而是明确错误提示
+  const [treeError, setTreeError] = useState(false)
   const [recent, setRecent] = useState<RecentDocument[]>([])
   const [tags, setTags] = useState<TagInfo[]>([])
   const [activeTag, setActiveTag] = useState<string | null>(null)
@@ -64,10 +66,12 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
 
   // ---------- 数据加载 ----------
   const loadTree = useCallback(async () => {
+    setTreeError(false)
     try {
       setTree(await getTree())
     } catch {
-      /* workspace 未打开等情况由 App 兜底 */
+      // P2-8：workspace 未打开等情况由 App 兜底；此处区分「加载失败」而非显示为空
+      setTreeError(true)
     }
   }, [])
 
@@ -352,9 +356,11 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
     )
   }
 
-  const articlesTree = buildFileTree(tree?.articles ?? [])
+  // P3-15: buildFileTree 依赖树数据 memo 化——每次 App 因击键重渲染时树数据未变，
+  // 复用上次结果，避免每次击键都重建文件树（性能项）。
+  const articlesTree = useMemo(() => buildFileTree(tree?.articles ?? []), [tree?.articles])
   // Phase 5：模块同样按文件夹分类展示（Modules/Math/Definition.md -> Math/Definition）
-  const modulesTree = buildFileTree(tree?.modules ?? [])
+  const modulesTree = useMemo(() => buildFileTree(tree?.modules ?? []), [tree?.modules])
 
   // ---------- 渲染 ----------
   return (
@@ -497,8 +503,13 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
             ＋ 新建
           </button>
         }>
-          {articlesTree.length === 0 && <Empty text="暂无文章" />}
-          {articlesTree.map((n) => renderNode(n, 0))}
+          {treeError ? (
+            <LoadError onRetry={() => void loadTree()} />
+          ) : articlesTree.length === 0 ? (
+            <Empty text="暂无文章" />
+          ) : (
+            articlesTree.map((n) => renderNode(n, 0))
+          )}
         </Section>
 
         {/* 模块（Phase 5：文件夹分类 + 文件树管理，双击/单击在编辑器打开） */}
@@ -511,8 +522,13 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
             ＋ 新建
           </button>
         }>
-          {modulesTree.length === 0 && <Empty text="暂无模块" />}
-          {modulesTree.map((n) => renderNode(n, 0))}
+          {treeError ? (
+            <LoadError onRetry={() => void loadTree()} />
+          ) : modulesTree.length === 0 ? (
+            <Empty text="暂无模块" />
+          ) : (
+            modulesTree.map((n) => renderNode(n, 0))
+          )}
         </Section>
 
         {/* 附件（点击打开） */}
@@ -605,6 +621,22 @@ function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
 
 function Empty({ text }: { text: string }) {
   return <div className="px-3 py-1 text-[11px] text-gray-300">{text}</div>
+}
+
+/** P2-8：加载失败不再当作「空」显示，而是给出明确错误 + 重试入口 */
+function LoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="px-2 py-1 text-[11px] text-rose-500">
+      加载失败，请重试
+      <button
+        type="button"
+        onClick={onRetry}
+        className="ml-1 text-blue-600 hover:underline"
+      >
+        重试
+      </button>
+    </div>
+  )
 }
 
 function kindLabel(kind: string): string {

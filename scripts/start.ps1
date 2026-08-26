@@ -30,6 +30,14 @@ function Get-PortOwner {
     return $null
 }
 
+# P1-12：判断进程命令行是否匹配本项目特征（防止 PID 复用后强杀无关进程）。
+function Test-OurCmdline {
+    param([int]$ProcessId, [string]$Match)
+    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
+    if (-not $proc -or -not $proc.CommandLine) { return $false }
+    return ($proc.CommandLine -like "*$Match*")
+}
+
 function Read-Runtime {
     if (-not (Test-Path $runtimeFile)) { return $null }
     try { return (Get-Content $runtimeFile -Raw | ConvertFrom-Json) }
@@ -91,25 +99,37 @@ if ($envErrors.Count -gt 0) {
 }
 Write-Host '    Python / venv / 依赖 / Node / npm / node_modules 全部就绪' -ForegroundColor Green
 
-# ---------- 2) 旧进程检测与清理（以 runtime 记录为唯一依据） ----------
+# ---------- 2) 旧进程检测与清理（以 runtime 记录为唯一依据，P1-12 增命令行校验） ----------
 Write-Host '==> [1/4] 旧进程检测' -ForegroundColor Cyan
 $stoppedPids = @()
 $runtime = Read-Runtime
 if ($runtime) {
     $found = $false
     if ($runtime.backend -and (Test-Alive ([int]$runtime.backend.pid))) {
-        $found = $true
-        Write-Host "    发现旧 backend   PID=$($runtime.backend.pid)  端口=$($runtime.backend.port)  启动于 $($runtime.backend.started_at)"
-        Stop-Process -Id ([int]$runtime.backend.pid) -Force -ErrorAction SilentlyContinue
-        $stoppedPids += [int]$runtime.backend.pid
-        Write-Host '      -> 已停止（本项目记录进程）' -ForegroundColor Green
+        $procId = [int]$runtime.backend.pid
+        if (Test-OurCmdline -ProcessId $procId -Match 'uvicorn app.main:app') {
+            $found = $true
+            Write-Host "    发现旧 backend   PID=$procId  端口=$($runtime.backend.port)  启动于 $($runtime.backend.started_at)"
+            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            $stoppedPids += $procId
+            Write-Host '      -> 已停止（本项目记录进程）' -ForegroundColor Green
+        }
+        else {
+            Write-Host "    记录中的 backend PID=$procId 存活但命令行不匹配，仅清记录不杀进程。" -ForegroundColor Yellow
+        }
     }
     if ($runtime.frontend -and (Test-Alive ([int]$runtime.frontend.pid))) {
-        $found = $true
-        Write-Host "    发现旧 frontend  PID=$($runtime.frontend.pid)  端口=$($runtime.frontend.port)  启动于 $($runtime.frontend.started_at)"
-        Stop-Process -Id ([int]$runtime.frontend.pid) -Force -ErrorAction SilentlyContinue
-        $stoppedPids += [int]$runtime.frontend.pid
-        Write-Host '      -> 已停止（本项目记录进程）' -ForegroundColor Green
+        $procId = [int]$runtime.frontend.pid
+        if (Test-OurCmdline -ProcessId $procId -Match 'node_modules\vite\bin\vite.js') {
+            $found = $true
+            Write-Host "    发现旧 frontend  PID=$procId  端口=$($runtime.frontend.port)  启动于 $($runtime.frontend.started_at)"
+            Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            $stoppedPids += $procId
+            Write-Host '      -> 已停止（本项目记录进程）' -ForegroundColor Green
+        }
+        else {
+            Write-Host "    记录中的 frontend PID=$procId 存活但命令行不匹配，仅清记录不杀进程。" -ForegroundColor Yellow
+        }
     }
     if (-not $found) {
         Write-Host '    记录中的进程均未在运行（可能已手动退出）' -ForegroundColor Yellow

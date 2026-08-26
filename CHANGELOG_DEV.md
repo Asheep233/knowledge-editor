@@ -815,3 +815,37 @@
 影响范围：无代码变更；决策冻结后 Phase 7 按 `docs/phase7-plan.md` 执行，M0 开工。
 
 验证：文档更新与已核实事实一致（Tauri NSIS 模板含 `MUI_PAGE_DIRECTORY`；`installMode` 三模式语义；卸载器 app data 复选框）。
+
+## 2026-08-26（v1.0.1 修复批次：P0×4 / P1×17 / P2×20 / P3×21 / P4×13 全量执行）
+
+### 依据：9 份独立审计报告整合清单（knowledge-editor-fix-checklist.md）
+
+类型：Bugfix（阻断级：保存丢数据 / 整库删除 / 跨文档串内容）
+状态：Completed（本地修复完成，未推送 GitHub）
+
+#### P0 阻断级（4/4）
+- P0-1 保存清空 frontmatter：后端 `update_article` 改无损合并（`merge_frontmatter` 原始行合并，含嵌套 YAML/注释）；前端 `withFrontmatter` 改合并语义仅更新 ke_version。回归：`test_p01_*` + fidelity P0-1
+- P0-2 防抖窗口输入静默丢失：前端 per-doc 单飞保存队列（state/saveQueue）+ 统一 `requestOpenArticle` 入口（dirty 先 flush/confirm）+ beforeunload + Tauri 关窗握手（Rust emit `ke:close-requested` → 前端 flush → close()）
+- P0-3 DELETE /api/fs/dir 整库删除：`safe_rel_path` 显式拒绝根路径等价输入（"."/""/"/"/"Articles/.."）；delete_dir/rename_dir/move 增加业务目录父级断言
+- P0-4 切换文档 Ctrl+Z 跨文档串内容：`setKeContent` 清空 undo/redo 历史（prosemirror-history 状态重写）
+
+#### P1 高优先（17/17）
+打开即保存（emitUpdate:false）、HTML 注释/块保真（HtmlPassthroughExtension）、已知 kind 坏 JSON 兜底、表格 \| 转义/行内富文本/合并单元格禁用、module source 字段合并（含 kind）、保存单飞队列（乱序合并）、请求序号（openWithSeq/shouldAcceptSave）、外部修改 stale closure（articleIdRef）、SQLite RLock + 批量事务、API 路径白名单（doc/attachment/history/draft 负向矩阵）、删除前强制快照 + restore 重建已删文档、单实例插件 + 命令行校验杀进程、30s 运行时握手（ke:runtime-ready）、关窗 flush + recovery 目录扫描优先、SVG/HTML attachment 强转 + shell 权限移除 + 最小 CSP、CI 三重失效修复（master/跨平台 esbuild/Windows job/可复现构建+hash manifest）、symlink/Junction 递归越界（walk_files/walk_dirs 全链路替换）
+
+#### P2 中等（20/20）
+frontmatter 非完整 YAML（BOM/CRLF/嵌套对象无损）、非 UTF-8 422、快照同毫秒单调、快照失败不阻塞、上传/导入配额与 zip 实际字节计、重建单事务、设置死开关接线（restoreLastState/autoOpenRecentWorkspace）、错误状态区分（classifyLoadState）、WorkspacePicker 走 apiBase、release 日志落盘（logs/backend.log）、atomic_write fsync、settings/app_config 随机 tmp+锁、watcher 增量 reindex、草稿名含哈希防冲突、fs move/delete 附件引用保护、TrustedHost + KE_API_TOKEN、脚注 } --> 平衡匹配、保护目录大小写不敏感、崩溃重启重探测端口+整树杀+health 身份校验、上传后 mark_internal
+
+#### P3 低优（21 项中 19 项落地）
+Windows 保留名/尾点超长 slugify、增量索引校验（reconcile 签名）、搜索通配符转义+FTS 短语回退、外部删除当前文档、恢复检测重试+入口、workspace_create 文件路径 400、symlink 索引、restore 响应补元信息、frontmatter title 接线、导入引用改写仅命中字面量（代码块/URL 掩码）、buildFileTree memo、U+200B 保存剥除、测试 include .tsx、conftest 函数级隔离、OpenAPI schema 快照、拖拽插入竞态（shouldInsertDroppedFiles）、最近菜单动态化、运行时握手。
+未落地（已注明）：P3-2 解析性能门槛（超线性解析）、P3-4 watcher 改 ReadDirectoryChangesW（保持轮询，性能项单独排期）。
+
+#### P4 整理项（13 项中 11 项落地）
+stable id（keStableId）、repro-main 移除、错误信息去绝对路径、requirements 版本锁定、签名脚本（KE_SIGN_CERT_THUMBPRINT 可选）、start.bat UTF-8、modules 含 .markdown、规范文档关系声明（P4-10）、~下标~ 说明、module source kind、大纲 Tab 实现。
+未落地（已注明）：P4-2 深色主题仅 color-scheme 兜底（UI 主题工作量，单独排期）、P4-7 前端主包代码分割（mathlive/katex 拆 chunk，构建优化单独排期）。
+
+#### 验证结果
+- backend：157 passed / 2 skipped（symlink 需管理员权限，Windows 跳过）——含 41 个新增回归用例
+- frontend：155 passed（20 文件）——含 85 个新增用例（fidelity 25 + state 58 + 其它）
+- 桌面 Rust 改动未编译验证（本机无 cargo）：lib.rs/menu.rs/sidecar.rs/settings.rs 均经代码评审自查；PowerShell 三脚本语法校验通过；ke-vite.mjs 在 Linux 实跑通过
+
+影响范围：前后端 + 桌面壳 + CI + 文档；数据格式（Markdown）无破坏性变化。

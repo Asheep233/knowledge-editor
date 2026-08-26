@@ -28,7 +28,13 @@ import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
 import { isDesktop, pickDirectory } from './desktop'
-import { applyTheme, loadSettings } from './settings'
+import { applyTheme, loadSettings, type AppSettings } from './settings'
+import { shouldBlockUnload } from './state/closeGuard'
+import { classifyFsEvent } from './state/fsEvent'
+import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
+import { recoveryCheckShouldRun } from './state/recovery'
+import { flushPending, flushPendingAll, pendingDocIds } from './state/saveQueue'
+import { planStartup } from './state/settingsGates'
 import { APP_VERSION } from './version'
 import type { ArticleMeta, FsEvent, HealthInfo, RecoveryItem, WorkspaceState } from './types'
 
@@ -47,6 +53,8 @@ const FS_POLL_MS = 1500
 export default function App() {
   const [health, setHealth] = useState<HealthInfo | null>(null)
   const [backendDown, setBackendDown] = useState(false)
+  /** P2-7：设置已加载（供启动时 restoreLastState / autoOpenRecentWorkspace 接线） */
+  const [settingsReady, setSettingsReady] = useState(false)
   /** Phase 5E：前后端版本不一致（仅提示，不阻塞） */
   const [versionMismatch, setVersionMismatch] = useState(false)
   const [workspace, setWorkspace] = useState<WorkspaceState | null>(null)
@@ -72,6 +80,19 @@ export default function App() {
   const eventCursor = useRef(0)
   const lastSavedAt = useRef(new Map<string, number>())
   const treeRefreshTimer = useRef<number | null>(null)
+  // P0-2/P1-7：当前打开文档 id 的 ref（供事件/保存回调读最新，规避 stale closure）
+  const articleIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    articleIdRef.current = article?.id ?? null
+  }, [article?.id])
+  // P1-7：打开请求序号，防止旧响应覆盖后发起的请求
+  const openSeqRef = useRef(createRequestSeq())
+  // P3-8：恢复检测失败标记（允许重试）
+  const recoveryLastFailedRef = useRef(false)
+  // P1-7：loading 计数（多请求并发时不误清空 spinner）
+  const loadingCountRef = useRef(0)
+  // P2-7：启动时读取的设置快照（供 restoreLastState / autoOpenRecentWorkspace 接线）
+  const settingsRef = useRef<AppSettings | null>(null)
 
   const hasUnsaved = saveState === 'dirty' || saveState === 'saving' || saveState === 'error'
 
@@ -102,7 +123,11 @@ export default function App() {
     let alive = true
     loadSettings()
       .then((s) => {
-        if (alive) applyTheme(s.ui.theme)
+        if (!alive) return
+        applyTheme(s.ui.theme)
+        settingsRef.current = s
+        // 主题变化后通知下游（若有依赖设置的组件需要重读设置缓存）。
+        setSettingsReady(true)
       })
       .catch(() => undefined)
     return () => {
@@ -148,16 +173,29 @@ export default function App() {
   }, [workspaceChecked, workspace?.open, workspace?.root, workspace?.stats?.document])
 
   // ---------- 启动：异常退出恢复检测（Phase 6.2） ----------
-  // 每个工作区打开时检测一次未恢复的编辑内容；用户可恢复/丢弃/稍后处理
+  // 每个工作区打开时检测一次未恢复的编辑内容；用户可恢复/丢弃/稍后处理。
+  // P3-8：检测失败后重置 ref 允许下次重试；「稍后处理」后有顶栏「恢复检查…」再入口。
   useEffect(() => {
     if (!workspace?.open || !workspace.root) return
-    if (recoveryCheckedFor.current === workspace.root) return
+    if (
+      !recoveryCheckShouldRun({
+        checkedRoot: recoveryCheckedFor.current,
+        root: workspace.root,
+        lastFailed: recoveryLastFailedRef.current,
+      })
+    )
+      return
     recoveryCheckedFor.current = workspace.root
     listRecovery()
       .then((payload) => {
+        recoveryLastFailedRef.current = false
         if (payload.count > 0) setRecoveryModal(payload.items)
       })
-      .catch(() => undefined)
+      .catch(() => {
+        // P3-8：失败后保留 ref 状态 + 标记失败，允许下一次（用户手动「恢复检查…」/重建根）重试
+        recoveryLastFailedRef.current = true
+        recoveryCheckedFor.current = null
+      })
   }, [workspace?.open, workspace?.root])
 
   // ---------- 文件监听轮询（Phase 4.3） ----------
@@ -179,36 +217,75 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.open, workspace?.root])
 
-  const handleFsEvent = useCallback(
-    (ev: FsEvent) => {
-      // 树刷新（防抖合并；自身操作导致的事件也安全，刷新幂等）
-      if (ev.type !== 'modified') {
-        if (treeRefreshTimer.current) window.clearTimeout(treeRefreshTimer.current)
-        treeRefreshTimer.current = window.setTimeout(() => setTreeRefresh((n) => n + 1), 300)
-      }
-      // 外部修改提示：仅针对当前打开的文档；自身保存写入被后端标记抑制，前端再兜底一次
-      const cur = article?.id
-      if (ev.type === 'modified' && cur && ev.rel === cur) {
-        const last = lastSavedAt.current.get(cur) ?? 0
-        if (Date.now() - last < 2500) return
-        setExtModal(ev)
-      }
-    },
-    [article?.id],
-  )
+  const handleFsEvent = useCallback((ev: FsEvent) => {
+    // 读最新 id 而非闭包捕获的旧 article（P1-8 stale closure）
+    const currentId = articleIdRef.current
+    const lastSaved = currentId ? (lastSavedAt.current.get(currentId) ?? 0) : 0
+    const decision = classifyFsEvent(ev, { currentId, lastSavedAt: lastSaved })
+    // 树刷新（防抖合并；自身操作导致的事件也安全，刷新幂等）
+    if (decision.refreshTree) {
+      if (treeRefreshTimer.current) window.clearTimeout(treeRefreshTimer.current)
+      treeRefreshTimer.current = window.setTimeout(() => setTreeRefresh((n) => n + 1), 300)
+    }
+    if (decision.surface === 'modified') {
+      setExtModal(ev)
+    } else if (decision.surface === 'deleted') {
+      // P3-7：当前文档被外部删除了 → 提示 + 清空当前编辑
+      setArticle(null)
+      setSaveState('idle')
+      window.alert('当前文档已被外部删除')
+    }
+  }, [])
 
   const openArticle = useCallback(async (id: string) => {
+    loadingCountRef.current += 1
     setLoading(true)
     try {
-      const doc = await getArticle(id)
-      setArticle(doc)
-      recordRecentDocument(id, doc.title).catch(() => undefined)
+      await openWithSeq(id, {
+        fetchFn: async (docId) => {
+          const doc = await getArticle(docId)
+          recordRecentDocument(docId, doc.title).catch(() => undefined)
+          return doc
+        },
+        seq: openSeqRef.current,
+        apply: (doc) => {
+          setArticle(doc)
+          // P2-7：记住上次打开的文档，供 restoreLastState 启动恢复
+          try {
+            localStorage.setItem('ke.lastArticleId', doc.id)
+          } catch {
+            /* localStorage 不可用忽略 */
+          }
+        },
+      })
     } catch (e) {
       console.error('打开文档失败', e)
     } finally {
-      setLoading(false)
+      loadingCountRef.current -= 1
+      if (loadingCountRef.current <= 0) {
+        loadingCountRef.current = 0
+        setLoading(false)
+      }
     }
   }, [])
+
+  // P0-2：统一的「替换当前文档」入口。存在未保存/保存中/错误时先 flushPending
+  // （带 3s 超时再强切），并用 confirm 兜底，避免防抖窗口内切换静默丢失输入。
+  const requestOpenArticle = useCallback(
+    async (id: string) => {
+      if (hasUnsaved && articleIdRef.current) {
+        const flushed = await Promise.race([
+          flushPending(articleIdRef.current).then(() => true),
+          new Promise<boolean>((r) => setTimeout(() => r(false), 3000)),
+        ])
+        if (!flushed && !window.confirm('当前有未保存修改，切换将放弃这些修改，是否继续？')) {
+          return
+        }
+      }
+      await openArticle(id)
+    },
+    [hasUnsaved, openArticle],
+  )
 
   // ---------- 异常恢复动作（Phase 6.2） ----------
   const handleRecoveryRestore = useCallback(
@@ -217,7 +294,7 @@ export default function App() {
         const doc = await restoreRecovery(item.doc_path)
         setRecoveryModal((prev) => (prev ? prev.filter((i) => i.doc_path !== item.doc_path) : null))
         setTreeRefresh((n) => n + 1)
-        await openArticle(doc.id)
+        await requestOpenArticle(doc.id)
       } catch (e) {
         window.alert(`恢复失败：${e instanceof Error ? e.message : String(e)}`)
         // 记录可能已清除，刷新弹窗列表
@@ -226,7 +303,7 @@ export default function App() {
           .catch(() => undefined)
       }
     },
-    [openArticle],
+    [requestOpenArticle],
   )
 
   const handleRecoveryDiscard = useCallback(async (docPath: string) => {
@@ -248,9 +325,10 @@ export default function App() {
 
   // 编辑器自身保存完成回调：记录时间用于兜底抑制 + 同步最新文档状态
   // （Phase 6E：保存成功后更新 article，避免历史面板/元信息显示陈旧内容）
+  // P1-7：仅当保存的 doc.id 仍等于「当前打开文档」时才 setArticle（经 ref 读最新 id）
   const handleSaved = useCallback((id: string, doc?: ArticleMeta) => {
     lastSavedAt.current.set(id, Date.now())
-    if (doc) setArticle(doc)
+    if (doc && shouldAcceptSave(id, articleIdRef)) setArticle(doc)
   }, [])
 
   // 右侧面板折叠/展开（持久化到 localStorage，刷新后保持）
@@ -349,6 +427,14 @@ export default function App() {
   }, [hasUnsaved, applyWorkspace])
 
   const handleNewArticle = useCallback(async () => {
+    // P0-2：新建会替换当前文档，先处理未保存修改（flush + confirm 兜底）
+    if (hasUnsaved && articleIdRef.current) {
+      const flushed = await Promise.race([
+        flushPending(articleIdRef.current).then(() => true),
+        new Promise<boolean>((r) => setTimeout(() => r(false), 3000)),
+      ])
+      if (!flushed && !window.confirm('当前有未保存修改，新建将放弃这些修改，是否继续？')) return
+    }
     const title = window.prompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
     if (!title) return
     try {
@@ -359,7 +445,7 @@ export default function App() {
       console.error('新建文档失败', e)
       window.alert(String(e))
     }
-  }, [])
+  }, [hasUnsaved])
 
   // ---------- 导入（Phase 3E）：未保存确认 ----------
   const handleImportFile = useCallback(
@@ -372,7 +458,7 @@ export default function App() {
         const lower = file.name.toLowerCase()
         const result = lower.endsWith('.zip') ? await importPackage(file) : await importMarkdown(file)
         setTreeRefresh((n) => n + 1)
-        await openArticle(result.id)
+        await requestOpenArticle(result.id)
         window.alert(`导入成功：${result.title}`)
       } catch (e) {
         console.error('导入失败', e)
@@ -381,7 +467,7 @@ export default function App() {
         if (fileInputRef.current) fileInputRef.current.value = ''
       }
     },
-    [hasUnsaved, openArticle],
+    [hasUnsaved, requestOpenArticle],
   )
 
   // ---------- 文件树变更联动（Phase 4.2） ----------
@@ -394,10 +480,10 @@ export default function App() {
         setSaveState('idle')
         window.alert('当前文档已被删除')
       } else if ((m.type === 'rename' || m.type === 'move') && m.from === article.id && m.to) {
-        await openArticle(m.to)
+        await requestOpenArticle(m.to)
       }
     },
-    [article, openArticle],
+    [article, requestOpenArticle],
   )
 
   // ---------- 桌面原生菜单事件（M5）：菜单项 → 复用既有动作 ----------
@@ -414,6 +500,13 @@ export default function App() {
           const p = e.payload?.path
           if (p) void switchWorkspace(p, 'open')
         }),
+        // P3-21：Rust 不再静态构建最近列表、也不 emit open-recent；改为 emit
+        // refresh-recent（无 payload）。前端收到后打开工作区菜单（复用 switchWorkspace，
+        // 展示当前工作区与打开/新建/关闭/恢复检查入口）。若后续需要真正展示最近列表，
+        // 可在此处从 /api/workspace/recent 拉取后注入菜单。
+        listen('ke-menu:refresh-recent', () => {
+          setWsMenuOpen(true)
+        }),
       ])
       if (disposed) un.forEach((f) => f())
       else unlisteners.push(...un)
@@ -423,6 +516,72 @@ export default function App() {
       unlisteners.forEach((f) => f())
     }
   }, [handleNewArticle, handleOpenWorkspaceMenu, switchWorkspace])
+
+  // ---------- P3-8：「恢复检查…」再入口（稍后处理后可手动重新检测） ----------
+  const runRecoveryCheck = useCallback(async () => {
+    if (!workspace?.root) return
+    try {
+      const payload = await listRecovery()
+      recoveryLastFailedRef.current = false
+      recoveryCheckedFor.current = workspace.root
+      setRecoveryModal(payload.count > 0 ? payload.items : null)
+    } catch {
+      recoveryLastFailedRef.current = true
+    }
+  }, [workspace?.root])
+
+  // ---------- P0-2：beforeunload 防静默丢失（浏览器仅显示确认） ----------
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (shouldBlockUnload(pendingDocIds().length, hasUnsaved)) {
+        // 尽力 flush 未决保存（真正的兜底由桌面 close-requested 握手完成）
+        void flushPendingAll()
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [hasUnsaved])
+
+  // ---------- P2-7：启动时接线 restoreLastState / autoOpenRecentWorkspace ----------
+  const startupAppliedRef = useRef(false)
+  useEffect(() => {
+    if (!settingsReady || !settingsRef.current || !workspaceChecked) return
+    if (startupAppliedRef.current) return
+    const s = settingsRef.current
+    let lastArticleId: string | null = null
+    try {
+      lastArticleId = localStorage.getItem('ke.lastArticleId')
+    } catch {
+      /* ignore */
+    }
+    const decide = (hasRecentWorkspace: boolean) => {
+      const plan = planStartup({
+        autoOpenRecentWorkspace: s.startup.autoOpenRecentWorkspace,
+        restoreLastState: s.startup.restoreLastState,
+        hasRecentWorkspace,
+        hasLastArticle: lastArticleId !== null,
+      })
+      if (plan.restoreLastArticle && lastArticleId) void openArticle(lastArticleId)
+      if (plan.autoOpenRecentWorkspace && workspace?.open) {
+        getRecentWorkspaces()
+          .then((r) => {
+            const valid = r.workspaces.find((w) => w.exists)
+            if (valid && valid.path !== workspace?.root) void switchWorkspace(valid.path, 'open')
+          })
+          .catch(() => undefined)
+      }
+    }
+    if (s.startup.autoOpenRecentWorkspace) {
+      getRecentWorkspaces()
+        .then((r) => decide(!!r.workspaces.find((w) => w.exists)))
+        .catch(() => decide(false))
+    } else {
+      decide(false)
+    }
+    startupAppliedRef.current = true
+  }, [settingsReady, settingsRef, workspaceChecked, workspace?.open, workspace?.root, openArticle, switchWorkspace])
 
   // ---------- 渲染 ----------
   if (workspaceChecked && (!workspace?.open || firstRun)) {
@@ -482,6 +641,16 @@ export default function App() {
                   onClick={() => void handleCreateWorkspaceMenu()}
                 >
                   新建工作区…
+                </button>
+                <button
+                  type="button"
+                  className="block w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    setWsMenuOpen(false)
+                    void runRecoveryCheck()
+                  }}
+                >
+                  恢复检查…
                 </button>
                 <button
                   type="button"
@@ -552,7 +721,7 @@ export default function App() {
       <div className="flex min-h-0 flex-1">
         <LeftSidebar
           activeId={article?.id ?? null}
-          onOpenArticle={openArticle}
+          onOpenArticle={requestOpenArticle}
           refreshKey={treeRefresh}
           onFsMutation={handleFsMutation}
         />
@@ -570,7 +739,7 @@ export default function App() {
           <RightPanel
             article={article}
             onMetaUpdate={setArticle}
-            onOpenArticle={openArticle}
+            onOpenArticle={requestOpenArticle}
             onCollapse={() => toggleRight(false)}
           />
         ) : (

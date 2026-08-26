@@ -15,6 +15,9 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["custom-protocol"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
+# P1-12：多实例互斥。第二次启动只聚焦已有主窗口后立即退出，避免双开互杀后端。
+# 需在 Builder 上于 setup 之前注册（见 lib.rs）。
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = "2"

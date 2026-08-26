@@ -13,6 +13,7 @@ import {
   openWorkspace,
 } from '../../api/client'
 import { isDesktop, pickDirectory } from '../../desktop'
+import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
 import './workspace-picker.css'
 
@@ -94,10 +95,8 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
     async (p: string, e: React.MouseEvent) => {
       e.stopPropagation()
       try {
-        const res = await fetch(`/api/workspace/recent?path=${encodeURIComponent(p)}`, {
-          method: 'DELETE',
-        })
-        if (!res.ok) throw new Error(res.statusText)
+        // P2-9：经 client.ts 的 apiBase 拼接地址，绕过裸 fetch 丢失前缀的问题
+        await removeRecentWorkspace(p)
         setRecent((prev) => prev.filter((w) => w.path !== p))
       } catch {
         /* 删除失败不阻塞 */

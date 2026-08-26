@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import config
+from . import markdown_io
 
 STRUCTURE = {
     config.DIR_ARTICLES: "文章（唯一事实源 .md）",
@@ -59,7 +60,7 @@ def ensure_workspace_structure(root: Path) -> Path:
 
 
 def collect_structure_info(root: Path) -> dict:
-    """统计各目录内容数量，用于 workspace/info 响应。"""
+    """统计各目录内容数量，用于 workspace/info 响应（P1-17：跳过符号链接）。"""
     root = Path(root).resolve()
     result: dict = {"root": str(root)}
     for rel, desc in STRUCTURE.items():
@@ -68,7 +69,7 @@ def collect_structure_info(root: Path) -> dict:
             "description": desc,
             "exists": p.exists(),
             "file_count": (
-                sum(1 for f in p.rglob("*") if f.is_file() and f.name != ".gitkeep")
+                sum(1 for f in markdown_io.walk_files(p) if f.name != ".gitkeep")
                 if p.exists()
                 else 0
             ),

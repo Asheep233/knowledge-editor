@@ -1,9 +1,14 @@
 """Phase 4.2/4.7 删除操作安全测试：不得误删 workspace 外文件、受保护目录。"""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
+
+# P1-16：以下用例断言 Windows 专属路径语义（盘符绝对路径），
+# Linux/macOS 下 "C:/Windows" 会按相对路径解析，语义不同，跳过。
+_win_only = pytest.mark.skipif(sys.platform != "win32", reason="Windows 路径语义专属")
 
 
 @pytest.fixture()
@@ -29,6 +34,7 @@ def test_delete_dir_rejects_traversal(client, paused_watcher):
     assert r.status_code == 400
 
 
+@_win_only
 def test_delete_dir_rejects_absolute(client, paused_watcher):
     r = client.delete("/api/fs/dir", params={"path": "C:/Windows"})
     assert r.status_code == 400
@@ -65,8 +71,9 @@ def test_delete_nonexistent_returns_404(client, paused_watcher):
     assert r.status_code == 404
 
 
+@_win_only
 def test_safe_rel_path_blocks_traversal(client, paused_watcher):
-    """安全路径解析：目录穿越 / 绝对路径 / 越界一律返回 None。"""
+    """安全路径解析：目录穿越 / 绝对路径 / 越界一律返回 None（Windows 语义）。"""
     from app.services import markdown_io
 
     root = _ws(client)

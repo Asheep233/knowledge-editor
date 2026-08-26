@@ -6,7 +6,7 @@
 import { mergeAttributes, Node, type JSONContent, type MarkdownToken } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import VideoNodeView from '../../components/editor/nodeviews/VideoNodeView'
-import { KE_FIELD_ORDER, keJson, newId } from '../ke'
+import { KE_FIELD_ORDER, keJson, keStableId } from '../ke'
 import { keCommentTokenizer } from '../tokenizers'
 
 export interface VideoAttrs {
@@ -98,7 +98,8 @@ export const VideoExtension = Node.create({
   },
   renderMarkdown: ({ attrs }: JSONContent) => {
     const a = (attrs as VideoAttrs) ?? ({} as VideoAttrs)
-    const payload: Record<string, unknown> = { ...a, id: a.id || newId() }
+    // P4-1：无 id 时用关键字段生成确定性 id
+    const payload: Record<string, unknown> = { ...a, id: a.id || keStableId(a as unknown as Record<string, unknown>, ['src', 'title', 'poster']) }
     return `<!-- ke-video: ${keJson(payload, 'video', KE_FIELD_ORDER.video)} -->`
   },
 })

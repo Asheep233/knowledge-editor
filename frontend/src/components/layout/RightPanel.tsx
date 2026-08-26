@@ -3,7 +3,7 @@
  * - 属性：文档元信息面板 —— 标题 / 标签编辑（写入 frontmatter）、路径、创建/修改时间、字数、大小
  * - 附件：全部附件列表（类型/大小/所属文档，点击打开）+ 孤儿附件检测（仅手动删除、绝不自动）
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   attachmentUrl,
   deleteAttachment,
@@ -11,6 +11,7 @@ import {
   listOrphans,
   updateArticleMeta,
 } from '../../api/client'
+import { extractOutline, type OutlineItem } from '../../state/outline'
 import type { ArticleMeta, AttachmentItem, OrphanItem } from '../../types'
 
 interface Props {
@@ -51,6 +52,27 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
   const [attachError, setAttachError] = useState('')
   // 正在删除的孤儿附件路径（删除中禁用按钮，防止重复提交）
   const [deletingPath, setDeletingPath] = useState<string | null>(null)
+
+  // P4-13：大纲（解析 #/##/### 标题，点击展开/收缩 + 定位）
+  const [collapseDepth, setCollapseDepth] = useState(0) // 0 = 全部展开
+  const outline = useMemo(() => (article?.content ? extractOutline(article.content) : []), [article?.content])
+  const visibleOutline = useMemo(
+    () => (collapseDepth > 0 ? outline.filter((i) => i.level <= collapseDepth) : outline),
+    [outline, collapseDepth],
+  )
+  const handleOutlineClick = useCallback((item: OutlineItem) => {
+    // 尽力在编辑器 DOM 中按标题文本定位并滚动；找不到则提示
+    const editorEl = document.querySelector('.ke-editor-prose')
+    if (editorEl) {
+      const headings = Array.from(editorEl.querySelectorAll('h1, h2, h3'))
+      const target = headings.find((h) => h.textContent?.trim() === item.text)
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+    }
+    window.alert(`跳转到标题：${item.text}`)
+  }, [])
 
   // 切换文档时同步元信息表单
   useEffect(() => {
@@ -155,10 +177,44 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
       <div className="flex-1 overflow-y-auto p-4 text-[13px] text-gray-600">
         {tab === '大纲' && (
           <div>
-            <p className="mb-3 text-xs text-gray-400">文档标题结构（Phase 3 实现）</p>
-            <p className="text-xs text-gray-400">
-              {article ? `当前文档：${article.title}` : '未打开文档'}
-            </p>
+            {!article ? (
+              <p className="text-xs text-gray-400">未打开文档</p>
+            ) : (
+              <>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs text-gray-400">
+                    文档标题结构（{outline.length}）
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCollapseDepth((d) => (d > 0 ? 0 : 1))}
+                    className="text-[11px] text-blue-600 hover:underline"
+                  >
+                    {collapseDepth > 0 ? '展开全部' : '收缩至一级'}
+                  </button>
+                </div>
+                {visibleOutline.length === 0 ? (
+                  <p className="text-xs text-gray-400">暂无标题（使用 # / ## / ###）</p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {visibleOutline.map((it, idx) => (
+                      <li key={`${it.offset}-${idx}`}>
+                        <button
+                          type="button"
+                          onClick={() => handleOutlineClick(it)}
+                          className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[12px] text-gray-700 hover:bg-gray-100"
+                          style={{ paddingLeft: `${(it.level - 1) * 12 + 6}px` }}
+                          title={it.text}
+                        >
+                          <span className="mr-1 text-[10px] text-gray-400">{'#'.repeat(it.level)}</span>
+                          {it.text}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </div>
         )}
 

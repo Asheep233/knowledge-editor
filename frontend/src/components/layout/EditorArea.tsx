@@ -18,6 +18,7 @@ import { setKeContent, useKeEditor } from '../../editor'
 import { downloadBlob, extractAttachmentRefs, slugForDownload } from '../../editor/import-export'
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
+import { enqueueSave, flushPending, type SaveFn } from '../../state/saveQueue'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
@@ -52,17 +53,20 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // Phase 6.3：历史版本面板
   const [historyOpen, setHistoryOpen] = useState(false)
   const [versions, setVersions] = useState<HistoryVersion[]>([])
+  // P2-8：历史加载失败不再是「空列表」，而是明确错误提示
+  const [historyError, setHistoryError] = useState('')
   const [previewing, setPreviewing] = useState<HistoryVersion | null>(null)
   const [previewContent, setPreviewContent] = useState<string | null>(null)
   // 是否正在查看「当前版本」（只读预览当前文档正文）
   const [showCurrent, setShowCurrent] = useState(false)
-  const debounceRef = useRef<number | null>(null)
   // 编辑序号：每次内容变更递增。保存完成时与触发时的序号比对，
   // 若保存期间有新编辑则保持「未保存」，否则判定为「已保存」。
   const editSeqRef = useRef(0)
   // Phase 6.4：ref 版本，供防抖保存回调在任意时刻拿到最新 editor/article
   const editorRef = useRef<Editor | null>(null)
   const articleRef = useRef(article)
+  // P0-2：切换文档时记住「上一文档 id」，以便把其未决防抖保存 flush 掉，不静默丢失输入。
+  const prevArticleIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     articleRef.current = article
@@ -97,30 +101,44 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
   }, [])
 
+  // 保存函数构造：读取当前编辑器正文、登记/清除恢复点、更新 saveState 与 onSaved。
+  // 经 saveQueue 串行化（P1-6：同一 doc 至多一个在途保存，latest-wins），
+  // 并仅在「本次保存对应序号仍为最新」时判定已保存/清除恢复点（P0-2/P1-6）。
+  const buildSaveFn = useCallback(
+    (docId: string): SaveFn => {
+      return async () => {
+        const ed = editorRef.current
+        if (!ed) return
+        const seq = editSeqRef.current
+        const isCurrent = articleRef.current?.id === docId
+        const md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
+        try {
+          if (isCurrent) setSaveState('saving')
+          await registerRecoveryPoint(docId, md)
+          const saved = await saveArticle(docId, md)
+          const latest = editSeqRef.current === seq
+          if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
+          onSaved?.(docId, saved)
+          if (latest) void clearRecoveryPoint(docId)
+        } catch (e) {
+          if (isCurrent) setSaveState('error')
+          // P3-7：保存时 404 说明文档已被外部删除，明确提示而非静默失败
+          if (is404Error(e)) window.alert('保存失败：文档已被删除（404）')
+        }
+      }
+    },
+    [onSaved, registerRecoveryPoint, clearRecoveryPoint],
+  )
+
   const handleUpdate = useCallback(() => {
     if (!articleRef.current) return
     editSeqRef.current += 1
-    const seq = editSeqRef.current
     setSaveState('dirty')
-    if (debounceRef.current) window.clearTimeout(debounceRef.current)
-    // M3：自动保存间隔由应用设置驱动（默认 3000ms），设置面板改动后即时生效
-    debounceRef.current = window.setTimeout(async () => {
-      const ed = editorRef.current
-      const doc = articleRef.current
-      if (!ed || !doc) return
-      try {
-        setSaveState('saving')
-        const md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
-        await registerRecoveryPoint(doc.id, md)
-        const saved = await saveArticle(doc.id, md)
-        setSaveState(editSeqRef.current === seq ? 'saved' : 'dirty')
-        onSaved?.(doc.id, saved)
-        void clearRecoveryPoint(doc.id)
-      } catch {
-        setSaveState('error')
-      }
-    }, getAutosaveIntervalMs())
-  }, [onSaved, registerRecoveryPoint, clearRecoveryPoint])
+    // M3：自动保存间隔由应用设置驱动（默认 3000ms）。统一走 saveQueue：
+    // 同一 doc 防抖合并；在途时 latest-wins；完成后若有新内容再补一次。
+    const docId = articleRef.current.id
+    enqueueSave(docId, buildSaveFn(docId), getAutosaveIntervalMs())
+  }, [buildSaveFn])
 
   // Phase 6.4：content 固定为空，文档内容统一由下方 useEffect 的
   // setKeContent 加载一次，避免初始化与切换时重复解析大文档（Document Model）。
@@ -135,9 +153,15 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     editorRef.current = editor
   }, [editor])
 
-  // 文档切换：清理未决防抖并重载内容
+  // 文档切换：flush 上一文档的未决防抖保存（P0-2，不再丢弃输入），再重载内容
   useEffect(() => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current)
+    const newId = article?.id ?? null
+    const prevId = prevArticleIdRef.current
+    if (prevId && prevId !== newId) {
+      // 切换离开旧文档：立即触发其未决保存，避免防抖窗口内输入静默丢失
+      void flushPending(prevId)
+    }
+    prevArticleIdRef.current = newId
     setSaveState('idle')
     if (editor && article) setKeContent(editor, stripFrontmatter(article.content).content)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,28 +179,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     if (editor.isEditable !== next) editor.setEditable(next, false)
   }, [editor, article])
 
-  // Ctrl+S / 保存按钮：立即保存
+  // Ctrl+S / 保存按钮：立即保存（覆盖未决防抖，经 saveQueue 串行化）
   const saveNow = useCallback(async () => {
-    if (!editor || !article) return
-    // 手动保存覆盖了未决的防抖自动保存：清掉定时器，避免保存后
-    // 又触发一次冗余自动保存（内容已是最新，无需二次提交）。
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current)
-      debounceRef.current = null
-    }
-    const seq = editSeqRef.current
-    const md = withFrontmatter(editor.getMarkdown(), KE_VERSION)
-    try {
-      setSaveState('saving')
-      await registerRecoveryPoint(article.id, md)
-      const saved = await saveArticle(article.id, md)
-      setSaveState(editSeqRef.current === seq ? 'saved' : 'dirty')
-      onSaved?.(article.id, saved)
-      void clearRecoveryPoint(article.id)
-    } catch {
-      setSaveState('error')
-    }
-  }, [editor, article, onSaved, registerRecoveryPoint, clearRecoveryPoint])
+    const doc = articleRef.current
+    if (!editor || !doc) return
+    // 手动保存覆盖未决的防抖自动保存：以 debounce=0 立即入队并串行化；
+    // 内容已在 in-flight 时则 latest-wins，保存后不会二次提交冗余内容。
+    await enqueueSave(doc.id, buildSaveFn(doc.id), 0)
+  }, [editor, buildSaveFn])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -213,20 +223,20 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
   }, [editor, article, exporting])
 
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current)
-    }
-  }, [])
+  // 未决自动保存交由模块级 saveQueue 持有一律下发到后端；EditorArea 卸载时
+  // 不再丢失 pending（关闭窗口的 flush 握手由 App 的 beforeunload / close-requested 处理）。
 
   // ---------- 历史版本（Phase 6.3） ----------
   const loadHistory = useCallback(async () => {
     if (!article) return
+    setHistoryError('')
     try {
       const payload = await listHistory(article.id)
       setVersions(payload.versions)
-    } catch {
+    } catch (e) {
+      // P2-8：区分「暂无版本」与「加载失败」
       setVersions([])
+      setHistoryError(e instanceof Error ? e.message : String(e))
     }
   }, [article])
 
@@ -459,7 +469,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                     {formatTime(article.updated_at ?? '')}
                   </div>
                 </button>
-                {versions.length === 0 ? (
+                {historyError ? (
+                  <div className="px-3 py-2 text-[11px] text-rose-500">
+                    加载失败：{historyError}
+                    <button
+                      type="button"
+                      className="ml-1 text-blue-600 hover:underline"
+                      onClick={() => void loadHistory()}
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : versions.length === 0 ? (
                   <div className="px-3 py-2 text-[11px] text-gray-300">暂无历史版本</div>
                 ) : (
                   versions.map((v) => (
@@ -519,6 +540,11 @@ function formatTime(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+/** 判定错误是否为「资源不存在」（用于保存 404 时提示文档已被外部删除）。 */
+function is404Error(e: unknown): boolean {
+  return e instanceof Error && /^404\b/.test(e.message.trim())
 }
 
 function formatSize(bytes: number): string {

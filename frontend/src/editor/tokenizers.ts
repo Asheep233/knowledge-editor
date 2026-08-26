@@ -210,10 +210,31 @@ export const tableTokenizer = {
   },
 }
 
+/**
+ * 解析表格行：按「未转义的 |」分割列，`\|` 视为单元格内的字面量管道符（P1-4）。
+ * 注意：`\|` 在解析时被还原为 `|`（文本节点内容是真正的 `|`），
+ * 序列化端再统一把 `|` 转义回 `\|`，保证往返列数不变。
+ */
 function parseTableRow(line: string): string[] | null {
   const t = line.trim()
   if (!t.startsWith('|') || !t.endsWith('|')) return null
-  return t.slice(1, -1).split('|').map((c) => c.trim())
+  const inner = t.slice(1, -1)
+  const cells: string[] = []
+  let cur = ''
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i]
+    if (ch === '\\' && inner[i + 1] === '|') {
+      cur += '|' // 还原转义的管道符
+      i++
+    } else if (ch === '|') {
+      cells.push(cur)
+      cur = ''
+    } else {
+      cur += ch
+    }
+  }
+  cells.push(cur)
+  return cells.map((c) => c.trim())
 }
 
 /**
@@ -237,14 +258,20 @@ export const footnotesBlockTokenizer = {
     const raw = src.slice(0, endIdx + endTag.length)
     const inner = raw.slice(raw.indexOf('-->') + 3, raw.lastIndexOf(endTag))
     const items: Array<Record<string, unknown>> = []
-    const re = /<!--\s*ke-footnote-item:\s*(\{[\s\S]*?\})\s*-->/g
-    let m: RegExpExecArray | null
-    while ((m = re.exec(inner)) !== null) {
-      try {
-        const obj = JSON.parse(m[1]) as Record<string, unknown>
-        if (obj && typeof obj === 'object') items.push(obj)
-      } catch {
+    // P2-17：条目文本可能包含 `}`（甚至紧跟 ` --> `）。非贪婪匹配会在文本内的 `}`
+    // 处截断，导致整条脚注丢失。这里先按括号平衡匹配（正确跳过字符串内的 `}`），
+    // 失败再回退非贪婪（兼容旧版不规范序列化）。
+    const marker = '<!-- ke-footnote-item:'
+    let pos = inner.indexOf(marker)
+    while (pos >= 0) {
+      const after = pos + marker.length
+      const parsed = parseFootnoteItem(inner, after)
+      if (parsed) {
+        items.push(parsed.obj)
+        pos = inner.indexOf(marker, parsed.end)
+      } else {
         // 单个条目损坏：忽略该条目，但区域整体保留（其他条目不丢）
+        pos = inner.indexOf(marker, after)
       }
     }
     return { type: 'ke_footnotes', raw, items }
@@ -252,24 +279,66 @@ export const footnotesBlockTokenizer = {
 }
 
 /**
- * 未知 ke-* 标记兜底 tokenizer（块级 + 行内）。
- * - 已知 kind（note/module/attach/video/footnote，footnotes 前缀被 footnote 覆盖）
- *   用负向前瞻排除，避免在 marked 中抢占具体扩展
- *   （marked 对自定义 block tokenizer 在每个 block 循环直接调用，注册靠前的先执行）。
- * - kind 允许连字符/数字（如 ke-future-block、ke-x2:），确保任意未来标记可保留。
- * - 保留原始 raw，保存时原样输出，保证旧编辑器不破坏未来版本文档。
+ * 从 `<!-- ke-footnote-item:` 之后的位置解析一个脚注条目 JSON 对象。
+ * 先试 matchBalancedJson（正确处理字符串内 `}` 与转义），失败再试非贪婪（旧版容错）。
+ * 返回 { obj, end }（end 为条目整体结束下标，含尾部 -->），失败返回 null。
  */
-const KE_KNOWN_KINDS = 'note|module|attach|video|footnote'
-const KE_UNKNOWN_PATTERN = `^<!--\\s*ke-(?!${KE_KNOWN_KINDS})[a-z][a-z0-9-]*:`
+function parseFootnoteItem(src: string, start: number): { obj: Record<string, unknown>; end: number } | null {
+  let bodyStart = start
+  while (bodyStart < src.length && /\s/.test(src[bodyStart])) bodyStart++
+  if (src[bodyStart] !== '{') return null
+  // 1) 括号平衡匹配：跳过字符串内的 `}`，得到完整对象
+  const balanced = matchBalancedJson(src, bodyStart)
+  if (balanced !== null) {
+    const rest = bodyStart + balanced.length
+    const close = /^\s*-->/.exec(src.slice(rest))
+    if (close) {
+      try {
+        const obj = JSON.parse(balanced) as Record<string, unknown>
+        if (obj && typeof obj === 'object') return { obj, end: rest + close[0].length }
+      } catch {
+        // 平衡匹配得到但 JSON 损坏：回退非贪婪
+      }
+    }
+  }
+  // 2) 旧版容错：非贪婪匹配到第一个 `} --> `（文本含裸 `}` 的不规范序列化）
+  const greedy = /^\{[\s\S]*?\}\s*-->/.exec(src.slice(bodyStart))
+  if (greedy) {
+    try {
+      const obj = JSON.parse(greedy[0].replace(/\s*-->$/, '')) as Record<string, unknown>
+      if (obj && typeof obj === 'object') return { obj, end: bodyStart + greedy[0].length }
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+/**
+ * 兜底 tokenizer（块级 + 行内）：保留未被具体扩展消费的 ke-* 注释原文。
+ * - 命中范围：任意 `<!-- ke-...: ` 注释（含已知 kind + 未知 kind）。
+ * - 依赖注册顺序：@tiptap/markdown 通过 marked.use + unshift 注册 tokenizer，
+ *   后注册的先执行；GenericFallback 是最先注册的，因此其 tokenizer 最后执行。
+ *   于是：具体 ke-* tokenizer（keNote / keComment / footnote / footnotes）先执行，
+ *   能正常解析的已知 kind 会被它们消费；只有解析失败（JSON 损坏 / 括号不匹配）
+ *   的已知 kind 或未知 kind 才会落到本 fallback，按原文保留。
+ * - kind 允许连字符/数字（如 ke-future-block、ke-x2:），确保任意标记可保留。
+ */
+// 行内兜底：匹配任意 ke-* 注释（含已知 kind + footnote），用于「已知 kind + 损坏 JSON」保留。
+const KE_INLINE_CATCH_PATTERN = `^<!--\\s*ke-[a-z][a-z0-9-]*:`
+// 块级兜底：排除 footnote（footnote/footnotes/footnote-item 前缀）——footnote 是行内 token，
+// 允许块级兜底匹配它会把段落开头的行内脚注引用整块吞掉。note/module/attach/video 等
+// 块级已知 kind 仍允许命中，用于「块级已知 kind + 损坏 JSON」的兜底保留。
+const KE_BLOCK_CATCH_PATTERN = `^<!--\\s*ke-(?!footnote)[a-z][a-z0-9-]*:`
 
 export const keFallbackTokenizer = {
   name: 'ke_fallback',
   level: 'block' as const,
-  start: (src: string) => (new RegExp(KE_UNKNOWN_PATTERN).test(src) ? 0 : -1),
+  start: (src: string) => (new RegExp(KE_BLOCK_CATCH_PATTERN).test(src) ? 0 : -1),
   tokenize(src: string): MarkdownToken | undefined {
-    // 贪婪匹配到行尾的 -->（独占行）。已知 kind 已由各自 tokenizer 消费，
+    // 非贪婪匹配到行尾的 -->（独占行）。已知块级 kind 已由各自 tokenizer 消费，
     // 能走到这里说明 kind 未知或 JSON 损坏：保留原始文本。
-    const m = new RegExp(`${KE_UNKNOWN_PATTERN}[\\s\\S]*?-->\\s*(?:\\n|$)`).exec(src)
+    const m = new RegExp(`${KE_BLOCK_CATCH_PATTERN}[\\s\\S]*?-->\\s*(?:\\n|$)`).exec(src)
     if (!m) return undefined
     return { type: 'ke_fallback', raw: m[0].replace(/\s*$/, '') }
   },
@@ -281,9 +350,77 @@ export const keFallbackInlineTokenizer = {
   level: 'inline' as const,
   start: (src: string) => src.indexOf('<!--'),
   tokenize(src: string): MarkdownToken | undefined {
-    // 非贪婪匹配到第一个 -->。已知 inline kind（ke-footnote）用负向前瞻排除。
-    const m = new RegExp(`${KE_UNKNOWN_PATTERN}[\\s\\S]*?-->`).exec(src)
+    // 非贪婪匹配到第一个 -->。行内已知 kind（ke-footnote）由具体 tokenizer 先执行，
+    // 能走到这里说明是未知 kind 或已知 kind + 损坏 JSON：按原文保留。
+    const m = new RegExp(`${KE_INLINE_CATCH_PATTERN}[\\s\\S]*?-->`).exec(src)
     if (!m) return undefined
     return { type: 'ke_fallback_inline', raw: m[0] }
+  },
+}
+
+/**
+ * 普通 HTML 保真 tokenizer（P1-2）：
+ * 保留不被任何扩展消费的「普通 HTML 注释」`<!-- ... -->`（非 ke-* 命名空间）与
+ * 「HTML 块」（如 `<div class="x">内容</div>`）。这些默认被 marked 归为 html token，
+ * 随后被 DOMParser 丢弃（注释整体丢失，块仅保留文本）。
+ * 这里注册为块级/行内 tokenizer，命中后按 raw 原样保留。
+ */
+
+/** 行内格式化标签（这些在块级出现时由 marked 正常按段落/行内处理，不做块级保真） */
+const HTML_INLINE_TAGS = new Set([
+  'em', 'strong', 'b', 'i', 'u', 'a', 'code', 'span', 'br', 'img', 'del', 'ins',
+  'mark', 'small', 'sub', 'sup', 'kbd', 's', 'abbr', 'cite', 'q', 'samp', 'var', 'time', 'wbr',
+])
+
+function isPlainHtmlComment(src: string): boolean {
+  return /^<!--/.test(src) && !/^<!--\s*ke-/.test(src)
+}
+
+/** 块级 HTML：注释或块级元素（tag 非行内格式化标签、非 ke-*）。 */
+export const htmlPassthroughBlockTokenizer = {
+  name: 'html_passthrough',
+  level: 'block' as const,
+  start: (src: string) => {
+    if (isPlainHtmlComment(src)) return 0
+    if (/^<[a-zA-Z]/.test(src)) {
+      const tag = (/^<([a-zA-Z][a-zA-Z0-9-]*)/.exec(src) ?? [])[1]
+      if (tag && !HTML_INLINE_TAGS.has(tag.toLowerCase())) return 0
+    }
+    return -1
+  },
+  tokenize(src: string): MarkdownToken | undefined {
+    if (isPlainHtmlComment(src)) {
+      const m = /^<!--[\s\S]*?-->\s*(?:\n|$)/.exec(src)
+      if (!m) return undefined
+      return { type: 'html_passthrough', raw: m[0].replace(/\s*$/, '') }
+    }
+    const open = /^<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/.exec(src)
+    if (!open) return undefined
+    const tag = open[1].toLowerCase()
+    if (HTML_INLINE_TAGS.has(tag)) return undefined
+    // 同一标签的匹配结束标签；若无闭合（跨块）则退化为整行。
+    const closeRe = new RegExp(`</${open[1]}>`)
+    const endTag = closeRe.exec(src)
+    if (endTag) {
+      const raw = src.slice(0, endTag.index + endTag[0].length)
+      return { type: 'html_passthrough', raw }
+    }
+    // 无闭合标签：仅保留整行（到行尾）
+    const line = /^<[a-zA-Z][^>]*>[^\n]*\n?/.exec(src)
+    if (!line) return undefined
+    return { type: 'html_passthrough', raw: line[0].replace(/\s*$/, '') }
+  },
+}
+
+/** 行内 HTML：段落中出现的普通 HTML 注释（非 ke-*）原样保留。 */
+export const htmlPassthroughInlineTokenizer = {
+  name: 'html_passthrough_inline',
+  level: 'inline' as const,
+  start: (src: string) => src.indexOf('<!--'),
+  tokenize(src: string): MarkdownToken | undefined {
+    if (!isPlainHtmlComment(src)) return undefined
+    const m = /^<!--[\s\S]*?-->/.exec(src)
+    if (!m) return undefined
+    return { type: 'html_passthrough_inline', raw: m[0] }
   },
 }

@@ -74,10 +74,12 @@ def test_delete_and_rebuild_removes_search_hits(client):
                    client.get("/api/search", params={"q": "remover"}).json()["results"])
     # 重建后仍然没有
     root = client.app.state.workspace_root
+    old_store = client.app.state.store
     store = IndexStore(root / ".knowledgeeditor" / "index.db").connect()
     indexer = WorkspaceIndexer(store, root)
     indexer.rebuild()
     client.app.state.store = store
     client.app.state.indexer = indexer
+    old_store.close()  # 释放旧连接，避免同一文件双重句柄（P3-18 隔离）
     assert not any(r["rel_path"] == rel for r in
                    client.get("/api/search", params={"q": "remover"}).json()["results"])

@@ -124,6 +124,32 @@ describe('Phase 5：来源标记往返', () => {
     expect(back).not.toContain('"source"')
     ed.destroy()
   })
+
+  it('P1-5 + P4-12：source 与其它字段合并（不独占分支），round-trip 后字段全保留', () => {
+    const md =
+      '<!-- ke-module: {"kind":"module","id":"m1","name":"部署步骤","version":2,"params":{"host":"127.0.0.1"},"source":"Modules/Math/Def.md"} -->'
+    const ed = makeEditor(md)
+    const mod = (ed.getJSON().content ?? []).find((n) => n.type === 'module')
+    expect(mod?.attrs?.id).toBe('m1')
+    expect(mod?.attrs?.name).toBe('部署步骤')
+    expect(mod?.attrs?.version).toBe(2)
+    expect((mod?.attrs?.params as Record<string, unknown> | undefined)?.host).toBe('127.0.0.1')
+    expect(mod?.attrs?.source).toBe('Modules/Math/Def.md')
+    const back = ed.getMarkdown()
+    expect(back).toContain('"id":"m1"')
+    expect(back).toContain('"name":"部署步骤"')
+    expect(back).toContain('"version":2')
+    expect(back).toContain('"source":"Modules/Math/Def.md"')
+    // kind 字段保留（P4-12）
+    expect(back).toMatch(/ke-module: \{"kind":"module"/)
+    // reopen：字段不漂移
+    const ed2 = makeEditor(back)
+    const mod2 = (ed2.getJSON().content ?? []).find((n) => n.type === 'module')
+    expect(mod2?.attrs?.source).toBe('Modules/Math/Def.md')
+    expect(mod2?.attrs?.id).toBe('m1')
+    ed.destroy()
+    ed2.destroy()
+  })
 })
 
 describe('Phase 5：插入模块（内容复制 + 来源记录）', () => {

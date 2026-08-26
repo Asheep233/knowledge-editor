@@ -37,15 +37,19 @@ def _app_config(request: Request):
 
 
 def _open_index(root: Path) -> tuple[IndexStore, WorkspaceIndexer, dict]:
-    """打开索引并全量重建；索引损坏（sqlite malformed / not a database 等，
+    """打开索引并（按需）重建；索引损坏（sqlite malformed / not a database 等，
     均属 sqlite3.DatabaseError）时丢弃损坏文件重建——索引是派生数据，
-    Markdown 为唯一事实源，损坏不应阻塞工作区打开。返回 (store, indexer, stats)。"""
+    Markdown 为唯一事实源，损坏不应阻塞工作区打开。返回 (store, indexer, stats)。
+
+    P3-3：正常路径先用 reconcile()（磁盘扫描签名一致则跳过全量重建），
+    只有签名变化才重建，避免每次启动/切库全量重灌。
+    """
     db_path = root / config.DIR_INTERNAL / "index.db"
     store: IndexStore | None = None
     try:
         store = IndexStore(db_path).connect()
         indexer = WorkspaceIndexer(store, root)
-        stats = indexer.rebuild()
+        stats = indexer.reconcile() or {}
         return store, indexer, stats
     except sqlite3.DatabaseError:
         # 先关连接（Windows 文件锁），再删除主库 + WAL/SHM，最后干净重建
@@ -81,6 +85,8 @@ def activate_workspace(app, root: Path) -> dict:
     watcher = getattr(app.state, "watcher", None)
     if watcher is not None:
         watcher.set_root(root)
+        # P2-13：外部变化 → 增量同步索引（watcher 线程内调用，IndexStore 已加锁）
+        watcher.set_handler(indexer.update_file)
     return {"root": str(root), "stats": stats}
 
 
@@ -126,6 +132,9 @@ def workspace_current(request: Request) -> dict:
 @router.post("/create", status_code=201)
 def workspace_create(request: Request, body: PathBody) -> dict:
     target = Path(body.path).expanduser().resolve()
+    if target.exists() and not target.is_dir():
+        # P3-9：传入文件路径 → 400 而不是 500（any(iterdir) 在文件上抛异常）
+        raise HTTPException(status_code=400, detail="目标不是目录")
     if target.exists() and any(target.iterdir()):
         raise HTTPException(status_code=409, detail="目标目录非空，请使用「打开」")
     state = activate_workspace(request.app, target)

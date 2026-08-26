@@ -14,8 +14,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from . import __version__, config
@@ -77,6 +78,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# P2-16：Host 白名单——仅接受本机来源（127.0.0.1 / localhost / 测试用 testserver），
+# 阻断来自局域网/浏览器的 DNS rebinding 类请求。
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "::1", "testserver"],
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
@@ -91,8 +99,19 @@ async def require_workspace(request, call_next):
     """未打开工作区时，除健康检查与工作区管理外一律 409。
 
     关闭工作区后文件树/搜索/编辑等接口不再可用，前端回到工作区选择页。
+
+    P2-16：设置 KE_API_TOKEN 环境变量时，/api/*（除健康检查）必须带
+    X-KE-Token 头（sidecar 生成随机 token 注入前端，防本机其它进程调用）。
     """
     path = request.url.path
+    token = config.API_TOKEN
+    if (
+        token
+        and path.startswith("/api/")
+        and not path.startswith("/api/health")
+        and request.headers.get("x-ke-token") != token
+    ):
+        return JSONResponse(status_code=401, content={"detail": "未授权"})
     if (
         getattr(app.state, "workspace_root", None) is None
         and path.startswith("/api/")

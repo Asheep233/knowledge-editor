@@ -19,9 +19,15 @@ def list_modules(request: Request) -> dict:
     base = root / config.DIR_MODULES
     items = []
     if base.exists():
-        for p in sorted(base.rglob("*.md")):
+        # P4-9：枚举 *.md 与 *.markdown（P1-17：跳过符号链接）
+        for p in sorted(markdown_io.walk_files(base)):
+            if p.suffix.lower() not in (".md", ".markdown"):
+                continue
             rel = p.relative_to(root).as_posix()
-            content = markdown_io.read_text(p)
+            try:
+                content = markdown_io.read_text(p)
+            except (OSError, UnicodeDecodeError):
+                continue
             meta, _ = markdown_io.parse_frontmatter(content)
             items.append(
                 {

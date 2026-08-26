@@ -36,6 +36,9 @@ APP_CONFIG_LEGACY_PATH = Path(
 HOST = os.environ.get("KE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("KE_PORT", "8000"))
 
+# P2-16：本地 API 访问令牌（sidecar 启动时生成并注入前端；空 = 开发模式不校验）
+API_TOKEN = os.environ.get("KE_API_TOKEN", "")
+
 CORS_ORIGINS = [
     o.strip()
     for o in os.environ.get(

@@ -61,6 +61,10 @@ def _article_path(request: Request, article_id: str) -> Path:
     root = request.app.state.workspace_root
     if root is None:
         raise HTTPException(status_code=409, detail="未打开工作区")
+    # P1-10：白名单——仅允许 Articles/Modules 下的 .md/.markdown，
+    # 永久拒绝 .knowledgeeditor、Drafts 与任意其他位置文件
+    if not markdown_io.is_doc_rel(article_id):
+        raise HTTPException(status_code=400, detail="非法路径")
     full = markdown_io.safe_rel_path(root, article_id)
     if full is None:
         raise HTTPException(status_code=400, detail="非法路径")
@@ -91,6 +95,7 @@ def _maybe_snapshot(request: Request, rel: str, new_content: str) -> None:
 
     仅在磁盘旧内容存在且与新内容不同时快照，避免元信息版本噪音；
     快照目录不在索引扫描范围，不影响搜索。
+    P2-4：快照失败（磁盘异常等）只记日志继续保存，绝不阻塞主保存链路。
     """
     hist = getattr(request.app.state, "history", None)
     if hist is None:
@@ -103,7 +108,13 @@ def _maybe_snapshot(request: Request, rel: str, new_content: str) -> None:
     except OSError:
         return
     if old and old != new_content:
-        hist.snapshot(rel, old)
+        try:
+            hist.snapshot(rel, old)
+        except OSError:
+            # 快照是辅助能力：失败不影响主保存
+            import logging
+
+            logging.getLogger(__name__).warning("历史快照失败（不影响保存）: %s", rel)
 
 
 # ---------- endpoints ----------
@@ -117,8 +128,9 @@ def file_tree(request: Request) -> dict:
         base = root / rel
         out = []
         if base.exists():
-            for p in sorted(base.rglob("*")):
-                if not p.is_file() or p.name in skip:
+            # P1-17：跳过符号链接/Junction，防止枚举/索引到 workspace 外部
+            for p in sorted(markdown_io.walk_files(base)):
+                if p.name in skip:
                     continue
                 if exts and p.suffix.lower() not in exts:
                     continue
@@ -154,7 +166,11 @@ def get_article(request: Request, article_id: str) -> ArticleOut:
     full = _article_path(request, article_id)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
-    content = markdown_io.read_text(full)
+    try:
+        content = markdown_io.read_text(full)
+    except UnicodeDecodeError:
+        # P2-2：非 UTF-8 .md 返回 422 + 明确提示，而不是 500
+        raise HTTPException(status_code=422, detail="文件不是 UTF-8 编码，无法作为文档打开")
     meta, body = markdown_io.parse_frontmatter(content)
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
     created_at, updated_at, size = _file_stats(full)
@@ -179,7 +195,14 @@ def create_article(request: Request, body: ArticleCreate) -> ArticleOut:
     full = articles / f"{slug}.md"
     if full.exists():
         raise HTTPException(status_code=409, detail=f"已存在同名文章: {slug}.md")
-    content = body.content or f"# {body.title}\n\n"
+    if body.content:
+        content = body.content
+    else:
+        # P3-12：默认内容把 title 写入 frontmatter（接线而非死参数——
+        # 列表/属性面板解析 meta.title 作为首选标题来源）
+        content = (
+            f"---\ntitle: {body.title}\n---\n\n# {body.title}\n\n"
+        )
     markdown_io.atomic_write(full, content)
     request.app.state.indexer.update_file(rel)
     _mark_internal(request, rel)
@@ -230,6 +253,21 @@ def update_article(request: Request, article_id: str, body: ArticleUpdate) -> Ar
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
+
+    # P0-1：正文保存 = 合并语义。正文是唯一事实源，但 frontmatter 元信息
+    # （title/tags/自定义键，由 PUT /meta 与前端写入）不能被正文 PUT 逐字节
+    # 覆盖抹掉。merge_frontmatter 以原始行无损合并（含嵌套对象/注释等复杂
+    # YAML），正文逐字节保留；无差异时不落盘。
+    merged = body.content
+    try:
+        old_raw = markdown_io.read_text(full)
+    except (OSError, UnicodeDecodeError):
+        old_raw = ""
+    if old_raw:
+        merged = markdown_io.merge_frontmatter(old_raw, body.content)
+    if merged != body.content:
+        body = body.model_copy(update={"content": merged})
+
     _maybe_snapshot(request, rel, body.content)
     markdown_io.atomic_write(full, body.content)
     request.app.state.indexer.update_file(rel)
@@ -256,6 +294,19 @@ def delete_article(request: Request, article_id: str) -> None:
     full = _article_path(request, article_id)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
+    # P1-11：删除前强制快照——删除必须有兜底（历史可恢复）
+    try:
+        old_raw = markdown_io.read_text(full)
+    except (OSError, UnicodeDecodeError):
+        old_raw = ""
+    if old_raw:
+        rel = full.relative_to(request.app.state.workspace_root).as_posix()
+        hist = getattr(request.app.state, "history", None)
+        if hist is not None:
+            try:
+                hist.snapshot(rel, old_raw)
+            except OSError:
+                pass  # 快照失败不阻止删除（历史为辅助能力）
     full.unlink()
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
     request.app.state.indexer.update_file(rel)

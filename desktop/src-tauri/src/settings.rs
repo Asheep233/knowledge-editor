@@ -17,6 +17,10 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// P2-12：临时文件名计数器，配合 pid + 纳秒时间戳保证同一进程内并发写不撞名。
+static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
 
 pub const SCHEMA_VERSION: u32 = 1;
 const THEMES: [&str; 3] = ["system", "light", "dark"];
@@ -113,12 +117,27 @@ fn load() -> AppSettings {
     load_from(&settings_file())
 }
 
-/// 原子保存（tmp + rename），与后端 app_config.py 的 save() 策略一致。
+/// P2-12：生成唯一临时路径（同目录下），避免多线程并发写共用固定 tmp 名互相覆盖。
+fn unique_tmp_path(path: &std::path::Path) -> PathBuf {
+    let seq = TMP_SEQ.fetch_add(1, Ordering::Relaxed);
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let parent = path.parent().unwrap_or_else(|| std::path::Path::new("."));
+    let name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "settings.json".to_string());
+    parent.join(format!("{name}.{}.{}.tmp", std::process::id(), nanos, seq))
+}
+
+/// 原子保存（唯一 tmp + rename），与后端 app_config.py 的 save() 策略一致。
 fn save_to(path: &std::path::Path, settings: &AppSettings) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("创建设置目录失败: {e}"))?;
     }
-    let tmp = path.with_extension("json.tmp");
+    let tmp = unique_tmp_path(path);
     let text = serde_json::to_string_pretty(settings)
         .map_err(|e| format!("序列化设置失败: {e}"))?;
     std::fs::write(&tmp, text).map_err(|e| format!("写入设置失败: {e}"))?;

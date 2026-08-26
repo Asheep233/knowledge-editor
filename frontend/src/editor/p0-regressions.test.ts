@@ -12,7 +12,7 @@ import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { setKeContent } from './index'
-import { stripFrontmatter, withFrontmatter } from './ke'
+import { parseFrontmatter, stripFrontmatter, withFrontmatter } from './ke'
 import { createSaveQueue } from '../utils/save-queue'
 
 const EXTENSIONS = [
@@ -35,8 +35,10 @@ describe('P0-1 withFrontmatter 保全字段', () => {
     expect(out).toContain('custom_key: hello')
     expect(out).toContain('ke_version: 2')
     expect(out.endsWith('\n---\n\n正文\n')).toBe(true)
-    // 不得出现重复 frontmatter
-    expect(out.match(/^---/gm) ?? []).toHaveLength(1)
+    // 不得出现重复 frontmatter：解析结果应恰为一个块，正文不再以 --- 开头
+    const { content } = parseFrontmatter(out)
+    expect(content).toBe('正文\n')
+    expect(content.startsWith('---')).toBe(false)
   })
 
   it('无 frontmatter 时写入版本头（幂等）', () => {

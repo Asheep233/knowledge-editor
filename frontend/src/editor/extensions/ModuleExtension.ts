@@ -104,16 +104,19 @@ export const ModuleExtension = Node.create({
   },
   renderMarkdown: ({ attrs }: JSONContent) => {
     const a = (attrs as ModuleAttrs) ?? ({} as ModuleAttrs)
-    // Phase 5 来源记录模式：插入模块生成的标记仅含 source（规范示例格式）。
-    // 旧文档标记（含 id/name/version 等）走下方兼容路径，不受影响。
-    if (a.source) {
+    // 仅含 source 的来源标记（工具栏插入规范格式）保持原样零漂移：{source}。
+    const onlySource = !a.id && !a.name && !a.version && !a.params && (!a.mode || a.mode === 'card')
+    if (a.source && onlySource) {
       return `<!-- ke-module: ${JSON.stringify({ source: a.source })} -->`
     }
+    // P1-5：source 不再独占分支——与 id/name/version/mode/params 合并输出，
+    // 避免「插入后复制」模式生成的 source 标记丢掉其它字段（旧文档兼容）。
     const obj: Record<string, unknown> = { kind: 'module', id: a.id || newId() }
     if (a.name) obj.name = a.name
     if (a.version) obj.version = a.version
     if (a.mode && a.mode !== 'card') obj.mode = a.mode
     if (a.params) obj.params = a.params
+    if (a.source) obj.source = a.source
     return `<!-- ke-module: ${JSON.stringify(obj)} -->`
   },
 })

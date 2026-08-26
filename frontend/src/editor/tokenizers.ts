@@ -210,10 +210,30 @@ export const tableTokenizer = {
   },
 }
 
+/** 转义感知的表格行拆分（P1-4）：`\|` 视为单元格内容中的字面 |，不参与列分割。
+ * 序列化侧写 `\|` 转义，解析侧必须能识别回读，否则 `| a | b \| c |` 会被错切成 3 列。 */
 function parseTableRow(line: string): string[] | null {
   const t = line.trim()
   if (!t.startsWith('|') || !t.endsWith('|')) return null
-  return t.slice(1, -1).split('|').map((c) => c.trim())
+  const body = t.slice(1, -1)
+  const cells: string[] = []
+  let cur = ''
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i]
+    if (ch === '\\' && body[i + 1] === '|') {
+      cur += '|'
+      i++
+      continue
+    }
+    if (ch === '|') {
+      cells.push(cur)
+      cur = ''
+      continue
+    }
+    cur += ch
+  }
+  cells.push(cur)
+  return cells
 }
 
 /**
@@ -252,38 +272,91 @@ export const footnotesBlockTokenizer = {
 }
 
 /**
- * 未知 ke-* 标记兜底 tokenizer（块级 + 行内）。
- * - 已知 kind（note/module/attach/video/footnote，footnotes 前缀被 footnote 覆盖）
- *   用负向前瞻排除，避免在 marked 中抢占具体扩展
- *   （marked 对自定义 block tokenizer 在每个 block 循环直接调用，注册靠前的先执行）。
+ * 任意 ke-* 标记兜底 tokenizer（块级 + 行内）。
+ * - 不再用负向前瞻排除已知 kind（P1-3）：fallback 在 marked 扩展数组中最后执行
+ *   （最先注册 → unshift 后排在数组末尾），能走到这里说明具体 ke-* tokenizer
+ *   （note/module/attach/video/footnote/footnotes）已全部返回 undefined——
+ *   因此「已知 kind + 损坏 JSON」也走 fallback 原文保留，不再静默丢弃。
  * - kind 允许连字符/数字（如 ke-future-block、ke-x2:），确保任意未来标记可保留。
  * - 保留原始 raw，保存时原样输出，保证旧编辑器不破坏未来版本文档。
  */
-const KE_KNOWN_KINDS = 'note|module|attach|video|footnote'
-const KE_UNKNOWN_PATTERN = `^<!--\\s*ke-(?!${KE_KNOWN_KINDS})[a-z][a-z0-9-]*:`
+const KE_PATTERN = `^<!--\\s*ke-[a-z][a-z0-9-]*:`
 
 export const keFallbackTokenizer = {
   name: 'ke_fallback',
   level: 'block' as const,
-  start: (src: string) => (new RegExp(KE_UNKNOWN_PATTERN).test(src) ? 0 : -1),
+  start: (src: string) => (new RegExp(KE_PATTERN).test(src) ? 0 : -1),
   tokenize(src: string): MarkdownToken | undefined {
-    // 贪婪匹配到行尾的 -->（独占行）。已知 kind 已由各自 tokenizer 消费，
-    // 能走到这里说明 kind 未知或 JSON 损坏：保留原始文本。
-    const m = new RegExp(`${KE_UNKNOWN_PATTERN}[\\s\\S]*?-->\\s*(?:\\n|$)`).exec(src)
-    if (!m) return undefined
-    return { type: 'ke_fallback', raw: m[0].replace(/\s*$/, '') }
+    // 独占行约束（P1-3）：块级 ke-* 注释必须自成一行，不得吞并段落。
+    // 已知 kind 的有效标记已由各自 tokenizer 消费，能走到这里说明 kind 未知或 JSON 损坏：
+    // 保留原始文本。
+    const lines = src.split('\n')
+    if (!new RegExp(KE_PATTERN).test(lines[0])) return undefined
+    // 首行含 `-->` 但行尾不是 `-->`：这是行内标记混在段落里（如段落开头的 ke-footnote 上标），
+    // 交给 inline tokenizer，块级 fallback 不得跨行吞并后续正文/footnotes 区域。
+    if (lines[0].includes('-->') && !/-->\s*$/.test(lines[0])) return undefined
+    // 逐行扫描到第一个以 `-->`（仅尾随空白）结尾的行作为闭合（兼容多行未知标记）。
+    let acc = ''
+    for (let i = 0; i < lines.length; i++) {
+      acc += (i === 0 ? '' : '\n') + lines[i]
+      if (/-->\s*$/.test(lines[i])) return { type: 'ke_fallback', raw: acc.replace(/\s*$/, '') }
+    }
+    return undefined
   },
 }
 
-/** 通用 fallback（行内）：行内出现的未知 ke-* 注释保留原样 */
+/** 通用 fallback（行内）：行内出现的任何 ke-* 注释（含损坏 JSON）保留原样 */
 export const keFallbackInlineTokenizer = {
   name: 'ke_fallback_inline',
   level: 'inline' as const,
   start: (src: string) => src.indexOf('<!--'),
   tokenize(src: string): MarkdownToken | undefined {
-    // 非贪婪匹配到第一个 -->。已知 inline kind（ke-footnote）用负向前瞻排除。
-    const m = new RegExp(`${KE_UNKNOWN_PATTERN}[\\s\\S]*?-->`).exec(src)
+    // 非贪婪匹配到第一个 -->。有效 inline kind（ke-footnote）已由具体 tokenizer 消费。
+    const m = new RegExp(`${KE_PATTERN}[\\s\\S]*?-->`).exec(src)
     if (!m) return undefined
     return { type: 'ke_fallback_inline', raw: m[0] }
+  },
+}
+
+/**
+ * 普通 HTML 注释保真 tokenizer（块级，独占行）：`<!-- 普通注释 -->`。
+ * 非 ke-* 标记（ke-* 由具体扩展或 fallback 消费）；保留原始 raw，round-trip 不丢。
+ */
+export const htmlCommentBlockTokenizer = {
+  name: 'html_comment',
+  level: 'block' as const,
+  start: (src: string) => (src.startsWith('<!--') ? 0 : -1),
+  tokenize(src: string): MarkdownToken | undefined {
+    const m = /^<!--(?!\s*ke-)[\s\S]*?-->\s*(?:\n|$)/.exec(src)
+    if (!m) return undefined
+    return { type: 'html_comment', raw: m[0].replace(/\s*$/, '') }
+  },
+}
+
+/**
+ * 完整 HTML 块保真 tokenizer（块级）：`<div class="x">内容</div>`。
+ * 行首开标签 + 同名闭标签；内容区限长，避免无闭标签时把整篇文档吞进 raw。
+ * 非 `<tag...>` 开头（段落、列表、ke-* 注释等）不受影响。
+ */
+export const htmlBlockTokenizer = {
+  name: 'html_block',
+  level: 'block' as const,
+  start: (src: string) => (src.startsWith('<') ? 0 : -1),
+  tokenize(src: string): MarkdownToken | undefined {
+    const m = /^<([a-z][\w-]*)\b[^>]*>[\s\S]{0,8192}?<\/\1>\s*(?:\n|$)/.exec(src)
+    if (!m) return undefined
+    return { type: 'html_block', raw: m[0].replace(/\s*$/, '') }
+  },
+}
+
+/** 普通 HTML 注释保真 tokenizer（行内）：段落中的 `<!-- 注释 -->` 保留原样 */
+export const htmlCommentInlineTokenizer = {
+  name: 'html_comment_inline',
+  level: 'inline' as const,
+  start: (src: string) => src.indexOf('<!--'),
+  tokenize(src: string): MarkdownToken | undefined {
+    const m = /^<!--(?!\s*ke-)[\s\S]*?-->/.exec(src)
+    if (!m) return undefined
+    return { type: 'html_comment_inline', raw: m[0] }
   },
 }

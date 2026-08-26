@@ -9,7 +9,6 @@
  * Markdown 仅作为存储/交换格式，由 @tiptap/markdown 双向转换。
  */
 import { useEditor, type Editor } from '@tiptap/react'
-import { PluginKey } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -28,6 +27,11 @@ import {
   TableHeader,
 } from './extensions/TableMarkdownExtension'
 import { GenericFallbackExtension, GenericFallbackInlineExtension } from './extensions/GenericFallbackExtension'
+import {
+  HtmlCommentExtension,
+  HtmlBlockExtension,
+  HtmlCommentInlineExtension,
+} from './extensions/HtmlFidelityExtension'
 import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
 import { uploadAttachment } from '../api/client'
 import { attachmentNode, isRealFile } from './upload'
@@ -82,6 +86,10 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       // fallback 只兜底未知 kind（且 tokenizer 正则含负向前瞻排除已知 kind，双保险）。
       GenericFallbackExtension,
       GenericFallbackInlineExtension,
+      // P1-2：普通 HTML 注释 / HTML 块保真（原样保留 raw，round-trip 不丢）
+      HtmlCommentExtension,
+      HtmlBlockExtension,
+      HtmlCommentInlineExtension,
       // 标准 Markdown 图片：![alt](src)
       ImageMarkdownExtension,
       // KE 扩展节点（math / mathBlock / note / module / attach / video / footnote）

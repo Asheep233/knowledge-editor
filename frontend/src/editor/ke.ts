@@ -36,16 +36,7 @@ function coerce(raw: string): string | number | string[] {
   return raw.trim()
 }
 
-/** frontmatter 值序列化（标量/内联列表） */
-function renderValue(v: string | number | string[]): string {
-  if (Array.isArray(v)) return `[${v.map((s) => `"${s}"`).join(', ')}]`
-  return String(v)
-}
-
-/**
- * 解析 frontmatter 全部键值（P0-1）：返回 { meta, content }，
- * 仅用于保全原有字段（title/tags/自定义键），不丢弃任何键。
- */
+/** 解析 frontmatter 全部键值（P0-1）：返回 { meta, content }，仅用于读取。 */
 export function parseFrontmatter(
   md: string,
 ): { meta: Record<string, string | number | string[]>; content: string } {
@@ -64,14 +55,28 @@ export function parseFrontmatter(
 
 /**
  * 给 Markdown 附加（或更新）frontmatter 版本头。
- * 合并语义（P0-1）：保留原有全部字段（title/tags/自定义键），仅更新 ke_version；
+ * 合并语义（P0-1）：保留原有全部字段的原始字节（title/tags/自定义键，
+ * 含内联/块列表、注释等原样保留），仅更新 ke_version 一行；
  * 幂等：正文若已带 frontmatter 会被先剥离再重写，不会叠加、不会丢字段。
  */
 export function withFrontmatter(md: string, version = KE_VERSION): string {
-  const { meta, content } = parseFrontmatter(md)
-  meta[KE_FRONTMATTER_KEY] = version
-  const lines = Object.entries(meta).map(([k, v]) => `${k}: ${renderValue(v)}`)
-  return `---\n${lines.join('\n')}\n---\n\n${content}`
+  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
+  if (!m) {
+    return `---\n${KE_FRONTMATTER_KEY}: ${version}\n---\n\n${md}`
+  }
+  const out: string[] = []
+  let replaced = false
+  for (const line of m[1].split(/\r?\n/)) {
+    const idx = line.indexOf(':')
+    if (idx > 0 && line.slice(0, idx).trim() === KE_FRONTMATTER_KEY) {
+      out.push(`${KE_FRONTMATTER_KEY}: ${version}`)
+      replaced = true
+    } else {
+      out.push(line)
+    }
+  }
+  if (!replaced) out.push(`${KE_FRONTMATTER_KEY}: ${version}`)
+  return `---\n${out.join('\n')}\n---\n\n${md.slice(m[0].length)}`
 }
 
 const KE_KIND_RE = KE_KINDS.join('|')

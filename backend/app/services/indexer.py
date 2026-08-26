@@ -42,7 +42,7 @@ def _scan(root: Path, rel: str, kind: str) -> list[dict]:
     if not base.exists():
         return []
     records = []
-    for p in sorted(base.rglob("*")):
+    for p in markdown_io.iter_tree_safe(base):
         if not p.is_file() or p.name in _SKIP_NAMES:
             continue
         rel_path = p.relative_to(root).as_posix()
@@ -165,6 +165,6 @@ class WorkspaceIndexer:
             return [full.relative_to(self.root).as_posix()]
         return [
             p.relative_to(self.root).as_posix()
-            for p in sorted(full.rglob("*"))
+            for p in markdown_io.iter_tree_safe(full)
             if p.is_file() and p.name not in _SKIP_NAMES
         ]

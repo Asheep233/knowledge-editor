@@ -18,6 +18,7 @@ import { setKeContent, useKeEditor } from '../../editor'
 import { downloadBlob, extractAttachmentRefs, slugForDownload } from '../../editor/import-export'
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
+import { createSaveQueue } from '../../utils/save-queue'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
@@ -31,9 +32,11 @@ interface Props {
   onSaved?: (id: string, doc?: ArticleMeta) => void
   /** Phase 6.3：历史版本恢复后更新 App 层文档（标题/元信息等） */
   onArticleRestored?: (doc: ArticleMeta) => void
+  /** P0-2：把「清防抖并立即保存」注册给 App，供切换文档/关窗前 flush；返回 true 表示已安全落盘 */
+  onRegisterFlush?: (fn: (() => Promise<boolean>) | null) => void
 }
 
-type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
+export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
 const SAVE_LABEL: Record<SaveState, { text: string; cls: string }> = {
   idle: { text: '', cls: '' },
@@ -43,7 +46,7 @@ const SAVE_LABEL: Record<SaveState, { text: string; cls: string }> = {
   error: { text: '保存失败', cls: 'text-rose-600' },
 }
 
-export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored }: Props) {
+export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRegisterFlush }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -97,30 +100,61 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
   }, [])
 
+  // P1-6 单飞保存队列：保存请求串行执行（latest-wins），避免并发 PUT 乱序覆盖。
+  // 每条保存都携带调用时刻的快照（docId + md + seq），因此切换文档后
+  // 排队中的旧文档保存仍写回正确文件；保存期间的新编辑由更高 seq 的快照补存。
+  const saveQueueRef = useRef<ReturnType<typeof createSaveQueue> | null>(null)
+  if (saveQueueRef.current === null) {
+    saveQueueRef.current = createSaveQueue(async (task) => {
+      try {
+        setSaveState('saving')
+        await registerRecoveryPoint(task.docId, task.md)
+        const saved = await saveArticle(task.docId, task.md)
+        // 保存期间若又有新编辑（seq 已前进），保持「未保存」由后续补存兜底
+        setSaveState(editSeqRef.current === task.seq ? 'saved' : 'dirty')
+        onSaved?.(task.docId, saved)
+        void clearRecoveryPoint(task.docId)
+        return true
+      } catch {
+        setSaveState('error')
+        return false
+      }
+    })
+  }
+
+  // P0-2：清掉未决防抖并立即保存（切换文档 / 关窗 / Ctrl+S / 保存按钮共用）。
+  // 快照在调用时刻同步捕获——即使队列中已有保存，也会按最新内容排队补存，
+  // 不会出现「防抖窗口内输入从未落盘」的静默丢失。
+  const flushPendingSave = useCallback(async (): Promise<boolean> => {
+    const ed = editorRef.current
+    const doc = articleRef.current
+    if (!ed || !doc) return true
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    const seq = editSeqRef.current
+    const md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
+    return saveQueueRef.current.push({ docId: doc.id, md, seq })
+  }, [])
+
   const handleUpdate = useCallback(() => {
     if (!articleRef.current) return
     editSeqRef.current += 1
-    const seq = editSeqRef.current
     setSaveState('dirty')
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
     // M3：自动保存间隔由应用设置驱动（默认 3000ms），设置面板改动后即时生效
-    debounceRef.current = window.setTimeout(async () => {
-      const ed = editorRef.current
-      const doc = articleRef.current
-      if (!ed || !doc) return
-      try {
-        setSaveState('saving')
-        const md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
-        await registerRecoveryPoint(doc.id, md)
-        const saved = await saveArticle(doc.id, md)
-        setSaveState(editSeqRef.current === seq ? 'saved' : 'dirty')
-        onSaved?.(doc.id, saved)
-        void clearRecoveryPoint(doc.id)
-      } catch {
-        setSaveState('error')
-      }
+    debounceRef.current = window.setTimeout(() => {
+      debounceRef.current = null
+      void flushPendingSave()
     }, getAutosaveIntervalMs())
-  }, [onSaved, registerRecoveryPoint, clearRecoveryPoint])
+  }, [flushPendingSave])
+
+  // 注册 flush 供 App 切换文档/关窗前调用（P0-2）
+  useEffect(() => {
+    onRegisterFlush?.(flushPendingSave)
+    return () => onRegisterFlush?.(null)
+  }, [flushPendingSave, onRegisterFlush])
 
   // Phase 6.4：content 固定为空，文档内容统一由下方 useEffect 的
   // setKeContent 加载一次，避免初始化与切换时重复解析大文档（Document Model）。
@@ -155,28 +189,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     if (editor.isEditable !== next) editor.setEditable(next, false)
   }, [editor, article])
 
-  // Ctrl+S / 保存按钮：立即保存
+  // Ctrl+S / 保存按钮：立即保存（复用 flush，纳入单飞队列）
   const saveNow = useCallback(async () => {
-    if (!editor || !article) return
-    // 手动保存覆盖了未决的防抖自动保存：清掉定时器，避免保存后
-    // 又触发一次冗余自动保存（内容已是最新，无需二次提交）。
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current)
-      debounceRef.current = null
-    }
-    const seq = editSeqRef.current
-    const md = withFrontmatter(editor.getMarkdown(), KE_VERSION)
-    try {
-      setSaveState('saving')
-      await registerRecoveryPoint(article.id, md)
-      const saved = await saveArticle(article.id, md)
-      setSaveState(editSeqRef.current === seq ? 'saved' : 'dirty')
-      onSaved?.(article.id, saved)
-      void clearRecoveryPoint(article.id)
-    } catch {
-      setSaveState('error')
-    }
-  }, [editor, article, onSaved, registerRecoveryPoint, clearRecoveryPoint])
+    await flushPendingSave()
+  }, [flushPendingSave])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

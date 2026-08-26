@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from .. import config
 from ..services import markdown_io
 
 router = APIRouter(prefix="/api/history", tags=["history"])
@@ -53,18 +54,22 @@ def restore_history(request: Request, body: HistoryRestoreBody) -> dict:
     root = request.app.state.workspace_root
     doc_path = body.doc_path
     full = markdown_io.safe_rel_path(root, doc_path)
-    if full is None:
+    if full is None or full == root:
         raise HTTPException(status_code=400, detail="非法路径")
-    if not full.is_file():
-        raise HTTPException(status_code=404, detail="文章不存在")
+    # P1-10：恢复目标限定 Articles/Modules 下的 Markdown
+    top = full.relative_to(root).parts[0]
+    if top not in (config.DIR_ARTICLES, config.DIR_MODULES):
+        raise HTTPException(status_code=400, detail="仅支持恢复 Articles/Modules 下的文档")
     content = hist.read_version(doc_path, body.version_id)
     if content is None:
         raise HTTPException(status_code=404, detail="历史版本不存在")
-    # 1) 快照当前内容（恢复操作本身可逆）
-    try:
-        old = markdown_io.read_text(full)
-    except OSError:
-        old = ""
+    # P1-11：允许对已删除文档重建（删除前已强制快照，恢复即重建文件）
+    old = ""
+    if full.is_file():
+        try:
+            old = markdown_io.read_text(full)
+        except OSError:
+            old = ""
     if old != content:
         hist.snapshot(doc_path, old)
     # 2) 写回 Markdown（唯一事实源）

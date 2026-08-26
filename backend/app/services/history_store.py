@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import itertools
 import re
 from datetime import datetime
 from pathlib import Path
@@ -20,13 +21,18 @@ from . import markdown_io
 # 每份文档最多保留的历史版本数
 MAX_VERSIONS = 30
 
-# 快照文件名：YYYYMMDD-HHMMSS-mmm.md（本地时间 + 毫秒，避免同秒多次保存互相覆盖；
-# 列表按名称排序即时间序）
-_TS_RE = re.compile(r"^\d{8}-\d{6}-\d{3}$")
+# 快照文件名：YYYYMMDD-HHMMSS-mmm.md，或含单调序号的 YYYYMMDD-HHMMSS-mmm-NNN.md
+# （P2-3：同毫秒多次保存加单调序号，避免互相覆盖；列表按名称排序即时间序）
+_TS_RE = re.compile(r"^\d{8}-\d{6}-\d{3}(?:-\d{3})?$")
+
+# 进程内单调序号（避免同一毫秒内多次快照同名覆盖）
+_TS_SEQ = itertools.count()
 
 
 def _ts() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    base = datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    n = next(_TS_SEQ)
+    return f"{base}-{n:03d}"
 
 
 class HistoryStore:
@@ -103,7 +109,8 @@ class HistoryStore:
     @staticmethod
     def _to_iso(stem: str) -> str:
         try:
-            dt = datetime.strptime(stem, "%Y%m%d-%H%M%S-%f")
+            # 兼容旧格式（无单调序号）与新格式：取前 19 字符解析
+            dt = datetime.strptime(stem[:19], "%Y%m%d-%H%M%S-%f")
             return dt.isoformat(timespec="seconds")
         except ValueError:
             return stem

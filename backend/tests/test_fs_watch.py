@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
 import pytest
@@ -73,7 +74,9 @@ def test_events_since_cursor(client, paused_watcher):
     paused_watcher.sniff()
     before = client.get("/api/fs/events", params={"since": 0}).json()
     since = before["last_seq"]
-    rel = _mk_doc(client, "游标事件")
+    # 外部（直接写盘）创建，非 API 自身写入——API 自建已被 mark_internal 抑制（P2-20）
+    rel = f"Articles/游标事件-{uuid.uuid4().hex[:6]}.md"
+    (_ws(client) / rel).write_text("# 游标事件\n", encoding="utf-8")
     paused_watcher.sniff()
     after = client.get("/api/fs/events", params={"since": since}).json()
     assert any(e["rel"] == rel and e["type"] == "created" for e in after["events"])

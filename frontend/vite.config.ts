@@ -35,6 +35,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts'],
+    // P3-17：仅匹配 .test.ts 会漏掉 .test.tsx 组件测试，补齐两种后缀
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
 })

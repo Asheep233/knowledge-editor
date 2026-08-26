@@ -18,22 +18,60 @@ export const KE_FRONTMATTER_KEY = 'ke_version'
  * 因此文档被移动/复制后版本仍然存在。
  */
 export function stripFrontmatter(md: string): { version: number; content: string } {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
-  if (!m) return { version: 0, content: md }
-  const versionMatch = new RegExp(`^\\s*${KE_FRONTMATTER_KEY}\\s*:\\s*(\\d+)`, 'm').exec(m[1])
-  return {
-    version: versionMatch ? Number(versionMatch[1]) || 0 : 0,
-    content: md.slice(m[0].length),
+  const { meta, content } = parseFrontmatter(md)
+  return { version: Number(meta[KE_FRONTMATTER_KEY]) || 0, content }
+}
+
+/** frontmatter 标量/内联列表解析（与后端 parse_frontmatter 语义一致） */
+function coerce(raw: string): string | number | string[] {
+  const t = raw.trim()
+  if (t.startsWith('[') && t.endsWith(']')) {
+    return t
+      .slice(1, -1)
+      .split(',')
+      .map((s) => s.trim().replace(/^["']|["']$/g, ''))
+      .filter(Boolean)
   }
+  if (/^-?\d+$/.test(t)) return Number(t)
+  return raw.trim()
+}
+
+/** frontmatter 值序列化（标量/内联列表） */
+function renderValue(v: string | number | string[]): string {
+  if (Array.isArray(v)) return `[${v.map((s) => `"${s}"`).join(', ')}]`
+  return String(v)
+}
+
+/**
+ * 解析 frontmatter 全部键值（P0-1）：返回 { meta, content }，
+ * 仅用于保全原有字段（title/tags/自定义键），不丢弃任何键。
+ */
+export function parseFrontmatter(
+  md: string,
+): { meta: Record<string, string | number | string[]>; content: string } {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
+  if (!m) return { meta: {}, content: md }
+  const meta: Record<string, string | number | string[]> = {}
+  for (const line of m[1].split(/\r?\n/)) {
+    const idx = line.indexOf(':')
+    if (idx < 0) continue
+    const key = line.slice(0, idx).trim()
+    if (!key) continue
+    meta[key] = coerce(line.slice(idx + 1))
+  }
+  return { meta, content: md.slice(m[0].length) }
 }
 
 /**
  * 给 Markdown 附加（或更新）frontmatter 版本头。
- * 幂等：正文若已带 frontmatter 会被先剥离再重写，不会叠加。
+ * 合并语义（P0-1）：保留原有全部字段（title/tags/自定义键），仅更新 ke_version；
+ * 幂等：正文若已带 frontmatter 会被先剥离再重写，不会叠加、不会丢字段。
  */
 export function withFrontmatter(md: string, version = KE_VERSION): string {
-  const { content } = stripFrontmatter(md)
-  return `---\n${KE_FRONTMATTER_KEY}: ${version}\n---\n\n${content}`
+  const { meta, content } = parseFrontmatter(md)
+  meta[KE_FRONTMATTER_KEY] = version
+  const lines = Object.entries(meta).map(([k, v]) => `${k}: ${renderValue(v)}`)
+  return `---\n${lines.join('\n')}\n---\n\n${content}`
 }
 
 const KE_KIND_RE = KE_KINDS.join('|')

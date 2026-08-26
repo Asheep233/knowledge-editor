@@ -82,7 +82,8 @@ class FsWatcher:
             base = root / rel
             if not base.exists():
                 continue
-            for p in sorted(base.rglob("*")):
+            # P1-17：跳过符号链接，避免把 workspace 外内容纳入监听快照
+            for p in markdown_io.iter_tree_safe(base):
                 if not p.is_file() or p.name in _SKIP:
                     continue
                 try:
@@ -125,6 +126,10 @@ class FsWatcher:
         old = self.snapshot
         for rel in sorted(set(old) | set(current)):
             if rel in current and rel not in old:
+                # 自身创建（上传/导入等已 mark_internal）应抑制，避免误报外部修改
+                mark = self.internal_marks.pop(rel, None)
+                if mark == current[rel]:
+                    continue
                 self._push("created", rel)
                 fresh.append(self.events[-1])
             elif rel in old and rel not in current:

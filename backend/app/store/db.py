@@ -9,13 +9,33 @@
 """
 from __future__ import annotations
 
+import functools
 import json
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional, TypeVar
 
 from ..config import INDEX_DB_PATH
+
+_F = TypeVar("_F", bound=Callable)
+
+
+def _locked(method: _F) -> _F:
+    """包装 IndexStore 的 DB 方法：同一 RLock 下串行执行（P1-9）。
+
+    FastAPI 线程池与 fs_watch 线程共用同一 sqlite3.Connection
+    （check_same_thread=False），无锁时会产生 Recursive use of cursors
+    与事务交错；RLock 可重入，connect 内嵌套调用 _init_schema 等安全。
+    """
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 # 当前 FTS 结构版本：修改 files_fts 列定义时必须递增并触发重建
 _FTS_SCHEMA_VERSION = 2
@@ -85,9 +105,11 @@ class IndexStore:
     def __init__(self, db_path: Path = INDEX_DB_PATH):
         self.db_path = Path(db_path)
         self.conn: Optional[sqlite3.Connection] = None
+        self._lock = threading.RLock()
 
     # ---------- 生命周期 ----------
 
+    @_locked
     def connect(self) -> "IndexStore":
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
@@ -149,6 +171,7 @@ class IndexStore:
             (str(_FTS_SCHEMA_VERSION),),
         )
 
+    @_locked
     def close(self) -> None:
         if self.conn is not None:
             self.conn.close()
@@ -156,6 +179,7 @@ class IndexStore:
 
     # ---------- settings ----------
 
+    @_locked
     def get_setting(self, key: str) -> Optional[str]:
         assert self.conn is not None
         row = self.conn.execute(
@@ -163,6 +187,7 @@ class IndexStore:
         ).fetchone()
         return row["value"] if row else None
 
+    @_locked
     def set_setting(self, key: str, value: str) -> None:
         assert self.conn is not None
         self.conn.execute(
@@ -174,6 +199,7 @@ class IndexStore:
 
     # ---------- files ----------
 
+    @_locked
     def upsert_file(
         self,
         rel_path: str,
@@ -211,6 +237,7 @@ class IndexStore:
         )
         self.conn.commit()
 
+    @_locked
     def delete_file(self, rel_path: str) -> None:
         assert self.conn is not None
         self.conn.execute("DELETE FROM files WHERE rel_path = ?", (rel_path,))
@@ -229,6 +256,7 @@ class IndexStore:
             out["meta"] = {}
         return out
 
+    @_locked
     def get_file(self, rel_path: str) -> Optional[dict[str, Any]]:
         assert self.conn is not None
         row = self.conn.execute(
@@ -236,6 +264,7 @@ class IndexStore:
         ).fetchone()
         return self._row_to_dict(row) if row else None
 
+    @_locked
     def list_files(
         self, kind: Optional[str] = None, prefix: Optional[str] = None
     ) -> list[dict[str, Any]]:
@@ -255,6 +284,7 @@ class IndexStore:
         rows = self.conn.execute(sql, params).fetchall()
         return [self._row_to_dict(r) for r in rows]
 
+    @_locked
     def clear_files(self) -> None:
         """清空文件索引（供全量重建）。"""
         assert self.conn is not None
@@ -264,6 +294,7 @@ class IndexStore:
 
     # ---------- search ----------
 
+    @_locked
     def search(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
         """搜索（决策点 3：SQLite FTS5 集中索引；Phase 4.4 扩展字段）。
 
@@ -312,6 +343,7 @@ class IndexStore:
             return []
         return [dict(r) for r in rows]
 
+    @_locked
     def list_by_tag(self, tag: str, limit: int = 200) -> list[dict[str, Any]]:
         """按标签精确筛选文件（tags 存 JSON 数组，json_each 精确匹配）。"""
         assert self.conn is not None
@@ -340,6 +372,7 @@ class IndexStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    @_locked
     def list_tags(self) -> list[dict[str, Any]]:
         """聚合全部标签：{name, count}，按使用次数降序。"""
         assert self.conn is not None
@@ -358,6 +391,7 @@ class IndexStore:
 
     # ---------- recovery ----------
 
+    @_locked
     def add_recovery(self, doc_path: str, draft_path: str, session_id: str = "") -> None:
         """登记恢复点（Phase 6.2 起为 upsert：每份文档只保留最新一条）。"""
         assert self.conn is not None
@@ -369,6 +403,7 @@ class IndexStore:
         )
         self.conn.commit()
 
+    @_locked
     def get_recovery(self, doc_path: str) -> dict[str, Any] | None:
         assert self.conn is not None
         row = self.conn.execute(
@@ -376,6 +411,7 @@ class IndexStore:
         ).fetchone()
         return self._row_to_dict(row) if row else None
 
+    @_locked
     def list_recovery(self) -> list[dict[str, Any]]:
         assert self.conn is not None
         rows = self.conn.execute(
@@ -383,6 +419,7 @@ class IndexStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    @_locked
     def clear_recovery(self, doc_path: str) -> None:
         assert self.conn is not None
         self.conn.execute("DELETE FROM recovery WHERE doc_path = ?", (doc_path,))

@@ -13,6 +13,7 @@ v0.6.1 约束升级：仅手动删除、绝不自动——DELETE 端点只允许
 """
 from __future__ import annotations
 
+import os
 import secrets
 import time
 from datetime import datetime, timezone
@@ -36,6 +37,12 @@ def _safe_suffixes() -> set:
 
 _SAFE_SUFFIX = _safe_suffixes()
 
+# 上传总量上限（字节）：防止无界磁盘占用（P2-5）
+MAX_UPLOAD_BYTES = int(os.environ.get("KE_ATTACHMENT_MAX_BYTES", str(512 * 1024 * 1024)))
+
+# 可安全内联返回的类型；其余（含 html/svg 等可执行上下文）一律强制下载（P1-15）
+_INLINE_EXTS = (config.IMAGE_EXTS - {".svg"}) | config.VIDEO_EXTS
+
 
 def _category(filename: str) -> str:
     ext = Path(filename).suffix.lower()
@@ -56,7 +63,7 @@ def _scan_attachments(root: Path) -> list[dict]:
     base = root / config.DIR_ATTACHMENTS
     if not base.exists():
         return out
-    for p in sorted(base.rglob("*")):
+    for p in markdown_io.iter_tree_safe(base):
         if not p.is_file() or p.name == ".gitkeep":
             continue
         rel = p.relative_to(root).as_posix()
@@ -80,7 +87,7 @@ def _doc_refs_index(root: Path) -> dict[str, list[str]]:
         base = root / top
         if not base.exists():
             continue
-        for p in sorted(base.rglob("*")):
+        for p in markdown_io.iter_tree_safe(base):
             if not p.is_file() or p.suffix.lower() not in (".md", ".markdown"):
                 continue
             try:
@@ -128,6 +135,22 @@ def orphan_attachments(request: Request) -> dict:
     }
 
 
+def _attachment_path(request: Request, rel: str) -> Path:
+    """解析附件路径并校验业务目录（P1-10）。
+
+    附件端点仅允许 Attachments/ 下的文件；.knowledgeeditor / Drafts /
+    Articles / Modules 等一律 4xx，防止越区读删索引与文档。
+    """
+    root = request.app.state.workspace_root
+    full = markdown_io.safe_rel_path(root, rel)
+    if full is None or full == root:
+        raise HTTPException(status_code=404, detail="附件不存在")
+    top = full.relative_to(root).parts[0]
+    if top != config.DIR_ATTACHMENTS:
+        raise HTTPException(status_code=404, detail="附件不存在")
+    return full
+
+
 @router.delete("/{rel_path:path}")
 def delete_attachment(request: Request, rel_path: str) -> dict:
     """删除附件（v0.6.1 约束升级：仅手动删除、绝不自动）。
@@ -136,8 +159,8 @@ def delete_attachment(request: Request, rel_path: str) -> dict:
     防止误删；删除必须由用户显式发起（前端确认后调用）。
     """
     root = request.app.state.workspace_root
-    full = markdown_io.safe_rel_path(root, rel_path)
-    if full is None or not full.is_file():
+    full = _attachment_path(request, rel_path)
+    if not full.is_file():
         raise HTTPException(status_code=404, detail="附件不存在")
     refs = _doc_refs_index(root)
     if rel_path in refs:
@@ -147,8 +170,8 @@ def delete_attachment(request: Request, rel_path: str) -> dict:
         )
     try:
         full.unlink()
-    except OSError as e:
-        raise HTTPException(status_code=500, detail=f"删除附件失败: {e}")
+    except OSError:
+        raise HTTPException(status_code=500, detail="删除附件失败")
     request.app.state.indexer.update_file(rel_path)
     return {"deleted": rel_path}
 
@@ -171,15 +194,26 @@ async def upload_attachment(
     name = f"{int(time.time() * 1000)}-{secrets.token_hex(3)}{ext or '.bin'}"
     target = target_dir / name
 
-    # 流式落盘，避免大文件整载内存
+    # 流式落盘，避免大文件整载内存；超出配额立即中止（P2-5）
     size = 0
     with target.open("wb") as out:
         while chunk := await file.read(1024 * 256):
-            out.write(chunk)
             size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                out.close()
+                target.unlink(missing_ok=True)
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"附件超过大小上限（{MAX_UPLOAD_BYTES // (1024 * 1024)} MB）",
+                )
+            out.write(chunk)
 
     rel = f"{rel_dir}/{name}"
     request.app.state.indexer.update_file(rel)
+    # P2-20：上传完成后标记内部写入，抑制自身 watcher 事件误报外部修改
+    watcher = getattr(request.app.state, "watcher", None)
+    if watcher is not None:
+        watcher.mark_internal(rel)
     return {
         "path": rel,
         "url": f"/api/attachments/{rel}",
@@ -191,8 +225,11 @@ async def upload_attachment(
 
 @router.get("/{rel_path:path}")
 def get_attachment(request: Request, rel_path: str) -> FileResponse:
-    root = request.app.state.workspace_root
-    full = markdown_io.safe_rel_path(root, rel_path)
-    if full is None or not full.is_file():
+    full = _attachment_path(request, rel_path)
+    if not full.is_file():
         raise HTTPException(status_code=404, detail="附件不存在")
-    return FileResponse(full)
+    ext = full.suffix.lower()
+    if ext in _INLINE_EXTS:
+        return FileResponse(full)
+    # P1-15：html/svg 等非图片/视频类型强制下载，禁止同源 inline 注入脚本上下文
+    return FileResponse(full, headers={"Content-Disposition": "attachment"})

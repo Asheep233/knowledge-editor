@@ -9,6 +9,7 @@
  * Markdown 仅作为存储/交换格式，由 @tiptap/markdown 双向转换。
  */
 import { useEditor, type Editor } from '@tiptap/react'
+import { PluginKey } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -145,7 +146,44 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
   })
 }
 
-/** 文档切换时重新载入 Markdown 内容 */
-export function setKeContent(editor: Editor, markdown: string): void {
-  editor.commands.setContent(markdown, { contentType: 'markdown' })
+/** 文档切换时重新载入 Markdown 内容。
+ * P0-4：setContent 默认把整篇内容压入 undo 栈，切换文档后 Ctrl+Z 会把
+ * 上一文档的内容灌进当前文档并随 autosave 落盘——加载后必须清空历史栈；
+ * P1-1：加载是程序性载入而非用户编辑，emitUpdate=false 避免触发
+ * onUpdate → 标 dirty → 3s 后自动保存的「打开即保存」。
+ */
+export function setKeContent(
+  editor: Editor,
+  markdown: string,
+  opts: { emitUpdate?: boolean } = {},
+): void {
+  editor.commands.setContent(markdown, {
+    contentType: 'markdown',
+    emitUpdate: opts.emitUpdate ?? false,
+  })
+  clearEditorHistory(editor)
+}
+
+/**
+ * P0-4：清空 undo/redo 栈。
+ *
+ * prosemirror-history 未导出清空 API（HistoryState/Branch 均为内部实现），
+ * 但该插件在收到 historyKey 元数据时会把 meta.historyState 直接作为新状态：
+ * 这里取插件自身的 state.init() 构造一个全新空历史，随空事务分发即可
+ * 整体重置 undo/redo（事务无 doc 变更，不会触发 update 事件）。
+ *
+ * 注意：PluginKey 的 key 字符串带模块级递增后缀（首个 'history' 为 'history$'，
+ * 之后为 'history$1'…），自行 new PluginKey('history') 未必匹配，因此
+ * 从 view.state.plugins 里按 key 前缀查找 history 插件本体。
+ */
+export function clearEditorHistory(editor: Editor): void {
+  const view = editor.view
+  const historyPlugin = view.state.plugins.find((p) => {
+    const key = p.spec.key?.key ?? ''
+    return key.startsWith('history')
+  })
+  if (!historyPlugin) return
+  const freshState = historyPlugin.spec.state?.init()
+  if (!freshState) return
+  view.dispatch(view.state.tr.setMeta(historyPlugin.key, { historyState: freshState }))
 }

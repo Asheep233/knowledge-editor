@@ -126,7 +126,10 @@ def workspace_current(request: Request) -> dict:
 @router.post("/create", status_code=201)
 def workspace_create(request: Request, body: PathBody) -> dict:
     target = Path(body.path).expanduser().resolve()
-    if target.exists() and any(target.iterdir()):
+    # P3-9：目标为文件（非目录）时明确 4xx，避免 iterdir() 抛 NotADirectoryError
+    if target.exists() and not target.is_dir():
+        raise HTTPException(status_code=400, detail="目标路径已存在且不是目录")
+    if target.is_dir() and any(target.iterdir()):
         raise HTTPException(status_code=409, detail="目标目录非空，请使用「打开」")
     state = activate_workspace(request.app, target)
     _app_config(request).add_recent_workspace(target)

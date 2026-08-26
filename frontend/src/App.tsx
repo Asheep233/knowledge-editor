@@ -72,8 +72,28 @@ export default function App() {
   const eventCursor = useRef(0)
   const lastSavedAt = useRef(new Map<string, number>())
   const treeRefreshTimer = useRef<number | null>(null)
+  /** P0-2：EditorArea 注册的「清防抖并立即保存」，切换/关窗前调用 */
+  const flushRef = useRef<(() => Promise<boolean>) | null>(null)
+  /** P1-8：当前文档 id 的 ref 版本，供轮询 effect 捕获的旧闭包实时读取 */
+  const articleIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    articleIdRef.current = article?.id ?? null
+  }, [article?.id])
+
+  const registerFlush = useCallback((fn: (() => Promise<boolean>) | null) => {
+    flushRef.current = fn
+  }, [])
 
   const hasUnsaved = saveState === 'dirty' || saveState === 'saving' || saveState === 'error'
+
+  /** P0-2：切换前先 flush 未保存内容；flush 失败由用户确认是否仍放弃 */
+  const confirmFlushOrAbort = useCallback(async (): Promise<boolean> => {
+    if (!flushRef.current) return true
+    const ok = await flushRef.current()
+    if (ok) return true
+    return window.confirm('当前文档保存失败，继续操作将丢失未保存修改，是否仍然继续？')
+  }, [])
 
   // ---------- 后端健康检查 ----------
   useEffect(() => {
@@ -187,17 +207,21 @@ export default function App() {
         treeRefreshTimer.current = window.setTimeout(() => setTreeRefresh((n) => n + 1), 300)
       }
       // 外部修改提示：仅针对当前打开的文档；自身保存写入被后端标记抑制，前端再兜底一次
-      const cur = article?.id
+      // P1-8：轮询 effect 不随 article 重跑，必须从 ref 读取当前文档 id，
+      // 否则闭包捕获 article=null 的旧 handleFsEvent，弹窗永不出现。
+      const cur = articleIdRef.current
       if (ev.type === 'modified' && cur && ev.rel === cur) {
         const last = lastSavedAt.current.get(cur) ?? 0
         if (Date.now() - last < 2500) return
         setExtModal(ev)
       }
     },
-    [article?.id],
+    [],
   )
 
-  const openArticle = useCallback(async (id: string) => {
+  // P0-2：所有替换当前文档的入口统一走此函数——先 flush 未保存内容再加载
+  const requestOpenArticle = useCallback(async (id: string) => {
+    if (!(await confirmFlushOrAbort())) return
     setLoading(true)
     try {
       const doc = await getArticle(id)
@@ -208,7 +232,7 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [confirmFlushOrAbort])
 
   // ---------- 异常恢复动作（Phase 6.2） ----------
   const handleRecoveryRestore = useCallback(
@@ -217,7 +241,7 @@ export default function App() {
         const doc = await restoreRecovery(item.doc_path)
         setRecoveryModal((prev) => (prev ? prev.filter((i) => i.doc_path !== item.doc_path) : null))
         setTreeRefresh((n) => n + 1)
-        await openArticle(doc.id)
+        await requestOpenArticle(doc.id)
       } catch (e) {
         window.alert(`恢复失败：${e instanceof Error ? e.message : String(e)}`)
         // 记录可能已清除，刷新弹窗列表
@@ -226,7 +250,7 @@ export default function App() {
           .catch(() => undefined)
       }
     },
-    [openArticle],
+    [requestOpenArticle],
   )
 
   const handleRecoveryDiscard = useCallback(async (docPath: string) => {
@@ -248,9 +272,13 @@ export default function App() {
 
   // 编辑器自身保存完成回调：记录时间用于兜底抑制 + 同步最新文档状态
   // （Phase 6E：保存成功后更新 article，避免历史面板/元信息显示陈旧内容）
+  // P1-7：旧响应无条件覆盖当前文档会串内容——保存回调只接受与当前 article 匹配的 id
   const handleSaved = useCallback((id: string, doc?: ArticleMeta) => {
     lastSavedAt.current.set(id, Date.now())
-    if (doc) setArticle(doc)
+    setArticle((cur) => {
+      if (!cur || cur.id !== id) return cur
+      return doc ?? cur
+    })
   }, [])
 
   // 右侧面板折叠/展开（持久化到 localStorage，刷新后保持）
@@ -268,32 +296,13 @@ export default function App() {
     const rel = extModal?.rel
     setExtModal(null)
     if (!rel) return
-    if (hasUnsaved && !window.confirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？')) {
-      return
-    }
-    await openArticle(rel)
+    await requestOpenArticle(rel)
     setSaveState('saved')
-  }, [extModal, hasUnsaved, openArticle])
+  }, [extModal, requestOpenArticle])
 
   const handleKeepLocal = useCallback(() => {
     setExtModal(null)
   }, [])
-
-  // ---------- Workspace 切换（未保存确认，Phase 4 补充约束 1） ----------
-  const switchWorkspace = useCallback(
-    async (path: string, mode: 'open' | 'create') => {
-      if (hasUnsaved && !window.confirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？')) {
-        return
-      }
-      try {
-        const state = mode === 'create' ? await createWorkspace(path) : await openWorkspace(path)
-        applyWorkspace(state)
-      } catch (e) {
-        window.alert(`${mode === 'create' ? '创建' : '打开'}失败：${e instanceof Error ? e.message : String(e)}`)
-      }
-    },
-    [hasUnsaved],
-  )
 
   const applyWorkspace = useCallback((state: WorkspaceState) => {
     setWorkspace(state)
@@ -304,6 +313,20 @@ export default function App() {
     lastSavedAt.current.clear()
     setFirstRun(false)
   }, [])
+
+  // ---------- Workspace 切换（P0-2：先 flush 未保存内容再切换） ----------
+  const switchWorkspace = useCallback(
+    async (path: string, mode: 'open' | 'create') => {
+      if (!(await confirmFlushOrAbort())) return
+      try {
+        const state = mode === 'create' ? await createWorkspace(path) : await openWorkspace(path)
+        applyWorkspace(state)
+      } catch (e) {
+        window.alert(`${mode === 'create' ? '创建' : '打开'}失败：${e instanceof Error ? e.message : String(e)}`)
+      }
+    },
+    [confirmFlushOrAbort, applyWorkspace],
+  )
 
   /** 顶栏「打开工作区…」：桌面用原生目录选择器，Web 回退手动输入（M4） */
   const handleOpenWorkspaceMenu = useCallback(async () => {
@@ -341,16 +364,16 @@ export default function App() {
   }, [workspace?.root, applyWorkspace])
 
   const handleCloseWorkspace = useCallback(async () => {
-    if (hasUnsaved && !window.confirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？')) {
-      return
-    }
+    if (!(await confirmFlushOrAbort())) return
     await closeWorkspace()
     applyWorkspace({ open: false })
-  }, [hasUnsaved, applyWorkspace])
+  }, [confirmFlushOrAbort, applyWorkspace])
 
   const handleNewArticle = useCallback(async () => {
     const title = window.prompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
     if (!title) return
+    // P0-2：新建前 flush 当前文档，避免未保存内容随文档切换静默丢失
+    if (!(await confirmFlushOrAbort())) return
     try {
       const created = await createArticle(title)
       setArticle(created)
@@ -359,20 +382,17 @@ export default function App() {
       console.error('新建文档失败', e)
       window.alert(String(e))
     }
-  }, [])
+  }, [confirmFlushOrAbort])
 
-  // ---------- 导入（Phase 3E）：未保存确认 ----------
+  // ---------- 导入（Phase 3E）：P0-2 先 flush 未保存内容 ----------
   const handleImportFile = useCallback(
     async (file: File) => {
-      if (hasUnsaved) {
-        const ok = window.confirm('当前内容未保存，导入将覆盖，是否继续？')
-        if (!ok) return
-      }
+      if (!(await confirmFlushOrAbort())) return
       try {
         const lower = file.name.toLowerCase()
         const result = lower.endsWith('.zip') ? await importPackage(file) : await importMarkdown(file)
         setTreeRefresh((n) => n + 1)
-        await openArticle(result.id)
+        await requestOpenArticle(result.id)
         window.alert(`导入成功：${result.title}`)
       } catch (e) {
         console.error('导入失败', e)
@@ -381,7 +401,7 @@ export default function App() {
         if (fileInputRef.current) fileInputRef.current.value = ''
       }
     },
-    [hasUnsaved, openArticle],
+    [confirmFlushOrAbort, requestOpenArticle],
   )
 
   // ---------- 文件树变更联动（Phase 4.2） ----------
@@ -390,14 +410,18 @@ export default function App() {
       setTreeRefresh((n) => n + 1)
       if (!article) return
       if (m.type === 'delete' && m.from === article.id) {
+        // P0-2：文件已删除，先尝试 flush（失败时由用户确认是否放弃未保存修改）
+        if (!(await confirmFlushOrAbort())) return
         setArticle(null)
         setSaveState('idle')
         window.alert('当前文档已被删除')
       } else if ((m.type === 'rename' || m.type === 'move') && m.from === article.id && m.to) {
-        await openArticle(m.to)
+        // P0-2：重命名/移动当前文档前先 flush；旧 id 已失效导致保存失败时由用户确认
+        if (!(await confirmFlushOrAbort())) return
+        await requestOpenArticle(m.to)
       }
     },
-    [article, openArticle],
+    [article, requestOpenArticle, confirmFlushOrAbort],
   )
 
   // ---------- 桌面原生菜单事件（M5）：菜单项 → 复用既有动作 ----------
@@ -405,7 +429,7 @@ export default function App() {
     if (!isDesktop()) return
     let disposed = false
     const unlisteners: Array<() => void> = []
-    void import('@tauri-apps/api/event').then(async ({ listen }) => {
+    void import('@tauri-apps/api/event').then(async ({ listen, emit }) => {
       if (disposed) return
       const un = await Promise.all([
         listen('ke-menu:new-document', () => void handleNewArticle()),
@@ -413,6 +437,13 @@ export default function App() {
         listen<{ path: string }>('ke-menu:open-recent', (e) => {
           const p = e.payload?.path
           if (p) void switchWorkspace(p, 'open')
+        }),
+        // P0-2/P1-14：窗口关闭前由 Rust 侧发出请求，前端 flush 未保存内容后放行
+        listen('ke:close-requested', () => {
+          void (async () => {
+            await confirmFlushOrAbort()
+            await emit('ke:close-ready')
+          })()
         }),
       ])
       if (disposed) un.forEach((f) => f())
@@ -422,7 +453,19 @@ export default function App() {
       disposed = true
       unlisteners.forEach((f) => f())
     }
-  }, [handleNewArticle, handleOpenWorkspaceMenu, switchWorkspace])
+  }, [handleNewArticle, handleOpenWorkspaceMenu, switchWorkspace, confirmFlushOrAbort])
+
+  // ---------- P0-2：浏览器关闭/刷新拦截（Web 部署形态兜底） ----------
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsaved) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [hasUnsaved])
 
   // ---------- 渲染 ----------
   if (workspaceChecked && (!workspace?.open || firstRun)) {
@@ -552,7 +595,7 @@ export default function App() {
       <div className="flex min-h-0 flex-1">
         <LeftSidebar
           activeId={article?.id ?? null}
-          onOpenArticle={openArticle}
+          onOpenArticle={requestOpenArticle}
           refreshKey={treeRefresh}
           onFsMutation={handleFsMutation}
         />
@@ -564,13 +607,14 @@ export default function App() {
           onSaveStateChange={setSaveState}
           onSaved={handleSaved}
           onArticleRestored={setArticle}
+          onRegisterFlush={registerFlush}
         />
 
         {rightOpen ? (
           <RightPanel
             article={article}
             onMetaUpdate={setArticle}
-            onOpenArticle={openArticle}
+            onOpenArticle={requestOpenArticle}
             onCollapse={() => toggleRight(false)}
           />
         ) : (

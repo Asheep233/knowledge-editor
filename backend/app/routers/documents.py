@@ -58,12 +58,25 @@ def _articles_dir(request: Request) -> Path:
 
 
 def _article_path(request: Request, article_id: str) -> Path:
+    """解析文章路径并校验业务目录白名单（P1-10）。
+
+    文章端点仅允许 Articles/ 与 Modules/ 下的 .md/.markdown 文件；
+    永久拒绝 .knowledgeeditor 内部、Drafts 及任意非文档目录，
+    防止越区读写删索引/配置等文件。
+    """
     root = request.app.state.workspace_root
     if root is None:
         raise HTTPException(status_code=409, detail="未打开工作区")
     full = markdown_io.safe_rel_path(root, article_id)
     if full is None:
         raise HTTPException(status_code=400, detail="非法路径")
+    if full == root:
+        raise HTTPException(status_code=400, detail="非法路径")
+    top = full.relative_to(root).parts[0]
+    if top not in (config.DIR_ARTICLES, config.DIR_MODULES):
+        raise HTTPException(status_code=400, detail=f"不允许访问该目录: {top}")
+    if full.suffix.lower() not in {".md", ".markdown"}:
+        raise HTTPException(status_code=400, detail="仅支持 Markdown 文档")
     return full
 
 
@@ -117,7 +130,8 @@ def file_tree(request: Request) -> dict:
         base = root / rel
         out = []
         if base.exists():
-            for p in sorted(base.rglob("*")):
+            # P1-17：跳过符号链接（rglob 会跟随目录链接越界）
+            for p in markdown_io.iter_tree_safe(base):
                 if not p.is_file() or p.name in skip:
                     continue
                 if exts and p.suffix.lower() not in exts:
@@ -154,7 +168,12 @@ def get_article(request: Request, article_id: str) -> ArticleOut:
     full = _article_path(request, article_id)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
-    content = markdown_io.read_text(full)
+    try:
+        content = markdown_io.read_text(full)
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=422, detail="文件不是有效的 UTF-8 编码，无法作为文档打开"
+        )
     meta, body = markdown_io.parse_frontmatter(content)
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
     created_at, updated_at, size = _file_stats(full)
@@ -230,23 +249,30 @@ def update_article(request: Request, article_id: str, body: ArticleUpdate) -> Ar
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
-    _maybe_snapshot(request, rel, body.content)
-    markdown_io.atomic_write(full, body.content)
+    # P0-1 后端兜底：合并旧文件 frontmatter（title/tags/自定义键）再落盘，
+    # 即使前端旧版本剥离后仅回写 ke_version 也不会丢失元信息。
+    try:
+        old_content = markdown_io.read_text(full)
+    except OSError:
+        old_content = ""
+    merged = markdown_io.merge_frontmatter(old_content, body.content)
+    _maybe_snapshot(request, rel, merged)
+    markdown_io.atomic_write(full, merged)
     request.app.state.indexer.update_file(rel)
     _mark_internal(request, rel)
-    meta, md_body = markdown_io.parse_frontmatter(body.content)
+    meta, md_body = markdown_io.parse_frontmatter(merged)
     # 保存后返回完整元信息（与 get / meta 接口一致），否则前端保存成功后
     # 右边栏「属性」的创建/修改时间等字段会被整体替换为空值显示为「—」（v0.7.2 修复）
     created_at, updated_at, size = _file_stats(full)
     return ArticleOut(
         id=rel, path=rel,
         title=meta.get("title") or body.title or full.stem,
-        content=body.content,
+        content=merged,
         meta=meta,
         created_at=created_at,
         updated_at=updated_at,
         size=size,
-        word_count=markdown_io.word_count(md_body or body.content),
+        word_count=markdown_io.word_count(md_body or merged),
         tags=markdown_io.parse_tags(meta),
     )
 
@@ -256,6 +282,8 @@ def delete_article(request: Request, article_id: str) -> None:
     full = _article_path(request, article_id)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
-    full.unlink()
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
+    # P1-11：删除前强制快照，保留可恢复的历史版本（restore 支持重建已删文档）
+    _maybe_snapshot(request, rel, "")
+    full.unlink()
     request.app.state.indexer.update_file(rel)

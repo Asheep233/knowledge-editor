@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -64,10 +65,24 @@ def _guard_rel(root: Path, rel: str) -> Path:
     full = markdown_io.safe_rel_path(root, rel)
     if full is None:
         raise HTTPException(status_code=400, detail=f"非法路径: {rel}")
-    top = full.relative_to(root).parts[0] if full != root else ""
+    # P0-3：拒绝解析到 workspace 根目录（"." / "" / "Articles/.." 等归一化结果）
+    if full == root:
+        raise HTTPException(status_code=400, detail=f"非法路径: {rel}")
+    top = full.relative_to(root).parts[0]
     if top in _FORBIDDEN_ROOT:
         raise HTTPException(status_code=400, detail=f"受保护目录，禁止操作: {top}")
     return full
+
+
+def _assert_under_top(root: Path, full: Path, rel: str) -> None:
+    """业务目录断言（P0-3）：目标必须位于 Articles/Modules/Attachments 之下。"""
+    if full == root:
+        raise HTTPException(status_code=400, detail=f"非法路径: {rel}")
+    top = full.relative_to(root).parts[0]
+    if top not in _TOP_LEVEL or top in _FORBIDDEN_ROOT:
+        raise HTTPException(
+            status_code=400, detail="目录必须位于 Articles/Modules/Attachments 之下"
+        )
 
 
 def _top_of(rel: str) -> str:
@@ -111,6 +126,8 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     full = _guard_rel(root, rel)
     if not full.is_dir():
         raise HTTPException(status_code=404, detail="目录不存在")
+    # P0-3：目标必须在 Articles/Modules/Attachments 之下
+    _assert_under_top(root, full, rel)
     new_name = body.new_name.strip().strip("/")
     if not new_name or "/" in new_name:
         raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
@@ -124,6 +141,32 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     return {"from": old_rel, "to": new_rel}
 
 
+def _iter_safe(path: Path):
+    """后序枚举目录树，跳过目录符号链接（P1-17）。
+
+    Path.rglob 默认跟随目录 symlink，可能递归到 workspace 外并删除
+    链接目标的真实文件；这里用 os.scandir(follow_symlinks 语义) 实现，
+    目录链接只跳过不递归，文件链接仅移除链接本身（unlink 安全）。
+    返回顺序：子项在前、目录在后（rmdir 可直接消费）。
+    """
+    try:
+        entries = sorted(os.scandir(path), key=lambda e: e.name, reverse=True)
+    except OSError:
+        return
+    for entry in entries:
+        try:
+            if entry.is_symlink():
+                if entry.is_dir(follow_symlinks=False):
+                    continue
+                yield Path(entry.path)
+                continue
+            if entry.is_dir(follow_symlinks=False):
+                yield from _iter_safe(Path(entry.path))
+            yield Path(entry.path)
+        except OSError:
+            continue
+
+
 @router.delete("/dir", status_code=204)
 def delete_dir(request: Request, path: str = Query(...)) -> None:
     root = _require_ws(request)
@@ -133,7 +176,9 @@ def delete_dir(request: Request, path: str = Query(...)) -> None:
     full = _guard_rel(root, rel)
     if not full.is_dir():
         raise HTTPException(status_code=404, detail="目录不存在")
-    for p in sorted(full.rglob("*"), reverse=True):
+    # P0-3：目标必须在 Articles/Modules/Attachments 之下
+    _assert_under_top(root, full, rel)
+    for p in _iter_safe(full):
         if p.is_dir():
             p.rmdir()
         else:
@@ -216,6 +261,8 @@ def move_path(request: Request, body: MoveBody) -> dict:
     if src.is_dir():
         if src_rel in _TOP_LEVEL:
             raise HTTPException(status_code=400, detail="顶层目录不可移动")
+        # P0-3：目录目标必须在 Articles/Modules/Attachments 之下
+        _assert_under_top(root, src, src_rel)
     elif src.is_file():
         if _top_of(src_rel) not in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_ATTACHMENTS):
             raise HTTPException(status_code=400, detail="不支持移动该类型文件")

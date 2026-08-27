@@ -849,3 +849,40 @@ stable id（keStableId）、repro-main 移除、错误信息去绝对路径、re
 - 桌面 Rust 改动未编译验证（本机无 cargo）：lib.rs/menu.rs/sidecar.rs/settings.rs 均经代码评审自查；PowerShell 三脚本语法校验通过；ke-vite.mjs 在 Linux 实跑通过
 
 影响范围：前后端 + 桌面壳 + CI + 文档；数据格式（Markdown）无破坏性变化。
+
+## 2026-08-27（v1.0.1 验证与收尾：编译验证 / 桌面冒烟 / P1-16 溯源消除 / 遗留项落地）
+
+### 验证与发布收尾（阶段一）
+
+类型：Verification（编译/冒烟/复跑）
+状态：Completed（本地完成，未推送 GitHub）
+
+- 阶段一.1 Rust 编译验证：Windows rustc 1.97.1(MSVC) 实机 `cargo check`/`cargo build` 全绿
+  （发现并修复 settings.rs unique_tmp_path format! 参数不匹配 + menu.rs unused import；
+  Cargo.lock 自动补入 tauri-plugin-single-instance 2.4.3）。日志见 cargo-check/build/build2.log。
+- 阶段一.2 桌面冒烟（真实 GUI 会话，截屏 evidence-ke-window-v101.png）：
+  ① 编辑→保存→重开→字节比较 PASS（生产 PyInstaller 侧车 v1.0.1，真实 workspace）；
+  ② 双实例：第二实例 exit 0 即退，仅 1 个窗口；③ 慢启动握手：GUI 实机注入 api_base 成功 + 单元测试覆盖 5-15s；
+  ④ stale PID：无关进程身份校验不命中→不杀；真实 backend 命中（PowerShell 实测）。
+- 阶段一.3 P1-16 矛盾消除（方案 a）：预编译 exe 移出版本库（git rm --cached + *.exe/versions.json/manifest.sha256 gitignore），
+  侧车 = 构建期产物（PyInstaller spec 为唯一来源）；新增 binaries/README.md 构建契约；
+  版本一致性校验改为「运行时拉起 exe 查 /api/health 比对 __version__」（字节扫描对 PyInstaller 压缩 PYZ 失效，已弃用）。
+- 阶段一.4 T0 端到端字节比较：pytest test_t0_e2e_save_reopen_byte_exact + vitest fidelity T0
+  （title/tags/自定义键 + HTML 注释/块逐字节保留、幂等）。
+- 阶段一.5 Linux 跨平台复跑：backend 160 passed/2 skipped（Windows 语义用例正确 skip）、
+  frontend 178 passed/1 skipped、tsc 0、npm run build 成功；
+  顺带修复 Linux 下 delete_dir 符号链接残留 bug（新增 walk_links/unlink_link，链接本体移除绝不触碰目标）。
+
+### 遗留项（阶段二，全落地）
+
+类型：Performance / FEATURE
+状态：Completed
+
+- P3-2 解析性能：定位=上游 @tiptap/markdown 二次复杂度（marked 21ms 线性/等价 HTML 280ms 线性/256KB 解析 4.4s、512KB 43s）；
+  缓解=setKeContent 会话级解析缓存（256KB 重开 733-900ms）+ perf-bench.test.ts 门槛（首解析 ≤6s、缓存重开 <1.5s、KE_PERF_512=1 观测 512KB）。
+- P3-4 watcher：空闲指数退避（1s→5s 封顶，next_backoff 纯函数 + 测试），空闲期全树 stat 频率降 80%。
+- P4-7 代码分割：manualChunks（math/editor/react/vendor），主包 1.96MB→122KB（gzip 35KB）。
+- P4-2 深色主题：[data-theme=dark] 完整 CSS 覆盖层（~50 工具类映射 + 编辑器/滚动条/hover 适配），applyTheme 解析 system→resolved 并监听系统切换。
+
+验证：Windows/Linux 双平台 pytest 160/160 + vitest 178/178 + tsc 0 + npm build 成功；build.ps1 全链路（pytest→tsc/ke-vite→版本校验→manifest）在 Windows 实跑。
+剩余说明：CI 未在本机触发（无 push）；Windows 侧侧车构建需本机平台 node_modules（@esbuild 平台二进制随安装平台），CI 各 runner 各自 npm ci 无此约束。

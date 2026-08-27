@@ -9,6 +9,7 @@
  * Markdown 仅作为存储/交换格式，由 @tiptap/markdown 双向转换。
  */
 import { useEditor, type Editor } from '@tiptap/react'
+import type { JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { history } from '@tiptap/pm/history'
@@ -189,10 +190,42 @@ function clearUndoRedoHistory(editor: Editor): void {
   editor.view.dispatch(tr)
 }
 
+/**
+ * 会话级「Markdown → Document Model JSON」解析缓存（P3-2 缓解）。
+ *
+ * 实测定位：@tiptap/markdown（v3.29.x）的 markdown→PM JSON 链路存在超线性
+ * 复杂度（256KB≈4.4s / 512KB≈29s；同内容等价 HTML 路径仅 280ms；纯 marked
+ * 解析 21ms——瓶颈在上游 MarkdownManager 的 token→generateJSON 环节，
+ * 与 KE 自定义 tokenizer 无直接关系，无法在本仓库线性化修复）。
+ * 本缓存使「重开最近打开过的文档」由秒级回到亚秒级（JSON 路径近似线性），
+ * 首次打开大文档仍受上游上限约束（见 docs/perf-notes P3-2 记录）。
+ */
+const mdDocCache = new Map<string, JSONContent>()
+const MD_CACHE_MAX = 16
+
 /** 文档切换时重新载入 Markdown 内容。
  * - P0-4：加载后清空 undo/redo 历史，避免 Ctrl+Z 跨文档串内容；
- * - P1-1：`emitUpdate: false` 抑制加载触发的 update（「打开文档即保存」消失）。 */
+ * - P1-1：`emitUpdate: false` 抑制加载触发的 update（「打开文档即保存」消失）；
+ * - P3-2：命中会话缓存时走 JSON 快速路径（复制后 setContent，避免二次解析）。 */
 export function setKeContent(editor: Editor, markdown: string): void {
-  editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
+  const cached = mdDocCache.get(markdown)
+  if (cached) {
+    editor.commands.setContent(JSON.parse(JSON.stringify(cached)) as JSONContent, {
+      contentType: 'json',
+      emitUpdate: false,
+    })
+  } else {
+    editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
+    mdDocCache.set(markdown, editor.getJSON())
+    if (mdDocCache.size > MD_CACHE_MAX) {
+      const oldest = mdDocCache.keys().next().value
+      if (oldest !== undefined) mdDocCache.delete(oldest)
+    }
+  }
   clearUndoRedoHistory(editor)
+}
+
+/** 测试钩子：清空解析缓存。 */
+export function clearMdDocCache(): void {
+  mdDocCache.clear()
 }

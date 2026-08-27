@@ -401,3 +401,93 @@ body {
   height: 0;
   font-size: 15px;
 }
+
+/* ==========================================================================
+ * P4-2 完整深色主题：以 [data-theme="dark"] 覆盖层实现（Tailwind 工具类映射）。
+ * applyTheme（settings.ts）已把 system 解析为 light/dark 写入 data-theme，
+ * 因此本层只关心 dark 分支。覆盖顺序在 Tailwind utilities 之后，胜出。
+ * ========================================================================== */
+[data-theme='dark'] {
+  --ke-bg: #14161a;
+  --ke-border: #3a3f4a;
+}
+
+/* 面板/背景 */
+[data-theme='dark'] body {
+  background: var(--ke-bg);
+  color: #e5e7eb;
+}
+[data-theme='dark'] .bg-white { background-color: #1b1e24; }
+[data-theme='dark'] .bg-\[\#f6f7f9\] { background-color: #14161a; }
+[data-theme='dark'] .bg-gray-50 { background-color: #22262e; }
+[data-theme='dark'] .bg-gray-100 { background-color: #292e37; }
+[data-theme='dark'] .bg-gray-200 { background-color: #343b47; }
+[data-theme='dark'] .bg-blue-50 { background-color: rgba(37, 99, 235, 0.16); }
+[data-theme='dark'] .bg-blue-100 { background-color: rgba(37, 99, 235, 0.26); }
+[data-theme='dark'] .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12); }
+[data-theme='dark'] .bg-rose-50 { background-color: rgba(244, 63, 94, 0.12); }
+[data-theme='dark'] .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+[data-theme='dark'] .bg-amber-100 { background-color: rgba(245, 158, 11, 0.2); }
+[data-theme='dark'] .bg-blue-50\/70 { background-color: rgba(37, 99, 235, 0.14); }
+
+/* 文字（中性色 → 亮色阶梯） */
+[data-theme='dark'] .text-gray-900 { color: #f3f4f6; }
+[data-theme='dark'] .text-gray-800 { color: #e5e7eb; }
+[data-theme='dark'] .text-gray-700 { color: #d1d5db; }
+[data-theme='dark'] .text-gray-600 { color: #aab2bf; }
+[data-theme='dark'] .text-gray-500 { color: #96a0ae; }
+[data-theme='dark'] .text-gray-400 { color: #717b8a; }
+[data-theme='dark'] .text-gray-300 { color: #565e6d; }
+[data-theme='dark'] .text-gray-200 { color: #3f4550; }
+
+/* 强调色 */
+[data-theme='dark'] .text-blue-600 { color: #7db1f7; }
+[data-theme='dark'] .text-blue-700 { color: #9cc3f9; }
+[data-theme='dark'] .text-emerald-600 { color: #4ade80; }
+[data-theme='dark'] .text-rose-500 { color: #fb7185; }
+[data-theme='dark'] .text-rose-600 { color: #f87171; }
+[data-theme='dark'] .text-rose-700 { color: #fca5a5; }
+[data-theme='dark'] .text-red-500 { color: #f87171; }
+[data-theme='dark'] .text-red-600 { color: #ef4444; }
+[data-theme='dark'] .text-red-700 { color: #fca5a5; }
+[data-theme='dark'] .text-amber-700 { color: #fbbf24; }
+[data-theme='dark'] .text-violet-700 { color: #c4b5fd; }
+[data-theme='dark'] .text-sky-700 { color: #7dd3fc; }
+
+/* 边框 */
+[data-theme='dark'] .border-gray-100 { border-color: #303540; }
+[data-theme='dark'] .border-gray-200 { border-color: #3a3f4a; }
+[data-theme='dark'] .border-gray-300 { border-color: #454c59; }
+[data-theme='dark'] .border-rose-200 { border-color: rgba(244, 63, 94, 0.35); }
+[data-theme='dark'] .border-blue-300 { border-color: rgba(59, 130, 246, 0.45); }
+[data-theme='dark'] .border-blue-400 { border-color: rgba(59, 130, 246, 0.55); }
+[data-theme='dark'] .border-blue-500 { border-color: #3b82f6; }
+
+/* hover 反馈（保持可辨识） */
+[data-theme='dark'] .hover\:bg-gray-50:hover { background-color: #272c35; }
+[data-theme='dark'] .hover\:bg-gray-100:hover { background-color: #2f3540; }
+[data-theme='dark'] .hover\:bg-blue-50:hover { background-color: rgba(37, 99, 235, 0.2); }
+[data-theme='dark'] .hover\:bg-blue-700:hover { background-color: #2563eb; }
+[data-theme='dark'] .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.16); }
+[data-theme='dark'] .hover\:bg-rose-100:hover { background-color: rgba(244, 63, 94, 0.2); }
+
+/* 主按钮保持品牌色、深色下提亮 hover；禁用态适应深色 */
+[data-theme='dark'] .bg-blue-600 { background-color: #2563eb; }
+[data-theme='dark'] .bg-blue-600:hover { background-color: #3b82f6; }
+[data-theme='dark'] .disabled\:opacity-40:disabled { opacity: 0.35; }
+
+/* 编辑器正文与 NodeView（灰底块） */
+[data-theme='dark'] .ke-editor-prose { color: #e5e7eb; }
+[data-theme='dark'] .ke-html,
+[data-theme='dark'] .ke-html-inline,
+[data-theme='dark'] .ke-scroll pre,
+[data-theme='dark'] .bg-gray-50 pre { background-color: #22262e; color: #c9d1dc; }
+[data-theme='dark'] .bg-gray-50 { background-color: #22262e; }
+
+/* 滚动条（深色适配） */
+[data-theme='dark'] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #3a3f4a; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: #4a5160; }
+
+/* 占位文本（编辑器 placeholder） */
+[data-theme='dark'] .is-editor-empty::before { color: #565e6d; }

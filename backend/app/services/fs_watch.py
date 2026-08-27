@@ -30,8 +30,16 @@ _SKIP = {".gitkeep"}
 
 
 class FsWatcher:
-    def __init__(self, root: Path | None, interval: float = 1.0, max_events: int = 500):
+    def __init__(
+        self,
+        root: Path | None,
+        interval: float = 1.0,
+        max_events: int = 500,
+        idle_interval: float | None = None,
+    ):
         self.interval = interval
+        # P3-4：空闲退避上限（无变化时降低全树 rglob+stat 频率，节省磁盘 I/O）
+        self.idle_interval = idle_interval if idle_interval is not None else max(interval * 5, 5.0)
         self.max_events = max_events
         self.snapshot: dict[str, tuple[int, int]] = {}
         self.events: deque = deque(maxlen=max_events)
@@ -75,12 +83,19 @@ class FsWatcher:
             self._thread = None
 
     def _loop(self) -> None:
-        while not self._stop.wait(self.interval):
+        # P3-4：自适应轮询间隔——发现事件立即回到基准间隔（快速响应），
+        # 连续空闲则指数退避至空闲上限（降低全树 stat 频率）。
+        cur = self.interval
+        while not self._stop.wait(cur):
             if self.enabled and self.root is not None:
                 try:
-                    self.sniff()
+                    events = self.sniff()
                 except OSError:
-                    pass  # 目录被外部删除等瞬态错误：下一轮重试
+                    events = []  # 目录被外部删除等瞬态错误：下一轮重试
+                if events:
+                    cur = self.interval
+                else:
+                    cur = next_backoff(cur, self.interval, self.idle_interval)
 
     # ---------- 快照与事件 ----------
 
@@ -176,3 +191,12 @@ class FsWatcher:
 
     def last_seq(self) -> int:
         return self._seq
+
+
+def next_backoff(current: float, base: float, cap: float) -> float:
+    """P3-4 空闲退避策略（纯函数，便于测试）：基准 -> 倍增 -> 封顶。
+
+    - 空闲（无事件）：current 倍增，不超过 cap；
+    - 有事件：调用方直接回到 base。
+    """
+    return min(max(current * 2, base), cap)

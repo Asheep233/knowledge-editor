@@ -7,7 +7,7 @@
 //! 拉取最新的 recent_workspaces 并展示/打开——最近列表的所有权在前端。
 //! 「关于」对话框版本取自后端 runtime 上报（三同步常量）。
 
-use tauri::menu::{IsMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, Wry};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 

@@ -119,9 +119,19 @@ export function getAutosaveIntervalMs(): number {
   return Number.isFinite(v) && v > 0 ? v : DEFAULT_SETTINGS.editor.autosaveIntervalMs
 }
 
-/** 应用主题：写 data-theme（供 CSS 覆盖）与 color-scheme（原生控件/滚动条）。 */
+/** 应用主题：解析 system → 实际明暗，写 data-theme（供 CSS 覆盖）与 color-scheme。
+ * P4-2：完整深色主题由 index.css 的 [data-theme="dark"] 覆盖层提供，
+ * system 模式跟随 prefers-color-scheme 并响应系统切换。 */
 export function applyTheme(theme: UiSettings['theme']): void {
   const el = document.documentElement
-  el.dataset.theme = theme
-  el.style.colorScheme = theme === 'dark' ? 'dark' : theme === 'light' ? 'light' : 'light dark'
+  const media = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
+  const effective = theme === 'system' ? (media?.matches ? 'dark' : 'light') : theme
+  el.dataset.theme = effective
+  el.style.colorScheme = effective === 'dark' ? 'dark' : 'light'
+  if (media) {
+    // 系统模式：跟随系统明暗切换（响应式监听，按当前主题是否 system 生效）
+    media.addEventListener('change', () => {
+      applyTheme(getCachedSettings().ui.theme)
+    })
+  }
 }

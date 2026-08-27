@@ -129,7 +129,12 @@ fn unique_tmp_path(path: &std::path::Path) -> PathBuf {
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| "settings.json".to_string());
-    parent.join(format!("{name}.{}.{}.tmp", std::process::id(), nanos, seq))
+    parent.join(format!(
+        "{name}.{pid}.{nanos}.{seq}.tmp",
+        pid = std::process::id(),
+        nanos = nanos,
+        seq = seq
+    ))
 }
 
 /// 原子保存（唯一 tmp + rename），与后端 app_config.py 的 save() 策略一致。

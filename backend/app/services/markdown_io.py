@@ -420,7 +420,10 @@ def walk_dirs(base: Path) -> list[Path]:
 
 
 def walk_entries(base: Path) -> list[Path]:
-    """递归枚举 base 下的全部条目（文件+目录），跳过符号链接与 junction。"""
+    """递归枚举 base 下的全部条目（文件+目录），跳过符号链接与 junction。
+
+    符号链接/junction 本体不进入结果；需要「移除链接本体」时用 walk_links。
+    """
     out: list[Path] = []
     stack = [Path(base)]
     while stack:
@@ -441,3 +444,48 @@ def walk_entries(base: Path) -> list[Path]:
             except OSError:
                 continue
     return out
+
+
+def walk_links(base: Path) -> list[Path]:
+    """枚举 base 下（含子目录）的符号链接/junction 本体，不跟随、不入其内部。
+
+    P1-17 补充：递归删除目录时，链接本体会阻塞 rmdir；「移除链接本体」永远
+    不会删除目标内容（unlink 只移除链接，rmdir 对 junction 只移除链接）。
+    """
+    out: list[Path] = []
+    stack = [Path(base)]
+    while stack:
+        cur = stack.pop()
+        try:
+            entries = list(os.scandir(cur))
+        except OSError:
+            continue
+        for e in entries:
+            try:
+                if _is_junction(e):
+                    out.append(Path(e.path))
+                    continue
+                if e.is_dir(follow_symlinks=False):
+                    stack.append(Path(e.path))
+            except OSError:
+                continue
+    return out
+
+
+def unlink_link(p: Path) -> None:
+    """移除符号链接/junction 本体（绝不跟随目标）。
+
+    POSIX 符号链接用 unlink；Windows junction 需以 rmdir 移除（unlink 会报错）。
+    目标内容在任何分支都不被触碰。
+    """
+    try:
+        os.unlink(p)
+        return
+    except OSError:
+        pass
+    try:
+        p.rmdir()  # Windows junction：以目录方式移除链接本体
+    except OSError:
+        # 快照窗口内被并发删除等瞬态：若已不是链接则视为已完成
+        if not (p.is_symlink() or (hasattr(os.path, "isjunction") and os.path.isjunction(p))):
+            raise

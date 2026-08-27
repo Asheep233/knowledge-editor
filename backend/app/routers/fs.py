@@ -166,11 +166,14 @@ def delete_dir(request: Request, path: str = Query(...)) -> None:
                 status_code=409,
                 detail=f"目录内 {len(refs)} 个附件被 {total} 个文档引用，不可删除",
             )
-    # P1-17：walk_* 跳过符号链接/Junction，不越界删除外部真实文件
+    # P1-17：walk_* 跳过符号链接/Junction，不越界删除外部真实文件；
+    # 链接本体（unlink/rmdir 只移除链接，绝不触碰目标）单独移除以清空目录。
     for p in sorted(markdown_io.walk_files(full), reverse=True):
         rel_p = p.relative_to(root).as_posix()
         p.unlink()
         request.app.state.indexer.store.delete_file(rel_p)
+    for link in sorted(markdown_io.walk_links(full), reverse=True):
+        markdown_io.unlink_link(link)
     for d in sorted(markdown_io.walk_dirs(full), reverse=True):
         try:
             d.rmdir()

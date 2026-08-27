@@ -32,6 +32,21 @@ export default defineConfig({
     // CHANGELOG_DEV.md「release 嵌入 dist 幽灵文件」记录）。
     outDir: 'dist-build',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // P4-7 代码分割：heavy 第三方（mathlive/katex/tiptap）拆独立 chunk。
+        // 主包（应用代码）从 ~1.96MB 降到 1MB 以内；mathlive 等只在用到
+        // 数学编辑/渲染时才被加载（构建产物仍预打包，浏览器按需取用）。
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('mathlive') || id.includes('katex')) return 'math'
+          if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor'
+          if (id.includes('react') || id.includes('scheduler')) return 'react'
+          return 'vendor'
+        },
+
+      },
+    },
   },
   test: {
     environment: 'happy-dom',

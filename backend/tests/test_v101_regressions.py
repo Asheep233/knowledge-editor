@@ -586,6 +586,57 @@ def test_p220_upload_marked_internal_no_event(client, paused_watcher):
     ), "上传自身的 watcher 事件必须被抑制"
 
 
+# ---------- T0（最高价值单测：端到端数据完整性） ----------
+
+def test_t0_e2e_save_reopen_byte_exact(client):
+    """T0 全链路「编辑→保存→重开→字节比较」（覆盖 P0-1/P0-2/P1-1/P1-2 后端面）。
+
+    frontmatter 含 title/tags/自定义键；正文含 HTML 注释、HTML 块与 ke 标记：
+    1) 正文保存（模拟编辑器防抖保存：仅带 ke_version 的正文）
+    2) 重开（GET）断言：磁盘 frontmatter 全部键逐字节保留；GET body 与磁盘 body 逐字节相等
+    3) 再保存→再重开（幂等）：磁盘不再变化
+    """
+    fm = (
+        "---\nke_version: 1\ntitle: T0文档\ntags: [alpha, beta]\n"
+        "custom_key: 自定义值\n---\n\n"
+        "# 标题\n\n<!-- 普通注释 -->\n\n<div class=\"x\">内容</div>\n"
+    )
+    rel = _mk_doc(client, "T0文档", fm)
+    # 属性面板写入：meta 更新（进入磁盘 frontmatter）
+    r = client.put(f"/api/articles/{rel}/meta",
+                   json={"tags": ["alpha", "beta", "gamma"], "title": "T0新标题"})
+    assert r.status_code == 200
+    # 正文保存（模拟编辑器：编辑器内保留了原文的 HTML 注释/块，序列化输出仅带 ke_version）
+    body_only = (
+        "---\nke_version: 1\n---\n\n"
+        "# 编辑后的标题\n\n<!-- 普通注释 -->\n\n"
+        '<div class="x">内容</div>\n\n'
+        '<!-- ke-attach: {"kind":"attach","id":"a1","type":"file",'
+        '"src":"Attachments/files/x.pdf","title":"文档"} -->\n'
+    )
+    r = client.put(f"/api/articles/{rel}", json={"content": body_only})
+    assert r.status_code == 200, r.text
+    disk = (_ws(client) / rel).read_text(encoding="utf-8")
+    # P0-1：所有 frontmatter 键逐字节保留（合并后）
+    assert "title: T0新标题" in disk
+    assert "custom_key: 自定义值" in disk
+    assert "gamma" in disk
+    # P1-2：HTML 注释与 HTML 块字节保留
+    assert "<!-- 普通注释 -->" in disk
+    assert "<div class=\"x\">内容</div>" in disk
+    # 重开：GET content == 磁盘 body（逐字节），meta 完整
+    got = client.get(f"/api/articles/{rel}").json()
+    _, disk_body = markdown_io.parse_frontmatter(disk)
+    assert got["content"] == disk_body, "重开后正文必须与磁盘逐字节一致"
+    assert got["meta"]["custom_key"] == "自定义值"
+    assert set(got["tags"]) == {"alpha", "beta", "gamma"}
+    # 幂等：用 GET 返回内容再次保存 → 磁盘不再变化
+    r = client.put(f"/api/articles/{rel}", json={"content": got["content"]})
+    assert r.status_code == 200
+    disk2 = (_ws(client) / rel).read_text(encoding="utf-8")
+    assert disk2 == disk, "重复保存必须幂等（无漂移）"
+
+
 # ---------- P2-13 ----------
 
 def test_p213_external_change_reindexes_immediately(client, paused_watcher):
@@ -701,3 +752,28 @@ def test_p49_modules_includes_markdown(client):
     (_ws(client) / "Modules" / "m.markdown").write_text("# 模块", encoding="utf-8")
     modules = client.get("/api/modules").json()["modules"]
     assert any(m["name"] == "m" for m in modules)
+
+
+# ---------- P3-4 ----------
+
+def test_p34_watcher_idle_backoff_policy():
+    """P3-4：空闲退避策略（纯函数）——有事件回基准、空闲倍增封顶。"""
+    from app.services.fs_watch import next_backoff
+
+    base, cap = 1.0, 5.0
+    assert next_backoff(base, base, cap) == 2.0
+    assert next_backoff(2.0, base, cap) == 4.0
+    assert next_backoff(4.0, base, cap) == 5.0  # 封顶
+    assert next_backoff(5.0, base, cap) == 5.0
+
+
+def test_p34_watcher_idle_backoff_instance(tmp_path):
+    """P3-4：实例级默认参数——空闲上限为基准的倍数且不小于 5s。"""
+    from app.services.fs_watch import FsWatcher
+
+    w = FsWatcher(root=tmp_path, interval=1.0)
+    assert w.idle_interval == 5.0
+    w2 = FsWatcher(root=tmp_path, interval=2.0)
+    assert w2.idle_interval == 10.0
+    w3 = FsWatcher(root=tmp_path, interval=0.2, idle_interval=2.0)
+    assert w3.idle_interval == 2.0

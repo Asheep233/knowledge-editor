@@ -109,26 +109,50 @@ jobs:
       - name: Build frontend dist (for hash manifest)
         working-directory: frontend
         run: npm ci && npm run build
-      - name: Hash manifest (sidecar + frontend dist)
+      - name: Hash manifest (sidecar + frontend dist) + version consistency check
         shell: pwsh
         run: |
           $root = "$env:GITHUB_WORKSPACE"
           $binDir = Join-Path $root 'desktop\src-tauri\binaries'
           $distDir = Join-Path $root 'frontend\dist-build'
           $manifest = [ordered]@{ schemaVersion = 1; built_at = (Get-Date).ToString('o'); artifacts = @() }
+          $sumLines = @()
           Get-ChildItem $binDir -Filter 'knowledgeeditor-backend-*.exe' -ErrorAction SilentlyContinue | ForEach-Object {
             $h = $_ | Get-FileHash -Algorithm SHA256
-            $manifest.artifacts += [ordered]@{ path = $_.FullName.Substring($root.Length + 1); size = $_.Length; sha256 = $h.Hash.ToLowerInvariant() }
+            $rel = $_.FullName.Substring($root.Length + 1)
+            $manifest.artifacts += [ordered]@{ path = $rel; size = $_.Length; sha256 = $h.Hash.ToLowerInvariant() }
+            $sumLines += "$($h.Hash.ToLowerInvariant())  $rel"
           }
           if (Test-Path $distDir) {
             Get-ChildItem $distDir -Recurse -File | ForEach-Object {
               $h = $_ | Get-FileHash -Algorithm SHA256
-              $manifest.artifacts += [ordered]@{ path = $_.FullName.Substring($root.Length + 1); size = $_.Length; sha256 = $h.Hash.ToLowerInvariant() }
+              $rel = $_.FullName.Substring($root.Length + 1)
+              $manifest.artifacts += [ordered]@{ path = $rel; size = $_.Length; sha256 = $h.Hash.ToLowerInvariant() }
+              $sumLines += "$($h.Hash.ToLowerInvariant())  $rel"
             }
           }
           $out = Join-Path $binDir 'versions.json'
           $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $out -Encoding UTF8
-          Write-Host "==> hash manifest written: $out"
+          $sumOut = Join-Path $binDir 'manifest.sha256'
+          $sumLines | Set-Content -Path $sumOut -Encoding ASCII
+          Write-Host "==> hash manifest written: $out + $sumOut"
+          # P1-16：断言 exe 内嵌 backend 版本字符串与源码一致（消「双真相源」漂移）
+          $exe = Get-ChildItem $binDir -Filter 'knowledgeeditor-backend-*.exe' | Select-Object -First 1
+          if ($exe) {
+            $version = (python -c "import sys; sys.path.insert(0, 'backend'); from app import __version__; print(__version__)").Trim()
+            $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
+            $needle = [System.Text.Encoding]::UTF8.GetBytes($version)
+            $found = $false
+            for ($i = 0; $i -le $bytes.Length - $needle.Length; $i++) {
+              $ok = $true
+              for ($j = 0; $j -lt $needle.Length; $j++) {
+                if ($bytes[$i + $j] -ne $needle[$j]) { $ok = $false; break }
+              }
+              if ($ok) { $found = $true; break }
+            }
+            if (-not $found) { throw "sidecar exe 未内嵌 backend 版本 '$version'（源码与产物漂移）" }
+            Write-Host "==> [P1-16] sidecar exe 内嵌版本与源码一致: $version"
+          }
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
@@ -149,5 +173,6 @@ jobs:
           name: desktop-artifacts
           path: |
             desktop/src-tauri/binaries/versions.json
+            desktop/src-tauri/binaries/manifest.sha256
             desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe
           if-no-files-found: ignore

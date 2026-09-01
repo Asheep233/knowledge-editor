@@ -136,22 +136,31 @@ jobs:
           $sumOut = Join-Path $binDir 'manifest.sha256'
           $sumLines | Set-Content -Path $sumOut -Encoding ASCII
           Write-Host "==> hash manifest written: $out + $sumOut"
-          # P1-16：断言 exe 内嵌 backend 版本字符串与源码一致（消「双真相源」漂移）
+          # P1-16：sidecar 版本一致性 = 运行时校验（字节扫描对 PyInstaller 压缩 PYZ 无效）：
+          # 以临时端口拉起 exe → 查询 /api/health 的 version → 与 backend __version__ 比对 → 杀进程树。
           $exe = Get-ChildItem $binDir -Filter 'knowledgeeditor-backend-*.exe' | Select-Object -First 1
           if ($exe) {
             $version = (python -c "import sys; sys.path.insert(0, 'backend'); from app import __version__; print(__version__)").Trim()
-            $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
-            $needle = [System.Text.Encoding]::UTF8.GetBytes($version)
-            $found = $false
-            for ($i = 0; $i -le $bytes.Length - $needle.Length; $i++) {
-              $ok = $true
-              for ($j = 0; $j -lt $needle.Length; $j++) {
-                if ($bytes[$i + $j] -ne $needle[$j]) { $ok = $false; break }
+            $port = Get-Random -Minimum 20000 -Maximum 50000
+            $env:KE_PORT = "$port"
+            $proc = Start-Process -FilePath $exe.FullName -PassThru -WindowStyle Hidden
+            try {
+              $versionFromExe = $null
+              for ($i = 0; $i -lt 60; $i++) {
+                Start-Sleep -Milliseconds 1000
+                $body = curl.exe -s "http://127.0.0.1:$port/api/health" --max-time 3
+                if ($body) { try { $versionFromExe = ($body | ConvertFrom-Json).version } catch { } }
+                if ($versionFromExe) { break }
+                if ($proc.HasExited) { break }
               }
-              if ($ok) { $found = $true; break }
+              if (-not $versionFromExe) { throw "sidecar exe 未能返回 health（进程已退出或超时）" }
+              if ($versionFromExe -ne $version) { throw "sidecar exe 版本 '$versionFromExe' 与源码 '$version' 不一致（源码与产物漂移）" }
+              Write-Host "==> [P1-16] sidecar exe 运行时版本与源码一致: $version"
             }
-            if (-not $found) { throw "sidecar exe 未内嵌 backend 版本 '$version'（源码与产物漂移）" }
-            Write-Host "==> [P1-16] sidecar exe 内嵌版本与源码一致: $version"
+            finally {
+              & taskkill /PID $proc.Id /T /F 2>$null | Out-Null
+              Remove-Item Env:\KE_PORT -ErrorAction SilentlyContinue
+            }
           }
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -175,4 +184,5 @@ jobs:
             desktop/src-tauri/binaries/versions.json
             desktop/src-tauri/binaries/manifest.sha256
             desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe
+            desktop/src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: ignore

@@ -69,8 +69,14 @@ const SAMPLE = [
 describe('plain export：降级规则（KE 方言 → 朴素 Markdown）', () => {
   it('1) 输出不含任何 ke-* 子串，且标准内容逐字节保留', () => {
     const out = plainMarkdown(SAMPLE, { title: '示例文档', tags: ['alpha', 'beta'] })
-    expect(out).not.toMatch(/ke-/)         // 无任何 ke-* 子串
-    expect(out).not.toMatch(/ke_version/) // 无版本头
+    // 无 ke_version 与任何「良构」KE 注释（未知/损坏标记按规则保留，允许其原文含 ke-）
+    expect(out).not.toContain('ke_version')
+    expect(out).not.toMatch(/<!--\s*ke-note: \{"id":"n1"/)
+    expect(out).not.toMatch(/<!--\s*ke-module: \{"id":"m1"/)
+    expect(out).not.toMatch(/<!--\s*ke-footnote: \{"id":"f1"/)
+    expect(out).not.toMatch(/<!--\s*ke-footnotes:start/)
+    expect(out).not.toMatch(/<!--\s*ke-attach: \{"kind"/)
+    expect(out).not.toMatch(/<!--\s*ke-version/)
     // 标准内容保留（逐字节片段）
     for (const piece of [
       '# 标题',
@@ -87,7 +93,8 @@ describe('plain export：降级规则（KE 方言 → 朴素 Markdown）', () =>
 
   it('2) 脚注引用与定义数量、编号一致（按 n 升序、多行缩进 4 空格）', () => {
     const out = plainMarkdown(SAMPLE, {})
-    const refs = [...out.matchAll(/\^(\d+)(?!:)/g)].map((m) => m[1])
+    // 引用 = 行内 [^n]（定义行 [^n]: 不计入）
+    const refs = [...out.matchAll(/\[\^(\d+)\](?![:\d])/g)].map((m) => m[1])
     const defs = [...out.matchAll(/^\[\^(\d+)\]:/gm)].map((m) => m[1])
     expect(refs).toEqual(['1', '2'])
     expect(defs).toEqual(['1', '2']) // 升序（输入区域是 2 在前、1 在后）
@@ -129,7 +136,7 @@ describe('plain export：降级规则（KE 方言 → 朴素 Markdown）', () =>
     expect(fm).toMatch(/^---\ntitle: "T: 带冒号"\ntags:\n  - x\ncreated: a\nupdated: b\n---\n\n/m)
     expect(fm).not.toContain('ke_version')
     // metaFromArticle 提取
-    const meta = metaFromArticle({ title: '甲', tags: ['t'], meta: { created: 'c1', updated: 'u1' } } as ArticleMeta)
+    const meta = metaFromArticle({ title: '甲', tags: ['t'], meta: { created: 'c1', updated: 'u1' } } as unknown as ArticleMeta)
     expect(meta).toEqual({ title: '甲', tags: ['t'], created: 'c1', updated: 'u1' })
   })
 
@@ -138,8 +145,11 @@ describe('plain export：降级规则（KE 方言 → 朴素 Markdown）', () =>
     expect(out).toContain('<!-- ke-unknown-thing: {"a":1} -->')
     expect(out).toContain('<!-- ke-note-capital: 大小写变体保留 -->')
     expect(out).toContain('<!-- ke-attach: {bad json} -->')
-    // 已知 kind 不残留
-    expect(out).not.toMatch(/<!--\s*ke-(note|module|attach|video|footnote)\b/)
+    // 良构的已知 kind 标记不残留（输出被降级替换）
+    expect(out).not.toContain('<!-- ke-note: {"id":"n1"')
+    expect(out).not.toContain('<!-- ke-module: {"id":"m1"')
+    expect(out).not.toContain('<!-- ke-footnotes:start')
+    expect(out).not.toContain('<!-- ke-attach: {"kind"')
   })
 
   it('5) 幂等：对输出再跑一次结果不变', () => {
@@ -181,5 +191,26 @@ describe('plain export：降级规则（KE 方言 → 朴素 Markdown）', () =>
     expect(out).toContain('> 第一行')
     expect(out).toContain('>')
     expect(out).toContain('> 第二行')
+  })
+})
+
+describe('plain export：GFM 渲染验证（Typora/GitHub 等价检查）', () => {
+  it('marked（GFM）渲染导出的 .md：无任何 <!-- 残留，块引用/脚注/图片结构正确', async () => {
+    const { Marked } = await import('marked')
+    const out = plainMarkdown(SAMPLE, { title: '示例文档', tags: ['alpha', 'beta'] })
+    // 渲染检查针对正文（frontmatter 由 GitHub/Typora 各自处理；marked 无 fm 扩展会渲染为 hr）
+    const body = out.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n\n/, '')
+    const html = new Marked({ gfm: true }).parse(body) as string
+    // 版本头与脚注区域结构不残留（未知/损坏的 ke-* 标记按规则原样保留，故不做全体禁止）
+    expect(html).not.toContain('ke_version')
+    expect(html).not.toMatch(/ke-footnotes:start|ke-footnote-item|ke-version:/)
+    expect(html).toContain('<blockquote>')       // ke-note → 块引用
+    expect(html).toContain('定理模块')
+    expect(html).toContain('<img')                // 标准图片
+    expect(body).toContain('[^1]: 第一脚注')      // 脚注定义（源码级；查看器按各自释法渲染）
+    expect(html).toContain('<table>')            // GFM 表格
+    expect(html).toContain('x^2')                // 公式原样（KaTeX 由查看器渲染）
+    // 未知标记保持可见（原样保留，并非渲染错误）
+    expect(html).toContain('ke-unknown-thing')
   })
 })

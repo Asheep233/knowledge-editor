@@ -21,7 +21,7 @@
 | `ke-module` | `> 模块：{name}`（v1 不做 inline 展开） |
 | `ke-attach` image | `![{title\|caption\|文件名}]({src})`；存在 caption 且与 alt 不同时，追加一行图注 `{caption}` |
 | `ke-attach` file / `ke-video` | `[{title\|文件名}]({src})` |
-| `ke-footnote`（行内） | `[^n]` |
+| `ke-footnote`（行内） | 行内引用 → `[^n]`；**独立成行的位置型标记 → 删除整行**（避免孤立 `[^n]`） |
 | `ke-footnotes:start/end` 区域 | `[^n]: text` 定义行，按 n **升序**；多行文本续行缩进 **4 空格** |
 | `<!-- ke-version ... -->` 文档级注释（独立行） | 删除 |
 | 未知/损坏的 `ke-*`、`ke-NOTE`（大小写变体） | **原样保留** |

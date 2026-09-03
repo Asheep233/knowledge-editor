@@ -21,9 +21,6 @@ export interface PlainMeta {
   updated?: string
 }
 
-/** 保留的 frontmatter 键（设计表：保留 title/tags/created/updated） */
-const KEEP_FRONTMATTER_KEYS = new Set(['title', 'tags', 'created', 'updated'])
-
 /** 应删除的 frontmatter 键：ke_version、ke-module 定义块（大小写不敏感） */
 function isDroppedFrontmatterKey(key: string): boolean {
   const k = key.trim().toLowerCase()
@@ -285,16 +282,24 @@ export function downgradeKeNodes(md: string): string {
   const region = downgradeFootnotesRegion(out)
   out = region.out
 
-  // 2) 行内 ke-footnote → [^n]（单行注释）
-  out = out.replace(/<!--\s*ke-footnote:\s*({[\s\S]*?})\s*-->/g, (raw, jsonStr) => {
-    try {
-      const obj = JSON.parse(jsonStr) as Record<string, unknown>
-      const n = Number(obj?.n ?? 0)
-      return Number.isFinite(n) ? `[^${n}]` : raw
-    } catch {
-      return raw
-    }
-  })
+  // 2) 行内 ke-footnote → [^n]；独立成行的位置型标记 → 删除整行（避免孤立 [^n] 引用）
+  out = out
+    .split('\n')
+    .map((line) => {
+      const standalone = /^\s*<!--\s*ke-footnote:\s*({[\s\S]*?})\s*-->\s*$/.exec(line)
+      if (standalone) return null
+      return line.replace(/<!--\s*ke-footnote:\s*({[\s\S]*?})\s*-->/g, (raw, jsonStr) => {
+        try {
+          const obj = JSON.parse(jsonStr) as Record<string, unknown>
+          const n = Number(obj?.n ?? 0)
+          return Number.isFinite(n) ? `[^${n}]` : raw
+        } catch {
+          return raw
+        }
+      })
+    })
+    .filter((l): l is string => l !== null)
+    .join('\n')
 
   // 3) ke-note 包裹格式（头尾标记 + 块内内容）→ 块引用
   out = out.replace(

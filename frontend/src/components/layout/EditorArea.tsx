@@ -16,6 +16,7 @@ import {
 } from '../../api/client'
 import { setKeContent, useKeEditor } from '../../editor'
 import { downloadBlob, extractAttachmentRefs, slugForDownload } from '../../editor/import-export'
+import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, type SaveFn } from '../../state/saveQueue'
@@ -206,6 +207,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     downloadBlob(new Blob([md], { type: 'text/markdown' }), `${slugForDownload(article.title)}.md`)
   }, [editor, article])
 
+  // 导出「普通 Markdown」（朴素降级版）：KE 方言 → 标准 Markdown，
+  // 不含 ke_version 与任何 ke-* 注释（见 docs/knowledge-editor-plain-export-design.md）
+  const handleExportPlainMarkdown = useCallback(() => {
+    if (!editor || !article) return
+    const md = plainMarkdown(editor.getMarkdown(), metaFromArticle(article))
+    downloadBlob(new Blob([md], { type: 'text/markdown' }), `${slugForDownload(article.title)}.md`)
+  }, [editor, article])
+
   // 导出文档包 .zip（序列化 + 收集附件引用 → 后端打包）
   const handleExportPackage = useCallback(async () => {
     if (!editor || !article || exporting) return
@@ -325,7 +334,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               <>
                 {/* 点击外部关闭 */}
                 <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-md">
+                <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-md">
                   <button
                     type="button"
                     onClick={() => {
@@ -334,7 +343,17 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                     }}
                     className="block w-full px-3 py-1.5 text-left text-[12px] text-gray-700 hover:bg-gray-50"
                   >
-                    导出 Markdown (.md)
+                    导出 Markdown（KE 格式）
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportOpen(false)
+                      handleExportPlainMarkdown()
+                    }}
+                    className="block w-full px-3 py-1.5 text-left text-[12px] text-gray-700 hover:bg-gray-50"
+                  >
+                    导出普通 Markdown (.md)
                   </button>
                   <button
                     type="button"

@@ -886,3 +886,24 @@ stable id（keStableId）、repro-main 移除、错误信息去绝对路径、re
 
 验证：Windows/Linux 双平台 pytest 160/160 + vitest 178/178 + tsc 0 + npm build 成功；build.ps1 全链路（pytest→tsc/ke-vite→版本校验→manifest）在 Windows 实跑。
 剩余说明：CI 未在本机触发（无 push）；Windows 侧侧车构建需本机平台 node_modules（@esbuild 平台二进制随安装平台），CI 各 runner 各自 npm ci 无此约束。
+
+## 2026-09-02（v1.0.2：导出为普通 .md）
+
+### 功能：导出为普通 Markdown（朴素降级，KE 方言 → 标准 Markdown）
+
+类型：Feature
+状态：Completed（本地提交 v1.0.2，未推送 GitHub）
+
+- 新增 `frontend/src/editor/plain-export.ts`：`stripKeFrontmatter` / `downgradeKeNodes` / `plainMarkdown`
+  - frontmatter：删 ke_version / ke-module 定义块，保留 title/tags/created/updated（删空移除整个 --- 块）
+  - ke-note → `> **{label|title|信息}**{（author）}` + 内容逐行 `>` 前缀；ke-module → `> 模块：{name}`
+  - ke-attach image → `![alt](src)` + 图注行；file / ke-video → `[title](src)` 链接
+  - ke-footnote 行内 → `[^n]`（独立成行的位置型标记删除整行）；ke-footnotes 区域 → `[^n]: text` 按 n 升序、续行缩进 4 空格
+  - `<!-- ke-version ... -->` 独立行删除；未知/损坏 ke-*、ke-NOTE 变体原样保留；HTML/公式/标准 Markdown 逐字节保留
+  - 幂等（合并式 frontmatter）
+- EditorArea「导出 ▾」新增第三项「导出普通 Markdown (.md)」；原第一项改名「导出 Markdown（KE 格式）」
+- 测试：`plain-export.test.ts` 8 用例（六项断言 + GFM 渲染无残留验证）
+- 文档：`docs/knowledge-editor-plain-export-design.md`
+- 验证：vitest 186 passed / 1 skipped（22 文件）、tsc 0 错误、npm run build 成功；
+  样式证据 `evidence-plain-export-sample.md`（公式/表格/脚注/图片/信息块样例降级后 GFM 渲染干净）
+- 已知限制：附件相对路径引用（单文件不内联二进制）；ke-module 不做 inline 展开（v1 决策）

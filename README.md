@@ -2,13 +2,13 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.0.0**（Alpha 测试期）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前版本 **v1.0.2**（Alpha 测试期）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
 本项目开发过程包含 AI Agent 协作，透明性声明见 [docs/agent-collaboration.md](docs/agent-collaboration.md)。
 
 ## 安装（Windows 桌面版）
 
-1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.0.0_x64-setup.exe`。
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.0.2_x64-setup.exe`。
 2. 双击安装：安装到 `%LOCALAPPDATA%\KnowledgeEditor`，开始菜单创建快捷方式。
 3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
 
@@ -97,6 +97,8 @@ KnowledgeEditor/
 | `docs/phase6u-report.md` | Phase 6U 报告（v0.6.0 后 → v0.7.3，真实环境迭代） |
 | `docs/phase6e-report.md` | Phase 6E 冻结审计（API 冻结清单 / 迁移测试 / 侧车交接） |
 | `docs/agent-collaboration.md` | AI Agent 协作声明（开发过程透明度说明） |
+| `docs/knowledge-editor-plain-export-design.md` | 导出为普通 .md 设计（KE 方言 → 朴素 Markdown 降级规则） |
+| `docs/report/` | 审计清单与版本交付报告归档（v1.0.1 / v1.0.2） |
 
 ## 阶段状态
 
@@ -125,7 +127,9 @@ KnowledgeEditor/
 - 附件：工具栏「附件」按钮或直接拖拽文件到编辑区上传（图片/视频/文件按类型归档存储）；右侧「附件」面板查看全部附件与引用关系，孤儿附件（未被任何 Markdown 引用）仅支持手动删除、绝不自动，被引用附件后端返回 409 拒绝删除。
 - 信息块与脚注：信息块左上角徽章文字可自定义；「注释」弹窗支持两种脚注样式（原样式：正文上标 + 文末灰底脚注区域；纯 Markdown：上标 + 普通段落，可自由编辑），选择会被记住。信息块内容为可编辑内容节点，Markdown 存储为包裹格式 `<!-- ke-note: {json} -->` + `<!-- /ke-note -->`。
 - 文档属性：右侧「属性」面板展示文档创建/修改时间、字数、大小，保存后即时刷新。
+- 导出（v1.0.2 新增）：编辑区「导出 ▾」三项——「导出 Markdown（KE 格式）」（保留 ke_version 与 ke-* 扩展标记）、「导出普通 Markdown (.md)」（KE 方言降级为朴素 Markdown：信息块/模块/附件/视频/脚注转标准语法，任何 Markdown 工具可干净渲染，未知标记保留）、「导出文档包 (.zip)」。
 - 桌面版（v1.0.0）：原生窗口与应用图标、原生菜单（文件 / 编辑 / 视图 / 帮助）、最近工作区列表、设置面板（默认工作区、自动保存间隔、主题、维护），后端以侧车随程序启动，无需安装 Python。
+- 桌面版（v1.0.1 / v1.0.2 起）：单实例互斥、关窗保存握手、深色主题（跟随系统）、会话级解析缓存与代码分割（主包 1.96MB → 122KB）、watcher 空闲退避；v1.0.2 新增普通 Markdown 导出。
 
 ## 设计原则
 

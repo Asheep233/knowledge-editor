@@ -7,7 +7,6 @@ import { EditorContent, EditorContext, type Editor } from '@tiptap/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   discardRecovery,
-  exportPackage,
   listHistory,
   previewHistory,
   registerRecovery,
@@ -15,8 +14,7 @@ import {
   saveArticle,
 } from '../../api/client'
 import { setKeContent, useKeEditor } from '../../editor'
-import { downloadBlob, extractAttachmentRefs, slugForDownload } from '../../editor/import-export'
-import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
+import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, type SaveFn } from '../../state/saveQueue'
@@ -203,16 +201,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 导出 Markdown 单文件（内容来自 Markdown Serializer，不修改原文件）
   const handleExportMarkdown = useCallback(() => {
     if (!editor || !article) return
-    const md = withFrontmatter(editor.getMarkdown(), KE_VERSION)
-    downloadBlob(new Blob([md], { type: 'text/markdown' }), `${slugForDownload(article.title)}.md`)
+    void runExport(keExportPayload(editor, article.title))
   }, [editor, article])
 
   // 导出「普通 Markdown」（朴素降级版）：KE 方言 → 标准 Markdown，
   // 不含 ke_version 与任何 ke-* 注释（见 docs/knowledge-editor-plain-export-design.md）
   const handleExportPlainMarkdown = useCallback(() => {
     if (!editor || !article) return
-    const md = plainMarkdown(editor.getMarkdown(), metaFromArticle(article))
-    downloadBlob(new Blob([md], { type: 'text/markdown' }), `${slugForDownload(article.title)}.md`)
+    void runExport(plainExportPayload(editor, article))
   }, [editor, article])
 
   // 导出文档包 .zip（序列化 + 收集附件引用 → 后端打包）
@@ -222,9 +218,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     setExportOpen(false)
     try {
       const md = withFrontmatter(editor.getMarkdown(), KE_VERSION)
-      const refs = extractAttachmentRefs(md)
-      const { blob, filename } = await exportPackage({ title: article.title, md, refs })
-      downloadBlob(blob, filename)
+      await packageExportAndSave(article.title, md)
     } catch (e) {
       window.alert(`导出失败：${e instanceof Error ? e.message : String(e)}`)
     } finally {

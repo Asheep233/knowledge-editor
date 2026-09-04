@@ -74,6 +74,42 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
+/** File System Access API 的另存为句柄最小类型（仅用到的成员）。 */
+interface SaveFilePickerHandle {
+  createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>
+}
+type SaveFilePickerFn = (options: { suggestedName?: string }) => Promise<SaveFilePickerHandle>
+
+/**
+ * 导出保存（共享路径，v1.0.2 修复"点击无反应"体验问题）。
+ *
+ * 背景：Tauri WebView2 下 `a[download] + blob:` 为**静默下载**——无"另存为"弹窗、
+ * 无完成提示；且同一会话第二次起的程序化下载会被 WebView2 多下载策略静默丢弃
+ * （实测：第 1 次导出落盘成功，第 2/3 次 downloadBlob 被调用但无文件落地），
+ * 用户体感"点击无反应"。
+ *
+ * 方案：支持 File System Access API 的环境（Tauri WebView2 / Chromium 系）优先走
+ * `showSaveFilePicker`——OS 原生「另存为」弹窗，每次点击都有明确交互与反馈，
+ * 不存在多下载拦截，用户可精确选择路径；用户取消（AbortError）时静默返回；
+ * 其它异常或环境不支持时回退 downloadBlob（浏览器静默下载）。
+ */
+export async function saveOrDownload(blob: Blob, filename: string): Promise<void> {
+  const picker = (window as unknown as { showSaveFilePicker?: SaveFilePickerFn }).showSaveFilePicker
+  if (typeof picker === 'function') {
+    try {
+      const handle = await picker({ suggestedName: filename })
+      const writable = await handle.createWritable()
+      await writable.write(blob)
+      await writable.close()
+      return
+    } catch (e) {
+      // 用户取消：无动作（视为已完成交互）；其它错误回退静默下载兜底
+      if (e instanceof DOMException && e.name === 'AbortError') return
+    }
+  }
+  downloadBlob(blob, filename)
+}
+
 /** 从 Content-Disposition 解析文件名（支持 RFC 5987 filename*）。 */
 export function filenameFromDisposition(disposition: string | null, fallback: string): string {
   if (!disposition) return fallback

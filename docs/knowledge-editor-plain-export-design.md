@@ -36,6 +36,12 @@
 - `plainMarkdown(md, meta)` = `stripKeFrontmatter` → `downgradeKeNodes` → `withPlainFrontmatter`；
 - 幂等：输出不含任何 `ke-*` 注释与 ke_version，再次运行结果不变。
 
+## 保存路径（共享修复点）
+
+三种导出的保存统一走 `frontend/src/editor/import-export.ts` 的 `saveOrDownload`：
+支持 File System Access API 的环境（Tauri WebView2 / Chromium 系）优先 `showSaveFilePicker`（OS 原生另存为，
+每次点击都有明确交互，不受 WebView2 静默下载/多下载拦截影响）；用户取消静默返回；否则回退 `downloadBlob` 静默下载。
+
 ## 测试
 
 `frontend/src/editor/plain-export.test.ts`：无 ke-* 残留/标准内容逐字节保留；脚注引用与定义数量与编号一致；

@@ -5,6 +5,7 @@ import { setupCloseHandshake } from './desktop'
 import { waitForRuntimeBase } from './state/runtimeWait'
 import './index.css'
 import App from './App'
+import { applyTheme, loadSettings } from './settings'
 
 interface RuntimeInfo {
   api_base: string
@@ -83,6 +84,13 @@ async function bootstrap() {
   if (apiBase) {
     window.__KE_API_BASE__ = apiBase
     console.info('[ke] 运行时注入 API 基址:', window.__KE_API_BASE__)
+  }
+  // handoff §8.3：渲染前应用主题，避免首屏闪烁（App 内启动 effect 幂等兜底）
+  try {
+    const settings = await loadSettings()
+    applyTheme(settings.ui.theme)
+  } catch {
+    /* 设置不可用：保持默认浅色 */
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

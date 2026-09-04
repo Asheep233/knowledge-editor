@@ -27,6 +27,8 @@ import LeftSidebar from './components/layout/LeftSidebar'
 import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
+import { AppShell } from './components/shell/AppShell'
+import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, type AppSettings } from './settings'
 import { shouldBlockUnload } from './state/closeGuard'
@@ -95,6 +97,16 @@ export default function App() {
   const settingsRef = useRef<AppSettings | null>(null)
 
   const hasUnsaved = saveState === 'dirty' || saveState === 'saving' || saveState === 'error'
+  const saveStateLabel =
+    saveState === 'dirty'
+      ? '未保存'
+      : saveState === 'saving'
+        ? '保存中…'
+        : saveState === 'saved'
+          ? '已保存'
+          : saveState === 'error'
+            ? '保存失败'
+            : ''
 
   // ---------- 后端健康检查 ----------
   useEffect(() => {
@@ -602,9 +614,11 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#f6f7f9]">
-      {/* 顶栏 */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
+    <>
+    <AppShell
+      header={
+        /* WindowChrome 由 Tauri 原生菜单（menu.rs）提供；此处为应用内顶栏 */
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
         <div className="flex items-center gap-2">
           <span className="flex size-6 items-center justify-center rounded-md bg-blue-600 text-xs font-bold text-white">
             KE
@@ -716,9 +730,8 @@ export default function App() {
           ) : null}
         </div>
       </header>
-
-      {/* 三栏主体 */}
-      <div className="flex min-h-0 flex-1">
+      }
+      left={
         <LeftSidebar
           activeId={article?.id ?? null}
           onOpenArticle={requestOpenArticle}
@@ -726,6 +739,8 @@ export default function App() {
           onFsMutation={handleFsMutation}
         />
 
+      }
+      main={
         <EditorArea
           article={article}
           loading={loading}
@@ -734,8 +749,9 @@ export default function App() {
           onSaved={handleSaved}
           onArticleRestored={setArticle}
         />
-
-        {rightOpen ? (
+      }
+      right={
+        rightOpen ? (
           <RightPanel
             article={article}
             onMetaUpdate={setArticle}
@@ -751,8 +767,17 @@ export default function App() {
           >
             ‹
           </button>
-        )}
-      </div>
+        )
+      }
+      statusBar={
+        <StatusBar>
+          <span>{article ? `${article.title} · ${article.word_count ?? 0} 字` : '未打开文档'}</span>
+          <span>本地存储 · 自动保存已开启</span>
+          <span className="text-muted-foreground/80">{saveStateLabel}</span>
+          <StatusBarPath path={workspace?.root ?? ''} />
+        </StatusBar>
+      }
+    />
 
       {/* 设置面板（Phase 7 M3） */}
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -847,7 +872,7 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 

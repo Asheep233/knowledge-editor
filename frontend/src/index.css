@@ -1,10 +1,87 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+ * v1.0.3 UI 重构·设计令牌层（来源：knowledge-editor-ui/colors_and_type.css，handoff §2）
+ *
+ * - 选择器保留现有 data-theme（浅色=根、深色=[data-theme='dark']），
+ *   深色强调色按主理人拍板采用蓝系（#3b82f6），不采用 handoff 的 #fc2c50；
+ * - 语义变量 = 运行时可换肤的单点出口（阶段二「用户自定义强调色」直接覆写 --primary）；
+ * - 派生令牌用 color-mix 联动 --primary（hover/淡蓝辅助底），随自定义自动变化；
+ * - 硬性纪律：阴影透明度 0（层级只靠边框与色块）；圆角 4/6/8/12；胶囊仅搜索/徽章/分段控件。
+ * ========================================================================== */
+
+/* Tailwind v4：语义变量 → 工具类映射（bg-primary / text-foreground / border-border / ring-ring …） */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --font-sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 浅色（设计基准 colors_and_type.css :root；页面底=纯白卡片风，来自 handoff §2） */
 :root {
   color-scheme: light;
-  --ke-bg: #f6f7f9;
-  --ke-border: #e2e5ea;
-  --ke-accent: #2563eb;
+  /* 既有桥接变量（存量组件渐进迁移中，仍被大面积引用） */
+  --ke-bg: var(--background);
+  --ke-border: var(--border);
+  --ke-accent: var(--primary);
+
+  /* ===== 语义令牌（浅色 / light） ===== */
+  --background: #ffffff;
+  --foreground: #0e1115;
+  --card: #ffffff;
+  --card-foreground: #0e1115;
+  --popover: #ffffff;
+  --primary: #4285f4;
+  --primary-foreground: #ffffff;
+  --primary-hover: color-mix(in srgb, var(--primary) 86%, #000000);
+  --primary-soft: color-mix(in srgb, var(--primary) 12%, #ffffff);
+  --secondary: #dbeafe;
+  --secondary-foreground: #003e8f;
+  --muted: #eff1f4;
+  --muted-foreground: #7f8d9f;
+  --accent: #eff1f4;
+  --accent-foreground: #0e1115;
+  --border: #ebebeb;
+  --input: #e2e3e4;
+  --ring: var(--primary);
+  --sidebar: #f0f6ff;
+  --sidebar-foreground: #0e1115;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dbeafe;
+  --sidebar-accent-foreground: #003e8f;
+  --sidebar-border: #e7eaef;
+  --sidebar-ring: var(--ring);
 }
 
 html,
@@ -18,8 +95,8 @@ body {
   font-family:
     "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system,
     sans-serif;
-  background: var(--ke-bg);
-  color: #1f2937;
+  background: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -408,14 +485,44 @@ body {
  * 因此本层只关心 dark 分支。覆盖顺序在 Tailwind utilities 之后，胜出。
  * ========================================================================== */
 [data-theme='dark'] {
-  --ke-bg: #14161a;
-  --ke-border: #3a3f4a;
+  /* 既有桥接变量 */
+  --ke-bg: var(--background);
+  --ke-border: var(--border);
+  --ke-accent: var(--primary);
+
+  /* ===== 语义令牌（深色 / dark；强调色沿用蓝系 #3b82f6，主理人拍板，非 #fc2c50） ===== */
+  --background: #161616;
+  --foreground: #eff1f4;
+  --card: #1d1d1c;
+  --card-foreground: #eff1f4;
+  --popover: #1d1d1c;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, #000000);
+  --primary-soft: rgba(59, 130, 246, 0.16);
+  --secondary: rgba(59, 130, 246, 0.18);
+  --secondary-foreground: #bfdbfe;
+  --muted: #232323;
+  --muted-foreground: #9aa2af;
+  --accent: #292929;
+  --accent-foreground: #eff1f4;
+  --border: #333333;
+  --input: #3c3c3c;
+  --ring: var(--primary);
+  --sidebar: #171717;
+  --sidebar-foreground: #e5e5e5;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(59, 130, 246, 0.18);
+  --sidebar-accent-foreground: #bfdbfe;
+  --sidebar-border: #333333;
+  --sidebar-ring: var(--ring);
 }
 
 /* 面板/背景 */
 [data-theme='dark'] body {
-  background: var(--ke-bg);
-  color: #e5e7eb;
+  background: var(--background);
+  color: var(--foreground);
 }
 [data-theme='dark'] .bg-white { background-color: #1b1e24; }
 [data-theme='dark'] .bg-\[\#f6f7f9\] { background-color: #14161a; }

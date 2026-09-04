@@ -908,13 +908,14 @@ stable id（keStableId）、repro-main 移除、错误信息去绝对路径、re
   样式证据 `evidence-plain-export-sample.md`（公式/表格/脚注/图片/信息块样例降级后 GFM 渲染干净）
 - 已知限制：附件相对路径引用（单文件不内联二进制）；ke-module 不做 inline 展开（v1 决策）
 
-## 2026-09-04（v1.0.2 热修复：导出菜单"点击无反应"）
+## 2026-09-04（v1.0.2a：导出菜单"点击无反应"热修复）
 
 ### Bugfix：导出保存改原生另存为（共享路径）
 
 类型：Bugfix
 状态：Completed（本地提交，未推送）
 
+- 版本标记：v1.0.2a（发布/标签后缀；技术版本常量保持 1.0.2 —— `a` 为非 semver 后缀，Cargo/tauri/npm 不接受，且 CI 运行时版本校验与「三同步常量」要求全栈一致）。
 - 根因：Tauri WebView2 下 `a[download]+blob` 为**静默下载**（无另存为弹窗/无完成提示），且同一会话第二次起的程序化下载被 WebView2 多下载策略静默丢弃（实测第 1 次落盘成功、第 2/3 次 downloadBlob 被调用但无文件落地）→ 用户体感"点击无反应"。
 - 修复：新增 `import-export.saveOrDownload`（File System Access API `showSaveFilePicker` 原生另存为优先；AbortError 静默返回；否则回退 downloadBlob）；新增 `editor/export-actions.ts` 统一三种导出载荷（keExportPayload / plainExportPayload / packageExportAndSave）；EditorArea 三 handler 全部接入。
 - 回归：`export-actions.test.ts` 6 用例（三模式各走正确保存路径与参数；picker 优先/取消/回退）。

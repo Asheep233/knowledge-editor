@@ -115,28 +115,33 @@ export default function SettingsPanel({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 bg-black/20" onClick={onClose}>
       <aside
-        className="absolute right-0 top-0 flex h-full w-[400px] flex-col border-l border-gray-200 bg-white shadow-xl"
+        className="absolute right-0 top-0 flex h-full w-[400px] flex-col border-l border-border bg-background shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 px-4">
-          <h2 className="text-sm font-semibold text-gray-800">设置</h2>
+        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            设置
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
+              v1.0.2 · Alpha
+            </span>
+          </h2>
           <button
             type="button"
             data-action="close-settings"
             onClick={onClose}
             title="关闭"
-            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Icon name="close" className="size-4" />
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-xs text-gray-700">
-          {!ready && <p className="py-8 text-center text-gray-400">加载设置中…</p>}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-xs text-foreground/80">
+          {!ready && <p className="py-8 text-center text-muted-foreground">加载设置中…</p>}
 
           {/* 启动 */}
           <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-gray-100 pb-1 text-[11px] font-semibold text-gray-400">
+            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
               启动
             </h3>
             <ToggleRow
@@ -155,7 +160,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
 
           {/* 编辑器 */}
           <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-gray-100 pb-1 text-[11px] font-semibold text-gray-400">
+            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
               编辑器
             </h3>
             <NumberRow
@@ -186,32 +191,34 @@ export default function SettingsPanel({ open, onClose }: Props) {
 
           {/* 界面 */}
           <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-gray-100 pb-1 text-[11px] font-semibold text-gray-400">
-              界面
+            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
+              外观
             </h3>
-            <div className="flex gap-2">
+            {/* 分段控件（handoff §3.6）：激活段 --primary 底白字 */}
+            <div className="flex overflow-hidden rounded-md border border-border bg-muted/40">
               {THEME_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
+                  aria-pressed={settings.ui.theme === opt.value}
                   onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
                   className={[
-                    'flex-1 rounded border px-2 py-1.5 text-center transition-colors',
+                    'flex-1 px-2 py-1.5 text-center text-[12px] transition-colors',
                     settings.ui.theme === opt.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                      ? 'bg-primary font-medium text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   ].join(' ')}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-[11px] text-gray-400">主题立即生效；深色 UI 完整适配在后续里程碑</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">主题立即生效；深色 UI 完整适配渐进进行中</p>
           </section>
 
           {/* 维护 */}
           <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-gray-100 pb-1 text-[11px] font-semibold text-gray-400">
+            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
               维护
             </h3>
             <div className="space-y-2">
@@ -241,7 +248,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
           </section>
         </div>
 
-        <footer className="shrink-0 border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400">
+        <footer className="shrink-0 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
           设置存储于应用数据目录（settings.json，schema v1），Web 版保存在浏览器本地
         </footer>
       </aside>
@@ -263,8 +270,8 @@ function ToggleRow({
   return (
     <div className="flex items-center justify-between py-1">
       <div className="min-w-0 pr-3">
-        <div className="text-[12px] text-gray-700">{label}</div>
-        <div className="truncate text-[11px] text-gray-400" title={desc}>
+        <div className="text-[12px] text-foreground/80">{label}</div>
+        <div className="truncate text-[11px] text-muted-foreground" title={desc}>
           {desc}
         </div>
       </div>
@@ -275,7 +282,7 @@ function ToggleRow({
         onClick={() => onChange(!checked)}
         className={[
           'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-blue-600' : 'bg-gray-300',
+          checked ? 'bg-primary' : 'bg-muted',
         ].join(' ')}
       >
         <span
@@ -306,14 +313,14 @@ function NumberRow({
   return (
     <div className="flex items-center justify-between py-1">
       <div className="min-w-0 pr-3">
-        <div className="text-[12px] text-gray-700">{label}</div>
-        <div className="truncate text-[11px] text-gray-400" title={desc}>
+        <div className="text-[12px] text-foreground/80">{label}</div>
+        <div className="truncate text-[11px] text-muted-foreground" title={desc}>
           {desc}
         </div>
       </div>
       <input
         type="number"
-        className="w-24 rounded border border-gray-200 px-2 py-1 text-right text-[12px] text-gray-700 focus:border-blue-400 focus:outline-none"
+        className="w-24 rounded border border-input bg-card px-2 py-1 text-right text-[12px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
         value={draft ?? value}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={(e) => {
@@ -350,13 +357,13 @@ function MaintenanceButton({
         className={[
           'rounded border px-3 py-1.5 text-[12px] transition-colors',
           disabled
-            ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
-            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
+            ? 'cursor-not-allowed border-border/50 bg-muted/40 text-muted-foreground/50'
+            : 'border-border bg-background text-foreground/80 hover:bg-muted',
         ].join(' ')}
       >
         {label}
       </button>
-      <span className="min-w-0 truncate text-[11px] text-gray-400" title={desc}>
+      <span className="min-w-0 truncate text-[11px] text-muted-foreground" title={desc}>
         {desc}
       </span>
     </div>

@@ -248,6 +248,8 @@ export interface ModuleInfo {
   path: string
   title: string
   tags: string
+  /** 模块版本（frontmatter version/ke_version，后端缺省 1） */
+  version?: number
 }
 
 export interface ModuleListPayload {

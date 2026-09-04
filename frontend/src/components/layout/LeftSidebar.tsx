@@ -16,6 +16,7 @@ import {
   getRecentDocuments,
   getTags,
   getTree,
+  listModules,
   movePath,
   rebuildIndex,
   renameDoc,
@@ -64,6 +65,8 @@ export default function LeftSidebar({
   const [treeError, setTreeError] = useState(false)
   const [recent, setRecent] = useState<RecentDocument[]>([])
   const [tags, setTags] = useState<TagInfo[]>([])
+  // 模块版本号（已批准 API 变更：GET /api/modules 带 version），供模块树行 hover 标题/小字
+  const [moduleVersions, setModuleVersions] = useState<Record<string, number>>({})
   const [activeTag, setActiveTag] = useState<string | null>(null)
   const [tagFiles, setTagFiles] = useState<SearchResult[]>([])
   const [ctx, setCtx] = useState<CtxMenu | null>(null)
@@ -112,6 +115,10 @@ export default function LeftSidebar({
     getTags()
       .then((r) => setTags(r.tags))
       .catch(() => setTags([]))
+    // 模块版本号（已批准 API 变更；失败静默，不影响列表）
+    listModules()
+      .then((r) => setModuleVersions(Object.fromEntries(r.modules.map((m) => [m.path, m.version ?? 1]))))
+      .catch(() => setModuleVersions({}))
   }, [refreshKey])
 
   const refreshAll = useCallback(() => {
@@ -366,6 +373,7 @@ export default function LeftSidebar({
       )
     }
     const active = activeId === node.relPath
+    const ver = node.relPath.startsWith('Modules/') ? moduleVersions[node.relPath] : undefined
     return (
       <div
         key={node.relPath}
@@ -375,9 +383,18 @@ export default function LeftSidebar({
         style={indent}
         onClick={() => handleOpenFromTree(node)}
         onContextMenu={(e) => openCtx(e, node)}
+        title={node.relPath.startsWith('Modules/') ? `${node.relPath}（v${ver ?? '?'}）` : node.relPath}
       >
         <span className="w-3" />
+        {node.relPath.startsWith('Modules/') ? (
+          <Icon name="module" className="size-3.5 shrink-0 text-muted-foreground" />
+        ) : (
+          <Icon name="file" className="size-3.5 shrink-0 text-muted-foreground" />
+        )}
         <span className="flex-1 truncate">{node.name}</span>
+        {ver != null ? (
+          <span className="shrink-0 text-[10px] text-muted-foreground/70">v{ver}</span>
+        ) : null}
       </div>
     )
   }

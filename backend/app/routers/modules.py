@@ -35,6 +35,9 @@ def list_modules(request: Request) -> dict:
                     "path": rel,
                     "title": meta.get("title") or p.stem,
                     "tags": meta.get("tags", ""),
+                    # 已批准的 API 变更：模块列表带版本号（frontmatter version /
+                    # ke_version 兼容读取；均缺省时回退 1）
+                    "version": meta.get("version") or meta.get("ke_version") or 1,
                 }
             )
     return {"count": len(items), "modules": items}

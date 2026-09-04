@@ -77,6 +77,26 @@ def test_list_modules_nested(client):
     assert "Modules/Physics/Formula.md" in paths
 
 
+def test_list_modules_version_field(client):
+    """已批准的 API 变更：模块列表带 version（frontmatter version/ke_version，缺省 1）。"""
+    _write(client, "Modules/V1.md", "## 一\n\n内容。")
+    _write(
+        client,
+        "Modules/V2.md",
+        "---\ntitle: 版本二\nversion: 2\n---\n\n## 二\n\n内容。",
+    )
+    _write(
+        client,
+        "Modules/V3.md",
+        "---\nke_version: 3\n---\n\n## 三\n\n内容。",
+    )
+    r = client.get("/api/modules")
+    by_path = {m["path"]: m for m in r.json()["modules"]}
+    assert by_path["Modules/V1.md"]["version"] == 1
+    assert by_path["Modules/V2.md"]["version"] == 2
+    assert by_path["Modules/V3.md"]["version"] == 3
+
+
 def test_get_module_nested_variants(client):
     _write(client, "Modules/Math/Definition.md", "## 定义\n\n设 X 是集合。")
     # 完整路径（含 .md）

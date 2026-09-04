@@ -1,6 +1,6 @@
 /** 应用设置纯函数单测（Phase 7 M3）：mergeSettings / sanitizeTheme。 */
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, mergeSettings, sanitizeTheme } from './settings'
+import { DEFAULT_SETTINGS, mergeSettings, sanitizeHexColor, sanitizeTheme } from './settings'
 
 describe('sanitizeTheme', () => {
   it('接受 system/light/dark', () => {
@@ -58,5 +58,48 @@ describe('mergeSettings', () => {
   it('schemaVersion 恒为 1（不可被补丁改动）', () => {
     const out = mergeSettings(DEFAULT_SETTINGS, { schemaVersion: 99 } as never)
     expect(out.schemaVersion).toBe(1)
+  })
+
+  it('accentColor 合并时归一化并保留另一侧', () => {
+    const out = mergeSettings(DEFAULT_SETTINGS, {
+      ui: { accentColor: { light: '#4285F4' } },
+    })
+    expect(out.ui.accentColor).toEqual({ light: '#4285f4', dark: undefined })
+    // 深色侧补丁不覆盖已存浅色
+    const base = mergeSettings(DEFAULT_SETTINGS, { ui: { accentColor: { light: '#4285f4' } } })
+    const next = mergeSettings(base, { ui: { accentColor: { dark: '#3b82f6' } } })
+    expect(next.ui.accentColor).toEqual({ light: '#4285f4', dark: '#3b82f6' })
+  })
+
+  it('accentColor 非法值被清除（不写入）', () => {
+    const out = mergeSettings(DEFAULT_SETTINGS, {
+      ui: { accentColor: { light: 'not-a-color', dark: '#123' } } as never,
+    })
+    expect(out.ui.accentColor).toEqual({ light: undefined, dark: '#112233' })
+  })
+
+  it('accentColor 空字符串 = 清除该侧（回退默认）', () => {
+    const base = mergeSettings(DEFAULT_SETTINGS, {
+      ui: { accentColor: { light: '#4285f4', dark: '#3b82f6' } },
+    })
+    const out = mergeSettings(base, { ui: { accentColor: { light: '' } } })
+    expect(out.ui.accentColor).toEqual({ light: undefined, dark: '#3b82f6' })
+  })
+})
+
+describe('sanitizeHexColor', () => {
+  it('接受 #RGB / #RRGGBB 并归一化', () => {
+    expect(sanitizeHexColor('#4285F4')).toBe('#4285f4')
+    expect(sanitizeHexColor('4285f4')).toBe('#4285f4')
+    expect(sanitizeHexColor('#abc')).toBe('#aabbcc')
+    expect(sanitizeHexColor('#ABC')).toBe('#aabbcc')
+  })
+
+  it('非法值返回 undefined', () => {
+    expect(sanitizeHexColor('red')).toBeUndefined()
+    expect(sanitizeHexColor('#12')).toBeUndefined()
+    expect(sanitizeHexColor('#1234567')).toBeUndefined()
+    expect(sanitizeHexColor(42)).toBeUndefined()
+    expect(sanitizeHexColor(undefined)).toBeUndefined()
   })
 })

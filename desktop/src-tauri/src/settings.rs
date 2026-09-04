@@ -64,6 +64,8 @@ impl Default for EditorSettings {
 pub struct UiSettings {
     pub theme: String,
     pub display_preference: serde_json::Value,
+    /// Phase 2 自定义强调色（light / dark 两套 #RRGGBB；非法值在 sanitize 清除）。
+    pub accent_color: Option<AccentColor>,
 }
 
 impl Default for UiSettings {
@@ -71,6 +73,23 @@ impl Default for UiSettings {
         Self {
             theme: "system".to_string(),
             display_preference: serde_json::Value::Object(Default::default()),
+            accent_color: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct AccentColor {
+    pub light: Option<String>,
+    pub dark: Option<String>,
+}
+
+impl Default for AccentColor {
+    fn default() -> Self {
+        Self {
+            light: None,
+            dark: None,
         }
     }
 }
@@ -170,12 +189,38 @@ fn merge_value(base: &mut serde_json::Value, patch: &serde_json::Value) {
     }
 }
 
-/// 对补丁做 schema 级净化：theme 只允许 system/light/dark，非法值回退默认。
+/// 对补丁做 schema 级净化：theme 只允许 system/light/dark，非法值回退默认；
+/// accentColor 仅接受 #RGB/#RRGGBB 十六进制，非法单值清除（空对象 → None）。
 fn sanitize(mut settings: AppSettings) -> AppSettings {
     if !THEMES.contains(&settings.ui.theme.as_str()) {
         settings.ui.theme = UiSettings::default().theme;
     }
+    if let Some(accent) = &mut settings.ui.accent_color {
+        let clean = |v: &Option<String>| -> Option<String> {
+            v.as_ref().and_then(|s| sanitize_hex(s)).map(|s| s.to_lowercase())
+        };
+        let light = clean(&accent.light);
+        let dark = clean(&accent.dark);
+        if light.is_none() && dark.is_none() {
+            settings.ui.accent_color = None;
+        } else {
+            *accent = AccentColor { light, dark };
+        }
+    }
     settings
+}
+
+/// 校验十六进制颜色：#RGB / #RRGGBB（大小写均可）→ 输出 #RRGGBB；非法返回 None。
+fn sanitize_hex(value: &str) -> Option<String> {
+    let t = value.trim_start_matches('#');
+    if t.len() == 3 {
+        let chars: Vec<char> = t.chars().collect();
+        Some(format!("#{}{}{}{}{}{}", chars[0], chars[0], chars[1], chars[1], chars[2], chars[2]))
+    } else if t.len() == 6 {
+        Some(format!("#{t}"))
+    } else {
+        None
+    }
 }
 
 /// 前端读取设置（挂载后调用一次；也供设置面板初始化）。
@@ -296,6 +341,55 @@ mod tests {
             s.ui.theme = theme.to_string();
             assert_eq!(sanitize(s).ui.theme, theme);
         }
+    }
+
+    #[test]
+    fn sanitize_accent_color_normalizes_hex() {
+        let mut s = AppSettings::default();
+        s.ui.accent_color = Some(AccentColor {
+            light: Some("#4285f4".into()),
+            dark: Some("3B82F6".into()),
+        });
+        let out = sanitize(s);
+        let ac = out.ui.accent_color.expect("accent kept");
+        assert_eq!(ac.light.as_deref(), Some("#4285f4"));
+        assert_eq!(ac.dark.as_deref(), Some("#3b82f6"));
+    }
+
+    #[test]
+    fn sanitize_accent_color_rejects_invalid() {
+        let mut s = AppSettings::default();
+        s.ui.accent_color = Some(AccentColor {
+            light: Some("not-a-color".into()),
+            dark: Some("#12".into()),
+        });
+        let out = sanitize(s);
+        assert!(out.ui.accent_color.is_none());
+        // 部分合法：仅保留合法值
+        let mut s = AppSettings::default();
+        s.ui.accent_color = Some(AccentColor {
+            light: Some("#1a2b3c".into()),
+            dark: Some("nope".into()),
+        });
+        let out = sanitize(s);
+        let ac = out.ui.accent_color.expect("accent kept");
+        assert_eq!(ac.light.as_deref(), Some("#1a2b3c"));
+        assert_eq!(ac.dark, None);
+    }
+
+    #[test]
+    fn accent_color_roundtrip() {
+        let mut s = AppSettings::default();
+        s.ui.accent_color = Some(AccentColor {
+            light: Some("#4285f4".into()),
+            dark: Some("#3b82f6".into()),
+        });
+        let path = tmp_settings_file();
+        save_to(&path, &s).expect("save should succeed");
+        let loaded = load_from(&path);
+        let ac = loaded.ui.accent_color.expect("accent kept");
+        assert_eq!(ac.light.as_deref(), Some("#4285f4"));
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

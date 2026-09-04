@@ -88,7 +88,7 @@ async function bootstrap() {
   // handoff §8.3：渲染前应用主题，避免首屏闪烁（App 内启动 effect 幂等兜底）
   try {
     const settings = await loadSettings()
-    applyTheme(settings.ui.theme)
+    applyTheme(settings.ui.theme, settings.ui.accentColor)
   } catch {
     /* 设置不可用：保持默认浅色 */
   }

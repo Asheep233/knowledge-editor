@@ -28,6 +28,9 @@ const THEME_OPTIONS: { value: 'system' | 'light' | 'dark'; label: string }[] = [
   { value: 'dark', label: '深色' },
 ]
 
+/** 强调色默认值（与 index.css 令牌层一致：浅 #4285f4 / 深 #3b82f6） */
+const DEFAULT_ACCENT = { light: '#4285f4', dark: '#3b82f6' }
+
 export default function SettingsPanel({ open, onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [ready, setReady] = useState(false)
@@ -59,7 +62,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
   const patchAndSave = async (patch: SettingsPatch) => {
     const next = await saveSettings(patch)
     setSettings(next)
-    applyTheme(next.ui.theme)
+    applyTheme(next.ui.theme, next.ui.accentColor)
   }
 
   const setNumber = async (group: 'startup' | 'editor', key: string, value: number) => {
@@ -214,6 +217,22 @@ export default function SettingsPanel({ open, onClose }: Props) {
               ))}
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">主题立即生效；深色 UI 完整适配渐进进行中</p>
+
+            {/* Phase 2：自定义强调色（浅色/深色各一套，空 = 使用默认） */}
+            <div className="mt-4 space-y-2">
+              <AccentColorRow
+                label="强调色 · 浅色"
+                value={settings.ui.accentColor?.light}
+                fallback={DEFAULT_ACCENT.light}
+                onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
+              />
+              <AccentColorRow
+                label="强调色 · 深色"
+                value={settings.ui.accentColor?.dark}
+                fallback={DEFAULT_ACCENT.dark}
+                onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
+              />
+            </div>
           </section>
 
           {/* 维护 */}
@@ -329,6 +348,70 @@ function NumberRow({
         }}
         onKeyDown={onKeyDown}
       />
+    </div>
+  )
+}
+
+/** 强调色行：色板 + hex 输入 + 重置按钮（空值 = 使用主题默认） */
+function AccentColorRow({
+  label,
+  value,
+  fallback,
+  onChange,
+}: {
+  label: string
+  value?: string
+  fallback: string
+  onChange: (v: string | null) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const current = draft ?? value ?? ''
+  return (
+    <div className="flex items-center gap-2">
+      <label className="flex min-w-0 flex-1 items-center gap-2">
+        <input
+          type="color"
+          value={current || fallback}
+          aria-label={label}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            onChange(e.target.value)
+          }}
+          className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
+        />
+        <span className="truncate text-[12px] text-foreground/80">{label}</span>
+      </label>
+      <input
+        type="text"
+        value={current}
+        placeholder={fallback}
+        aria-label={`${label} 色值`}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={(e) => {
+          const v = e.target.value.trim()
+          setDraft(null)
+          if (!v) {
+            onChange(null)
+          } else if (/^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(v)) {
+            onChange(v)
+          }
+          // 非法值：不落盘，输入框回显当前保存值
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        }}
+        className="w-18 shrink-0 rounded border border-input bg-card px-1.5 py-1 font-mono text-[11px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+      />
+      <button
+        type="button"
+        title="重置为默认"
+        aria-label={`${label} 重置`}
+        disabled={!value}
+        onClick={() => onChange(null)}
+        className="shrink-0 rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground/80 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Icon name="rebuild" className="size-3.5" />
+      </button>
     </div>
   )
 }

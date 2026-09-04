@@ -19,6 +19,15 @@ export interface EditorSettings {
 export interface UiSettings {
   theme: 'system' | 'light' | 'dark'
   displayPreference: Record<string, unknown>
+  /**
+   * 自定义强调色（Phase 2）：light / dark 两套十六进制色值。
+   * 未设置时用令牌层默认（light #4285f4 / dark #3b82f6）。
+   * 保存时校验 #RRGGBB；非法值按未设置处理。
+   */
+  accentColor?: {
+    light?: string
+    dark?: string
+  }
 }
 
 export interface AppSettings {
@@ -32,7 +41,13 @@ export interface AppSettings {
 export type SettingsPatch = {
   startup?: Partial<StartupSettings>
   editor?: Partial<EditorSettings>
-  ui?: Partial<UiSettings>
+  ui?: Partial<UiSettings> & {
+    /** accentColor 单值为空字符串 = 清除该侧（恢复主题默认），Patch 专用语义 */
+    accentColor?: {
+      light?: string
+      dark?: string
+    }
+  }
   maintenance?: Record<string, unknown>
 }
 
@@ -56,6 +71,17 @@ export function sanitizeTheme(value: unknown): UiSettings['theme'] {
   return value === 'light' || value === 'dark' || value === 'system' ? value : 'system'
 }
 
+/** 校验并归一化十六进制颜色（#RGB / #RRGGBB → #RRGGBB 小写；非法返回 undefined）。
+ * 用于 accentColor 持久化前的过滤。 */
+export function sanitizeHexColor(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(value.trim())
+  if (!m) return undefined
+  let hex = m[1]
+  if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('')
+  return `#${hex.toLowerCase()}`
+}
+
 /** 纯函数合并：部分补丁深合并到现有设置（供单测；Rust 端 merge 语义一致）。 */
 export function mergeSettings(base: AppSettings, patch: SettingsPatch): AppSettings {
   return {
@@ -71,6 +97,17 @@ export function mergeSettings(base: AppSettings, patch: SettingsPatch): AppSetti
       ...patch.ui,
       theme: sanitizeTheme(patch.ui?.theme ?? base.ui.theme),
       displayPreference: patch.ui?.displayPreference ?? base.ui.displayPreference,
+      // accentColor 空字符串 = 清除（回退默认）；undefined = 保留原值
+      accentColor: {
+        light:
+          patch.ui?.accentColor?.light === ''
+            ? undefined
+            : sanitizeHexColor(patch.ui?.accentColor?.light ?? base.ui.accentColor?.light),
+        dark:
+          patch.ui?.accentColor?.dark === ''
+            ? undefined
+            : sanitizeHexColor(patch.ui?.accentColor?.dark ?? base.ui.accentColor?.dark),
+      },
     },
     maintenance: patch.maintenance ?? base.maintenance,
   }
@@ -121,17 +158,32 @@ export function getAutosaveIntervalMs(): number {
 
 /** 应用主题：解析 system → 实际明暗，写 data-theme（供 CSS 覆盖）与 color-scheme。
  * P4-2：完整深色主题由 index.css 的 [data-theme="dark"] 覆盖层提供，
- * system 模式跟随 prefers-color-scheme 并响应系统切换。 */
-export function applyTheme(theme: UiSettings['theme']): void {
+ * system 模式跟随 prefers-color-scheme 并响应系统切换。
+ * Phase 2：自定义强调色（accentColor）→ 覆写 --primary / --sidebar-primary /
+ * --ring（派生 token 用 color-mix 联动 --primary，无需单独覆写）。 */
+export function applyTheme(theme: UiSettings['theme'], accent?: UiSettings['accentColor']): void {
   const el = document.documentElement
   const media = typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null
   const effective = theme === 'system' ? (media?.matches ? 'dark' : 'light') : theme
   el.dataset.theme = effective
   el.style.colorScheme = effective === 'dark' ? 'dark' : 'light'
+  // 自定义强调色：仅用 CSS 变量覆写，令牌层默认值保持在 :root/[data-theme=dark]，
+  // 清除时（undefined）恢复默认（CSS 变量删掉即可回退到层叠默认）。
+  const custom = effective === 'dark' ? accent?.dark : accent?.light
+  if (custom) {
+    el.style.setProperty('--primary', custom)
+    el.style.setProperty('--sidebar-primary', custom)
+    el.style.setProperty('--ring', custom)
+  } else {
+    el.style.removeProperty('--primary')
+    el.style.removeProperty('--sidebar-primary')
+    el.style.removeProperty('--ring')
+    // 派生 token 依赖 --primary 的 color-mix，自动随变量变化；无需处理
+  }
   if (media) {
     // 系统模式：跟随系统明暗切换（响应式监听，按当前主题是否 system 生效）
     media.addEventListener('change', () => {
-      applyTheme(getCachedSettings().ui.theme)
+      applyTheme(getCachedSettings().ui.theme, getCachedSettings().ui.accentColor)
     })
   }
 }

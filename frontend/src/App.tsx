@@ -137,7 +137,7 @@ export default function App() {
     loadSettings()
       .then((s) => {
         if (!alive) return
-        applyTheme(s.ui.theme)
+        applyTheme(s.ui.theme, s.ui.accentColor)
         settingsRef.current = s
         // 主题变化后通知下游（若有依赖设置的组件需要重读设置缓存）。
         setSettingsReady(true)

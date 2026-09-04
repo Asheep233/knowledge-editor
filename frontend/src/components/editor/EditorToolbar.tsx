@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { getModule, listModules, uploadAttachment, type ModuleInfo } from '../../api/client'
 import { newId } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
+import { Icon } from '../icons'
 
 interface Btn {
   icon: ReactNode
@@ -32,7 +33,7 @@ function ToolbarButton({ b }: { b: Btn }) {
         'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
         b.active
           ? 'bg-blue-100 text-blue-700'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800',
+          : 'text-foreground/80 hover:bg-accent hover:text-gray-800',
         b.disabled ? 'cursor-not-allowed opacity-40' : '',
       ].join(' ')}
     >
@@ -40,7 +41,7 @@ function ToolbarButton({ b }: { b: Btn }) {
       <span
         className={[
           'max-w-full truncate text-[10px] leading-none',
-          b.active ? 'font-medium' : 'text-gray-500',
+          b.active ? 'font-medium' : 'text-muted-foreground',
         ].join(' ')}
       >
         {b.label}
@@ -107,7 +108,7 @@ function Dropdown({
         ? createPortal(
             <div
               ref={panelRef}
-              className="fixed z-50 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-xl"
+              className="fixed z-50 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-xl"
               style={{ top: pos.top, left: pos.left, minWidth: Math.max(pos.minWidth, 140) }}
             >
               {children}
@@ -134,7 +135,7 @@ function MenuItem({
       onClick={onClick}
       className={[
         'block w-full px-3 py-1.5 text-left text-[13px] transition-colors',
-        active ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-700 hover:bg-gray-100',
+        active ? 'bg-primary-soft font-medium text-blue-700' : 'text-foreground hover:bg-accent',
       ].join(' ')}
     >
       {children}
@@ -150,7 +151,7 @@ function TableSizePicker({ onPick }: { onPick: (rows: number, cols: number) => v
   const cols = hover ? hover.c + 1 : 1
   return (
     <div className="px-3 py-2" onMouseLeave={() => setHover(null)}>
-      <div className="mb-1.5 text-[11px] text-gray-500">{rows} 行 × {cols} 列</div>
+      <div className="mb-1.5 text-[11px] text-muted-foreground">{rows} 行 × {cols} 列</div>
       <div className="grid gap-[2px]" style={{ gridTemplateColumns: `repeat(${MAX}, 13px)` }}>
         {Array.from({ length: MAX }).map((_, r) =>
           Array.from({ length: MAX }).map((_, c) => (
@@ -161,7 +162,7 @@ function TableSizePicker({ onPick }: { onPick: (rows: number, cols: number) => v
               onClick={() => onPick(r + 1, c + 1)}
               className={[
                 'h-[13px] w-[13px] rounded-[2px] transition-colors',
-                hover && r <= hover.r && c <= hover.c ? 'bg-blue-500' : 'bg-gray-200 hover:bg-gray-300',
+                hover && r <= hover.r && c <= hover.c ? 'bg-primary-soft0' : 'bg-gray-200 hover:bg-gray-300',
               ].join(' ')}
             />
           )),
@@ -192,13 +193,13 @@ function StyleCard({
       onClick={onClick}
       className={[
         'flex-1 rounded-lg border px-3 py-2 text-left transition-colors',
-        active ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300',
+        active ? 'border-blue-500 bg-primary-soft' : 'border-border hover:border-gray-300',
       ].join(' ')}
     >
       <div className={['text-[13px] font-medium', active ? 'text-blue-700' : 'text-gray-800'].join(' ')}>
         {title}
       </div>
-      <div className="mt-0.5 text-[11px] leading-snug text-gray-500">{desc}</div>
+      <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</div>
     </button>
   )
 }
@@ -236,11 +237,11 @@ function FootnoteDialog({
       onMouseDown={onClose}
     >
       <div
-        className="w-[440px] rounded-xl bg-white p-4 shadow-xl"
+        className="w-[440px] rounded-xl bg-card p-4 shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-1 text-sm font-semibold text-gray-800">添加注释</div>
-        <div className="mb-2 text-[11px] text-gray-500">选择插入样式（选择会被记住）</div>
+        <div className="mb-2 text-[11px] text-muted-foreground">选择插入样式（选择会被记住）</div>
         <div className="mb-2 flex gap-2">
           <StyleCard
             active={style === 'block'}
@@ -255,7 +256,7 @@ function FootnoteDialog({
             desc="正文同样插入上标 [n]；文末 # 参考 与 [n]内容 为普通段落，无连接、可自由编辑"
           />
         </div>
-        <div className="mb-2 text-[11px] text-gray-500">
+        <div className="mb-2 text-[11px] text-muted-foreground">
           {style === 'plain'
             ? '正文插入上标 [n]；文末追加 # 参考 与 [n]内容（普通段落，可自由编辑，无上标连接）。'
             : '正文将插入右上角上标 [n]，并在文末脚注区域（独立 footnotes 节点）自动生成对应条目。'}
@@ -265,7 +266,7 @@ function FootnoteDialog({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="输入注释内容…"
-          className="h-24 w-full resize-none rounded-md border border-gray-200 p-2 text-[13px] leading-relaxed text-gray-900 caret-blue-600 outline-none placeholder:text-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="h-24 w-full resize-none rounded-md border border-border p-2 text-[13px] leading-relaxed text-gray-900 caret-blue-600 outline-none placeholder:text-muted-foreground focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           onKeyDown={(e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
               e.preventDefault()
@@ -277,14 +278,14 @@ function FootnoteDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-50"
+            className="rounded-md border border-border px-3 py-1.5 text-[13px] text-foreground/80 hover:bg-accent"
           >
             取消
           </button>
           <button
             type="button"
             onClick={confirm}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-blue-700"
+            className="rounded-md bg-primary px-3 py-1.5 text-[13px] font-medium text-white hover:bg-primary-hover"
           >
             插入注释
           </button>
@@ -455,7 +456,7 @@ export default function EditorToolbar() {
   return (
     <div
       ref={barRef}
-      className="flex h-[52px] shrink-0 items-center gap-0.5 overflow-x-auto border-b border-gray-200 bg-white px-2"
+      className="flex h-[52px] shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-card px-2"
     >
       {/* 标题下拉（优化 4） */}
       <Dropdown
@@ -468,14 +469,14 @@ export default function EditorToolbar() {
             onClick={() => setHeadingOpen((v) => !v)}
             className={[
               'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
-              s.headingLevel > 0 ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800',
+              s.headingLevel > 0 ? 'bg-blue-100 text-blue-700' : 'text-foreground/80 hover:bg-accent hover:text-gray-800',
             ].join(' ')}
           >
             <span className="text-[15px] leading-none">Aa</span>
             <span
               className={[
                 'max-w-full truncate text-[10px] leading-none',
-                s.headingLevel > 0 ? 'font-medium' : 'text-gray-500',
+                s.headingLevel > 0 ? 'font-medium' : 'text-muted-foreground',
               ].join(' ')}
             >
               {headingLabel}
@@ -496,7 +497,7 @@ export default function EditorToolbar() {
       <Divider />
       <ToolbarButton
         b={{
-          icon: <strong>B</strong>,
+          icon: <Icon name="bold" className="size-4" />,
           label: '粗体',
           title: '粗体',
           active: s.bold,
@@ -505,7 +506,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: <em>I</em>,
+          icon: <Icon name="italic" className="size-4" />,
           label: '斜体',
           title: '斜体',
           active: s.italic,
@@ -514,7 +515,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: <u>U</u>,
+          icon: <Icon name="underline" className="size-4" />,
           label: '下划线',
           title: '下划线',
           active: s.underline,
@@ -523,7 +524,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: <s>S</s>,
+          icon: <Icon name="strike" className="size-4" />,
           label: '删除线',
           title: '删除线',
           active: s.strike,
@@ -533,7 +534,7 @@ export default function EditorToolbar() {
       <Divider />
       <ToolbarButton
         b={{
-          icon: <code>{'</>'}</code>,
+          icon: <Icon name="code" className="size-4" />,
           label: '行内码',
           title: '行内代码',
           active: s.code,
@@ -551,7 +552,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: '❝',
+          icon: <Icon name="quote" className="size-4" />,
           label: '引用',
           title: '引用',
           active: s.blockquote,
@@ -572,14 +573,14 @@ export default function EditorToolbar() {
               'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
               s.bulletList || s.orderedList
                 ? 'bg-blue-100 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800',
+                : 'text-foreground/80 hover:bg-accent hover:text-gray-800',
             ].join(' ')}
           >
-            <span className="text-[15px] leading-none">≡</span>
+            <Icon name="list" className="size-4" />
             <span
               className={[
                 'max-w-full truncate text-[10px] leading-none',
-                s.bulletList || s.orderedList ? 'font-medium' : 'text-gray-500',
+                s.bulletList || s.orderedList ? 'font-medium' : 'text-muted-foreground',
               ].join(' ')}
             >
               列表
@@ -603,7 +604,7 @@ export default function EditorToolbar() {
       <Divider />
       <ToolbarButton
         b={{
-          icon: '∑',
+          icon: <Icon name="formula" className="size-4" />,
           label: '行内公式',
           title: '插入行内公式（LaTeX 源码 + 渲染）',
           onClick: () => insertMathNode(editor, false),
@@ -611,7 +612,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: '∑∑',
+          icon: <Icon name="formula" className="size-4" />,
           label: '块级公式',
           title: '插入块级公式（LaTeX 源码 + 渲染）',
           onClick: () => insertMathNode(editor, true),
@@ -619,7 +620,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: '📝',
+          icon: <Icon name="note" className="size-4" />,
           label: '注释',
           title: '插入注释（正文上标 [n] + 文末参考栏）',
           onClick: () => setFootnoteOpen(true),
@@ -627,7 +628,7 @@ export default function EditorToolbar() {
       />
       <ToolbarButton
         b={{
-          icon: '💡',
+          icon: <Icon name="bulb" className="size-4" />,
           label: '信息块',
           title: '插入信息块（标题可自定义）',
           onClick: () => editor.chain().focus().insertNote('', 'blue').run(),
@@ -644,18 +645,18 @@ export default function EditorToolbar() {
             onClick={() => void toggleModulePicker()}
             className={[
               'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
-              'text-gray-600 hover:bg-gray-100 hover:text-gray-800',
+              'text-foreground/80 hover:bg-accent hover:text-gray-800',
             ].join(' ')}
           >
-            <span className="text-[15px] leading-none">▣</span>
-            <span className="max-w-full truncate text-[10px] leading-none text-gray-500">
+            <Icon name="module" className="size-4" />
+            <span className="max-w-full truncate text-[10px] leading-none text-muted-foreground">
               模块
             </span>
           </button>
         }
       >
         {modules.length === 0 ? (
-          <div className="px-3 py-2 text-[12px] text-gray-400">
+          <div className="px-3 py-2 text-[12px] text-muted-foreground">
             暂无模块（在左侧 Modules 目录创建后刷新）
           </div>
         ) : (
@@ -677,10 +678,10 @@ export default function EditorToolbar() {
             type="button"
             title="插入表格（选择行列数）"
             onClick={() => setTableOpen((v) => !v)}
-            className="flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+            className="flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors text-foreground/80 hover:bg-accent hover:text-gray-800"
           >
-            <span className="text-[15px] leading-none">▦</span>
-            <span className="max-w-full truncate text-[10px] leading-none text-gray-500">表格</span>
+            <Icon name="table" className="size-4" />
+            <span className="max-w-full truncate text-[10px] leading-none text-muted-foreground">表格</span>
           </button>
         }
       >
@@ -693,7 +694,7 @@ export default function EditorToolbar() {
       </Dropdown>
       <ToolbarButton
         b={{
-          icon: '📎',
+          icon: <Icon name="attachment" className="size-4" />,
           label: '附件',
           title: '插入附件（图片/文件/视频）',
           onClick: () => fileRef.current?.click(),
@@ -709,7 +710,7 @@ export default function EditorToolbar() {
       <div className="ml-auto flex shrink-0 items-center">
         <ToolbarButton
           b={{
-            icon: '↩',
+            icon: <Icon name="undo" className="size-4" />,
             label: '撤销',
             title: '撤销',
             disabled: !s.canUndo,
@@ -718,7 +719,7 @@ export default function EditorToolbar() {
         />
         <ToolbarButton
           b={{
-            icon: '↪',
+            icon: <Icon name="redo" className="size-4" />,
             label: '重做',
             title: '重做',
             disabled: !s.canRedo,

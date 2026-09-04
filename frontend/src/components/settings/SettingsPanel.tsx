@@ -15,6 +15,7 @@ import {
   loadSettings,
   saveSettings,
 } from '../../settings'
+import { Icon } from '../icons'
 
 interface Props {
   open: boolean
@@ -126,7 +127,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
             title="关闭"
             className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >
-            ✕
+            <Icon name="close" className="size-4" />
           </button>
         </header>
 

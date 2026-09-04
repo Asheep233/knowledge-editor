@@ -7,6 +7,7 @@
  * 徽章颜色与块背景同步同一色系；徽章默认空文本（placeholder 不再显示「信息」）。
  */
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
+import { Icon } from '../../icons'
 
 /** 每个色系的块背景/边框 + 徽章配色 */
 const COLOR_MAP: Record<string, { block: string; badge: string }> = {
@@ -104,7 +105,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
             deleteNode()
           }}
         >
-          ×
+          <Icon name="close" className="size-3.5" />
         </button>
       </div>
     </NodeViewWrapper>

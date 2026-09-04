@@ -30,12 +30,17 @@ import type {
   TreePayload,
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
+import { Icon } from '../icons'
 
 interface Props {
   activeId: string | null
   onOpenArticle: (id: string) => void
   refreshKey?: number
   onFsMutation?: (m: FsMutation) => void
+  /** 打开设置面板（DataSovereigntyFooter「设置」入口，handoff §3.2 btn-settings） */
+  onOpenSettings?: () => void
+  /** workspace 根路径（Footer mono 展示） */
+  workspaceRoot?: string | null
 }
 
 interface CtxMenu {
@@ -46,7 +51,14 @@ interface CtxMenu {
 
 const TOP_ARTICLES = 'Articles'
 
-export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, onFsMutation }: Props) {
+export default function LeftSidebar({
+  activeId,
+  onOpenArticle,
+  refreshKey = 0,
+  onFsMutation,
+  onOpenSettings,
+  workspaceRoot,
+}: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
   // P2-8：文件树加载失败不再是「空」，而是明确错误提示
   const [treeError, setTreeError] = useState(false)
@@ -61,6 +73,20 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
+  const searchRef = useRef<HTMLInputElement | null>(null)
+  const monoPath = useMemo(() => (workspaceRoot ?? '').replace(/\\/g, '/'), [workspaceRoot])
+
+  // Ctrl/Cmd+K：聚焦全局搜索（handoff §6）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const searchTimer = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -303,33 +329,33 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
       return (
         <div key={node.relPath}>
           <div
-            className="group flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12px] text-gray-700 hover:bg-gray-100"
+            className="group flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12px] text-foreground hover:bg-accent"
             style={indent}
             onClick={() => toggle(node.relPath)}
             onContextMenu={(e) => openCtx(e, node)}
           >
-            <span className="w-3 text-[10px] text-gray-400">{isOpen ? '▾' : '▸'}</span>
+            <span className="w-3 text-[10px] text-muted-foreground">{isOpen ? <Icon name="chevron-down" className="size-3" /> : <Icon name="chevron-right" className="size-3" />}</span>
             <span className="flex-1 truncate">{node.name}</span>
             <span className="hidden gap-0.5 group-hover:flex">
               <button
                 title="新建文档"
-                className="rounded px-1 text-[11px] text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                className="rounded px-1 text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-primary"
                 onClick={(e) => {
                   e.stopPropagation()
                   void handleNewDoc(node.relPath)
                 }}
               >
-                ＋
+                <Icon name="plus" className="size-3" />
               </button>
               <button
                 title="新建文件夹"
-                className="rounded px-1 text-[11px] text-gray-500 hover:bg-blue-50 hover:text-blue-600"
+                className="rounded px-1 text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-primary"
                 onClick={(e) => {
                   e.stopPropagation()
                   void handleNewFolder(node.relPath)
                 }}
               >
-                ▤
+                <Icon name="folder-plus" className="size-3" />
               </button>
             </span>
           </div>
@@ -343,8 +369,8 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
     return (
       <div
         key={node.relPath}
-        className={`flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12px] hover:bg-gray-100 ${
-          active ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-700'
+        className={`flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12px] hover:bg-accent ${
+          active ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
         }`}
         style={indent}
         onClick={() => handleOpenFromTree(node)}
@@ -364,58 +390,100 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
 
   // ---------- 渲染 ----------
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
+    <aside className="flex h-full w-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+      {/* BrandBlock（handoff §3.2） */}
+      <div className="flex h-12 shrink-0 items-center gap-2 px-3">
+        <span className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
+          KE
+        </span>
+        <span className="text-sm font-semibold text-sidebar-foreground">KnowledgeEditor</span>
+        <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[11px] text-sidebar-accent-foreground">
+          Alpha
+        </span>
+      </div>
       <div className="flex-1 overflow-y-auto">
-        {/* 全局搜索（Phase 6.1） */}
-        <Section
-          title="搜索"
-          action={
-            <button
-              className="text-[11px] text-gray-400 hover:text-blue-600"
-              title="重建全文索引（索引可随时从 Markdown 重建）"
-              onClick={() => void handleRebuildIndex()}
-              disabled={rebuilding}
-            >
-              {rebuilding ? '重建中…' : '重建索引'}
-            </button>
-          }
-        >
-          <div className="px-1.5">
+        {/* GlobalSearchBox（handoff §3.2：胶囊搜索 + Ctrl K 提示 + 重建按钮） */}
+        <div className="px-3 pt-2">
+          <div className="relative">
             <input
+              id="ke-global-search"
+              ref={searchRef}
               value={searchQ}
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              placeholder="搜索文档内容…（回车确认）"
-              className="w-full rounded border border-gray-200 px-2 py-1 text-[12px] text-gray-700 outline-none placeholder:text-gray-300 focus:border-blue-300"
+              placeholder="搜索文档内容…（Ctrl K）"
+              className="w-full rounded-full border border-input bg-card py-1.5 pl-3 pr-14 text-[12px] text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
             />
+            <button
+              type="button"
+              className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
+              title={rebuilding ? '重建中…' : '重建全文索引'}
+              aria-label="重建全文索引"
+              onClick={() => void handleRebuildIndex()}
+              disabled={rebuilding}
+            >
+              <Icon name="rebuild" className="size-3.5" />
+            </button>
           </div>
           {searching ? (
             <Empty text="搜索中…" />
           ) : searchResults !== null && searchResults.length === 0 ? (
             <Empty text="无匹配结果" />
           ) : null}
+          {/* QuickNav（全部文档 / 最近更新 / 标签 / 回收站[占位]） */}
+          <div className="flex items-center gap-1 px-1 py-2">
+            <button
+              type="button"
+              onClick={() => setActiveTag(null)}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Icon name="file" className="size-3.5" /> 全部文档
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTag(null)}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Icon name="history" className="size-3.5" /> 最近更新
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTag(null)}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Icon name="tags" className="size-3.5" /> 标签
+            </button>
+            <button
+              type="button"
+              disabled
+              title="回收站：本版本暂缓实现"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground/50"
+            >
+              <Icon name="trash" className="size-3.5" /> 回收站
+            </button>
+          </div>
           {searchResults && searchResults.length > 0 ? (
             <div className="mt-1 space-y-0.5">
               {searchResults.slice(0, 20).map((r) => (
                 <button
                   key={r.rel_path}
-                  className={`block w-full rounded px-2 py-1 text-left hover:bg-gray-100 ${
-                    activeId === r.rel_path ? 'bg-blue-50' : ''
+                  className={`block w-full rounded px-2 py-1 text-left hover:bg-accent ${
+                    activeId === r.rel_path ? 'bg-sidebar-accent' : ''
                   }`}
                   title={r.rel_path}
                   onClick={() => onOpenArticle(r.rel_path)}
                 >
                   <span className="flex items-center gap-1">
-                    <span className="flex-1 truncate text-[12px] text-gray-700">
+                    <span className="flex-1 truncate text-[12px] text-foreground">
                       {r.title || r.rel_path}
                     </span>
-                    <span className="shrink-0 rounded bg-gray-100 px-1 text-[10px] text-gray-400">
+                    <span className="shrink-0 rounded bg-muted px-1 text-[10px] text-muted-foreground">
                       {kindLabel(r.kind)}
                     </span>
                   </span>
-                  <span className="block truncate text-[11px] text-gray-400">{r.rel_path}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{r.rel_path}</span>
                   {r.snippet ? (
-                    <span className="block truncate text-[11px] text-gray-500">
+                    <span className="block truncate text-[11px] text-muted-foreground">
                       {highlightSnippet(r.snippet)}
                     </span>
                   ) : null}
@@ -423,13 +491,13 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
               ))}
             </div>
           ) : null}
-        </Section>
+        </div>
 
         {/* 最近文档（Phase 4.8） */}
         <Section title="最近" action={
           recent.length > 0 ? (
             <button
-              className="text-[11px] text-gray-400 hover:text-gray-600"
+              className="text-[11px] text-muted-foreground hover:text-foreground/80"
               onClick={() => {
                 void clearRecentDocuments().then(refreshAll)
               }}
@@ -442,8 +510,8 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
           {recent.slice(0, 8).map((d) => (
             <button
               key={d.rel_path}
-              className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-gray-100 ${
-                activeId === d.rel_path ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-700'
+              className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                activeId === d.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
               }`}
               title={d.rel_path}
               onClick={() => onOpenArticle(d.rel_path)}
@@ -459,13 +527,13 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
           {tags.slice(0, 30).map((t) => (
             <button
               key={t.name}
-              className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[12px] hover:bg-gray-100 ${
-                activeTag === t.name ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+              className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                activeTag === t.name ? 'bg-sidebar-accent text-blue-700' : 'text-foreground'
               }`}
               onClick={() => (activeTag === t.name ? setActiveTag(null) : void selectTag(t.name))}
             >
               <span className="flex-1 truncate">#{t.name}</span>
-              <span className="rounded-full bg-gray-100 px-1.5 text-[10px] text-gray-400">{t.count}</span>
+              <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{t.count}</span>
             </button>
           ))}
         </Section>
@@ -473,16 +541,16 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
         {/* 标签筛选结果 */}
         {activeTag && (
           <Section title={`筛选：#${activeTag}`} action={
-            <button className="text-[11px] text-gray-400 hover:text-gray-600" onClick={() => setActiveTag(null)}>
-              ✕
+            <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground/80" onClick={() => setActiveTag(null)}>
+              <Icon name="close" className="size-3" />
             </button>
           }>
             {tagFiles.length === 0 && <Empty text="无匹配文档" />}
             {tagFiles.map((f) => (
               <button
                 key={f.rel_path}
-                className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-gray-100 ${
-                  activeId === f.rel_path ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-700'
+                className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                  activeId === f.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
                 }`}
                 title={f.rel_path}
                 onClick={() => onOpenArticle(f.rel_path)}
@@ -492,34 +560,14 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
             ))}
           </Section>
         )}
-
-        {/* 文件树（Phase 4.2） */}
-        <Section title="文章" action={
-          <button
-            className="text-[11px] text-gray-400 hover:text-blue-600"
-            title="新建文档"
-            onClick={() => void handleNewDoc(TOP_ARTICLES)}
-          >
-            ＋ 新建
-          </button>
-        }>
-          {treeError ? (
-            <LoadError onRetry={() => void loadTree()} />
-          ) : articlesTree.length === 0 ? (
-            <Empty text="暂无文章" />
-          ) : (
-            articlesTree.map((n) => renderNode(n, 0))
-          )}
-        </Section>
-
         {/* 模块（Phase 5：文件夹分类 + 文件树管理，双击/单击在编辑器打开） */}
         <Section title="模块" action={
           <button
-            className="text-[11px] text-gray-400 hover:text-blue-600"
+            className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary"
             title="新建模块"
             onClick={() => void handleNewDoc('Modules')}
           >
-            ＋ 新建
+            <Icon name="plus" className="size-3" /> 新建
           </button>
         }>
           {treeError ? (
@@ -528,6 +576,28 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
             <Empty text="暂无模块" />
           ) : (
             modulesTree.map((n) => renderNode(n, 0))
+          )}
+        </Section>
+        {/* SectionLabel：文档库 */}
+        <div className="px-4 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">文档库</div>
+
+
+        {/* 文件树（Phase 4.2） */}
+        <Section title="文章" action={
+          <button
+            className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary"
+            title="新建文档"
+            onClick={() => void handleNewDoc(TOP_ARTICLES)}
+          >
+            <Icon name="plus" className="size-3" /> 新建
+          </button>
+        }>
+          {treeError ? (
+            <LoadError onRetry={() => void loadTree()} />
+          ) : articlesTree.length === 0 ? (
+            <Empty text="暂无文章" />
+          ) : (
+            articlesTree.map((n) => renderNode(n, 0))
           )}
         </Section>
 
@@ -543,7 +613,7 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
                   href={attachmentUrl(a)}
                   target="_blank"
                   rel="noreferrer"
-                  className="block truncate rounded px-2 py-1 text-left text-[12px] text-gray-600 hover:bg-gray-100"
+                  className="block truncate rounded px-2 py-1 text-left text-[12px] text-foreground/80 hover:bg-accent"
                   title={a}
                 >
                   {a.replace(/^Attachments\//, '')}
@@ -554,27 +624,44 @@ export default function LeftSidebar({ activeId, onOpenArticle, refreshKey = 0, o
         </Section>
       </div>
 
+      {/* DataSovereigntyFooter（handoff §3.2） */}
+      <div className="shrink-0 border-t border-sidebar-border px-3 py-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <span>Markdown 为唯一事实源</span>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="打开设置"
+            title="设置"
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Icon name="settings" className="size-3.5" /> 设置
+          </button>
+        </div>
+        <div className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground/70">{monoPath}</div>
+      </div>
+
       {/* 上下文菜单 */}
       {ctx && (
         <div
           ref={menuRef}
-          className="fixed z-50 w-44 rounded-md border border-gray-200 bg-white py-1 text-xs shadow-lg"
+          className="fixed z-50 w-44 rounded-md border border-border bg-white py-1 text-xs shadow-lg"
           style={{ left: Math.min(ctx.x, window.innerWidth - 190), top: Math.min(ctx.y, window.innerHeight - 220) }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="border-b border-gray-100 px-3 py-1 text-[11px] text-gray-400">
+          <div className="border-b border-border px-3 py-1 text-[11px] text-muted-foreground">
             {ctx.node.type === 'folder' ? `目录：${ctx.node.relPath}` : ctx.node.relPath}
           </div>
           {ctx.node.type === 'folder' && (
             <>
               <MenuItem label="新建文档" onClick={() => { setCtx(null); void handleNewDoc(ctx.node.relPath) }} />
               <MenuItem label="新建文件夹" onClick={() => { setCtx(null); void handleNewFolder(ctx.node.relPath) }} />
-              <div className="my-1 border-t border-gray-100" />
+              <div className="my-1 border-t border-border" />
             </>
           )}
           <MenuItem label="重命名" onClick={() => { setCtx(null); void handleRename(ctx.node) }} />
           <MenuItem label="移动到…" onClick={() => { setCtx(null); void handleMove(ctx.node) }} />
-          <div className="my-1 border-t border-gray-100" />
+          <div className="my-1 border-t border-border" />
           <button
             className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
             onClick={() => {
@@ -601,9 +688,9 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="border-b border-gray-100 py-2">
+    <div className="border-b border-border py-2">
       <div className="mb-1 flex items-center justify-between px-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{title}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</span>
         {action}
       </div>
       <div className="px-1.5">{children}</div>
@@ -613,14 +700,14 @@ function Section({
 
 function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button className="block w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-50" onClick={onClick}>
+    <button className="block w-full px-3 py-1.5 text-left text-foreground hover:bg-accent" onClick={onClick}>
       {label}
     </button>
   )
 }
 
 function Empty({ text }: { text: string }) {
-  return <div className="px-3 py-1 text-[11px] text-gray-300">{text}</div>
+  return <div className="px-3 py-1 text-[11px] text-muted-foreground">{text}</div>
 }
 
 /** P2-8：加载失败不再当作「空」显示，而是给出明确错误 + 重试入口 */
@@ -631,7 +718,7 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
       <button
         type="button"
         onClick={onRetry}
-        className="ml-1 text-blue-600 hover:underline"
+        className="ml-1 text-primary hover:underline"
       >
         重试
       </button>

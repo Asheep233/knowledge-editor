@@ -5,6 +5,7 @@
  */
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { attachmentUrl } from '../../../api/client'
+import { Icon } from '../../icons'
 
 export default function AttachmentNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
   const a = node.attrs
@@ -43,7 +44,7 @@ export default function AttachmentNodeView({ node, updateAttributes, deleteNode 
             rel="noreferrer"
             className="flex items-center gap-2 rounded border border-gray-100 bg-gray-50 px-3 py-2 text-[13px] text-blue-600 hover:bg-blue-50"
           >
-            <span className="text-base">📎</span>
+            <Icon name="attachment" className="size-4 shrink-0 text-blue-600" />
             <span className="truncate">{title || src.split('/').pop()}</span>
             <span className="ml-auto shrink-0 text-[11px] text-gray-400">下载</span>
           </a>
@@ -73,7 +74,7 @@ export default function AttachmentNodeView({ node, updateAttributes, deleteNode 
               deleteNode()
             }}
           >
-            ×
+            <Icon name="close" className="size-3.5" />
           </button>
         </div>
       </div>

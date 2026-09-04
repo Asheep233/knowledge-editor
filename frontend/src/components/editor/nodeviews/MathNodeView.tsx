@@ -13,6 +13,7 @@ import 'katex/dist/katex.min.css'
 import 'mathlive'
 import 'mathlive/fonts.css'
 import type { MathfieldElement } from 'mathlive'
+import { Icon } from '../../icons'
 
 /** <math-field> 自定义元素（MathLive）的 JSX 类型声明（React 19 模块内 namespace） */
 declare module 'react' {
@@ -192,7 +193,7 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setEditing(false)}
           >
-            完成 ✓
+            完成
           </button>
           <button
             type="button"
@@ -233,7 +234,7 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
           setEditing(true)
         }}
       >
-        ✎
+        <Icon name="edit" className="size-3" />
       </span>
       <span
         className="ke-math-del-btn"
@@ -246,7 +247,7 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
           deleteNode()
         }}
       >
-        ×
+        <Icon name="close" className="size-3" />
       </span>
     </NodeViewWrapper>
   )

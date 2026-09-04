@@ -13,6 +13,7 @@ import {
 } from '../../api/client'
 import { extractOutline, type OutlineItem } from '../../state/outline'
 import type { ArticleMeta, AttachmentItem, OrphanItem } from '../../types'
+import { Icon } from '../icons'
 
 interface Props {
   article: ArticleMeta | null
@@ -147,8 +148,8 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
   }
 
   return (
-    <aside className="flex h-full w-[300px] shrink-0 flex-col border-l border-gray-200 bg-white">
-      <div className="flex items-center border-b border-gray-100">
+    <aside className="flex h-full w-[300px] shrink-0 flex-col border-l border-border bg-card">
+      <div className="flex items-center border-b border-border">
         {TABS.map((t) => (
           <button
             key={t}
@@ -158,7 +159,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
               'flex-1 py-2 text-[13px] transition-colors',
               tab === t
                 ? 'border-b-2 border-blue-600 font-medium text-blue-700'
-                : 'text-gray-500 hover:text-gray-700',
+                : 'text-muted-foreground hover:text-foreground',
             ].join(' ')}
           >
             {t}
@@ -168,33 +169,33 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
           type="button"
           onClick={onCollapse}
           title="折叠右侧面板（释放编辑区宽度）"
-          className="shrink-0 self-stretch px-2.5 text-[13px] text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          className="shrink-0 self-stretch px-2.5 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground/80"
         >
-          »
+          <Icon name="chevron-right" className="size-4" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 text-[13px] text-gray-600">
+      <div className="flex-1 overflow-y-auto p-4 text-[13px] text-foreground/80">
         {tab === '大纲' && (
           <div>
             {!article ? (
-              <p className="text-xs text-gray-400">未打开文档</p>
+              <p className="text-xs text-muted-foreground">未打开文档</p>
             ) : (
               <>
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-muted-foreground">
                     文档标题结构（{outline.length}）
                   </span>
                   <button
                     type="button"
                     onClick={() => setCollapseDepth((d) => (d > 0 ? 0 : 1))}
-                    className="text-[11px] text-blue-600 hover:underline"
+                    className="text-[11px] text-primary hover:underline"
                   >
                     {collapseDepth > 0 ? '展开全部' : '收缩至一级'}
                   </button>
                 </div>
                 {visibleOutline.length === 0 ? (
-                  <p className="text-xs text-gray-400">暂无标题（使用 # / ## / ###）</p>
+                  <p className="text-xs text-muted-foreground">暂无标题（使用 # / ## / ###）</p>
                 ) : (
                   <ul className="space-y-0.5">
                     {visibleOutline.map((it, idx) => (
@@ -202,11 +203,11 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                         <button
                           type="button"
                           onClick={() => handleOutlineClick(it)}
-                          className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[12px] text-gray-700 hover:bg-gray-100"
+                          className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[12px] text-foreground hover:bg-accent"
                           style={{ paddingLeft: `${(it.level - 1) * 12 + 6}px` }}
                           title={it.text}
                         >
-                          <span className="mr-1 text-[10px] text-gray-400">{'#'.repeat(it.level)}</span>
+                          <span className="mr-1 text-[10px] text-muted-foreground">{'#'.repeat(it.level)}</span>
                           {it.text}
                         </button>
                       </li>
@@ -221,30 +222,30 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
         {tab === '属性' && (
           <div className="space-y-4">
             {!article ? (
-              <p className="text-xs text-gray-400">未打开文档</p>
+              <p className="text-xs text-muted-foreground">未打开文档</p>
             ) : (
               <>
                 {/* 标题编辑 */}
                 <div>
-                  <label className="mb-1 block text-xs text-gray-400">标题</label>
+                  <label className="mb-1 block text-xs text-muted-foreground">标题</label>
                   <input
                     value={title}
                     onChange={(e) => {
                       setTitle(e.target.value)
                       setDirty(true)
                     }}
-                    className="w-full rounded border border-gray-200 px-2 py-1 text-[13px] text-gray-800 outline-none focus:border-blue-400"
+                    className="w-full rounded border border-border px-2 py-1 text-[13px] text-gray-800 outline-none focus:border-ring/50"
                   />
                 </div>
 
                 {/* 标签编辑（写回 frontmatter tags） */}
                 <div>
-                  <label className="mb-1 block text-xs text-gray-400">标签</label>
+                  <label className="mb-1 block text-xs text-muted-foreground">标签</label>
                   <div className="flex flex-wrap items-center gap-1">
                     {tags.map((t) => (
                       <span
                         key={t}
-                        className="group flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700"
+                        className="group flex items-center gap-1 rounded-full bg-sidebar-accent px-2 py-0.5 text-[11px] text-blue-700"
                       >
                         #{t}
                         <button
@@ -253,7 +254,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                           className="text-blue-400 hover:text-red-500"
                           onClick={() => removeTag(t)}
                         >
-                          ×
+                          <Icon name="close" className="size-3" />
                         </button>
                       </span>
                     ))}
@@ -269,7 +270,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                           removeTag(tags[tags.length - 1])
                         }
                       }}
-                      className="min-w-[90px] flex-1 rounded border border-gray-200 px-2 py-0.5 text-[12px] text-gray-800 outline-none focus:border-blue-400"
+                      className="min-w-[90px] flex-1 rounded border border-border px-2 py-0.5 text-[12px] text-gray-800 outline-none focus:border-ring/50"
                     />
                   </div>
                 </div>
@@ -279,42 +280,55 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                     type="button"
                     onClick={() => void handleSaveMeta()}
                     disabled={saving}
-                    className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="rounded bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover disabled:opacity-50"
                   >
                     {saving ? '保存中…' : '保存属性'}
                   </button>
                 )}
 
                 {/* 静态元信息 */}
-                <dl className="space-y-2 border-t border-gray-100 pt-3 text-xs">
+                <dl className="space-y-2 border-t border-border pt-3 text-xs">
+                  {/* 类型：按存储位置推导（document / module）——handoff §3.5 */}
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <dt className="text-muted-foreground">类型</dt>
+                      <dd className="mt-0.5 text-foreground">{article.path.startsWith('Modules/') ? '模块' : '文档'}</dd>
+                    </div>
+                    <div className="flex-1">
+                      <dt className="text-muted-foreground">KE 版本</dt>
+                      <dd className="mt-0.5 font-mono text-foreground">
+                        {typeof article.meta?.ke_version === 'number' ? article.meta.ke_version : '—'}
+                      </dd>
+                    </div>
+                  </div>
                   <div>
-                    <dt className="text-gray-400">路径</dt>
-                    <dd className="mt-0.5 break-all font-mono text-gray-700">{article.path}</dd>
+                    <dt className="text-muted-foreground">保存位置</dt>
+                    <dd className="mt-0.5 break-all font-mono text-foreground">{article.path}</dd>
                   </div>
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <dt className="text-gray-400">创建时间</dt>
-                      <dd className="mt-0.5 text-gray-700">{fmtTime(article.created_at)}</dd>
+                      <dt className="text-muted-foreground">创建时间</dt>
+                      <dd className="mt-0.5 text-foreground">{fmtTime(article.created_at)}</dd>
                     </div>
                     <div className="flex-1">
-                      <dt className="text-gray-400">修改时间</dt>
-                      <dd className="mt-0.5 text-gray-700">{fmtTime(article.updated_at)}</dd>
+                      <dt className="text-muted-foreground">修改时间</dt>
+                      <dd className="mt-0.5 text-foreground">{fmtTime(article.updated_at)}</dd>
                     </div>
                   </div>
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <dt className="text-gray-400">字数</dt>
-                      <dd className="mt-0.5 text-gray-700">{article.word_count ?? '—'}</dd>
+                      <dt className="text-muted-foreground">字数</dt>
+                      <dd className="mt-0.5 text-foreground">{article.word_count ?? '—'}</dd>
                     </div>
                     <div className="flex-1">
-                      <dt className="text-gray-400">大小</dt>
-                      <dd className="mt-0.5 text-gray-700">{fmtSize(article.size)}</dd>
+                      <dt className="text-muted-foreground">大小</dt>
+                      <dd className="mt-0.5 text-foreground">{fmtSize(article.size)}</dd>
                     </div>
                   </div>
                   {article.meta && Object.keys(article.meta).length > 0 && (
                     <div>
-                      <dt className="text-gray-400">frontmatter 元信息</dt>
-                      <dd className="mt-0.5 whitespace-pre-wrap break-all rounded bg-gray-50 p-2 font-mono text-[11px] text-gray-500">
+                      <dt className="text-muted-foreground">frontmatter 元信息</dt>
+                      <dd className="mt-0.5 whitespace-pre-wrap break-all rounded bg-muted p-2 font-mono text-[11px] text-muted-foreground">
                         {JSON.stringify(article.meta, null, 2)}
                       </dd>
                     </div>
@@ -328,38 +342,38 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
         {tab === '附件' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-muted-foreground">
                 全部附件（{attachments.length}）
               </span>
               <button
                 type="button"
                 onClick={() => void loadAttachments()}
-                className="text-[11px] text-gray-400 hover:text-blue-600"
+                className="text-[11px] text-muted-foreground hover:text-primary"
               >
                 刷新
               </button>
             </div>
             {attachError && <p className="text-xs text-red-500">{attachError}</p>}
             {attachments.length === 0 && !attachError && (
-              <p className="text-xs text-gray-400">暂无附件</p>
+              <p className="text-xs text-muted-foreground">暂无附件</p>
             )}
             {attachments.map((a) => (
-              <div key={a.rel_path} className="rounded border border-gray-100 p-2">
+              <div key={a.rel_path} className="rounded border border-border p-2">
                 <a
                   href={attachmentUrl(a.rel_path)}
                   target="_blank"
                   rel="noreferrer"
-                  className="block truncate font-mono text-[12px] text-gray-700 hover:text-blue-600"
+                  className="block truncate font-mono text-[12px] text-foreground hover:text-primary"
                   title={a.rel_path}
                 >
                   {a.name}
                 </a>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400">
-                  <span className="rounded bg-gray-100 px-1 py-px">{a.category}</span>
+                <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="rounded bg-muted px-1 py-px">{a.category}</span>
                   <span>{fmtSize(a.size)}</span>
                   <span>{fmtTime(a.mtime)}</span>
                 </div>
-                <div className="mt-1 text-[11px] text-gray-400">
+                <div className="mt-1 text-[11px] text-muted-foreground">
                   {a.referenced_by.length > 0 ? (
                     <>
                       所属文档：
@@ -367,7 +381,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                         <button
                           key={r}
                           type="button"
-                          className="block max-w-full truncate text-blue-600 hover:underline"
+                          className="block max-w-full truncate text-primary hover:underline"
                           title={r}
                           onClick={() => onOpenArticle?.(r)}
                         >
@@ -390,13 +404,13 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                     孤儿附件（{orphans.length}）
                   </span>
                 </div>
-                <p className="mb-2 text-[11px] leading-4 text-gray-400">
+                <p className="mb-2 text-[11px] leading-4 text-muted-foreground">
                   未被任何 Markdown 引用。仅手动删除，绝不自动；被引用附件后端会拒绝删除。
                 </p>
                 {orphans.map((o) => (
                   <div key={o.path} className="mb-1 rounded border border-amber-100 bg-amber-50/50 p-1.5">
                     <div className="flex items-start justify-between gap-1">
-                      <div className="truncate font-mono text-[11px] text-gray-700" title={o.path}>
+                      <div className="truncate font-mono text-[11px] text-foreground" title={o.path}>
                         {o.name}
                       </div>
                       <button
@@ -408,7 +422,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                         {deletingPath === o.path ? '删除中…' : '删除'}
                       </button>
                     </div>
-                    <div className="mt-0.5 flex gap-2 text-[10px] text-gray-400">
+                    <div className="mt-0.5 flex gap-2 text-[10px] text-muted-foreground">
                       <span>{fmtSize(o.size)}</span>
                       <span>{fmtTime(o.mtime)}</span>
                     </div>

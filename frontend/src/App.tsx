@@ -28,6 +28,7 @@ import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
 import { AppShell } from './components/shell/AppShell'
+import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, type AppSettings } from './settings'
@@ -635,7 +636,7 @@ export default function App() {
               className="flex max-w-[280px] items-center gap-1 rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 transition-colors hover:bg-gray-50"
             >
               <span className="max-w-[220px] truncate font-mono">{workspace?.root ?? '—'}</span>
-              <span className="text-gray-400">▾</span>
+              <Icon name="caret" className="size-3 text-muted-foreground" />
             </button>
             {wsMenuOpen && (
               <div className="absolute right-0 top-7 z-30 w-64 rounded-md border border-gray-200 bg-white py-1 text-xs shadow-lg">
@@ -685,16 +686,16 @@ export default function App() {
             type="button"
             onClick={() => setSettingsOpen(true)}
             title="设置"
-            className="rounded border border-gray-200 bg-white px-2.5 py-1 text-[12px] text-gray-700 transition-colors hover:bg-gray-50"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-accent"
           >
-            ⚙ 设置
+            <Icon name="settings" className="size-3.5" /> 设置
           </button>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded border border-gray-200 bg-white px-2.5 py-1 text-[12px] text-gray-700 transition-colors hover:bg-gray-50"
+            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-accent"
           >
-            导入
+            <Icon name="attachment" className="size-3.5" /> 导入
           </button>
           <input
             ref={fileInputRef}
@@ -725,7 +726,8 @@ export default function App() {
               className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
               title="前后端版本不一致，可能运行的是旧代码；建议执行 .\scripts\start.ps1 重启"
             >
-              ⚠ 版本不一致（前端 v{APP_VERSION} / 后端 v{health.version}）
+              <Icon name="alert" className="size-3" />
+              <span>版本不一致（前端 v{APP_VERSION} / 后端 v{health.version}）</span>
             </span>
           ) : null}
         </div>
@@ -737,6 +739,8 @@ export default function App() {
           onOpenArticle={requestOpenArticle}
           refreshKey={treeRefresh}
           onFsMutation={handleFsMutation}
+          onOpenSettings={() => setSettingsOpen(true)}
+          workspaceRoot={workspace?.root ?? null}
         />
 
       }
@@ -765,7 +769,7 @@ export default function App() {
             title="展开右侧面板（大纲 / 属性 / 附件）"
             className="flex w-6 shrink-0 items-center justify-center self-stretch border-l border-gray-200 bg-white text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >
-            ‹
+            <Icon name="chevron-left" className="size-4" />
           </button>
         )
       }

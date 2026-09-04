@@ -15,6 +15,7 @@
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { useRef } from 'react'
 import type { FootnoteItem } from '../../../editor/extensions/FootnotesExtension'
+import { Icon } from '../../icons'
 
 export default function FootnotesNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
   const items = (node.attrs.items as FootnoteItem[]) ?? []
@@ -79,7 +80,7 @@ export default function FootnotesNodeView({ node, updateAttributes, deleteNode }
                   remove(idx)
                 }}
               >
-                ×
+                <Icon name="close" className="size-3" />
               </button>
             </li>
           ))}

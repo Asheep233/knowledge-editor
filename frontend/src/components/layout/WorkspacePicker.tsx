@@ -15,6 +15,7 @@ import {
 import { isDesktop, pickDirectory } from '../../desktop'
 import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
+import { Icon } from '../icons'
 import './workspace-picker.css'
 
 interface Props {
@@ -182,7 +183,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
                         title="移除该记录"
                         onClick={(e) => void removeRecent(w.path, e)}
                       >
-                        ×
+                        <Icon name="close" className="size-3" />
                       </button>
                     </div>
                   ),

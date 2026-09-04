@@ -4,6 +4,7 @@
  */
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { attachmentUrl } from '../../../api/client'
+import { Icon } from '../../icons'
 
 export default function VideoNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
   const a = node.attrs
@@ -60,7 +61,7 @@ export default function VideoNodeView({ node, updateAttributes, deleteNode }: No
               deleteNode()
             }}
           >
-            ×
+            <Icon name="close" className="size-3.5" />
           </button>
         </div>
       </div>

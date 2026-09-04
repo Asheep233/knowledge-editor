@@ -5,8 +5,11 @@
  * 标题/徽章/颜色/删除控件单独 contentEditable={false}（wrapper 保持可编辑，
  * 否则 contentDOM 继承禁编辑导致块内无法输入，phase 6U 修复）。
  * 徽章颜色与块背景同步同一色系；徽章默认空文本（placeholder 不再显示「信息」）。
+ *
+ * handoff §5：头部 = 徽章文本 + 块菜单(⋯)；徽章文字可自定义（改名入口在菜单）。
  */
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../icons'
 
 /** 每个色系的块背景/边框 + 徽章配色 */
@@ -36,6 +39,20 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
   // 内容区为空时显示占位符（PM 空容器有 trailingBreak <br>，:empty 不可用，改用 class 驱动）
   const isEmpty = node.content.size === 0
 
+  // 块菜单（⋯）：重命名徽章 / 更换颜色 / 删除信息块
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const badgeRef = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current?.contains(e.target as Node)) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [menuOpen])
+
   return (
     <NodeViewWrapper
       as="div"
@@ -53,6 +70,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
             <input
+              ref={badgeRef}
               contentEditable={false}
               value={label}
               placeholder=""
@@ -71,13 +89,71 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
               }}
               className="min-w-0 flex-1 bg-transparent text-[13px] font-semibold text-gray-800 outline-none placeholder:font-normal placeholder:text-gray-400"
             />
+            {/* 块菜单（⋯） */}
+            <div ref={menuRef} className="relative shrink-0">
+              <button
+                type="button"
+                contentEditable={false}
+                title="信息块菜单"
+                aria-label="信息块菜单"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="rounded p-1 text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-600"
+              >
+                <Icon name="dots" className="size-4" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-10 mt-0.5 w-36 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg">
+                  <button
+                    type="button"
+                    contentEditable={false}
+                    className="block w-full px-2.5 py-1.5 text-left text-[12px] text-gray-700 hover:bg-accent"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setMenuOpen(false)
+                      badgeRef.current?.focus()
+                    }}
+                  >
+                    重命名徽章…
+                  </button>
+                  <div className="flex items-center gap-1.5 border-t border-border px-2.5 py-1.5">
+                    {COLOR_OPTIONS.map((c) => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        contentEditable={false}
+                        title={c.title}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => updateAttributes({ color: c.key })}
+                        className={[
+                          'h-4 w-4 rounded-full transition-transform',
+                          c.cls,
+                          color === c.key ? 'ring-2 ring-blue-400 ring-offset-1' : 'opacity-70 hover:opacity-100',
+                        ].join(' ')}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    contentEditable={false}
+                    className="block w-full border-t border-border px-2.5 py-1.5 text-left text-[12px] text-rose-600 hover:bg-rose-50"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setMenuOpen(false)
+                      deleteNode()
+                    }}
+                  >
+                    删除信息块
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           {/* PM 可编辑内容区：块内文字可插入脚注上标等 inline 节点 */}
           <NodeViewContent
             as="div"
             className={`ke-note-content text-[13px] leading-relaxed text-gray-800 outline-none focus:ring-0${isEmpty ? ' ke-note-content--empty' : ''}`}
           />
-          {/* 背景颜色自由选择 */}
+          {/* 背景颜色自由选择（原色板行保留在内容区下方） */}
           <div className="mt-1.5 flex items-center gap-1.5">
             {COLOR_OPTIONS.map((c) => (
               <button

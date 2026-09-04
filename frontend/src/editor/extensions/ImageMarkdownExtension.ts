@@ -6,9 +6,15 @@
  */
 import Image from '@tiptap/extension-image'
 import type { JSONContent, MarkdownToken } from '@tiptap/core'
+import { ReactNodeViewRenderer } from '@tiptap/react'
+import ImageNodeView from '../../components/editor/nodeviews/ImageNodeView'
 
 export const ImageMarkdownExtension = Image.extend({
   markdownTokenName: 'image',
+  // handoff §5：标准 Markdown 图片同样以内容大图展示 + 点击放大
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView)
+  },
   parseMarkdown: (token: MarkdownToken) => ({
     type: 'image',
     attrs: {

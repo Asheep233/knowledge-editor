@@ -320,9 +320,9 @@ body {
   display: block;
   text-align: center;
   margin: 0.8em 0;
-  padding: 10px 12px;
-  background: #f8fafc;
-  border-radius: 8px;
+  /* handoff §5：透明背景、无卡片、仅公式本体，与正文视觉融为一体 */
+  background: transparent;
+  padding: 0;
 }
 .ke-math-render {
   cursor: text;

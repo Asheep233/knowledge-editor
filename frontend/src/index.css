@@ -591,6 +591,14 @@ body {
 [data-theme='dark'] .bg-gray-50 pre { background-color: #22262e; color: #c9d1dc; }
 [data-theme='dark'] .bg-gray-50 { background-color: #22262e; }
 
+/* 正文表格（深色：边框/表头/内容与底色协调，内容区仍保持表格纸面语义） */
+[data-theme='dark'] .ke-editor-prose th,
+[data-theme='dark'] .ke-editor-prose td { border-color: #3c414c; }
+[data-theme='dark'] .ke-editor-prose th { background-color: #262b34; }
+[data-theme='dark'] .ke-editor-prose .selectedCell::after,
+[data-theme='dark'] .ke-editor-prose .selectedCell::before { background: rgba(59, 130, 246, 0.18); }
+[data-theme='dark'] .ke-editor-prose .column-resize-handle { background: #60a5fa; }
+
 /* 滚动条（深色适配） */
 [data-theme='dark'] ::-webkit-scrollbar-track { background: transparent; }
 [data-theme='dark'] ::-webkit-scrollbar-thumb { background: #3a3f4a; }

@@ -100,6 +100,9 @@ KnowledgeEditor/
 | `docs/knowledge-editor-plain-export-design.md` | 导出为普通 .md 设计（KE 方言 → 朴素 Markdown 降级规则） |
 | `docs/backlog-1.1.x.md` | v1.1.x 延后项清单（K3 审查 K3-I1/I2/T1/B1，含拍板记录） |
 | `docs/tauri-build-env-notes.md` | Tauri 构建环境备忘（WSL 挂载盘 symlink 坑与 NSIS 绕行方案） |
+| `docs/agent-handoff-v1.1.0.md` | 主 Agent 交接文档（状态基线/拍板决策/环境坑/发布剧本/backlog） |
+| `docs/reports/` | 审查与冲突分析报告（v1.1.0-pre.1 审查总汇报 / visual-diff / conflict-analysis） |
+| `docs/evidence-1.1.0/` | v1.1.0 UI 证据截图（浅色/深色/设置/启动器/节点/右栏/搜索框/工具栏） |
 | `docs/report/` | 审计清单与版本交付报告归档（v1.0.1 / v1.0.2） |
 
 ## 阶段状态

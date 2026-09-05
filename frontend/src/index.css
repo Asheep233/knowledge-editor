@@ -70,8 +70,9 @@
   --secondary-foreground: #003e8f;
   --muted: #eff1f4;
   --muted-foreground: #7f8d9f;
-  --accent: #eff1f4;
-  --accent-foreground: #0e1115;
+  /* hover/选中辅助底对齐设计：淡蓝 accent（谷歌语言），而非中性灰 */
+  --accent: #dbeafe;
+  --accent-foreground: #003e8f;
   --border: #ebebeb;
   --input: #e2e3e4;
   --ring: var(--primary);
@@ -230,7 +231,7 @@ body {
 .ke-editor-prose th,
 .ke-editor-prose td {
   position: relative;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   padding: 5px 10px;
   vertical-align: top;
   text-align: left;
@@ -511,8 +512,9 @@ body {
   --secondary-foreground: color-mix(in srgb, var(--primary) 60%, #ffffff);
   --muted: #232323;
   --muted-foreground: #9aa2af;
-  --accent: #292929;
-  --accent-foreground: #eff1f4;
+  /* 深色辅助底对齐设计：暖调暗红 #4a2026（深色一抹暖色），而非中性灰 */
+  --accent: #4a2026;
+  --accent-foreground: #ffb4bd;
   --border: #333333;
   --input: #3c3c3c;
   --ring: var(--primary);

@@ -196,7 +196,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
           {/* 常规：启动、恢复与保存偏好（锚点 general） */}
           <div id="settings-group-general" data-group="general" className="scroll-mt-4">
             <section className="mb-6">
-              <h3 className="mb-2 border-b border-border pb-1 text-[12px] font-semibold text-muted-foreground">
+              <h3 className="mb-2.5 border-b border-border pb-1.5 text-[13px] font-semibold text-foreground/80">
                 启动、恢复与保存偏好
               </h3>
               <ToggleRow
@@ -242,13 +242,13 @@ export default function SettingsPanel({ open, onClose }: Props) {
           {/* 外观：主题 + 界面字号（锚点 appearance） */}
           <div id="settings-group-appearance" data-group="appearance" className="scroll-mt-4">
             <section className="mb-6">
-              <h3 className="mb-2 border-b border-border pb-1 text-[12px] font-semibold text-muted-foreground">
+              <h3 className="mb-2.5 border-b border-border pb-1.5 text-[13px] font-semibold text-foreground/80">
                 主题与界面字号
               </h3>
               <div className="mb-4">
                 <div className="mb-1.5 text-[12px] text-foreground/80">主题</div>
-                {/* 分段控件（handoff §3.6）：激活段 --primary 底白字 */}
-                <div className="flex overflow-hidden rounded-md border border-border bg-muted/40">
+                {/* 分段控件（handoff §3.6）：激活段 --primary 底白字；p-0.5 内衬 + rounded-lg 胶囊感，贴合设计稿 */}
+                <div className="inline-flex items-center overflow-hidden rounded-lg border border-border bg-muted p-0.5">
                   {THEME_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -256,10 +256,10 @@ export default function SettingsPanel({ open, onClose }: Props) {
                       aria-pressed={settings.ui.theme === opt.value}
                       onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
                       className={[
-                        'flex-1 px-2 py-1.5 text-center text-[12px] transition-colors',
+                        'flex h-7 items-center justify-center rounded-md px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
                         settings.ui.theme === opt.value
-                          ? 'bg-primary font-medium text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-foreground hover:bg-card hover:text-accent-foreground',
                       ].join(' ')}
                     >
                       {opt.label}
@@ -289,7 +289,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
           {/* 维护：索引、数据目录与应用更新（锚点 maintenance） */}
           <div id="settings-group-maintenance" data-group="maintenance" className="scroll-mt-4">
             <section className="mb-6">
-              <h3 className="mb-2 border-b border-border pb-1 text-[12px] font-semibold text-muted-foreground">
+              <h3 className="mb-2.5 border-b border-border pb-1.5 text-[13px] font-semibold text-foreground/80">
                 索引、数据目录与应用更新
               </h3>
               <div className="space-y-2">
@@ -401,7 +401,7 @@ function SelectRow({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-7 rounded-md border border-input bg-card px-1.5 text-[12px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        className="h-8 rounded-md border border-input bg-card px-2 text-[13px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -437,7 +437,7 @@ function NumberRow({
       </div>
       <input
         type="number"
-        className="w-24 rounded border border-input bg-card px-2 py-1 text-right text-[12px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        className="w-24 rounded border border-input bg-card px-2 py-1 text-[13px] text-right text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
         value={draft ?? value}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={(e) => {

@@ -298,6 +298,8 @@ export interface EditorToolbarProps {
   onOpenAttachments?: () => void
   /** 导出主按钮（--primary 底白字） */
   exportButton?: ReactNode
+  /** 立即保存（显式「保存」图标按钮） */
+  onSave?: () => void
 }
 
 export default function EditorToolbar({
@@ -306,6 +308,7 @@ export default function EditorToolbar({
   onOpenHistory,
   onOpenAttachments,
   exportButton,
+  onSave,
 }: EditorToolbarProps = {}) {
   const { editor } = useCurrentEditor()
   // 编辑器状态快照（激活态实时更新）
@@ -336,7 +339,6 @@ export default function EditorToolbar({
   const [listOpen, setListOpen] = useState(false)
   const [moduleOpen, setModuleOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
   const [footnoteOpen, setFootnoteOpen] = useState(false)
   const [modules, setModules] = useState<ModuleInfo[]>([])
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -524,6 +526,12 @@ export default function EditorToolbar({
         <Icon name="image" className="size-4" />
       </ToolIcon>
       <ToolIcon title="插入公式" onClick={() => {
+        const node = { type: 'math', attrs: { id: newId(), latex: '' } }
+        editor.chain().focus().insertContent(node).run()
+      }}>
+        <Icon name="sigma" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="插入块级公式" onClick={() => {
         const node = { type: 'mathBlock', attrs: { id: newId(), latex: '' } }
         editor.chain().focus().insertContent(node).run()
       }}>
@@ -562,44 +570,36 @@ export default function EditorToolbar({
         )}
       </Dropdown>
 
-      {/* 更多▾：代码块 / 注释 / 信息块 / 表格 / 撤销 / 重做（保留功能，收进溢出） */}
-      <Dropdown
-        open={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        trigger={
-          <button
-            type="button"
-            title="更多格式"
-            onClick={() => setMoreOpen((v) => !v)}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
-          >
-            <Icon name="more-horizontal" className="size-4" />
-          </button>
-        }
-      >
-        <MenuItem active={st.codeBlock} onClick={() => { editor.chain().focus().toggleCodeBlock().run(); setMoreOpen(false) }}>
-          代码块
-        </MenuItem>
-        <MenuItem onClick={() => { setMoreOpen(false); setFootnoteOpen(true) }}>
-          注释（脚注）
-        </MenuItem>
-        <MenuItem onClick={() => { setMoreOpen(false); editor.chain().focus().insertNote('', 'blue').run() }}>
-          信息块（ke-note）
-        </MenuItem>
-        <MenuItem onClick={() => { setMoreOpen(false); setTableOpen(true) }}>
-          表格…
-        </MenuItem>
-        <div className="my-1 border-t border-border" />
-        <MenuItem onClick={() => { setMoreOpen(false); editor.chain().focus().undo().run() }}>
-          撤销
-        </MenuItem>
-        <MenuItem onClick={() => { setMoreOpen(false); editor.chain().focus().redo().run() }}>
-          重做
-        </MenuItem>
-      </Dropdown>
+      {/* 更多格式（展平为图标按钮，左右滑可见；隐藏较不常用功能但均可达） */}
+      <ToolIcon title="代码块" active={st.codeBlock} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
+        <Icon name="code" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="注释（脚注）" onClick={() => setFootnoteOpen(true)}>
+        <Icon name="note" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="信息块（ke-note）" onClick={() => editor.chain().focus().insertNote('', 'blue').run()}>
+        <Icon name="bulb" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="表格…" onClick={() => setTableOpen(true)}>
+        <Icon name="table" className="size-4" />
+      </ToolIcon>
 
-      {/* 右侧：保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+
+      <ToolIcon title="撤销" disabled={!st.canUndo} onClick={() => editor.chain().focus().undo().run()}>
+        <Icon name="undo" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="重做" disabled={!st.canRedo} onClick={() => editor.chain().focus().redo().run()}>
+        <Icon name="redo" className="size-4" />
+      </ToolIcon>
+
+      {/* 右侧：保存 + 保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {onSave ? (
+          <ToolIcon title="保存（Ctrl+S）" onClick={onSave}>
+            <Icon name="save" className="size-4" />
+          </ToolIcon>
+        ) : null}
         {saveLabel ? (
           <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
         ) : null}

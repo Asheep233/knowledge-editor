@@ -100,6 +100,7 @@ export default function LeftSidebar({
   refreshKey = 0,
   onFsMutation,
   onOpenSettings,
+  workspaceRoot,
 }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
   // P2-8：文件树加载失败不再是「空」，而是明确错误提示
@@ -161,7 +162,7 @@ export default function LeftSidebar({
     listModules()
       .then((r) => setModuleVersions(Object.fromEntries(r.modules.map((m) => [m.path, m.version ?? 1]))))
       .catch(() => setModuleVersions({}))
-  }, [refreshKey])
+  }, [refreshKey, workspaceRoot])
 
   const refreshAll = useCallback(() => {
     void loadTree()
@@ -477,10 +478,10 @@ export default function LeftSidebar({
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* GlobalSearchBox（handoff §3.2：胶囊搜索 + Ctrl K 提示 + 重建按钮） */}
-        <div className="px-3 pb-2">
+        <div className="px-3 pb-2 pt-2">
           <div className="relative">
             <div
-              className="flex h-9 w-full items-center gap-2 rounded-[999px] border px-2.5 transition-[background-color,border-color,box-shadow] duration-150 focus-within:ring-2 motion-reduce:transition-none"
+              className="flex h-9 w-full items-center gap-2 rounded-[999px] border px-2.5 transition-[background-color,border-color,box-shadow] duration-150 focus-within:ring-2 focus-within:ring-ring motion-reduce:transition-none"
               style={{ backgroundColor: 'var(--popover)', borderColor: 'var(--border)' }}
             >
               <Icon name="search" className="size-4 shrink-0 text-muted-foreground" />
@@ -665,11 +666,8 @@ export default function LeftSidebar({
             modulesTree.map((n) => renderNode(n, 0))
           )}
         </Section>
-        {/* SectionLabel：文档库（参考稿：12px 常规 sidebar 前景色） */}
-        <div className="px-4 pb-1 pt-3 text-[12px] font-normal text-sidebar-foreground">文档库</div>
 
-
-        {/* 文件树（Phase 4.2） */}
+        {/* 文件树（Phase 4.2）；「文章」Section 承担文档库标题，不再单列 */}
         <Section title="文章" action={
           <button
             className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary"

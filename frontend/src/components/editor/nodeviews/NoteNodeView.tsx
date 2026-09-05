@@ -25,11 +25,23 @@ const COLOR_OPTIONS: Array<{ key: string; cls: string; title: string }> = [
 const BADGE_BASE =
   'inline-flex items-center rounded-[4px] px-1.5 py-[2px] text-[12px] outline-none'
 
+/** color 属性 → 徽章底/文字色（色板选择驱动外观；缺省沿用 accent 淡蓝） */
+const COLOR_MAP: Record<string, { badge: string; fg: string }> = {
+  blue: { badge: '#dbeafe', fg: '#003e8f' },
+  yellow: { badge: '#fef3c7', fg: '#92400e' },
+  green: { badge: '#d1fae5', fg: '#065f46' },
+  red: { badge: '#fee2e2', fg: '#991b1b' },
+  purple: { badge: '#ede9fe', fg: '#5b21b6' },
+}
+const DEFAULT_BADGE = { badge: 'var(--accent)', fg: 'var(--accent-foreground)' }
+
 export default function NoteNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
   const attrs = node.attrs as Record<string, unknown>
   const label = (attrs.label as string) ?? ''
   const title = (attrs.title as string) ?? ''
   const isEmpty = node.content.size === 0
+  const color = (attrs.color as string) || ''
+  const badgeStyle = COLOR_MAP[color] ?? DEFAULT_BADGE
 
   // 块菜单（⋯）：重命名徽章 / 更换颜色 / 删除信息块
   const [menuOpen, setMenuOpen] = useState(false)
@@ -69,7 +81,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
           title="徽章文字（可自定义，空则不显示徽章）"
           onChange={(e) => updateAttributes({ label: e.target.value })}
           className={`${BADGE_BASE} w-16 shrink-0 truncate text-center text-[12px]`}
-          style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
+          style={{ backgroundColor: badgeStyle.badge, color: badgeStyle.fg }}
         />
         <input
           contentEditable={false}

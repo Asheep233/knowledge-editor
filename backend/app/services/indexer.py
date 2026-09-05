@@ -30,7 +30,9 @@ _SIGNATURE_KEY = "index_scan_signature"
 
 
 def _title_of(rel_path: str, meta: dict, content: str) -> str:
-    title = (meta.get("title") or "").strip()
+    # 防御：frontmatter title 可能为数字/非字符串（YAML 数字字面量），统一转字符串
+    raw_title = meta.get("title")
+    title = (str(raw_title) if raw_title is not None else "").strip()
     if title:
         return title
     # 取第一个标题作为兜底

@@ -41,12 +41,12 @@ interface Props {
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
-const SAVE_LABEL: Record<SaveState, { text: string; cls: string }> = {
-  idle: { text: '', cls: '' },
-  dirty: { text: '未保存…', cls: 'text-gray-500' },
-  saving: { text: '保存中…', cls: 'text-gray-500' },
-  saved: { text: '已保存', cls: 'text-emerald-600' },
-  error: { text: '保存失败', cls: 'text-rose-600' },
+const SAVE_LABEL: Record<SaveState, { text: string; cls: string; kind: SaveState }> = {
+  idle: { text: '', cls: '', kind: 'idle' },
+  dirty: { text: '未保存…', cls: 'text-amber-600 font-medium', kind: 'dirty' },
+  saving: { text: '保存中…', cls: 'text-blue-600 font-medium', kind: 'saving' },
+  saved: { text: '已保存', cls: 'text-emerald-600', kind: 'saved' },
+  error: { text: '保存失败', cls: 'text-rose-600 font-medium', kind: 'error' },
 }
 
 export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed }: Props) {
@@ -404,6 +404,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     <>
       {saveInfo.cls.includes('emerald') ? (
         <Icon name="circle-check" className="size-4" style={{ color: 'var(--chart-5)' }} />
+      ) : saveInfo.kind === 'dirty' ? (
+        <span className="inline-block size-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+      ) : saveInfo.kind === 'saving' ? (
+        <span className="inline-block size-2 animate-pulse rounded-full" style={{ backgroundColor: 'var(--primary)' }} />
       ) : null}
       <span className={saveInfo.cls}>{saveInfo.text}</span>
     </>
@@ -436,6 +440,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         <EditorContext.Provider value={{ editor }}>
           <EditorToolbar
             saveLabel={saveLabel}
+            onSave={() => void saveNow()}
             onOpenHistory={handleOpenHistory}
             exportButton={exportButton}
           />

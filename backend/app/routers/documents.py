@@ -199,9 +199,11 @@ def create_article(request: Request, body: ArticleCreate) -> ArticleOut:
         content = body.content
     else:
         # P3-12：默认内容把 title 写入 frontmatter（接线而非死参数——
-        # 列表/属性面板解析 meta.title 作为首选标题来源）
+        # 列表/属性面板解析 meta.title 作为首选标题来源）。
+        # UI 重构（dual-title 修复）：正文不再自动生成 `# {title}`——
+        # 标题由编辑器页眉（可编辑、同步 frontmatter）承载，避免双大标题。
         content = (
-            f"---\ntitle: {body.title}\n---\n\n# {body.title}\n\n"
+            f"---\ntitle: {body.title}\n---\n\n"
         )
     markdown_io.atomic_write(full, content)
     request.app.state.indexer.update_file(rel)

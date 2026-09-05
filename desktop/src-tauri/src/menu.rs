@@ -16,6 +16,10 @@ use crate::sidecar::{cleanup_on_exit, SidecarState};
 /// 菜单项 ID（同时作为广播到前端的事件名）
 const MID_NEW: &str = "ke-menu:new-document";
 const MID_OPEN_WS: &str = "ke-menu:open-workspace";
+const MID_NEW_WS: &str = "ke-menu:new-workspace";
+const MID_CLOSE_WS: &str = "ke-menu:close-workspace";
+const MID_RECOVERY: &str = "ke-menu:recovery-check";
+const MID_SETTINGS: &str = "ke-menu:settings";
 const MID_EXIT: &str = "ke-menu:exit";
 const MID_RELOAD: &str = "ke-menu:reload";
 #[cfg(debug_assertions)]
@@ -35,8 +39,14 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         &[
             &MenuItem::with_id(app, MID_NEW, "新建文档", true, Some("Ctrl+N"))?,
             &MenuItem::with_id(app, MID_OPEN_WS, "打开 Workspace…", true, Some("Ctrl+O"))?,
+            &MenuItem::with_id(app, MID_NEW_WS, "新建工作区…", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
             &recent,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, MID_CLOSE_WS, "关闭工作区", true, None::<&str>)?,
+            &MenuItem::with_id(app, MID_RECOVERY, "恢复检查…", true, None::<&str>)?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, MID_SETTINGS, "设置…", true, Some("Ctrl+,"))?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, MID_EXIT, "退出", true, Some("Ctrl+Q"))?,
         ],
@@ -103,6 +113,18 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
         }
         MID_OPEN_WS => {
             let _ = app.emit(MID_OPEN_WS, ());
+        }
+        MID_NEW_WS => {
+            let _ = app.emit(MID_NEW_WS, ());
+        }
+        MID_CLOSE_WS => {
+            let _ = app.emit(MID_CLOSE_WS, ());
+        }
+        MID_RECOVERY => {
+            let _ = app.emit(MID_RECOVERY, ());
+        }
+        MID_SETTINGS => {
+            let _ = app.emit(MID_SETTINGS, ());
         }
         // P3-21：最近列表由前端维护，菜单只通知前端刷新并展示。
         MID_RECENT => {

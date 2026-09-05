@@ -10,33 +10,21 @@ import {
   listHistory,
   previewHistory,
   registerRecovery,
+  renameDoc,
   restoreHistory,
   saveArticle,
+  updateArticleMeta,
 } from '../../api/client'
 import { setKeContent, useKeEditor } from '../../editor'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, type SaveFn } from '../../state/saveQueue'
+import { slugify } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
-
-/** 参考稿「+ 新标签」按钮（多标签 TabBar 延后，保留占位；点击 = 新建文档） */
-function ToolbarNewTab({ onNew }: { onNew: () => void }) {
-  return (
-    <button
-      type="button"
-      title="新建文档"
-      aria-label="新建文档"
-      onClick={onNew}
-      className="grid h-7 w-7 shrink-0 place-items-center rounded-[6px] text-[12px] text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
-    >
-      <Icon name="plus" className="size-3.5" />
-    </button>
-  )
-}
 
 interface Props {
   article: ArticleMeta | null
@@ -47,6 +35,8 @@ interface Props {
   onSaved?: (id: string, doc?: ArticleMeta) => void
   /** Phase 6.3：历史版本恢复后更新 App 层文档（标题/元信息等） */
   onArticleRestored?: (doc: ArticleMeta) => void
+  /** 页眉标题重命名成功（文件名 + frontmatter 均已更新）：App 同步树/激活态 */
+  onRenamed?: (from: string, to: string, newTitle: string) => void
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -59,7 +49,7 @@ const SAVE_LABEL: Record<SaveState, { text: string; cls: string }> = {
   error: { text: '保存失败', cls: 'text-rose-600' },
 }
 
-export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored }: Props) {
+export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -86,6 +76,34 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   useEffect(() => {
     articleRef.current = article
   }, [article])
+
+  // 页眉标题编辑（dual-title 修复）：编辑态 → blur 时同步 frontmatter title；
+  // 文件名同步：仅当 slug 变化时重命名（409 时保留 meta title 并提示）。
+  const [titleDraft, setTitleDraft] = useState<string | null>(null)
+  useEffect(() => {
+    setTitleDraft(null)
+  }, [article?.id])
+  const handleTitleBlur = useCallback(async () => {
+    if (!article || titleDraft === null) return
+    const next = titleDraft.trim()
+    setTitleDraft(null)
+    if (!next || next === article.title) return
+    try {
+      // 1) frontmatter/meta title（展示与列表立即同步）
+      await updateArticleMeta(article.id, { title: next })
+      // 2) 文件名同步（slug 变化时重命名；失败不阻塞已完成的 meta 更新）
+      const oldSlug = article.id.replace(/^Articles\//, '').replace(/\.md$/, '')
+      const newSlug = slugify(next)
+      if (newSlug && newSlug !== oldSlug) {
+        const res = await renameDoc(article.id, `${newSlug}.md`)
+        onRenamed?.(res.from, res.to, next)
+        return
+      }
+      onRenamed?.(article.id, article.id, next)
+    } catch (e) {
+      window.alert(`标题保存失败：${e instanceof Error ? e.message : String(e)}`)
+    }
+  }, [article, titleDraft, onRenamed])
 
   // 保存状态上报（App 导入前检查是否有未保存修改）
   useEffect(() => {
@@ -417,19 +435,6 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       ) : article && editor ? (
         <EditorContext.Provider value={{ editor }}>
           <EditorToolbar
-            tabBar={
-              <>
-                {/* 文档标签（当前文档：pill + 关闭） */}
-                <div
-                  className="flex h-7 shrink-0 items-center gap-1.5 rounded-[6px] border px-2.5"
-                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                >
-                  <span className="max-w-[180px] truncate text-[13px]">{article?.title ?? ''}</span>
-                  <Icon name="file-text" className="size-3.5 shrink-0 text-muted-foreground" />
-                </div>
-                <ToolbarNewTab onNew={onNewArticle} />
-              </>
-            }
             saveLabel={saveLabel}
             onOpenHistory={handleOpenHistory}
             exportButton={exportButton}
@@ -462,8 +467,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 释放以添加附件（图片 / 视频 / 文件）
               </div>
             )}
-            {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown） */}
-            <article className="mx-auto w-full max-w-[760px] px-12 pb-2 pt-10">
+            {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown）
+                与 EditorContent 的 ke-editor-prose 同一列宽/内边距（780px / 32px），保证标题与正文对齐 */}
+            <article className="mx-auto w-full max-w-[780px] px-[32px] pb-2 pt-10">
               <div className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>
                 <Icon name="folder" className="size-3.5" />
                 {breadcrumb.map((seg, i) => (
@@ -473,9 +479,20 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                   </span>
                 ))}
               </div>
-              <h1 className="mt-4 text-[28px] font-bold leading-[1.25]" style={{ color: 'var(--foreground)' }}>
-                {article.title}
-              </h1>
+              {/* 页眉标题：可编辑，blur 同步 frontmatter title + 文件名（dual-title 修复） */}
+              <input
+                value={titleDraft ?? article.title}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => void handleTitleBlur()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                  else if (e.key === 'Escape') setTitleDraft(null)
+                }}
+                title="标题（编辑后回车/失焦保存，同步文件名）"
+                aria-label="文档标题"
+                className="mt-4 block w-full bg-transparent text-[28px] font-bold leading-[1.25] outline-none"
+                style={{ color: 'var(--foreground)' }}
+              />
               {docMeta ? (
                 <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
                   {docMeta.updatedAt ? (

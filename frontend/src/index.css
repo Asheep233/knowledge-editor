@@ -269,7 +269,7 @@ body {
    由 NoteNodeView 按 node.content.size === 0 驱动 ke-note-content--empty class（v0.7.2）。 */
 .ke-note-content.ke-note-content--empty::before {
   content: "输入信息块内容…";
-  color: #9ca3af;
+  color: var(--muted-foreground);
   pointer-events: none;
 }
 

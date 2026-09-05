@@ -28,7 +28,6 @@ import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
 import { AppShell } from './components/shell/AppShell'
-import WindowChrome from './components/shell/WindowChrome'
 import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
@@ -74,8 +73,7 @@ export default function App() {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [treeRefresh, setTreeRefresh] = useState(0)
   const [extModal, setExtModal] = useState<FsEvent | null>(null)
-  // 原生菜单 refresh-recent 事件：历史遗留 → 展开工作区菜单的意图已由 WindowChrome
-  // 文件下拉替代；仅保留状态以防 future 菜单重新接线（当前无 UI 消费）。
+  // 原生菜单 refresh-recent 事件：历史遗留 → 保留状态以防 future 重新接线（当前无 UI 消费）。
   const [, setWsMenuOpen] = useState(false)
   /** Phase 7 M3：设置面板开关 */
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -502,37 +500,6 @@ export default function App() {
     [article, requestOpenArticle],
   )
 
-  // ---------- 桌面原生菜单事件（M5）：菜单项 → 复用既有动作 ----------
-  useEffect(() => {
-    if (!isDesktop()) return
-    let disposed = false
-    const unlisteners: Array<() => void> = []
-    void import('@tauri-apps/api/event').then(async ({ listen }) => {
-      if (disposed) return
-      const un = await Promise.all([
-        listen('ke-menu:new-document', () => void handleNewArticle()),
-        listen('ke-menu:open-workspace', () => void handleOpenWorkspaceMenu()),
-        listen<{ path: string }>('ke-menu:open-recent', (e) => {
-          const p = e.payload?.path
-          if (p) void switchWorkspace(p, 'open')
-        }),
-        // P3-21：Rust 不再静态构建最近列表、也不 emit open-recent；改为 emit
-        // refresh-recent（无 payload）。前端收到后打开工作区菜单（复用 switchWorkspace，
-        // 展示当前工作区与打开/新建/关闭/恢复检查入口）。若后续需要真正展示最近列表，
-        // 可在此处从 /api/workspace/recent 拉取后注入菜单。
-        listen('ke-menu:refresh-recent', () => {
-          setWsMenuOpen(true)
-        }),
-      ])
-      if (disposed) un.forEach((f) => f())
-      else unlisteners.push(...un)
-    })
-    return () => {
-      disposed = true
-      unlisteners.forEach((f) => f())
-    }
-  }, [handleNewArticle, handleOpenWorkspaceMenu, switchWorkspace])
-
   // ---------- P3-8：「恢复检查…」再入口（稍后处理后可手动重新检测） ----------
   const runRecoveryCheck = useCallback(async () => {
     if (!workspace?.root) return
@@ -599,6 +566,41 @@ export default function App() {
     startupAppliedRef.current = true
   }, [settingsReady, settingsRef, workspaceChecked, workspace?.open, workspace?.root, openArticle, switchWorkspace])
 
+  // ---------- 桌面原生菜单事件（M5）：菜单项 → 复用既有动作 ----------
+  useEffect(() => {
+    if (!isDesktop()) return
+    let disposed = false
+    const unlisteners: Array<() => void> = []
+    void import('@tauri-apps/api/event').then(async ({ listen }) => {
+      if (disposed) return
+      const un = await Promise.all([
+        listen('ke-menu:new-document', () => void handleNewArticle()),
+        listen('ke-menu:open-workspace', () => void handleOpenWorkspaceMenu()),
+        listen('ke-menu:new-workspace', () => void handleCreateWorkspaceMenu()),
+        listen('ke-menu:close-workspace', () => void handleCloseWorkspace()),
+        listen('ke-menu:recovery-check', () => void runRecoveryCheck()),
+        listen('ke-menu:settings', () => setSettingsOpen(true)),
+        listen<{ path: string }>('ke-menu:open-recent', (e) => {
+          const p = e.payload?.path
+          if (p) void switchWorkspace(p, 'open')
+        }),
+        // P3-21：Rust 不再静态构建最近列表、也不 emit open-recent；改为 emit
+        // refresh-recent（无 payload）。前端收到后打开工作区菜单（复用 switchWorkspace，
+        // 展示当前工作区与打开/新建/关闭/恢复检查入口）。若后续需要真正展示最近列表，
+        // 可在此处从 /api/workspace/recent 拉取后注入菜单。
+        listen('ke-menu:refresh-recent', () => {
+          setWsMenuOpen(true)
+        }),
+      ])
+      if (disposed) un.forEach((f) => f())
+      else unlisteners.push(...un)
+    })
+    return () => {
+      disposed = true
+      unlisteners.forEach((f) => f())
+    }
+  }, [handleNewArticle, handleOpenWorkspaceMenu, handleCreateWorkspaceMenu, handleCloseWorkspace, runRecoveryCheck, switchWorkspace])
+
   // ---------- 渲染 ----------
   if (workspaceChecked && (!workspace?.open || firstRun)) {
     return (
@@ -622,15 +624,7 @@ export default function App() {
     <AppShell
       header={
         <>
-        <WindowChrome
-          onNewArticle={() => void handleNewArticle()}
-          onImportFile={() => fileInputRef.current?.click()}
-          onOpenWorkspace={() => void handleOpenWorkspaceMenu()}
-          onNewWorkspace={() => void handleCreateWorkspaceMenu()}
-          onCloseWorkspace={() => void handleCloseWorkspace()}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onRecoveryCheck={() => void runRecoveryCheck()}
-        />
+        {/* 菜单栏由桌面壳 Tauri 原生菜单（menu.rs）提供，前端不再 mock，避免重复 */}
         <input
           ref={fileInputRef}
           type="file"
@@ -662,6 +656,11 @@ export default function App() {
           onSaveStateChange={setSaveState}
           onSaved={handleSaved}
           onArticleRestored={setArticle}
+          onRenamed={(from, to, newTitle) => {
+            // 页眉标题重命名成功：刷新树 + 更新当前文章（路径/标题已变）
+            setArticle((prev) => (prev && prev.id === from ? { ...prev, id: to, path: to, title: newTitle } : prev))
+            setTreeRefresh((n) => n + 1)
+          }}
         />
       }
       right={

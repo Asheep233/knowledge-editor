@@ -667,8 +667,8 @@ export default function LeftSidebar({
             modulesTree.map((n) => renderNode(n, 0))
           )}
         </Section>
-        {/* SectionLabel：文档库 */}
-        <div className="px-4 pb-1 pt-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">文档库</div>
+        {/* SectionLabel：文档库（参考稿：12px 常规 sidebar 前景色） */}
+        <div className="px-4 pb-1 pt-3 text-[12px] font-normal text-sidebar-foreground">文档库</div>
 
 
         {/* 文件树（Phase 4.2） */}
@@ -781,7 +781,7 @@ function Section({
   return (
     <div className="border-b border-border py-2">
       <div className="mb-1 flex items-center justify-between px-3">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</span>
+        <span className="text-[12px] font-normal text-sidebar-foreground">{title}</span>
         {action}
       </div>
       <div className="px-1.5">{children}</div>

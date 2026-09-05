@@ -36,7 +36,7 @@ export function AppShell({ header, left, main, right, statusBar }: AppShellProps
         ) : null}
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">{main}</main>
         {right ? (
-          <aside className="flex h-full w-[300px] shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+          <aside className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
             {right}
           </aside>
         ) : null}

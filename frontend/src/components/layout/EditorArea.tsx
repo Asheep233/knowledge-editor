@@ -520,12 +520,34 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           </div>
         </EditorContext.Provider>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <p className="text-sm text-muted-foreground">从左侧选择一篇文档，或新建一篇开始创作</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+          {/* 空态线性图形：文档 + 编辑笔（纯装饰描边，非 emoji/占位图） */}
+          <svg
+            width="72"
+            height="72"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-muted-foreground/40"
+            aria-hidden="true"
+          >
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+            <path d="M14 3v5h5" />
+            <path d="M9 13h6" />
+            <path d="M9 17h4" />
+            <path d="M15.5 3.5 18 6l-6 6-3 .5.5-3z" fill="currentColor" stroke="none" opacity="0.9" />
+          </svg>
+          <div>
+            <p className="text-sm font-medium text-foreground/90">从左侧选择一篇文档，或新建一篇开始创作</p>
+            <p className="mt-1 text-xs text-muted-foreground">Markdown 为唯一事实源，所有内容本地存储</p>
+          </div>
           <button
             type="button"
             onClick={onNewArticle}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:brightness-95"
+            className="mt-1 rounded-lg px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:brightness-95 active:scale-[0.97]"
             style={{ backgroundColor: 'var(--primary)' }}
           >
             + 新建文档

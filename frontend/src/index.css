@@ -60,7 +60,8 @@
   --foreground: #0e1115;
   --card: #ffffff;
   --card-foreground: #0e1115;
-  --popover: #ffffff;
+  /* 浮层底色对齐设计 #f9f9fa（引用块/搜索胶囊/下拉微灰，与纯白卡片形成极淡层次） */
+  --popover: #f9f9fa;
   --primary: #4285f4;
   --primary-foreground: #ffffff;
   --primary-hover: color-mix(in srgb, var(--primary) 86%, #000000);
@@ -499,7 +500,8 @@ body {
   --foreground: #eff1f4;
   --card: #1d1d1c;
   --card-foreground: #eff1f4;
-  --popover: #1d1d1c;
+  /* 浮层比卡片亮一档（设计 dark popover=#2e2e2e），下拉/弹窗/引用块层级更清晰 */
+  --popover: #2e2e2e;
   --primary: #3b82f6;
   --primary-foreground: #ffffff;
   --primary-hover: color-mix(in srgb, var(--primary) 82%, #000000);
@@ -516,9 +518,11 @@ body {
   --ring: var(--primary);
   --sidebar: #171717;
   --sidebar-foreground: #e5e5e5;
-  --sidebar-primary: var(--primary);
+  /* 侧栏主色独立为设计值 #0065fd（左栏激活项比主 CTA 更深更饱和，贴合设计深色侧栏激活态） */
+  --sidebar-primary: #0065fd;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(59, 130, 246, 0.18);
+  /* 侧栏辅助/悬停底：跟随主色（color-mix），自定义强调色时全链路一致 */
+  --sidebar-accent: color-mix(in srgb, var(--primary) 18%, transparent);
   --sidebar-accent-foreground: #bfdbfe;
   --sidebar-border: #333333;
   --sidebar-ring: var(--ring);

@@ -25,7 +25,7 @@ interface Props {
   onUseDefault?: () => void
 }
 
-const APP_VERSION = 'v1.0.2'
+const APP_VERSION = 'v1.1.0-pre.1'
 
 /** 路径尾段作为工作区名 */
 function wsName(path: string): string {

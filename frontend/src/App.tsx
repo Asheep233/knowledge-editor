@@ -737,7 +737,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => void handleReloadExternal()}
-                className="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700"
+                className="rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:brightness-95"
               >
                 重新加载外部版本
               </button>
@@ -769,7 +769,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => void handleRecoveryRestore(item)}
-                      className="rounded bg-blue-600 px-2.5 py-1 text-[11px] text-white hover:bg-blue-700"
+                      className="rounded bg-primary px-2.5 py-1 text-[11px] text-primary-foreground hover:brightness-95"
                     >
                       恢复
                     </button>

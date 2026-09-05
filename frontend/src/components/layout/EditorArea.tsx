@@ -600,7 +600,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                         <button
                           type="button"
                           onClick={() => void handleRestoreVersion(previewing)}
-                          className="rounded bg-blue-600 px-3 py-1 text-[11px] text-white hover:bg-blue-700"
+                          className="rounded bg-primary px-3 py-1 text-[11px] text-primary-foreground hover:brightness-95"
                         >
                           恢复此版本
                         </button>

@@ -100,7 +100,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
             title="信息块菜单"
             aria-label="信息块菜单"
             onClick={() => setMenuOpen((v) => !v)}
-            className="grid h-6 w-6 place-items-center rounded-[4px] text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+            className="grid h-6 w-6 place-items-center rounded-[4px] text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
             style={{ color: 'var(--muted-foreground)' }}
           >
             <Icon name="more-horizontal" className="size-3.5" />

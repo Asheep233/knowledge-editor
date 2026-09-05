@@ -354,7 +354,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         type="button"
         onClick={() => setExportOpen((o) => !o)}
         disabled={exporting}
-        className="flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium text-primary-foreground transition-[filter,color,transform] duration-150 hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium text-primary-foreground transition-[filter,color,transform] duration-150 hover:brightness-95 active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40"
         style={{ backgroundColor: 'var(--primary)' }}
       >
         <Icon name="download" className="size-4" />

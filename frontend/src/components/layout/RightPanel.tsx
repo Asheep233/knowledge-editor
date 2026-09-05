@@ -157,7 +157,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
           onClick={onCollapse}
           title="收起属性栏"
           aria-label="收起属性栏"
-          className="grid h-8 w-8 place-items-center rounded-[6px] text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="grid h-8 w-8 place-items-center rounded-[6px] text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
           style={{ color: 'var(--muted-foreground)' }}
         >
           <Icon name="panel-right-close" className="size-4" />
@@ -321,7 +321,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
               aria-label="添加附件"
               title="添加附件"
               onClick={() => void loadAttachments()}
-              className="ml-auto grid h-7 w-7 place-items-center rounded-[6px] text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+              className="ml-auto grid h-7 w-7 place-items-center rounded-[6px] text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
               style={{ color: 'var(--muted-foreground)' }}
             >
               <Icon name="plus" className="size-4" />
@@ -341,7 +341,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                   type="button"
                   onClick={() => (cited && a.referenced_by[0] ? onOpenArticle?.(a.referenced_by[0]) : undefined)}
                   title={a.referenced_by[0] ? `所属文档：${a.referenced_by[0]}` : a.rel_path}
-                  className="flex h-8 w-full items-center gap-2 rounded-[6px] px-1.5 text-left transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+                  className="flex h-8 w-full items-center gap-2 rounded-[6px] px-1.5 text-left transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
                   style={{ color: 'var(--foreground)' }}
                 >
                   <Icon name={catIcon as 'image'} className="size-4 shrink-0" style={{ color: 'var(--muted-foreground)' }} />
@@ -402,7 +402,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
                 <button
                   type="button"
                   onClick={onOpenHistory}
-                  className="ml-auto h-7 shrink-0 rounded-[6px] px-2 text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+                  className="ml-auto h-7 shrink-0 rounded-[6px] px-2 text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
                   style={{ color: 'var(--muted-foreground)' }}
                 >
                   查看历史

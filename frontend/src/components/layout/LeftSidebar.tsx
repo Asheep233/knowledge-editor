@@ -76,7 +76,7 @@ function NavItem({
       title={title}
       onClick={onClick}
       className={[
-        'flex h-8 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+        'flex h-8 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
         active
           ? ''
           : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -118,6 +118,9 @@ export default function LeftSidebar({
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
+  // 搜索胶囊聚焦态：React state 驱动（inline style 优先级 > 工具类，
+  // focus-within:ring-ring 会因 inline borderColor 被压制——不用工具类方案）
+  const [searchFocused, setSearchFocused] = useState(false)
   // QuickNav 当前激活（参考稿：全部文档 = sidebar-primary 底白字，aria-current=page）
   const [nav, setNav] = useState<'all' | 'recent' | 'tags' | 'trash'>('all')
   const searchRef = useRef<HTMLInputElement | null>(null)
@@ -481,8 +484,12 @@ export default function LeftSidebar({
         <div className="px-3 pb-2 pt-2">
           <div className="relative">
             <div
-              className="flex h-9 w-full items-center gap-2 rounded-[999px] border px-2.5 transition-[background-color,border-color,box-shadow] duration-150 focus-within:ring-2 focus-within:ring-ring motion-reduce:transition-none"
-              style={{ backgroundColor: 'var(--popover)', borderColor: 'var(--border)' }}
+              className="flex h-9 w-full items-center gap-2 rounded-[999px] border px-2.5 transition-[background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none"
+              style={{
+                backgroundColor: 'var(--popover)',
+                borderColor: searchFocused ? 'var(--ring)' : 'var(--border)',
+                boxShadow: searchFocused ? 'inset 0 0 0 1px var(--ring)' : 'none',
+              }}
             >
               <Icon name="search" className="size-4 shrink-0 text-muted-foreground" />
               <input
@@ -491,8 +498,10 @@ export default function LeftSidebar({
                 value={searchQ}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
                 placeholder="搜索全部文档…"
-                className="h-full w-full min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+                className="h-full w-full min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus-visible:outline-none!"
                 style={{ color: 'var(--foreground)' }}
               />
               <span className="shrink-0 rounded-[4px] border px-1 text-[10px] leading-4 text-muted-foreground" style={{ borderColor: 'var(--border)', fontFamily: 'var(--font-mono)' }}>
@@ -500,7 +509,7 @@ export default function LeftSidebar({
               </span>
               <button
                 type="button"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
                 style={{ color: 'var(--muted-foreground)' }}
                 title={rebuilding ? '重建中…' : '重建全文索引'}
                 aria-label="重建全文索引"
@@ -718,7 +727,7 @@ export default function LeftSidebar({
           onClick={onOpenSettings}
           aria-label="打开设置"
           title="设置"
-          className="flex h-8 w-full items-center gap-2.5 rounded-[6px] px-2 text-[13px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="flex h-8 w-full items-center gap-2.5 rounded-[6px] px-2 text-[13px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
           style={{ color: 'var(--sidebar-foreground)' }}
         >
           <Icon name="settings" className="size-4" />

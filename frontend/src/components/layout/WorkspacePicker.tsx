@@ -237,7 +237,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
                       disabled={busy}
                       onClick={() => void open(w.path)}
                       title={w.path}
-                      className="flex h-12 w-full items-center gap-3 rounded-[8px] border px-3.5 text-left transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+                      className="flex h-12 w-full items-center gap-3 rounded-[8px] border px-3.5 text-left transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none motion-reduce:transition-none"
                       style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
                     >
                       <Icon name="folder" className="size-4 shrink-0" style={{ color: 'var(--primary)' }} />
@@ -316,7 +316,7 @@ function ActionCard({
       disabled={disabled}
       onClick={onClick}
       className={[
-        'flex flex-1 flex-col items-start gap-1.5 rounded-[12px] border p-5 text-left transition-[background-color,color,transform,border-color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+        'flex flex-1 flex-col items-start gap-1.5 rounded-[12px] border p-5 text-left transition-[background-color,color,transform,border-color] duration-150 active:scale-[0.98] focus-visible:outline-none motion-reduce:transition-none',
         primary ? 'border-transparent hover:brightness-95' : 'hover:bg-muted',
       ].join(' ')}
       style={

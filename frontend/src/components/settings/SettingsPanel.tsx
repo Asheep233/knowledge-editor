@@ -180,7 +180,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
                   el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}
                 className={[
-                  'flex h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+                  'flex h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.97] focus-visible:outline-none motion-reduce:transition-none',
                   group === g
                     ? ''
                     : 'hover:bg-accent hover:text-accent-foreground',

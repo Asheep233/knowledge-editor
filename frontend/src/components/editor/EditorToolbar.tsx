@@ -38,7 +38,7 @@ function ToolIcon({
       className={[
         'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
         active ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-        'active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+        'active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
         disabled ? 'cursor-not-allowed opacity-40' : '',
       ].join(' ')}
     >
@@ -445,7 +445,7 @@ export default function EditorToolbar({
             className={[
               'flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[6px] px-2 text-[13px] transition-[background-color,color,transform] duration-150',
               st.headingLevel > 0 ? 'font-medium text-primary' : 'text-foreground',
-              'hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+              'hover:bg-muted active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
             ].join(' ')}
           >
             <span>{headingLabel}</span>
@@ -490,7 +490,7 @@ export default function EditorToolbar({
             className={[
               'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
               st.bulletList || st.orderedList ? 'text-primary' : 'text-muted-foreground',
-              'hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+              'hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
             ].join(' ')}
           >
             <Icon name="list" className="size-4" />
@@ -547,7 +547,7 @@ export default function EditorToolbar({
             type="button"
             title="插入模块（复制 Modules/ 内容 + 来源标记）"
             onClick={() => void toggleModulePicker()}
-            className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-border bg-card px-2.5 text-[13px] text-foreground transition-[background-color,color,transform,border-color] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+            className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-border bg-card px-2.5 text-[13px] text-foreground transition-[background-color,color,transform,border-color] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
           >
             <Icon name="box" className="size-3.5 text-muted-foreground" />
             <span>模块</span>

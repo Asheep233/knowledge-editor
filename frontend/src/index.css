@@ -103,8 +103,11 @@ body {
 /* F2（K3）：全局默认 focus 可见环 —— 缺 focus-visible:ring-ring 的控件
    回退到 --ring 主色，避免浏览器默认黑/currentColor 环。
    注意：不能包 :where()（零特异性会输给 .outline-none 等工具类），
-   并声明 !important 确保覆盖 outline-none。仅键盘可达（:focus-visible）。 */
-:is(button, a, input, select, textarea, [contenteditable='true']):focus-visible {
+   并声明 !important 确保覆盖 outline-none。仅键盘可达（:focus-visible）。
+   contenteditable 除外：ProseMirror 正文为 contenteditable，且浏览器对
+   其鼠标点击聚焦也匹配 :focus-visible，会误出蓝框；正文自身的
+   outline:none（.ke-editor-prose）负责编辑器，不被此规则覆盖。 */
+:is(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--ring) !important;
   outline-offset: 2px !important;
 }

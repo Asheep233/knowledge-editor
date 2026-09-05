@@ -149,7 +149,7 @@ function TableSizePicker({ onPick }: { onPick: (rows: number, cols: number) => v
               onClick={() => onPick(r + 1, c + 1)}
               className={[
                 'h-[13px] w-[13px] rounded-[2px] transition-colors',
-                hover && r <= hover.r && c <= hover.c ? 'bg-primary-soft0' : 'bg-gray-200 hover:bg-gray-300',
+                hover && r <= hover.r && c <= hover.c ? 'bg-primary-soft' : 'bg-gray-200 hover:bg-gray-300',
               ].join(' ')}
             />
           )),

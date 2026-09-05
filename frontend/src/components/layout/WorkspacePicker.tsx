@@ -14,6 +14,7 @@ import {
 import { isDesktop, pickDirectory } from '../../desktop'
 import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
+import { APP_VERSION } from '../../version'
 import { Icon } from '../icons'
 
 interface Props {
@@ -25,7 +26,7 @@ interface Props {
   onUseDefault?: () => void
 }
 
-const APP_VERSION = 'v1.1.0-pre.1'
+
 
 /** 路径尾段作为工作区名 */
 function wsName(path: string): string {
@@ -287,7 +288,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
       {/* 底部声明 */}
       <footer className="flex h-[52px] shrink-0 items-center justify-between px-6 text-[12px]" style={{ color: 'var(--muted-foreground)', borderTop: '1px solid var(--border)' }}>
         <span>程序与数据分离 · 卸载软件不删除数据</span>
-        <span>{APP_VERSION} · Markdown 为唯一事实源 · 索引可整体重建</span>
+        <span>v{APP_VERSION} · Markdown 为唯一事实源 · 索引可整体重建</span>
       </footer>
     </div>
   )

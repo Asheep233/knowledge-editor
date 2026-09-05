@@ -146,7 +146,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
           <span className="text-[16px] font-semibold tracking-tight text-foreground">设置</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[12px] text-muted-foreground">KnowledgeEditor v1.1.0-pre.1 · Alpha</span>
+          <span className="text-[12px] text-muted-foreground">KnowledgeEditor v1.1.0 · Alpha</span>
           <button
             type="button"
             data-action="close-settings"

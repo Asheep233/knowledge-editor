@@ -1,19 +1,25 @@
 /**
- * 文件名 slug 生成（对齐后端 markdown_io.slugify）：
- * 保留 CJK；ASCII 转小写；连续空白/非法字符折叠为单个 '-'；
- * 去除尾部点/空格；超长截断。用于标题 → 文件名同步。
+ * 文件名 slug 生成（对齐后端 markdown_io.slugify，K3-V3 契约一致）：
+ * - 保留 CJK；ASCII 转小写；连续空白/非法字符折叠为单个 '-'；
+ * - 去除尾部点/空格；超长截断（80，与后端 _SLUG_MAX 一致）；
+ * - Windows 保留名检测在【最终结果】上执行 `split(".",1)[0]`，
+ *   含带扩展名形式（如 `con.txt` → `_con.txt`），与后端行为完全一致。
  */
 const BAD_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
 const SLUG_MAX = 80
 
 export function slugify(name: string, fallback = 'untitled'): string {
   let s = name.normalize('NFKC').trim().toLowerCase()
-  s = s.replace(/\.+$/, '').replace(/\s+$/, '')
-  // Windows 保留名（CON/PRN/AUX/NUL/COM1-9/LPT1-9）加前缀 _（与后端 _RESERVED 一致近似）
-  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(s)) s = `_${s}`
+  // 与后端 rstrip(". ") 一致：反复去除尾部点与空格（Python str.rstrip 语义）
+  s = s.replace(/[.\s]+$/, '')
   s = s.replace(BAD_CHARS, '-')
   s = s.replace(/\s+/g, '-')
   s = s.replace(/-{2,}/g, '-').replace(/^-+/, '').replace(/\.+$/, '')
-  s = s.slice(0, SLUG_MAX).replace(/-+$/, '').replace(/\.+$/, '')
-  return s || fallback
+  const head = s.slice(0, SLUG_MAX)
+  s = (head.replace(/-+$/, '').replace(/\.+$/, '') || head).slice(0, SLUG_MAX)
+  if (!s) return fallback
+  // Windows 保留名（含带扩展名形式，如 NUL.md）：前缀下划线，使其不再是保留名
+  if (RESERVED.test(s.split('.', 1)[0])) s = `_${s}`
+  return s
 }

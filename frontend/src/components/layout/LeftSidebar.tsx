@@ -4,7 +4,7 @@
  * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（二次确认）、移动
  * - 模块 / 附件：点击打开
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   attachmentUrl,
   clearRecentDocuments,
@@ -52,6 +52,48 @@ interface CtxMenu {
 
 const TOP_ARTICLES = 'Articles'
 
+/** QuickNav 导航项（参考稿：激活态 = sidebar-primary 底白字） */
+function NavItem({
+  active,
+  disabled,
+  title,
+  icon,
+  label,
+  onClick,
+}: {
+  active?: boolean
+  disabled?: boolean
+  title?: string
+  icon: ReactNode
+  label: string
+  onClick?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? 'page' : undefined}
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+      className={[
+        'flex h-8 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+        active
+          ? ''
+          : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+        disabled ? 'cursor-not-allowed opacity-50' : '',
+      ].join(' ')}
+      style={
+        active
+          ? { backgroundColor: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }
+          : { color: 'var(--sidebar-foreground)' }
+      }
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  )
+}
+
 export default function LeftSidebar({
   activeId,
   onOpenArticle,
@@ -76,6 +118,8 @@ export default function LeftSidebar({
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [rebuilding, setRebuilding] = useState(false)
+  // QuickNav 当前激活（参考稿：全部文档 = sidebar-primary 底白字，aria-current=page）
+  const [nav, setNav] = useState<'all' | 'recent' | 'tags' | 'trash'>('all')
   const searchRef = useRef<HTMLInputElement | null>(null)
   const monoPath = useMemo(() => (workspaceRoot ?? '').replace(/\\/g, '/'), [workspaceRoot])
 
@@ -329,20 +373,31 @@ export default function LeftSidebar({
   }, [])
 
   // ---------- 渲染：文件树 ----------
+  /** 子树文件数（参考稿文件夹行尾部计数） */
+  const countChildren = (n: TreeNode): number => {
+    let c = 0
+    for (const child of n.children ?? []) c += child.type === 'file' ? 1 : countChildren(child)
+    return c
+  }
   const renderNode = (node: TreeNode, depth: number) => {
-    const indent = { paddingLeft: `${8 + depth * 14}px` }
+    const indent = { paddingLeft: `${6 + depth * 14}px` }
     const isOpen = expanded.has(node.relPath)
     if (node.type === 'folder') {
+      const count = countChildren(node)
       return (
         <div key={node.relPath}>
           <div
-            className="group flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12px] text-foreground hover:bg-accent"
+            className="group flex h-[30px] cursor-pointer items-center gap-2 rounded-[6px] px-1 py-0 text-[13px] text-foreground hover:bg-accent"
             style={indent}
             onClick={() => toggle(node.relPath)}
             onContextMenu={(e) => openCtx(e, node)}
           >
-            <span className="w-3 text-[10px] text-muted-foreground">{isOpen ? <Icon name="chevron-down" className="size-3" /> : <Icon name="chevron-right" className="size-3" />}</span>
+            <span className="w-3.5 text-muted-foreground">{isOpen ? <Icon name="chevron-down" className="size-3.5" /> : <Icon name="chevron-right" className="size-3.5" />}</span>
+            <Icon name={isOpen ? 'folder' : 'folder'} className="size-4 shrink-0 text-muted-foreground" />
             <span className="flex-1 truncate">{node.name}</span>
+            {count > 0 ? (
+              <span className="shrink-0 text-[11px] text-muted-foreground">{count}</span>
+            ) : null}
             <span className="hidden gap-0.5 group-hover:flex">
               <button
                 title="新建文档"
@@ -377,19 +432,19 @@ export default function LeftSidebar({
     return (
       <div
         key={node.relPath}
-        className={`flex cursor-pointer items-center gap-1 rounded px-1 py-1 text-[12px] hover:bg-accent ${
-          active ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
+        className={`flex h-[30px] cursor-pointer items-center gap-2 rounded-[6px] px-1 py-0 text-[13px] hover:bg-accent ${
+          active ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-foreground'
         }`}
         style={indent}
         onClick={() => handleOpenFromTree(node)}
         onContextMenu={(e) => openCtx(e, node)}
         title={node.relPath.startsWith('Modules/') ? `${node.relPath}（v${ver ?? '?'}）` : node.relPath}
       >
-        <span className="w-3" />
+        <span className="w-3.5" />
         {node.relPath.startsWith('Modules/') ? (
-          <Icon name="module" className="size-3.5 shrink-0 text-muted-foreground" />
+          <Icon name="box" className="size-4 shrink-0 text-muted-foreground" />
         ) : (
-          <Icon name="file" className="size-3.5 shrink-0 text-muted-foreground" />
+          <Icon name="file-text" className="size-4 shrink-0 text-muted-foreground" />
         )}
         <span className="flex-1 truncate">{node.name}</span>
         {ver != null ? (
@@ -408,77 +463,90 @@ export default function LeftSidebar({
   // ---------- 渲染 ----------
   return (
     <aside className="flex h-full w-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* BrandBlock（handoff §3.2） */}
-      <div className="flex h-12 shrink-0 items-center gap-2 px-3">
-        <span className="flex size-6 items-center justify-center rounded-md bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
+      {/* BrandBlock（handoff §3.2：KE 方块 + 名称/Alpha 两行） */}
+      <div className="flex h-[52px] shrink-0 items-center gap-2.5 px-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-[8px] text-[14px] font-bold" style={{ backgroundColor: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }}>
           KE
         </span>
-        <span className="text-sm font-semibold text-sidebar-foreground">KnowledgeEditor</span>
-        <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[11px] text-sidebar-accent-foreground">
-          Alpha
-        </span>
+        <div className="min-w-0">
+          <div className="truncate text-[14px] font-semibold leading-tight" style={{ color: 'var(--sidebar-foreground)' }}>
+            KnowledgeEditor
+          </div>
+          <div className="text-[11px] leading-tight" style={{ color: 'var(--muted-foreground)' }}>
+            Alpha
+          </div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* GlobalSearchBox（handoff §3.2：胶囊搜索 + Ctrl K 提示 + 重建按钮） */}
-        <div className="px-3 pt-2">
+        <div className="px-3 pb-2">
           <div className="relative">
-            <input
-              id="ke-global-search"
-              ref={searchRef}
-              value={searchQ}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="搜索文档内容…（Ctrl K）"
-              className="w-full rounded-full border border-input bg-card py-1.5 pl-3 pr-14 text-[12px] text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
-            />
-            <button
-              type="button"
-              className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"
-              title={rebuilding ? '重建中…' : '重建全文索引'}
-              aria-label="重建全文索引"
-              onClick={() => void handleRebuildIndex()}
-              disabled={rebuilding}
+            <div
+              className="flex h-9 w-full items-center gap-2 rounded-[999px] border px-2.5 transition-[background-color,border-color,box-shadow] duration-150 focus-within:ring-2 motion-reduce:transition-none"
+              style={{ backgroundColor: 'var(--popover)', borderColor: 'var(--border)' }}
             >
-              <Icon name="rebuild" className="size-3.5" />
-            </button>
+              <Icon name="search" className="size-4 shrink-0 text-muted-foreground" />
+              <input
+                id="ke-global-search"
+                ref={searchRef}
+                value={searchQ}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="搜索全部文档…"
+                className="h-full w-full min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+                style={{ color: 'var(--foreground)' }}
+              />
+              <span className="shrink-0 rounded-[4px] border px-1 text-[10px] leading-4 text-muted-foreground" style={{ borderColor: 'var(--border)', fontFamily: 'var(--font-mono)' }}>
+                Ctrl&nbsp;K
+              </span>
+              <button
+                type="button"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+                style={{ color: 'var(--muted-foreground)' }}
+                title={rebuilding ? '重建中…' : '重建全文索引'}
+                aria-label="重建全文索引"
+                onClick={() => void handleRebuildIndex()}
+                disabled={rebuilding}
+              >
+                <Icon name="rotate-ccw" className="size-3.5" />
+              </button>
+            </div>
           </div>
           {searching ? (
             <Empty text="搜索中…" />
           ) : searchResults !== null && searchResults.length === 0 ? (
             <Empty text="无匹配结果" />
           ) : null}
-          {/* QuickNav（全部文档 / 最近更新 / 标签 / 回收站[占位]） */}
-          <div className="flex items-center gap-1 px-1 py-2">
-            <button
-              type="button"
-              onClick={() => setActiveTag(null)}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Icon name="file" className="size-3.5" /> 全部文档
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTag(null)}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Icon name="history" className="size-3.5" /> 最近更新
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTag(null)}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Icon name="tags" className="size-3.5" /> 标签
-            </button>
-            <button
-              type="button"
-              disabled
-              title="回收站：本版本暂缓实现"
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground/50"
-            >
-              <Icon name="trash" className="size-3.5" /> 回收站
-            </button>
-          </div>
+          {/* QuickNav（handoff §3.2：全部文档[默认激活] / 最近更新 / 标签 / 回收站[占位]） */}
+          <nav aria-label="快捷访问" className="pt-2">
+            <div className="flex flex-col gap-[6px]">
+              <NavItem
+                active={nav === 'all'}
+                icon={<Icon name="file-text" className="size-4" />}
+                label="全部文档"
+                onClick={() => { setNav('all'); setActiveTag(null) }}
+              />
+              <NavItem
+                active={nav === 'recent'}
+                icon={<Icon name="history" className="size-4" />}
+                label="最近更新"
+                onClick={() => setNav('recent')}
+              />
+              <NavItem
+                active={nav === 'tags'}
+                icon={<Icon name="tags" className="size-4" />}
+                label="标签"
+                onClick={() => setNav('tags')}
+              />
+              <NavItem
+                active={nav === 'trash'}
+                icon={<Icon name="trash" className="size-4" />}
+                label="回收站"
+                disabled
+                title="回收站：本版本暂缓实现"
+              />
+            </div>
+          </nav>
           {searchResults && searchResults.length > 0 ? (
             <div className="mt-1 space-y-0.5">
               {searchResults.slice(0, 20).map((r) => (
@@ -510,73 +578,77 @@ export default function LeftSidebar({
           ) : null}
         </div>
 
-        {/* 最近文档（Phase 4.8） */}
-        <Section title="最近" action={
-          recent.length > 0 ? (
-            <button
-              className="text-[11px] text-muted-foreground hover:text-foreground/80"
-              onClick={() => {
-                void clearRecentDocuments().then(refreshAll)
-              }}
-            >
-              清空
-            </button>
-          ) : undefined
-        }>
-          {recent.length === 0 && <Empty text="暂无最近文档" />}
-          {recent.slice(0, 8).map((d) => (
-            <button
-              key={d.rel_path}
-              className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
-                activeId === d.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
-              }`}
-              title={d.rel_path}
-              onClick={() => onOpenArticle(d.rel_path)}
-            >
-              {d.title}
-            </button>
-          ))}
-        </Section>
-
-        {/* 标签（Phase 4.5） */}
-        <Section title="标签">
-          {tags.length === 0 && <Empty text="暂无标签" />}
-          {tags.slice(0, 30).map((t) => (
-            <button
-              key={t.name}
-              className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
-                activeTag === t.name ? 'bg-sidebar-accent text-blue-700' : 'text-foreground'
-              }`}
-              onClick={() => (activeTag === t.name ? setActiveTag(null) : void selectTag(t.name))}
-            >
-              <span className="flex-1 truncate">#{t.name}</span>
-              <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{t.count}</span>
-            </button>
-          ))}
-        </Section>
-
-        {/* 标签筛选结果 */}
-        {activeTag && (
-          <Section title={`筛选：#${activeTag}`} action={
-            <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground/80" onClick={() => setActiveTag(null)}>
-              <Icon name="close" className="size-3" />
-            </button>
-          }>
-            {tagFiles.length === 0 && <Empty text="无匹配文档" />}
-            {tagFiles.map((f) => (
+        {/* QuickNav 联动：recent = 最近文档区；tags = 标签列表区；all = 模块 + 文档树 */}
+        {nav === 'recent' ? (
+          <Section title="最近" action={
+            recent.length > 0 ? (
               <button
-                key={f.rel_path}
-                className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
-                  activeId === f.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
-                }`}
-                title={f.rel_path}
-                onClick={() => onOpenArticle(f.rel_path)}
+                className="text-[11px] text-muted-foreground hover:text-foreground/80"
+                onClick={() => {
+                  void clearRecentDocuments().then(refreshAll)
+                }}
               >
-                {f.title || f.rel_path}
+                清空
+              </button>
+            ) : undefined
+          }>
+            {recent.length === 0 && <Empty text="暂无最近文档" />}
+            {recent.slice(0, 8).map((d) => (
+              <button
+                key={d.rel_path}
+                className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                  activeId === d.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
+                }`}
+                title={d.rel_path}
+                onClick={() => onOpenArticle(d.rel_path)}
+              >
+                {d.title}
               </button>
             ))}
           </Section>
-        )}
+        ) : nav === 'tags' ? (
+          <>
+            <Section title="标签">
+              {tags.length === 0 && <Empty text="暂无标签" />}
+              {tags.slice(0, 30).map((t) => (
+                <button
+                  key={t.name}
+                  className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                    activeTag === t.name ? 'bg-sidebar-accent text-blue-700' : 'text-foreground'
+                  }`}
+                  onClick={() => (activeTag === t.name ? setActiveTag(null) : void selectTag(t.name))}
+                >
+                  <span className="flex-1 truncate">#{t.name}</span>
+                  <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{t.count}</span>
+                </button>
+              ))}
+            </Section>
+
+            {/* 标签筛选结果 */}
+            {activeTag && (
+              <Section title={`筛选：#${activeTag}`} action={
+                <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground/80" onClick={() => setActiveTag(null)}>
+                  <Icon name="close" className="size-3" />
+                </button>
+              }>
+                {tagFiles.length === 0 && <Empty text="无匹配文档" />}
+                {tagFiles.map((f) => (
+                  <button
+                    key={f.rel_path}
+                    className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                      activeId === f.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
+                    }`}
+                    title={f.rel_path}
+                    onClick={() => onOpenArticle(f.rel_path)}
+                  >
+                    {f.title || f.rel_path}
+                  </button>
+                ))}
+              </Section>
+            )}
+          </>
+        ) : (
+        <>
         {/* 模块（Phase 5：文件夹分类 + 文件树管理，双击/单击在编辑器打开） */}
         <Section title="模块" action={
           <button
@@ -639,6 +711,8 @@ export default function LeftSidebar({
             )
           )}
         </Section>
+        </>
+        )}
       </div>
 
       {/* DataSovereigntyFooter（handoff §3.2） */}

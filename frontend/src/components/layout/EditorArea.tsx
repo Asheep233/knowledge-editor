@@ -4,7 +4,7 @@
  * 保存链路（约束 p2f）：3s 防抖自动保存 + Ctrl+S 立即保存 + 原子写入（后端）。
  */
 import { EditorContent, EditorContext, type Editor } from '@tiptap/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   discardRecovery,
   listHistory,
@@ -19,8 +19,24 @@ import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, type SaveFn } from '../../state/saveQueue'
 import type { ArticleMeta, HistoryVersion } from '../../types'
+import { Icon } from '../icons'
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
+
+/** 参考稿「+ 新标签」按钮（多标签 TabBar 延后，保留占位；点击 = 新建文档） */
+function ToolbarNewTab({ onNew }: { onNew: () => void }) {
+  return (
+    <button
+      type="button"
+      title="新建文档"
+      aria-label="新建文档"
+      onClick={onNew}
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-[6px] text-[12px] text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+    >
+      <Icon name="plus" className="size-3.5" />
+    </button>
+  )
+}
 
 interface Props {
   article: ArticleMeta | null
@@ -251,6 +267,13 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     void loadHistory()
   }, [loadHistory])
 
+  // 右栏 HistorySnapshotsCard「查看历史」桥：监听全局事件（App 层转发）
+  useEffect(() => {
+    const onOpen = () => handleOpenHistory()
+    window.addEventListener('ke:open-history', onOpen)
+    return () => window.removeEventListener('ke:open-history', onOpen)
+  }, [handleOpenHistory])
+
   const handlePreviewCurrent = useCallback(() => {
     if (!article || !editor) return
     setPreviewing(null)
@@ -306,97 +329,111 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
 
   const saveInfo = SAVE_LABEL[saveState]
 
-  return (
-    <main className="flex h-full min-w-0 flex-1 flex-col bg-white">
-      {/* 文档标签栏 */}
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3">
-        <span className="max-w-[300px] truncate text-[13px] font-medium text-gray-800">
-          {article?.title ?? '未打开文档'}
-        </span>
-        <span className={`ml-auto text-[11px] ${saveInfo.cls}`}>{saveInfo.text}</span>
-        {article && editor ? (
-          <div className="relative ml-1">
+  // 参考稿工具栏右侧「导出 ▾」主按钮（--primary 底白字）
+  const exportButton = article && editor ? (
+    <div className="relative ml-1">
+      <button
+        type="button"
+        onClick={() => setExportOpen((o) => !o)}
+        disabled={exporting}
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium text-primary-foreground transition-[filter,color,transform] duration-150 hover:brightness-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40"
+        style={{ backgroundColor: 'var(--primary)' }}
+      >
+        <Icon name="download" className="size-4" />
+        <span>{exporting ? '打包中…' : '导出'}</span>
+        <Icon name="chevron-down" className="size-3.5" />
+      </button>
+      {exportOpen ? (
+        <>
+          {/* 点击外部关闭 */}
+          <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
+          <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-md border border-border bg-card py-1 shadow-md">
             <button
               type="button"
-              onClick={() => setExportOpen((o) => !o)}
-              disabled={exporting}
-              className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => {
+                setExportOpen(false)
+                handleExportMarkdown()
+              }}
+              className="block w-full px-3 py-1.5 text-left text-[12px] text-foreground/80 hover:bg-accent"
             >
-              {exporting ? '打包中…' : '导出 ▾'}
+              导出 Markdown（KE 格式）
             </button>
-            {exportOpen ? (
-              <>
-                {/* 点击外部关闭 */}
-                <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-md">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportOpen(false)
-                      handleExportMarkdown()
-                    }}
-                    className="block w-full px-3 py-1.5 text-left text-[12px] text-gray-700 hover:bg-gray-50"
-                  >
-                    导出 Markdown（KE 格式）
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportOpen(false)
-                      handleExportPlainMarkdown()
-                    }}
-                    className="block w-full px-3 py-1.5 text-left text-[12px] text-gray-700 hover:bg-gray-50"
-                  >
-                    导出普通 Markdown (.md)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleExportPackage()}
-                    className="block w-full px-3 py-1.5 text-left text-[12px] text-gray-700 hover:bg-gray-50"
-                  >
-                    导出文档包 (.zip)
-                  </button>
-                </div>
-              </>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setExportOpen(false)
+                handleExportPlainMarkdown()
+              }}
+              className="block w-full px-3 py-1.5 text-left text-[12px] text-foreground/80 hover:bg-accent"
+            >
+              导出普通 Markdown (.md)
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExportPackage()}
+              className="block w-full px-3 py-1.5 text-left text-[12px] text-foreground/80 hover:bg-accent"
+            >
+              导出文档包 (.zip)
+            </button>
           </div>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => void saveNow()}
-          disabled={!article || loading}
-          className="ml-1 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          保存
-        </button>
-        {article && editor ? (
-          <button
-            type="button"
-            onClick={handleOpenHistory}
-            title="历史版本（最近 30 份自动快照）"
-            className="ml-1 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-700 hover:bg-gray-50"
-          >
-            历史
-          </button>
-        ) : null}
-        {saveState === 'error' ? (
-          <button
-            type="button"
-            onClick={() => void saveNow()}
-            className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] text-rose-600 hover:bg-rose-100"
-          >
-            重试
-          </button>
-        ) : null}
-      </div>
+        </>
+      ) : null}
+    </div>
+  ) : null
 
+  // 保存状态文字（参考稿「已保存」区）
+  const saveLabel = saveInfo.text ? (
+    <>
+      {saveInfo.cls.includes('emerald') ? (
+        <Icon name="circle-check" className="size-4" style={{ color: 'var(--chart-5)' }} />
+      ) : null}
+      <span className={saveInfo.cls}>{saveInfo.text}</span>
+    </>
+  ) : null
+
+  // 正文页眉（参考稿 §3.4：面包屑 + H1 + 元信息行 —— 只读展示，不进入 Markdown）
+  const breadcrumb = useMemo(() => {
+    if (!article) return []
+    const seg = article.id.split('/').filter(Boolean)
+    return seg
+  }, [article])
+  const docMeta = useMemo(() => {
+    if (!article) return null
+    const words = article.word_count ?? 0
+    const tags = article.tags
+    return {
+      words: words >= 1000 ? `${words.toLocaleString('zh-CN')} 字` : `${words} 字`,
+      tags: Array.isArray(tags) ? tags : typeof tags === 'string' && tags ? [tags] : [],
+      updatedAt: article.updated_at ?? '',
+    }
+  }, [article])
+
+  return (
+    <main className="flex h-full min-w-0 flex-1 flex-col bg-background">
       {loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           加载中…
         </div>
       ) : article && editor ? (
         <EditorContext.Provider value={{ editor }}>
-          <EditorToolbar />
+          <EditorToolbar
+            tabBar={
+              <>
+                {/* 文档标签（当前文档：pill + 关闭） */}
+                <div
+                  className="flex h-7 shrink-0 items-center gap-1.5 rounded-[6px] border px-2.5"
+                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                >
+                  <span className="max-w-[180px] truncate text-[13px]">{article?.title ?? ''}</span>
+                  <Icon name="file-text" className="size-3.5 shrink-0 text-muted-foreground" />
+                </div>
+                <ToolbarNewTab onNew={onNewArticle} />
+              </>
+            }
+            saveLabel={saveLabel}
+            onOpenHistory={handleOpenHistory}
+            exportButton={exportButton}
+          />
           <TableBubbleMenu />
           <div
             className="ke-scroll relative flex-1 overflow-y-auto"
@@ -425,16 +462,54 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 释放以添加附件（图片 / 视频 / 文件）
               </div>
             )}
+            {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown） */}
+            <article className="mx-auto w-full max-w-[760px] px-12 pb-2 pt-10">
+              <div className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>
+                <Icon name="folder" className="size-3.5" />
+                {breadcrumb.map((seg, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    {i > 0 ? <Icon name="chevron-right" className="size-3 opacity-70" /> : null}
+                    <span>{seg.replace(/\.md$/, '')}</span>
+                  </span>
+                ))}
+              </div>
+              <h1 className="mt-4 text-[28px] font-bold leading-[1.25]" style={{ color: 'var(--foreground)' }}>
+                {article.title}
+              </h1>
+              {docMeta ? (
+                <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+                  {docMeta.updatedAt ? (
+                    <>
+                      <span>更新于 {formatTime(docMeta.updatedAt)}</span>
+                      <span aria-hidden="true">·</span>
+                    </>
+                  ) : null}
+                  <span>{docMeta.words}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>KE v{KE_VERSION}</span>
+                  {docMeta.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center rounded-[999px] px-2 py-[2px] text-[12px]"
+                      style={{ backgroundColor: 'var(--secondary)', color: 'var(--accent-foreground)' }}
+                    >
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </article>
             <EditorContent editor={editor} />
           </div>
         </EditorContext.Provider>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-          <p className="text-sm text-gray-500">从左侧选择一篇文档，或新建一篇开始创作</p>
+          <p className="text-sm text-muted-foreground">从左侧选择一篇文档，或新建一篇开始创作</p>
           <button
             type="button"
             onClick={onNewArticle}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:brightness-95"
+            style={{ backgroundColor: 'var(--primary)' }}
           >
             + 新建文档
           </button>

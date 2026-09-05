@@ -1,12 +1,9 @@
 /**
- * Workspace 选择页 / LauncherPage（handoff §3.7）：
- * 居中 WelcomeCard（BrandHero + WorkspaceActions + RecentWorkspaces 最近 3 条）。
- * - 手动输入：新建 / 打开已有；桌面版提供「浏览…」原生目录选择器
- * - 首启引导模式（guide）：桌面版首次使用（默认 workspace 为空且无最近记录）时，
- *   显示「使用已有工作区」（原生目录选择）与「创建新工作区」（沿用默认 workspace）
- * - 最近工作区列表：打开/创建成功后自动记录（存软件配置文件，不写入 Markdown）；
- *   路径仍存在的条目点击直接打开；已失效（目录被删除/移动）的条目置灰标记，
- *   可单独移除记录。
+ * Workspace 选择页 / LauncherPage（handoff §3.7 + 参考稿 launcher.html）：
+ * - 品牌 Hero（KE 标 + 名称 + Alpha + 定位语）
+ * - 两操作卡：打开已有工作区（主）/ 创建新工作区（次）
+ * - 最近工作区（最多 3 条：名称 + mono 路径截断 + 失效置灰可移除）
+ * - 底部声明（程序与数据分离 / 版本 / Markdown 为唯一事实源）
  */
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -18,23 +15,19 @@ import { isDesktop, pickDirectory } from '../../desktop'
 import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
 import { Icon } from '../icons'
-import './workspace-picker.css'
 
 interface Props {
   onOpened: (ws: WorkspaceState) => void
-  /** 首启引导模式：桌面首次使用（空 workspace 且无最近记录）时的两选项引导 */
+  /** 首启引导模式：桌面版首次使用（默认 workspace 为空且无最近记录）时，
+   * 显示「使用已有工作区」与「创建新工作区」引导 */
   guide?: boolean
   /** 引导模式「创建新工作区」：沿用默认（空）workspace 开始 */
   onUseDefault?: () => void
 }
 
-/** 相对时间占位：后端 recent_workspaces 无时间戳字段（保持 API 范围），
- * 未来扩展后此处接入 opened_at 即可。 */
-function relTimeInfo(_w: RecentWorkspace): string {
-  return ''
-}
+const APP_VERSION = 'v1.0.2'
 
-/** 路径尾段作为工作区名（mono 路径截断展示） */
+/** 路径尾段作为工作区名 */
 function wsName(path: string): string {
   const seg = path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? path
   return seg || path
@@ -45,6 +38,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
   const [recent, setRecent] = useState<RecentWorkspace[]>([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   const refreshRecent = useCallback(() => {
     getRecentWorkspaces()
@@ -87,6 +81,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
       setError(`创建失败：${(e as Error).message}`)
     } finally {
       setBusy(false)
+      setCreating(false)
     }
   }, [path, onOpened])
 
@@ -99,10 +94,14 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
     }
   }, [])
 
-  /** 引导模式：选择已有工作区并打开 */
+  /** 打开已有：桌面用原生选择器；Web 回退手动输入 */
   const browseAndOpen = useCallback(async () => {
     const dir = await pickDirectory('选择已有工作区目录')
     if (dir) void open(dir)
+    else if (!isDesktop()) {
+      const p = window.prompt('打开已有工作区路径')
+      if (p) void open(p)
+    }
   }, [open])
 
   /** 移除失效（或任意）最近记录 */
@@ -121,50 +120,72 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
   )
 
   return (
-    <div className="ws-picker flex h-full min-h-screen items-center justify-center bg-background p-6">
-      <div className="ws-picker-card w-[520px] max-w-full rounded-2xl border border-border bg-card p-9 text-center shadow-sm">
-        {/* BrandHero（handoff §3.7）：KE 标 + 名称 + Alpha + 一句定位 */}
-        <div className="mb-3 flex items-center justify-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-            KE
-          </span>
-          <span className="text-xl font-semibold text-foreground">KnowledgeEditor</span>
-          <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[11px] text-primary">Alpha</span>
-        </div>
-        <p className="mb-6 text-[13px] text-muted-foreground">
-          {guide
-            ? '欢迎使用！选择一个已有工作区，或创建新的工作区开始创作'
-            : '以 Markdown 为唯一事实源的本地知识编辑器——选择一个工作区开始'}
-        </p>
-
-        {guide ? (
-          <div className="ws-picker-guide">
-            <button
-              type="button"
-              className="ws-picker-guide-primary h-8 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-all hover:brightness-95 active:scale-[.97]"
-              disabled={busy}
-              onClick={() => void browseAndOpen()}
-            >
-              使用已有工作区
-            </button>
-            <button
-              type="button"
-              className="ws-picker-guide-secondary h-8 rounded-lg border border-border bg-background text-sm text-foreground/80 transition-all hover:border-ring/50 hover:bg-muted active:scale-[.97]"
-              disabled={busy}
-              onClick={() => onUseDefault?.()}
-            >
-              创建新工作区
-            </button>
+    <div className="flex h-full min-h-screen flex-col bg-background">
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-[760px] max-w-full">
+          {/* BrandHero */}
+          <div className="mb-10 flex flex-col items-center text-center">
+            <div className="mb-4 grid size-12 place-items-center rounded-[12px] text-lg font-bold" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}>
+              KE
+            </div>
+            <h1 className="text-[22px] font-semibold" style={{ color: 'var(--foreground)' }}>KnowledgeEditor</h1>
+            <p className="mt-1 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>Alpha</p>
+            <p className="mt-3 max-w-[420px] text-[13px] leading-[1.6]" style={{ color: 'var(--muted-foreground)' }}>
+              {guide
+                ? '以 Markdown 为唯一事实源的本地知识编辑器——选择一个工作区开始'
+                : '选择已有 workspace 文件夹，或在指定位置初始化空白知识库'}
+            </p>
           </div>
-        ) : (
-          <>
-            <div className="ws-picker-input flex gap-2">
+
+          {/* 两操作卡 */}
+          {guide ? (
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <ActionCard
+                icon={<Icon name="folder" className="size-4" />}
+                title="打开已有工作区"
+                desc="选择已有 workspace 文件夹继续写作"
+                primary
+                disabled={busy}
+                onClick={() => void browseAndOpen()}
+              />
+              <ActionCard
+                icon={<Icon name="plus" className="size-4" />}
+                title="创建新工作区"
+                desc="在指定位置初始化空白知识库"
+                disabled={busy}
+                onClick={() => (onUseDefault ? onUseDefault() : setCreating(true))}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <ActionCard
+                icon={<Icon name="folder" className="size-4" />}
+                title="打开已有工作区"
+                desc="选择已有 workspace 文件夹继续写作"
+                primary
+                disabled={busy}
+                onClick={() => void browseAndOpen()}
+              />
+              <ActionCard
+                icon={<Icon name="plus" className="size-4" />}
+                title="创建新工作区"
+                desc="在指定位置初始化空白知识库"
+                disabled={busy}
+                onClick={() => setCreating((v) => !v)}
+              />
+            </div>
+          )}
+
+          {/* 手动路径输入（打开失败/新建时展开） */}
+          {error || creating ? (
+            <div className="mx-auto mt-4 flex max-w-[560px] items-center gap-2 rounded-lg border border-border bg-card p-3">
               <input
+                type="text"
                 placeholder="工作区目录路径，例如 D:\MyKnowledge"
                 value={path}
-                onChange={(e) => setPath(e.target.value)}
+                onChange={(e) => { setPath(e.target.value); setError('') }}
                 onKeyDown={(e) => e.key === 'Enter' && void create()}
-                className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground/80 outline-none transition-colors focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+                className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
               />
               {isDesktop() && (
                 <button
@@ -178,79 +199,136 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
                 </button>
               )}
               <button
+                type="button"
                 disabled={busy}
                 onClick={() => void create()}
                 className="h-8 shrink-0 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-all hover:brightness-95 active:scale-[.97] disabled:opacity-50"
               >
-                新建工作区
+                新建
               </button>
               <button
+                type="button"
                 disabled={busy}
                 onClick={() => void open(path.trim())}
                 className="h-8 shrink-0 rounded-md border border-border bg-background px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted disabled:opacity-50"
               >
-                打开已有
+                打开
               </button>
             </div>
+          ) : null}
+          {error && !creating && (
+            <p className="mx-auto mt-2 max-w-[560px] text-[12px] text-rose-600">{error}</p>
+          )}
 
-            {error && <p className="mt-2.5 text-left text-[12px] text-rose-600">{error}</p>}
-
-            {recent.length > 0 && (
-              <div className="ws-picker-recent mt-6 text-left">
-                <div className="mb-2 text-[12px] font-medium text-muted-foreground">
-                  最近工作区（点击打开）
-                </div>
+          {/* 最近工作区（最多 3 条） */}
+          {recent.length > 0 ? (
+            <div className="mx-auto mt-10 max-w-[560px]">
+              <div className="mb-2 flex items-center gap-2 px-1">
+                <span className="text-[13px] font-semibold" style={{ color: 'var(--foreground)' }}>最近工作区</span>
+                <span className="text-[12px]" style={{ color: 'var(--muted-foreground)' }}>仅保存在本机</span>
+              </div>
+              <div className="flex flex-col gap-2">
                 {recent.slice(0, 3).map((w) =>
                   w.exists ? (
                     <button
                       key={w.path}
-                      className="ws-picker-recent-item mb-1.5 flex w-full items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-muted"
+                      type="button"
                       disabled={busy}
                       onClick={() => void open(w.path)}
                       title={w.path}
+                      className="flex h-12 w-full items-center gap-3 rounded-[8px] border px-3.5 text-left transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
                     >
-                      <Icon name="folder" className="size-3.5 shrink-0 text-primary" />
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-foreground/80">
-                        {wsName(w.path)}
-                      </span>
-                      <span className="max-w-[45%] shrink-0 truncate font-mono text-[11px] text-muted-foreground/70">
-                        {w.path}
-                      </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground/60">
-                        {relTimeInfo(w)}
-                      </span>
+                      <Icon name="folder" className="size-4 shrink-0" style={{ color: 'var(--primary)' }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-medium">{wsName(w.path)}</div>
+                        <div className="truncate text-[11px]" style={{ color: 'var(--muted-foreground)', fontFamily: 'var(--font-mono)' }}>
+                          {w.path}
+                        </div>
+                      </div>
+                      <Icon name="chevron-right" className="size-4 shrink-0 text-muted-foreground" />
                     </button>
                   ) : (
                     <div
                       key={w.path}
-                      className="ws-picker-recent-item mb-1.5 flex w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-left"
+                      className="flex h-12 w-full items-center gap-3 rounded-[8px] border px-3.5"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--muted)/40' }}
                     >
-                      <Icon name="folder" className="size-3.5 shrink-0 text-muted-foreground/40" />
-                      <span
-                        className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground/60 line-through"
-                        title={w.path}
-                      >
-                        {wsName(w.path)}
-                      </span>
-                      <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
+                      <Icon name="folder" className="size-4 shrink-0 text-muted-foreground/40" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] text-muted-foreground/60 line-through">
+                          {wsName(w.path)}
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground/50" style={{ fontFamily: 'var(--font-mono)' }}>
+                          {w.path}
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px]" style={{ backgroundColor: 'var(--secondary)', color: 'var(--accent-foreground)' }}>
                         路径已失效
                       </span>
                       <button
                         type="button"
-                        className="shrink-0 rounded p-0.5 text-muted-foreground/50 transition-colors hover:bg-rose-100 hover:text-rose-600"
                         title="移除该记录"
+                        aria-label={`移除 ${w.path}`}
                         onClick={(e) => void removeRecent(w.path, e)}
+                        className="shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:bg-rose-100 hover:text-rose-600"
                       >
-                        <Icon name="close" className="size-3" />
+                        <Icon name="close" className="size-3.5" />
                       </button>
                     </div>
                   ),
                 )}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {/* 底部声明 */}
+      <footer className="flex h-[52px] shrink-0 items-center justify-between px-6 text-[12px]" style={{ color: 'var(--muted-foreground)', borderTop: '1px solid var(--border)' }}>
+        <span>程序与数据分离 · 卸载软件不删除数据</span>
+        <span>{APP_VERSION} · Markdown 为唯一事实源 · 索引可整体重建</span>
+      </footer>
     </div>
+  )
+}
+
+/** 操作卡（参考稿 launcher：主 = --primary 底白字） */
+function ActionCard({
+  icon,
+  title,
+  desc,
+  primary,
+  disabled,
+  onClick,
+}: {
+  icon: React.ReactNode
+  title: string
+  desc: string
+  primary?: boolean
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        'flex flex-1 flex-col items-start gap-1.5 rounded-[12px] border p-5 text-left transition-[background-color,color,transform,border-color] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+        primary ? 'border-transparent hover:brightness-95' : 'hover:bg-muted',
+      ].join(' ')}
+      style={
+        primary
+          ? { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+          : { backgroundColor: 'var(--card)', color: 'var(--foreground)', borderColor: 'var(--border)' }
+      }
+    >
+      <span className="flex items-center gap-2 text-[14px] font-semibold">
+        {icon}
+        {title}
+      </span>
+      <span className="text-[12px] opacity-75">{desc}</span>
+    </button>
   )
 }

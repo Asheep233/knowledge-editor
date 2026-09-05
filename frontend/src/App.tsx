@@ -28,6 +28,7 @@ import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
 import { AppShell } from './components/shell/AppShell'
+import WindowChrome from './components/shell/WindowChrome'
 import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
@@ -73,7 +74,9 @@ export default function App() {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [treeRefresh, setTreeRefresh] = useState(0)
   const [extModal, setExtModal] = useState<FsEvent | null>(null)
-  const [wsMenuOpen, setWsMenuOpen] = useState(false)
+  // 原生菜单 refresh-recent 事件：历史遗留 → 展开工作区菜单的意图已由 WindowChrome
+  // 文件下拉替代；仅保留状态以防 future 菜单重新接线（当前无 UI 消费）。
+  const [, setWsMenuOpen] = useState(false)
   /** Phase 7 M3：设置面板开关 */
   const [settingsOpen, setSettingsOpen] = useState(false)
   /** Phase 6.2：启动时检测到的未恢复内容 */
@@ -618,120 +621,27 @@ export default function App() {
     <>
     <AppShell
       header={
-        /* WindowChrome 由 Tauri 原生菜单（menu.rs）提供；此处为应用内顶栏 */
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
-        <div className="flex items-center gap-2">
-          <span className="flex size-6 items-center justify-center rounded-md bg-blue-600 text-xs font-bold text-white">
-            KE
-          </span>
-          <span className="text-sm font-semibold text-gray-800">KnowledgeEditor</span>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">
-            Alpha
-          </span>
-          <div className="relative ml-1">
-            <button
-              type="button"
-              onClick={() => setWsMenuOpen((v) => !v)}
-              title="工作区管理"
-              className="flex max-w-[280px] items-center gap-1 rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 transition-colors hover:bg-gray-50"
-            >
-              <span className="max-w-[220px] truncate font-mono">{workspace?.root ?? '—'}</span>
-              <Icon name="caret" className="size-3 text-muted-foreground" />
-            </button>
-            {wsMenuOpen && (
-              <div className="absolute right-0 top-7 z-30 w-64 rounded-md border border-gray-200 bg-white py-1 text-xs shadow-lg">
-                <div className="border-b border-gray-100 px-3 py-1.5 text-[11px] text-gray-400">
-                  当前工作区：{workspace?.root}
-                </div>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-50"
-                  onClick={() => void handleOpenWorkspaceMenu()}
-                >
-                  打开工作区…
-                </button>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-50"
-                  onClick={() => void handleCreateWorkspaceMenu()}
-                >
-                  新建工作区…
-                </button>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-50"
-                  onClick={() => {
-                    setWsMenuOpen(false)
-                    void runRecoveryCheck()
-                  }}
-                >
-                  恢复检查…
-                </button>
-                <button
-                  type="button"
-                  className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
-                  onClick={() => {
-                    setWsMenuOpen(false)
-                    void handleCloseWorkspace()
-                  }}
-                >
-                  关闭工作区
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            title="设置"
-            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-accent"
-          >
-            <Icon name="settings" className="size-3.5" /> 设置
-          </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1 rounded border border-border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-accent"
-          >
-            <Icon name="attachment" className="size-3.5" /> 导入
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".md,.markdown,.zip"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) void handleImportFile(f)
-            }}
-          />
-          <span
-            className={[
-              'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium',
-              backendDown ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600',
-            ].join(' ')}
-          >
-            <span
-              className={[
-                'size-1.5 rounded-full',
-                backendDown ? 'bg-red-500' : 'bg-emerald-500',
-              ].join(' ')}
-            />
-            {backendDown ? '后端未连接' : `后端 v${health?.version ?? ''}`}
-          </span>
-          {!backendDown && versionMismatch && health ? (
-            <span
-              className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
-              title="前后端版本不一致，可能运行的是旧代码；建议执行 .\scripts\start.ps1 重启"
-            >
-              <Icon name="alert" className="size-3" />
-              <span>版本不一致（前端 v{APP_VERSION} / 后端 v{health.version}）</span>
-            </span>
-          ) : null}
-        </div>
-      </header>
+        <>
+        <WindowChrome
+          onNewArticle={() => void handleNewArticle()}
+          onImportFile={() => fileInputRef.current?.click()}
+          onOpenWorkspace={() => void handleOpenWorkspaceMenu()}
+          onNewWorkspace={() => void handleCreateWorkspaceMenu()}
+          onCloseWorkspace={() => void handleCloseWorkspace()}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onRecoveryCheck={() => void runRecoveryCheck()}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,.markdown,.zip"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void handleImportFile(f)
+          }}
+        />
+        </>
       }
       left={
         <LeftSidebar
@@ -761,6 +671,8 @@ export default function App() {
             onMetaUpdate={setArticle}
             onOpenArticle={requestOpenArticle}
             onCollapse={() => toggleRight(false)}
+            onOpenHistory={() => window.dispatchEvent(new CustomEvent('ke:open-history'))}
+            lastSnapshotAt={article ? new Date(lastSavedAt.current.get(article.id) ?? Date.now()).toISOString() : undefined}
           />
         ) : (
           <button
@@ -778,6 +690,21 @@ export default function App() {
           <span>{article ? `${article.title} · ${article.word_count ?? 0} 字` : '未打开文档'}</span>
           <span>本地存储 · 自动保存已开启</span>
           <span className="text-muted-foreground/80">{saveStateLabel}</span>
+          {backendDown ? (
+            <span className="flex items-center gap-1 text-rose-600">
+              <span className="size-1.5 rounded-full bg-red-500" /> 后端未连接
+            </span>
+          ) : (
+            <>
+              {versionMismatch && health ? (
+                <span className="flex items-center gap-1 text-amber-700" title="前后端版本不一致，可能运行的是旧代码；建议执行 .\scripts\start.ps1 重启">
+                  <Icon name="alert" className="size-3" />
+                  版本不一致（前端 v{APP_VERSION} / 后端 v{health.version}）
+                </span>
+              ) : null}
+              <span className="opacity-70">后端 v{health?.version ?? ''}</span>
+            </>
+          )}
           <StatusBarPath path={workspace?.root ?? ''} />
         </StatusBar>
       }

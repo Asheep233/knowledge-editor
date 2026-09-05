@@ -1,10 +1,11 @@
 /**
- * 编辑器工具栏（UX 优化 3/4）：
- * - 每个按钮为「图标（上）+ 文字（下）」两行结构
- * - 「标题」为单个按钮，点击弹出下拉选择 正文 / 标题1~6
- * - 「列表」为单个按钮，点击弹出下拉选择 无序 / 有序 / 取消
+ * 编辑器工具栏（对齐参考稿 editor.html：单行 h-10 纯图标）。
+ * 从左到右：标签（由 TabBar 提供）→ 字号▾ → 分隔线 → B/I/U/S → 分隔线 →
+ * 无序/有序/引用/代码/链接/图片/公式 → 模块▾ → 「更多」▾（代码块/注释/信息块/表格/撤销/重做）→
+ * 右侧：保存状态 + 历史快照 + 附件 + 导出主按钮（--primary 底白字）。
+ * 图标控件直接映射 Tiptap 命令；激活态（B/I/U）随光标状态实时更新。
  */
-import { useCurrentEditor, useEditorState, type Editor } from '@tiptap/react'
+import { useCurrentEditor, useEditorState } from '@tiptap/react'
 import { type MarkdownExtensionStorage } from '@tiptap/markdown'
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -13,52 +14,40 @@ import { newId } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
 import { Icon } from '../icons'
 
-interface Btn {
-  icon: ReactNode
-  label: string
+/** 工具栏图标按钮（方形 32px，hover --muted 底；激活 --primary 色） */
+function ToolIcon({
+  title,
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
   title: string
   active?: boolean
   disabled?: boolean
   onClick: () => void
-}
-
-function ToolbarButton({ b }: { b: Btn }) {
+  children: ReactNode
+}) {
   return (
     <button
       type="button"
-      title={b.title}
-      disabled={b.disabled}
-      onClick={b.onClick}
+      title={title}
+      aria-label={title}
+      disabled={disabled}
+      onClick={onClick}
       className={[
-        'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
-        b.active
-          ? 'bg-blue-100 text-blue-700'
-          : 'text-foreground/80 hover:bg-accent hover:text-gray-800',
-        b.disabled ? 'cursor-not-allowed opacity-40' : '',
+        'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
+        active ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+        'active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+        disabled ? 'cursor-not-allowed opacity-40' : '',
       ].join(' ')}
     >
-      <span className="text-[15px] leading-none">{b.icon}</span>
-      <span
-        className={[
-          'max-w-full truncate text-[10px] leading-none',
-          b.active ? 'font-medium' : 'text-muted-foreground',
-        ].join(' ')}
-      >
-        {b.label}
-      </span>
+      {children}
     </button>
   )
 }
 
-function Divider() {
-  return <span className="mx-1 h-8 w-px shrink-0 bg-gray-200" />
-}
-
-/** 下拉菜单容器：
- * 面板通过 portal 渲染到 document.body（fixed 定位），
- * 避免被工具栏 overflow-x-auto 容器裁剪（UX 优化 4 修正）；
- * 点击外部 / 滚动 / 窗口大小变化时自动关闭。
- */
+/** 下拉容器（portal 到 body 固定定位，避免被工具栏裁剪） */
 function Dropdown({
   open,
   onClose,
@@ -74,7 +63,6 @@ function Dropdown({
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [pos, setPos] = useState<{ top: number; left: number; minWidth: number } | null>(null)
 
-  // 打开时按触发按钮当前屏幕位置计算面板坐标
   useEffect(() => {
     if (!open) return
     const el = wrapRef.current
@@ -83,7 +71,6 @@ function Dropdown({
     setPos({ top: rect.bottom + 4, left: rect.left, minWidth: rect.width })
   }, [open])
 
-  // 外部点击、滚动、窗口变化时关闭
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
@@ -237,57 +224,56 @@ function FootnoteDialog({
       onMouseDown={onClose}
     >
       <div
-        className="w-[440px] rounded-xl bg-card p-4 shadow-xl"
+        className="w-[420px] rounded-lg border border-border bg-card p-4 shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="mb-1 text-sm font-semibold text-gray-800">添加注释</div>
-        <div className="mb-2 text-[11px] text-muted-foreground">选择插入样式（选择会被记住）</div>
-        <div className="mb-2 flex gap-2">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-semibold text-foreground">插入注释</span>
+          <button
+            type="button"
+            aria-label="关闭"
+            onClick={onClose}
+            className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Icon name="close" className="size-3.5" />
+          </button>
+        </div>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="注释内容（正文出现上标 [n]，文末参考栏展示）"
+          rows={3}
+          autoFocus
+          className="w-full resize-none rounded-md border border-input bg-background px-2.5 py-2 text-[13px] text-foreground outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        />
+        <div className="mt-3 flex gap-2">
           <StyleCard
             active={style === 'block'}
             onClick={() => setStyle('block')}
-            title="脚注区域（原样式）"
-            desc="正文插入上标 [n]，文末自动生成灰底「脚注」信息块，条目可就地编辑"
+            title="灰底脚注区"
+            desc="文末独立参考区域（KE 默认）"
           />
           <StyleCard
             active={style === 'plain'}
             onClick={() => setStyle('plain')}
             title="纯 Markdown"
-            desc="正文同样插入上标 [n]；文末 # 参考 与 [n]内容 为普通段落，无连接、可自由编辑"
+            desc="普通段落（降级友好）"
           />
         </div>
-        <div className="mb-2 text-[11px] text-muted-foreground">
-          {style === 'plain'
-            ? '正文插入上标 [n]；文末追加 # 参考 与 [n]内容（普通段落，可自由编辑，无上标连接）。'
-            : '正文将插入右上角上标 [n]，并在文末脚注区域（独立 footnotes 节点）自动生成对应条目。'}
-        </div>
-        <textarea
-          autoFocus
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="输入注释内容…"
-          className="h-24 w-full resize-none rounded-md border border-border p-2 text-[13px] leading-relaxed text-gray-900 caret-blue-600 outline-none placeholder:text-muted-foreground focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-              e.preventDefault()
-              confirm()
-            }
-          }}
-        />
         <div className="mt-3 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-border px-3 py-1.5 text-[13px] text-foreground/80 hover:bg-accent"
+            className="h-8 rounded-md border border-border px-3 text-[13px] text-foreground/80 hover:bg-muted"
           >
             取消
           </button>
           <button
             type="button"
             onClick={confirm}
-            className="rounded-md bg-primary px-3 py-1.5 text-[13px] font-medium text-white hover:bg-primary-hover"
+            className="h-8 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground hover:brightness-95"
           >
-            插入注释
+            插入
           </button>
         </div>
       </div>
@@ -296,95 +282,88 @@ function FootnoteDialog({
   )
 }
 
-/** 插入公式节点（行内/块级），空公式由 NodeView 自动进入编辑态。
- * 注意：插入后不 setNodeSelection —— 选中节点会触发 ProseMirror 的
- * NodeSelection 视觉样式与选区干扰（公式编辑栏文本全选 bug 的诱因之一）。 */
-function insertMathNode(editor: Editor, display: boolean) {
-  const type = display ? 'mathBlock' : 'math'
-  editor
-    .chain()
-    .focus()
-    .insertContent({ type, attrs: { latex: '', id: newId() } })
-    .run()
+/** 模块标签：Modules/xxx.md → xxx（去前缀与 .md） */
+function moduleLabel(p: string): string {
+  return p.replace(/^Modules\//, '').replace(/\.md$/, '')
 }
 
-/** 模块显示名：Modules/Math/Definition.md -> Math/Definition */
-function moduleLabel(path: string): string {
-  return path.replace(/^Modules\//, '').replace(/\.md$/, '')
+export interface EditorToolbarProps {
+  /** TabBar 段（文档标签 + 新标签按钮），渲染在行最左（参考稿同一行） */
+  tabBar?: ReactNode
+  /** 右侧保存状态文字（如「已保存」）；为空则不显示 */
+  saveLabel?: ReactNode
+  /** 历史快照按钮 */
+  onOpenHistory?: () => void
+  /** 附件面板按钮（上方右侧附件图标） */
+  onOpenAttachments?: () => void
+  /** 导出主按钮（--primary 底白字） */
+  exportButton?: ReactNode
 }
 
-/** 剥离模块正文开头的标题（创建模块时自动生成的 `# 名称`）。
- * 仅剥离内容最前面的第一个一级标题及其后空行；
- * `## 定义` 等章节标题属于内容本身，不剥离。
- * 返回空串表示模块除标题外无内容。 */
-export function stripModuleTitle(content: string): string {
-  const lines = content.split('\n')
-  let i = 0
-  while (i < lines.length && lines[i].trim() === '') i++
-  if (i >= lines.length || !/^#\s+/.test(lines[i].trim())) return content
-  let j = i + 1
-  while (j < lines.length && lines[j].trim() === '') j++
-  return lines.slice(j).join('\n').trimStart()
-}
-
-export default function EditorToolbar() {
+export default function EditorToolbar({
+  tabBar,
+  saveLabel,
+  onOpenHistory,
+  onOpenAttachments,
+  exportButton,
+}: EditorToolbarProps = {}) {
   const { editor } = useCurrentEditor()
-  const fileRef = useRef<HTMLInputElement | null>(null)
-  const barRef = useRef<HTMLDivElement | null>(null)
+  // 编辑器状态快照（激活态实时更新）
+  const s = useEditorState({
+    editor,
+    selector: (ctx) => ({
+      bold: !!ctx.editor?.isActive('bold'),
+      italic: !!ctx.editor?.isActive('italic'),
+      underline: !!ctx.editor?.isActive('underline'),
+      strike: !!ctx.editor?.isActive('strike'),
+      code: !!ctx.editor?.isActive('code'),
+      codeBlock: !!ctx.editor?.isActive('codeBlock'),
+      blockquote: !!ctx.editor?.isActive('blockquote'),
+      bulletList: !!ctx.editor?.isActive('bulletList'),
+      orderedList: !!ctx.editor?.isActive('orderedList'),
+      headingLevel: (() => {
+        for (const lvl of [1, 2, 3, 4, 5, 6] as const) {
+          if (ctx.editor?.isActive('heading', { level: lvl })) return lvl
+        }
+        return 0
+      })(),
+      canUndo: !!ctx.editor?.can().undo(),
+      canRedo: !!ctx.editor?.can().redo(),
+    }),
+  })
+
   const [headingOpen, setHeadingOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
-  const [footnoteOpen, setFootnoteOpen] = useState(false)
   const [moduleOpen, setModuleOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [footnoteOpen, setFootnoteOpen] = useState(false)
   const [modules, setModules] = useState<ModuleInfo[]>([])
+  const fileRef = useRef<HTMLInputElement | null>(null)
+  const barRef = useRef<HTMLDivElement | null>(null)
 
-  const s =
-    useEditorState({
-      editor,
-      selector: ({ editor: e }) => ({
-        headingLevel: e?.isActive('heading') ? (e.getAttributes('heading').level as number) : 0,
-        bold: e?.isActive('bold') ?? false,
-        italic: e?.isActive('italic') ?? false,
-        underline: e?.isActive('underline') ?? false,
-        strike: e?.isActive('strike') ?? false,
-        code: e?.isActive('code') ?? false,
-        codeBlock: e?.isActive('codeBlock') ?? false,
-        blockquote: e?.isActive('blockquote') ?? false,
-        bulletList: e?.isActive('bulletList') ?? false,
-        orderedList: e?.isActive('orderedList') ?? false,
-        canUndo: e?.can().undo() ?? false,
-        canRedo: e?.can().redo() ?? false,
-      }),
-    }) ?? {
-      headingLevel: 0,
-      bold: false,
-      italic: false,
-      underline: false,
-      strike: false,
-      code: false,
-      codeBlock: false,
-      blockquote: false,
-      bulletList: false,
-      orderedList: false,
-      canUndo: false,
-      canRedo: false,
-    }
-
-  // 单行工具栏：悬停时纵向滚轮转为横向滚动（内容未溢出时不影响页面滚动）
+  // 收藏的图标按钮：阻止工具栏横向滚动（wheel → 平移）
   useEffect(() => {
     const el = barRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
-      if (el.scrollWidth > el.clientWidth && e.deltaY !== 0) {
-        el.scrollLeft += e.deltaY
-        e.preventDefault()
-      }
+      if (e.shiftKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY + e.deltaX
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
   if (!editor) return null
+
+  // useEditorState 在编辑器未就绪时返回 null → 兜底默认状态（不渲染任何激活态）
+  const st = s ?? {
+    bold: false, italic: false, underline: false, strike: false,
+    code: false, codeBlock: false, blockquote: false,
+    bulletList: false, orderedList: false, headingLevel: 0,
+    canUndo: false, canRedo: false,
+  }
 
   const applyHeading = (level: 0 | 1 | 2 | 3 | 4 | 5 | 6) => {
     if (level === 0) editor.chain().focus().setParagraph().run()
@@ -416,8 +395,7 @@ export default function EditorToolbar() {
     }
   }
 
-  const headingLabel =
-    s.headingLevel > 0 ? `标题${s.headingLevel}` : '正文'
+  const headingLabel = st.headingLevel > 0 ? `标题${st.headingLevel}` : '正文'
 
   // Phase 5 插入模块：打开下拉时懒加载模块列表
   const toggleModulePicker = async () => {
@@ -433,11 +411,6 @@ export default function EditorToolbar() {
   }
 
   // 插入模块（约束 2 内容复制 + 来源记录）：
-  // 1. 读取模块 Markdown 原文（已剥离 frontmatter）
-  // 2. 剥离开头的 `# 标题`（创建模块时自动生成，不随内容插入）
-  // 3. 前置 ke-module 来源标记（仅含 source）
-  // 4. 整体解析进 Document Model 并插入当前光标位置
-  // 保存后序列化为 ke-module 标记 + 模块内容；模块与文章无动态关系。
   const insertModule = async (m: ModuleInfo) => {
     setModuleOpen(false)
     try {
@@ -454,113 +427,56 @@ export default function EditorToolbar() {
   }
 
   return (
-    <div
-      ref={barRef}
-      className="flex h-[52px] shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-card px-2"
-    >
-      {/* 标题下拉（优化 4） */}
+    <div className="flex h-10 shrink-0 items-center gap-0.5 border-b border-border bg-card px-2">
+      {/* TabBar 段（文档标签 + 新标签按钮，参考稿同一行） */}
+      {tabBar}
+
+      {/* 样式下拉：正文 / 标题1~6（参考稿「正文 ▾」第一段；单行纯图标 → 文字下拉） */}
       <Dropdown
         open={headingOpen}
         onClose={() => setHeadingOpen(false)}
         trigger={
           <button
             type="button"
-            title="标题 / 正文"
+            title="样式 / 标题"
             onClick={() => setHeadingOpen((v) => !v)}
             className={[
-              'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
-              s.headingLevel > 0 ? 'bg-blue-100 text-blue-700' : 'text-foreground/80 hover:bg-accent hover:text-gray-800',
+              'flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[6px] px-2 text-[13px] transition-[background-color,color,transform] duration-150',
+              st.headingLevel > 0 ? 'font-medium text-primary' : 'text-foreground',
+              'hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
             ].join(' ')}
           >
-            <span className="text-[15px] leading-none">Aa</span>
-            <span
-              className={[
-                'max-w-full truncate text-[10px] leading-none',
-                s.headingLevel > 0 ? 'font-medium' : 'text-muted-foreground',
-              ].join(' ')}
-            >
-              {headingLabel}
-            </span>
+            <span>{headingLabel}</span>
+            <Icon name="chevron-down" className="size-3.5 text-muted-foreground" />
           </button>
         }
       >
-        <MenuItem active={s.headingLevel === 0} onClick={() => applyHeading(0)}>
-          正文
-        </MenuItem>
+        <MenuItem active={st.headingLevel === 0} onClick={() => applyHeading(0)}>正文</MenuItem>
         {([1, 2, 3, 4, 5, 6] as const).map((lvl) => (
-          <MenuItem key={lvl} active={s.headingLevel === lvl} onClick={() => applyHeading(lvl)}>
+          <MenuItem key={lvl} active={st.headingLevel === lvl} onClick={() => applyHeading(lvl)}>
             标题{lvl}（{lvl === 1 ? '最大' : lvl === 6 ? '最小' : ''}）
           </MenuItem>
         ))}
       </Dropdown>
 
-      <Divider />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="bold" className="size-4" />,
-          label: '粗体',
-          title: '粗体',
-          active: s.bold,
-          onClick: () => editor.chain().focus().toggleBold().run(),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="italic" className="size-4" />,
-          label: '斜体',
-          title: '斜体',
-          active: s.italic,
-          onClick: () => editor.chain().focus().toggleItalic().run(),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="underline" className="size-4" />,
-          label: '下划线',
-          title: '下划线',
-          active: s.underline,
-          onClick: () => editor.chain().focus().toggleUnderline().run(),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="strike" className="size-4" />,
-          label: '删除线',
-          title: '删除线',
-          active: s.strike,
-          onClick: () => editor.chain().focus().toggleStrike().run(),
-        }}
-      />
-      <Divider />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="code" className="size-4" />,
-          label: '行内码',
-          title: '行内代码',
-          active: s.code,
-          onClick: () => editor.chain().focus().toggleCode().run(),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <code>{"{ }"}</code>,
-          label: '代码块',
-          title: '代码块',
-          active: s.codeBlock,
-          onClick: () => editor.chain().focus().toggleCodeBlock().run(),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="quote" className="size-4" />,
-          label: '引用',
-          title: '引用',
-          active: s.blockquote,
-          onClick: () => editor.chain().focus().toggleBlockquote().run(),
-        }}
-      />
-      <Divider />
-      {/* 列表下拉（优化 4） */}
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+
+      <ToolIcon title="加粗" active={st.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
+        <Icon name="bold" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="斜体" active={st.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <Icon name="italic" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="下划线" active={st.underline} onClick={() => editor.chain().focus().toggleUnderline().run()}>
+        <Icon name="underline" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="删除线" active={st.strike} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <Icon name="strike" className="size-4" />
+      </ToolIcon>
+
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+
+      {/* 列表下拉（无序/有序/取消） */}
       <Dropdown
         open={listOpen}
         onClose={() => setListOpen(false)}
@@ -570,71 +486,51 @@ export default function EditorToolbar() {
             title="列表类型"
             onClick={() => setListOpen((v) => !v)}
             className={[
-              'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
-              s.bulletList || s.orderedList
-                ? 'bg-blue-100 text-blue-700'
-                : 'text-foreground/80 hover:bg-accent hover:text-gray-800',
+              'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
+              st.bulletList || st.orderedList ? 'text-primary' : 'text-muted-foreground',
+              'hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
             ].join(' ')}
           >
             <Icon name="list" className="size-4" />
-            <span
-              className={[
-                'max-w-full truncate text-[10px] leading-none',
-                s.bulletList || s.orderedList ? 'font-medium' : 'text-muted-foreground',
-              ].join(' ')}
-            >
-              列表
-            </span>
           </button>
         }
       >
-        <MenuItem active={s.bulletList} onClick={() => applyList('bullet')}>
-          • 无序列表
-        </MenuItem>
-        <MenuItem active={s.orderedList} onClick={() => applyList('ordered')}>
-          1. 有序列表
-        </MenuItem>
-        <MenuItem
-          active={!s.bulletList && !s.orderedList}
-          onClick={() => applyList('none')}
-        >
-          无（清除格式）
-        </MenuItem>
+        <MenuItem active={st.bulletList} onClick={() => applyList('bullet')}>无序列表</MenuItem>
+        <MenuItem active={st.orderedList} onClick={() => applyList('ordered')}>有序列表</MenuItem>
+        <MenuItem active={!st.bulletList && !st.orderedList} onClick={() => applyList('none')}>无（清除格式）</MenuItem>
       </Dropdown>
-      <Divider />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="formula" className="size-4" />,
-          label: '行内公式',
-          title: '插入行内公式（LaTeX 源码 + 渲染）',
-          onClick: () => insertMathNode(editor, false),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="formula" className="size-4" />,
-          label: '块级公式',
-          title: '插入块级公式（LaTeX 源码 + 渲染）',
-          onClick: () => insertMathNode(editor, true),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="note" className="size-4" />,
-          label: '注释',
-          title: '插入注释（正文上标 [n] + 文末参考栏）',
-          onClick: () => setFootnoteOpen(true),
-        }}
-      />
-      <ToolbarButton
-        b={{
-          icon: <Icon name="bulb" className="size-4" />,
-          label: '信息块',
-          title: '插入信息块（标题可自定义）',
-          onClick: () => editor.chain().focus().insertNote('', 'blue').run(),
-        }}
-      />
-      {/* Phase 5：插入模块（来源记录模式） */}
+      <ToolIcon title="有序列表" active={st.orderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <Icon name="ordered-list" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="引用" active={st.blockquote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
+        <Icon name="quote" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="行内代码" active={st.code} onClick={() => editor.chain().focus().toggleCode().run()}>
+        <Icon name="code" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="插入链接" onClick={() => {
+        const prev = editor.getAttributes('link').href as string | undefined
+        const url = window.prompt('链接地址：', prev ?? 'https://')
+        if (url === null) return
+        if (url === '') {
+          editor.chain().focus().extendMarkRange('link').unsetLink().run()
+          return
+        }
+        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+      }}>
+        <Icon name="link" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="插入图片" onClick={() => fileRef.current?.click()}>
+        <Icon name="image" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="插入公式" onClick={() => {
+        const node = { type: 'mathBlock', attrs: { id: newId(), latex: '' } }
+        editor.chain().focus().insertContent(node).run()
+      }}>
+        <Icon name="sigma" className="size-4" />
+      </ToolIcon>
+
+      {/* 模块▾（box 图标 + 文字 + chevron；懒加载） */}
       <Dropdown
         open={moduleOpen}
         onClose={() => setModuleOpen(false)}
@@ -643,15 +539,11 @@ export default function EditorToolbar() {
             type="button"
             title="插入模块（复制 Modules/ 内容 + 来源标记）"
             onClick={() => void toggleModulePicker()}
-            className={[
-              'flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors',
-              'text-foreground/80 hover:bg-accent hover:text-gray-800',
-            ].join(' ')}
+            className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-border bg-card px-2.5 text-[13px] text-foreground transition-[background-color,color,transform,border-color] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           >
-            <Icon name="module" className="size-4" />
-            <span className="max-w-full truncate text-[10px] leading-none text-muted-foreground">
-              模块
-            </span>
+            <Icon name="box" className="size-3.5 text-muted-foreground" />
+            <span>模块</span>
+            <Icon name="chevron-down" className="size-3.5 text-muted-foreground" />
           </button>
         }
       >
@@ -669,37 +561,61 @@ export default function EditorToolbar() {
           </div>
         )}
       </Dropdown>
-      {/* 表格：行列网格选择器（1~8 行 × 1~8 列） */}
+
+      {/* 更多▾：代码块 / 注释 / 信息块 / 表格 / 撤销 / 重做（保留功能，收进溢出） */}
       <Dropdown
-        open={tableOpen}
-        onClose={() => setTableOpen(false)}
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
         trigger={
           <button
             type="button"
-            title="插入表格（选择行列数）"
-            onClick={() => setTableOpen((v) => !v)}
-            className="flex h-10 min-w-[52px] flex-col items-center justify-center gap-[3px] rounded-md px-1.5 transition-colors text-foreground/80 hover:bg-accent hover:text-gray-800"
+            title="更多格式"
+            onClick={() => setMoreOpen((v) => !v)}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color,transform] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           >
-            <Icon name="table" className="size-4" />
-            <span className="max-w-full truncate text-[10px] leading-none text-muted-foreground">表格</span>
+            <Icon name="more-horizontal" className="size-4" />
           </button>
         }
       >
-        <TableSizePicker
-          onPick={(rows, cols) => {
-            setTableOpen(false)
-            editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
-          }}
-        />
+        <MenuItem active={st.codeBlock} onClick={() => { editor.chain().focus().toggleCodeBlock().run(); setMoreOpen(false) }}>
+          代码块
+        </MenuItem>
+        <MenuItem onClick={() => { setMoreOpen(false); setFootnoteOpen(true) }}>
+          注释（脚注）
+        </MenuItem>
+        <MenuItem onClick={() => { setMoreOpen(false); editor.chain().focus().insertNote('', 'blue').run() }}>
+          信息块（ke-note）
+        </MenuItem>
+        <MenuItem onClick={() => { setMoreOpen(false); setTableOpen(true) }}>
+          表格…
+        </MenuItem>
+        <div className="my-1 border-t border-border" />
+        <MenuItem onClick={() => { setMoreOpen(false); editor.chain().focus().undo().run() }}>
+          撤销
+        </MenuItem>
+        <MenuItem onClick={() => { setMoreOpen(false); editor.chain().focus().redo().run() }}>
+          重做
+        </MenuItem>
       </Dropdown>
-      <ToolbarButton
-        b={{
-          icon: <Icon name="attachment" className="size-4" />,
-          label: '附件',
-          title: '插入附件（图片/文件/视频）',
-          onClick: () => fileRef.current?.click(),
-        }}
-      />
+
+      {/* 右侧：保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {saveLabel ? (
+          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
+        ) : null}
+        {onOpenHistory ? (
+          <ToolIcon title="历史快照" onClick={onOpenHistory}>
+            <Icon name="history" className="size-4" />
+          </ToolIcon>
+        ) : null}
+        {onOpenAttachments ? (
+          <ToolIcon title="附件" onClick={onOpenAttachments}>
+            <Icon name="paperclip" className="size-4" />
+          </ToolIcon>
+        ) : null}
+        {exportButton}
+      </div>
+
       <input
         ref={fileRef}
         type="file"
@@ -707,26 +623,21 @@ export default function EditorToolbar() {
         onChange={onPickFile}
         accept="image/*,video/*,.pdf,.zip,.txt,.csv,.xlsx,.docx,.pptx,.epub,.json"
       />
-      <div className="ml-auto flex shrink-0 items-center">
-        <ToolbarButton
-          b={{
-            icon: <Icon name="undo" className="size-4" />,
-            label: '撤销',
-            title: '撤销',
-            disabled: !s.canUndo,
-            onClick: () => editor.chain().focus().undo().run(),
-          }}
-        />
-        <ToolbarButton
-          b={{
-            icon: <Icon name="redo" className="size-4" />,
-            label: '重做',
-            title: '重做',
-            disabled: !s.canRedo,
-            onClick: () => editor.chain().focus().redo().run(),
-          }}
-        />
-      </div>
+
+      {/* 表格：行列网格选择器（1~8 行 × 1~8 列）对话框（更多菜单触发） */}
+      {tableOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onMouseDown={() => setTableOpen(false)}>
+          <div className="rounded-lg border border-border bg-card p-3 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
+            <TableSizePicker
+              onPick={(rows, cols) => {
+                setTableOpen(false)
+                editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {/* 注释输入弹窗 */}
       <FootnoteDialog
         open={footnoteOpen}
@@ -739,4 +650,10 @@ export default function EditorToolbar() {
       />
     </div>
   )
+}
+
+/** 剥离模块内容开头的 `# 标题`（创建模块时自动生成，不随内容插入） */
+export function stripModuleTitle(content: string): string {
+  const m = /^#\s+.+(\n|$)/.exec(content.trimStart())
+  return m ? content.trimStart().slice(m[0].length).trimStart() : content.trimStart()
 }

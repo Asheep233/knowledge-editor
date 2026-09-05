@@ -3,7 +3,7 @@
  * 全部 16×16 viewBox、stroke=currentColor、无填充；统一 1.5px 描边。
  * 用法：<Icon name="search" className="size-4" /> 或直接引用组件。
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
 export type IconName =
   | 'search'
@@ -48,6 +48,18 @@ export type IconName =
   | 'edit'
   | 'alert'
   | 'folder-plus'
+  // 窗口控件 / 参考稿对齐（WindowChrome mock、状态图标）
+  | 'minus'
+  | 'square'
+  | 'panel-right-close'
+  | 'rotate-ccw'
+  | 'box'
+  | 'clock'
+  | 'circle-check'
+  | 'paperclip'
+  | 'more-horizontal'
+  | 'sigma'
+  | 'image-plus'
 
 const PATHS: Record<IconName, ReactNode> = {
   search: (
@@ -217,6 +229,57 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M8 7.5v3.5M6.2 9.2h3.6" />
     </>
   ),
+  minus: <path d="M3.5 8h9" />,
+  square: <rect x="3.5" y="3.5" width="9" height="9" rx="1" />,
+  'panel-right-close': (
+    <>
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
+      <path d="M11 2.5v11M8.5 7 7 8.5 8.5 10" />
+    </>
+  ),
+  'rotate-ccw': (
+    <>
+      <path d="M3 6a6 6 0 1 1-.5 5" />
+      <path d="M3 3v3h3" />
+    </>
+  ),
+  box: (
+    <>
+      <path d="M2.5 4.5 8 2l5.5 2.5v7L8 14l-5.5-2.5Z" />
+      <path d="M2.5 4.5 8 7l5.5-2.5M8 7v7" />
+    </>
+  ),
+  clock: (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M8 5v3l2 1.5" />
+    </>
+  ),
+  'circle-check': (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M5.5 8.2 7.2 10l3.3-3.5" />
+    </>
+  ),
+  paperclip: (
+    <>
+      <path d="M9 3.5 4.2 8.3a3 3 0 0 0 4.2 4.3l5-5a4.4 4.4 0 0 0-6.2-6.2L2.4 6.2" />
+    </>
+  ),
+  'more-horizontal': <path d="M4 8h.01M8 8h.01M12 8h.01" />,
+  sigma: (
+    <>
+      <path d="M10 3.5H5.5L9 8l-3.5 4.5H10" />
+      <path d="M10.5 3.5H13M10.5 12.5H13" />
+    </>
+  ),
+  'image-plus': (
+    <>
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
+      <path d="M5 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM2.5 11.5l3.5-3.5 3 3 2-2 3.5 3" />
+      <path d="M13 4.5h0M13 1.5v0" />
+    </>
+  ),
 }
 
 export interface IconProps {
@@ -224,9 +287,11 @@ export interface IconProps {
   className?: string
   /** 无障碍标签（图标按钮必须提供） */
   label?: string
+  /** 透传 SVG 样式（如 color 覆写） */
+  style?: CSSProperties
 }
 
-export function Icon({ name, className = 'size-4', label }: IconProps) {
+export function Icon({ name, className = 'size-4', label, style }: IconProps) {
   return (
     <svg
       viewBox="0 0 16 16"
@@ -236,6 +301,7 @@ export function Icon({ name, className = 'size-4', label }: IconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      style={style}
       aria-hidden={label ? undefined : true}
       aria-label={label}
       role={label ? 'img' : undefined}

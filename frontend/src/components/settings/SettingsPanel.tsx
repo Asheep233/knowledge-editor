@@ -36,6 +36,8 @@ export default function SettingsPanel({ open, onClose }: Props) {
   const [ready, setReady] = useState(false)
   const [indexBusy, setIndexBusy] = useState(false)
   const [indexResult, setIndexResult] = useState<string | null>(null)
+  // 分组导航（参考稿 §3.6：常规 / 外观 / 维护）
+  const [group, setGroup] = useState<'general' | 'appearance' | 'maintenance'>('general')
 
   // 打开时重新加载（面板独立于 App 生命周期，设置可能被外部修改）
   useEffect(() => {
@@ -69,16 +71,6 @@ export default function SettingsPanel({ open, onClose }: Props) {
     // 简单防御：非法数值回退当前值（不写盘）
     if (!Number.isFinite(value) || value < 0) return
     await patchAndSave({ [group]: { [key]: value } } as SettingsPatch)
-  }
-
-  const handleAutosaveBlur = async (value: string) => {
-    const v = Number(value)
-    if (!Number.isInteger(v) || v < 500 || v > 600000) {
-      setSettings((s) => ({ ...s, editor: { ...s.editor, autosaveIntervalMs: s.editor.autosaveIntervalMs } }))
-      return
-    }
-    if (v === settings.editor.autosaveIntervalMs) return
-    await setNumber('editor', 'autosaveIntervalMs', v)
   }
 
   const handleRetentionBlur = async (value: string) => {
@@ -116,161 +108,200 @@ export default function SettingsPanel({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/20" onClick={onClose}>
-      <aside
-        className="absolute right-0 top-0 flex h-full w-[400px] flex-col border-l border-border bg-background shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            设置
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
-              v1.0.2 · Alpha
-            </span>
-          </h2>
-          <button
-            type="button"
-            data-action="close-settings"
-            onClick={onClose}
-            title="关闭"
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Icon name="close" className="size-4" />
-          </button>
-        </header>
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      {/* 顶栏：菜单栏 mock（含设置标题）+ 标题行 */}
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">设置</span>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
+            v1.0.2 · Alpha
+          </span>
+        </div>
+        <button
+          type="button"
+          data-action="close-settings"
+          onClick={onClose}
+          title="返回编辑器"
+          className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="close" className="size-4" />
+        </button>
+      </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-xs text-foreground/80">
+      <div className="flex min-h-0 flex-1">
+        {/* 左分组栏（参考稿 §3.6：常规 / 外观 / 维护） */}
+        <aside className="flex w-[220px] shrink-0 flex-col gap-1 border-r border-border p-3">
+          {([
+            ['general', '常规'],
+            ['appearance', '外观'],
+            ['maintenance', '维护'],
+          ] as const).map(([g, label]) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGroup(g)}
+              className={[
+                'flex h-8 items-center rounded-[8px] px-2.5 text-[13px] transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+                group === g
+                  ? 'font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              ].join(' ')}
+              style={group === g ? { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' } : undefined}
+            >
+              {label}
+            </button>
+          ))}
+        </aside>
+
+        {/* 右内容区 */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
           {!ready && <p className="py-8 text-center text-muted-foreground">加载设置中…</p>}
 
-          {/* 启动 */}
-          <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
-              启动
-            </h3>
-            <ToggleRow
-              label="恢复上次状态"
-              desc="重开上次文档与侧栏布局（迁移期沿用现有记忆逻辑）"
-              checked={settings.startup.restoreLastState}
-              onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
-            />
-            <ToggleRow
-              label="自动打开最近 Workspace"
-              desc="启动时自动打开最近使用的工作区"
-              checked={settings.startup.autoOpenRecentWorkspace}
-              onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
-            />
-          </section>
+          {group === 'general' && (
+            <>
+              {/* 常规：启动、恢复与保存偏好 */}
+              <section className="mb-6">
+                <h3 className="mb-2 border-b border-border pb-1 text-[12px] font-semibold text-muted-foreground">
+                  启动、恢复与保存偏好
+                </h3>
+                <ToggleRow
+                  label="启动时恢复上次打开的文档"
+                  desc="继续上次的写作现场"
+                  checked={settings.startup.restoreLastState}
+                  onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
+                />
+                <ToggleRow
+                  label="启动时自动打开最近 Workspace"
+                  desc="自动打开最近使用的工作区"
+                  checked={settings.startup.autoOpenRecentWorkspace}
+                  onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
+                />
+                <SelectRow
+                  label="自动保存间隔"
+                  desc="停止输入后延迟保存"
+                  value={String(settings.editor.autosaveIntervalMs)}
+                  options={[
+                    { value: '1000', label: '1 秒' },
+                    { value: '3000', label: '3 秒（默认）' },
+                    { value: '5000', label: '5 秒' },
+                    { value: '30000', label: '30 秒' },
+                    { value: '60000', label: '1 分钟' },
+                  ]}
+                  onChange={(v) => void setNumber('editor', 'autosaveIntervalMs', Number(v))}
+                />
+                <NumberRow
+                  label="历史版本保留数量"
+                  desc="每篇文档保留的备份份数（1–999）"
+                  value={settings.editor.historyRetentionCount}
+                  onBlur={(v) => void handleRetentionBlur(v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const target = e.currentTarget as HTMLInputElement
+                      target.blur()
+                    }
+                  }}
+                />
+              </section>
+            </>
+          )}
 
-          {/* 编辑器 */}
-          <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
-              编辑器
-            </h3>
-            <NumberRow
-              label="自动保存间隔（毫秒）"
-              desc="停止输入后延迟保存，500–600000"
-              value={settings.editor.autosaveIntervalMs}
-              onBlur={(v) => void handleAutosaveBlur(v)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const target = e.currentTarget as HTMLInputElement
-                  target.blur()
-                }
-              }}
-            />
-            <NumberRow
-              label="历史版本保留数量"
-              desc="每篇文档保留的备份份数（1–999，迁移期保持 30）"
-              value={settings.editor.historyRetentionCount}
-              onBlur={(v) => void handleRetentionBlur(v)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const target = e.currentTarget as HTMLInputElement
-                  target.blur()
-                }
-              }}
-            />
-          </section>
+          {group === 'appearance' && (
+            <>
+              {/* 外观：主题 + 界面字号 */}
+              <section className="mb-6">
+                <h3 className="mb-2 border-b border-border pb-1 text-[12px] font-semibold text-muted-foreground">
+                  主题与界面字号
+                </h3>
+                <div className="mb-4">
+                  <div className="mb-1.5 text-[12px] text-foreground/80">主题</div>
+                  {/* 分段控件（handoff §3.6）：激活段 --primary 底白字 */}
+                  <div className="flex overflow-hidden rounded-md border border-border bg-muted/40">
+                    {THEME_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        aria-pressed={settings.ui.theme === opt.value}
+                        onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
+                        className={[
+                          'flex-1 px-2 py-1.5 text-center text-[12px] transition-colors',
+                          settings.ui.theme === opt.value
+                            ? 'bg-primary font-medium text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        ].join(' ')}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-          {/* 界面 */}
-          <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
-              外观
-            </h3>
-            {/* 分段控件（handoff §3.6）：激活段 --primary 底白字 */}
-            <div className="flex overflow-hidden rounded-md border border-border bg-muted/40">
-              {THEME_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  aria-pressed={settings.ui.theme === opt.value}
-                  onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
-                  className={[
-                    'flex-1 px-2 py-1.5 text-center text-[12px] transition-colors',
-                    settings.ui.theme === opt.value
-                      ? 'bg-primary font-medium text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  ].join(' ')}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">主题立即生效；深色 UI 完整适配渐进进行中</p>
+                {/* Phase 2：自定义强调色（浅色/深色各一套，空 = 使用默认） */}
+                <div className="space-y-2">
+                  <AccentColorRow
+                    label="强调色 · 浅色"
+                    value={settings.ui.accentColor?.light}
+                    fallback={DEFAULT_ACCENT.light}
+                    onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
+                  />
+                  <AccentColorRow
+                    label="强调色 · 深色"
+                    value={settings.ui.accentColor?.dark}
+                    fallback={DEFAULT_ACCENT.dark}
+                    onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
+                  />
+                </div>
+              </section>
+            </>
+          )}
 
-            {/* Phase 2：自定义强调色（浅色/深色各一套，空 = 使用默认） */}
-            <div className="mt-4 space-y-2">
-              <AccentColorRow
-                label="强调色 · 浅色"
-                value={settings.ui.accentColor?.light}
-                fallback={DEFAULT_ACCENT.light}
-                onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
-              />
-              <AccentColorRow
-                label="强调色 · 深色"
-                value={settings.ui.accentColor?.dark}
-                fallback={DEFAULT_ACCENT.dark}
-                onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
-              />
-            </div>
-          </section>
-
-          {/* 维护 */}
-          <section className="mb-4">
-            <h3 className="mb-1.5 border-b border-border pb-1 text-[11px] font-semibold text-muted-foreground">
-              维护
-            </h3>
-            <div className="space-y-2">
-              <MaintenanceButton
-                action="open-log"
-                label="查看日志"
-                desc={desktop ? '打开日志目录（%APPDATA%\\KnowledgeEditor\\logs）' : '桌面版功能'}
-                disabled={!desktop}
-                onClick={() => void handleOpenDir('open_log_dir')}
-              />
-              <MaintenanceButton
-                action="open-data"
-                label="打开数据目录"
-                desc={desktop ? '打开 Workspace 目录（%APPDATA%\\KnowledgeEditor\\workspace）' : '桌面版功能'}
-                disabled={!desktop}
-                onClick={() => void handleOpenDir('open_data_dir')}
-              />
-              <MaintenanceButton
-                action="rebuild-index"
-                label={indexBusy ? '重建中…' : '重建索引'}
-                desc="重建全文索引（搜索 / 历史恢复依据）"
-                disabled={indexBusy}
-                onClick={() => void handleRebuildIndex()}
-              />
-              {indexResult && <p className="text-[11px] text-gray-500">{indexResult}</p>}
-            </div>
-          </section>
+          {group === 'maintenance' && (
+            <>
+              {/* 维护：索引、数据目录与应用更新 */}
+              <section className="mb-6">
+                <h3 className="mb-2 border-b border-border pb-1 text-[12px] font-semibold text-muted-foreground">
+                  索引、数据目录与应用更新
+                </h3>
+                <div className="space-y-2">
+                  <MaintenanceButton
+                    action="rebuild-index"
+                    label={indexBusy ? '重建中…' : '重建索引'}
+                    desc="重建全文索引（搜索 / 历史恢复依据）"
+                    disabled={indexBusy}
+                    onClick={() => void handleRebuildIndex()}
+                  />
+                  {indexResult && <p className="text-[11px] text-muted-foreground">{indexResult}</p>}
+                  <MaintenanceButton
+                    action="open-log"
+                    label="查看日志"
+                    desc={desktop ? '打开日志目录（%APPDATA%\\KnowledgeEditor\\logs）' : '桌面版功能'}
+                    disabled={!desktop}
+                    onClick={() => void handleOpenDir('open_log_dir')}
+                  />
+                  <MaintenanceButton
+                    action="open-data"
+                    label="打开数据目录"
+                    desc={desktop ? '打开 Workspace 目录（%APPDATA%\\KnowledgeEditor\\workspace）' : '桌面版功能'}
+                    disabled={!desktop}
+                    onClick={() => void handleOpenDir('open_data_dir')}
+                  />
+                  {/* 检查更新（参考稿：已是最新徽章） */}
+                  <div className="flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      className="rounded border border-border bg-background px-3 py-1.5 text-[12px] text-foreground/80 transition-colors hover:bg-muted"
+                    >
+                      检查更新
+                    </button>
+                    <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
+                      已是最新
+                    </span>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
         </div>
-
-        <footer className="shrink-0 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
-          设置存储于应用数据目录（settings.json，schema v1），Web 版保存在浏览器本地
-        </footer>
-      </aside>
+      </div>
     </div>
   )
 }
@@ -311,6 +342,43 @@ function ToggleRow({
           ].join(' ')}
         />
       </button>
+    </div>
+  )
+}
+
+/** 下拉行（常规分组：自动保存间隔） */
+function SelectRow({
+  label,
+  desc,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  desc: string
+  value: string
+  options: Array<{ value: string; label: string }>
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center justify-between py-1">
+      <div className="min-w-0 pr-3">
+        <div className="text-[12px] text-foreground/80">{label}</div>
+        <div className="truncate text-[11px] text-muted-foreground" title={desc}>
+          {desc}
+        </div>
+      </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 rounded-md border border-input bg-card px-1.5 text-[12px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }

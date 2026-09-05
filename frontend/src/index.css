@@ -163,12 +163,16 @@ body {
   margin: 0.2em 0;
 }
 .ke-editor-prose blockquote {
-  margin: 0.7em 0;
-  padding: 0.1em 1em;
-  border-left: 3px solid #cbd5e1;
-  color: #475569;
-  background: #f8fafc;
-  border-radius: 0 6px 6px 0;
+  margin: 1.5em 0;
+  padding: 0.75em 1em;
+  /* 参考稿：3px 主色左缘 + popover 底 + 圆角 2px 8px 8px 2px */
+  border-left: 3px solid var(--primary);
+  color: var(--foreground);
+  background: var(--popover);
+  border-radius: 2px 8px 8px 2px;
+}
+[data-theme='dark'] .ke-editor-prose blockquote {
+  background: var(--popover);
 }
 .ke-editor-prose code {
   font-family: "Cascadia Code", Consolas, "JetBrains Mono", monospace;

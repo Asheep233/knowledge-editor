@@ -4,8 +4,13 @@
  * 启动（恢复上次状态 / 自动打开最近 Workspace）、编辑器（自动保存间隔 / 历史版本保留数量）、
  * 界面（主题 system/light/dark）、维护（查看日志 / 打开数据目录 / 重建索引）。
  * 改动即时保存并即时生效（autosave 间隔经 settings 缓存由 EditorArea 读取）。
+ *
+ * 本文件为「对齐参考稿 settings.html 卡片式布局」重排：右内容区 max-w-[680px] 居中，
+ * 每组 = 标题行（14px 标题 + 右侧副文案）+ 一张 rounded-lg border bg-card 卡片，
+ * 卡片内每行 px-4 py-3.5、行间 divide-y，行内左侧 14px 标题 + 12px 描述、右侧控件。
+ * 仅为视觉重排，未改任何设置 schema / 持久化 / 锚点逻辑。
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { rebuildIndex } from '../../api/client'
 import type { AppSettings, SettingsPatch } from '../../settings'
 import {
@@ -137,271 +142,284 @@ export default function SettingsPanel({ open, onClose }: Props) {
       {/* 顶栏：标题行 */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">设置</span>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
-            v1.0.2 · Alpha
-          </span>
+          <Icon name="settings" className="size-[18px] text-muted-foreground" />
+          <span className="text-[16px] font-semibold tracking-tight text-foreground">设置</span>
         </div>
-        <button
-          type="button"
-          data-action="close-settings"
-          onClick={onClose}
-          title="返回编辑器"
-          className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Icon name="close" className="size-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] text-muted-foreground">KnowledgeEditor v1.0.2 · Alpha</span>
+          <button
+            type="button"
+            data-action="close-settings"
+            onClick={onClose}
+            title="返回编辑器"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Icon name="close" className="size-4" />
+          </button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
         {/* 左分组栏（参考稿 §3.6：220px popover 底 + 34px rounded-lg 按钮，点击锚点跳转） */}
         <aside
-          className="flex w-[220px] shrink-0 flex-col gap-1 border-r p-3"
+          className="flex w-[220px] shrink-0 flex-col border-r p-3"
           style={{ borderColor: 'var(--border)', backgroundColor: 'var(--popover)' }}
         >
-          {([
-            ['general', '常规'],
-            ['appearance', '外观'],
-            ['maintenance', '维护'],
-          ] as const).map(([g, label]) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => {
-                setGroup(g)
-                const el = document.getElementById(`settings-group-${g}`)
-                el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-              className={[
-                'flex h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
-                group === g
-                  ? ''
-                  : 'hover:bg-accent hover:text-accent-foreground',
-              ].join(' ')}
-              style={
-                group === g
-                  ? { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
-                  : { color: 'var(--foreground)' }
-              }
-            >
-              {label}
-            </button>
-          ))}
+          <div className="flex flex-col gap-1">
+            {([
+              ['general', '常规'],
+              ['appearance', '外观'],
+              ['maintenance', '维护'],
+            ] as const).map(([g, label]) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => {
+                  setGroup(g)
+                  const el = document.getElementById(`settings-group-${g}`)
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className={[
+                  'flex h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
+                  group === g
+                    ? ''
+                    : 'hover:bg-accent hover:text-accent-foreground',
+                ].join(' ')}
+                style={
+                  group === g
+                    ? { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
+                    : { color: 'var(--foreground)' }
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </aside>
 
-        {/* 右内容区：全量多组滚动（参考稿：一页从上到下全部设置项） */}
-        <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
-          {!ready && <p className="py-8 text-center text-muted-foreground">加载设置中…</p>}
-
-          {/* 常规：启动、恢复与保存偏好（锚点 general） */}
-          <div id="settings-group-general" data-group="general" className="scroll-mt-4">
-            <section className="mb-6">
-              <h3 className="mb-2.5 border-b border-border pb-1.5 text-[13px] font-semibold text-foreground/80">
-                启动、恢复与保存偏好
-              </h3>
-              <ToggleRow
-                label="启动时恢复上次打开的文档"
-                desc="继续上次的写作现场"
-                checked={settings.startup.restoreLastState}
-                onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
-              />
-              <ToggleRow
-                label="启动时自动打开最近 Workspace"
-                desc="自动打开最近使用的工作区"
-                checked={settings.startup.autoOpenRecentWorkspace}
-                onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
-              />
-              <SelectRow
-                label="自动保存间隔"
-                desc="停止输入后延迟保存"
-                value={String(settings.editor.autosaveIntervalMs)}
-                options={[
-                  { value: '1000', label: '1 秒' },
-                  { value: '3000', label: '3 秒（默认）' },
-                  { value: '5000', label: '5 秒' },
-                  { value: '30000', label: '30 秒' },
-                  { value: '60000', label: '1 分钟' },
-                ]}
-                onChange={(v) => void setNumber('editor', 'autosaveIntervalMs', Number(v))}
-              />
-              <NumberRow
-                label="历史版本保留数量"
-                desc="每篇文档保留的备份份数（1–999）"
-                value={settings.editor.historyRetentionCount}
-                onBlur={(v) => void handleRetentionBlur(v)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const target = e.currentTarget as HTMLInputElement
-                    target.blur()
-                  }
-                }}
-              />
-            </section>
-          </div>
-
-          {/* 外观：主题 + 界面字号（锚点 appearance） */}
-          <div id="settings-group-appearance" data-group="appearance" className="scroll-mt-4">
-            <section className="mb-6">
-              <h3 className="mb-2.5 border-b border-border pb-1.5 text-[13px] font-semibold text-foreground/80">
-                主题与界面字号
-              </h3>
-              <div className="mb-4">
-                <div className="mb-1.5 text-[12px] text-foreground/80">主题</div>
-                {/* 分段控件（handoff §3.6）：激活段 --primary 底白字；p-0.5 内衬 + rounded-lg 胶囊感，贴合设计稿 */}
-                <div className="inline-flex items-center overflow-hidden rounded-lg border border-border bg-muted p-0.5">
-                  {THEME_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      aria-pressed={settings.ui.theme === opt.value}
-                      onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
-                      className={[
-                        'flex h-7 items-center justify-center rounded-md px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
-                        settings.ui.theme === opt.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-foreground hover:bg-card hover:text-accent-foreground',
-                      ].join(' ')}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+        {/* 右内容区：全量多组滚动（参考稿：一页从上到下全部设置项，卡片式） */}
+        <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
+          {!ready ? (
+            <p className="py-8 text-center text-muted-foreground">加载设置中…</p>
+          ) : (
+            <div className="mx-auto flex w-full max-w-[680px] flex-col gap-7 px-6 py-6">
+              {/* 常规：启动、恢复与保存偏好（锚点 general） */}
+              <div id="settings-group-general" data-group="general" className="scroll-mt-4">
+                <section aria-labelledby="section-general">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <h2 id="section-general" className="text-[14px] font-semibold whitespace-nowrap text-foreground">常规</h2>
+                    <p className="text-[12px] text-muted-foreground">启动、恢复与保存偏好</p>
+                  </div>
+                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="flex flex-col divide-y divide-border">
+                      <SettingRow label="启动时恢复上次打开的文档" desc="继续上次的写作现场">
+                        <Switch
+                          checked={settings.startup.restoreLastState}
+                          ariaLabel="启动时恢复上次打开的文档"
+                          onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
+                        />
+                      </SettingRow>
+                      <SettingRow label="启动时自动打开最近 Workspace" desc="自动打开最近使用的工作区">
+                        <Switch
+                          checked={settings.startup.autoOpenRecentWorkspace}
+                          ariaLabel="启动时自动打开最近 Workspace"
+                          onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
+                        />
+                      </SettingRow>
+                      <SettingRow label="自动保存间隔" desc="停止输入后延迟保存">
+                        <Select
+                          value={String(settings.editor.autosaveIntervalMs)}
+                          ariaLabel="自动保存间隔"
+                          options={[
+                            { value: '1000', label: '1 秒' },
+                            { value: '3000', label: '3 秒（默认）' },
+                            { value: '5000', label: '5 秒' },
+                            { value: '30000', label: '30 秒' },
+                            { value: '60000', label: '1 分钟' },
+                          ]}
+                          onChange={(v) => void setNumber('editor', 'autosaveIntervalMs', Number(v))}
+                        />
+                      </SettingRow>
+                      <SettingRow label="历史版本保留数量" desc="每篇文档保留的备份份数（1–999）">
+                        <NumberInput
+                          value={settings.editor.historyRetentionCount}
+                          onBlur={(v) => void handleRetentionBlur(v)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const target = e.currentTarget as HTMLInputElement
+                              target.blur()
+                            }
+                          }}
+                        />
+                      </SettingRow>
+                    </div>
+                  </div>
+                </section>
               </div>
 
-              {/* Phase 2：自定义强调色（浅色/深色各一套，空 = 使用默认） */}
-              <div className="space-y-2">
-                <AccentColorRow
-                  label="强调色 · 浅色"
-                  value={settings.ui.accentColor?.light}
-                  fallback={DEFAULT_ACCENT.light}
-                  onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
-                />
-                <AccentColorRow
-                  label="强调色 · 深色"
-                  value={settings.ui.accentColor?.dark}
-                  fallback={DEFAULT_ACCENT.dark}
-                  onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
-                />
+              {/* 外观：主题 + 自定义强调色（锚点 appearance） */}
+              <div id="settings-group-appearance" data-group="appearance" className="scroll-mt-4">
+                <section aria-labelledby="section-appearance">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <h2 id="section-appearance" className="text-[14px] font-semibold whitespace-nowrap text-foreground">外观</h2>
+                    <p className="text-[12px] text-muted-foreground">主题与界面强调色</p>
+                  </div>
+                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="flex flex-col divide-y divide-border">
+                      <SettingRow label="主题" desc="深色主题跟随系统（v1.0.1+）">
+                        <div role="group" aria-label="主题模式" className="inline-flex shrink-0 items-center rounded-lg border border-border bg-muted p-0.5">
+                          {THEME_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              aria-pressed={settings.ui.theme === opt.value}
+                              onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
+                              className={[
+                                'flex h-7 items-center justify-center rounded-md px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
+                                settings.ui.theme === opt.value
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-foreground hover:bg-card hover:text-accent-foreground',
+                              ].join(' ')}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </SettingRow>
+                      <SettingRow label="强调色 · 浅色" desc="自定义浅色主题强调色（留空用默认）">
+                        <AccentControl
+                          value={settings.ui.accentColor?.light}
+                          fallback={DEFAULT_ACCENT.light}
+                          ariaLabel="强调色 · 浅色"
+                          onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
+                        />
+                      </SettingRow>
+                      <SettingRow label="强调色 · 深色" desc="自定义深色主题强调色（留空用默认）">
+                        <AccentControl
+                          value={settings.ui.accentColor?.dark}
+                          fallback={DEFAULT_ACCENT.dark}
+                          ariaLabel="强调色 · 深色"
+                          onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
+                        />
+                      </SettingRow>
+                    </div>
+                  </div>
+                </section>
               </div>
-            </section>
-          </div>
 
-          {/* 维护：索引、数据目录与应用更新（锚点 maintenance） */}
-          <div id="settings-group-maintenance" data-group="maintenance" className="scroll-mt-4">
-            <section className="mb-6">
-              <h3 className="mb-2.5 border-b border-border pb-1.5 text-[13px] font-semibold text-foreground/80">
-                索引、数据目录与应用更新
-              </h3>
-              <div className="space-y-2">
-                <MaintenanceButton
-                  action="rebuild-index"
-                  label={indexBusy ? '重建中…' : '重建索引'}
-                  desc="重建全文索引（搜索 / 历史恢复依据）"
-                  disabled={indexBusy}
-                  onClick={() => void handleRebuildIndex()}
-                />
-                {indexResult && <p className="text-[11px] text-muted-foreground">{indexResult}</p>}
-                <MaintenanceButton
-                  action="open-log"
-                  label="查看日志"
-                  desc={desktop ? '打开日志目录（%APPDATA%\\KnowledgeEditor\\logs）' : '桌面版功能'}
-                  disabled={!desktop}
-                  onClick={() => void handleOpenDir('open_log_dir')}
-                />
-                <MaintenanceButton
-                  action="open-data"
-                  label="打开数据目录"
-                  desc={desktop ? '打开 Workspace 目录（%APPDATA%\\KnowledgeEditor\\workspace）' : '桌面版功能'}
-                  disabled={!desktop}
-                  onClick={() => void handleOpenDir('open_data_dir')}
-                />
-                {/* 检查更新（参考稿：已是最新徽章） */}
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    className="rounded border border-border bg-background px-3 py-1.5 text-[12px] text-foreground/80 transition-colors hover:bg-muted"
-                  >
-                    检查更新
-                  </button>
-                  <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
-                    已是最新
-                  </span>
-                </div>
+              {/* 维护：索引、数据目录与应用更新（锚点 maintenance） */}
+              <div id="settings-group-maintenance" data-group="maintenance" className="scroll-mt-4">
+                <section aria-labelledby="section-maintenance">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <h2 id="section-maintenance" className="text-[14px] font-semibold whitespace-nowrap text-foreground">维护</h2>
+                    <p className="text-[12px] text-muted-foreground">索引、数据目录与应用更新</p>
+                  </div>
+                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
+                    <div className="flex flex-col divide-y divide-border">
+                      <SettingRow label="重建索引" desc="重建全文索引（搜索 / 历史恢复依据）">
+                        <Button
+                          onClick={() => void handleRebuildIndex()}
+                          disabled={indexBusy}
+                          status={indexResult ?? undefined}
+                        >
+                          {indexBusy ? '重建中…' : '重建索引'}
+                        </Button>
+                      </SettingRow>
+                      <SettingRow label="查看日志" desc={desktop ? '打开日志目录（%APPDATA%\\KnowledgeEditor\\logs）' : '桌面版功能'}>
+                        <Button disabled={!desktop} onClick={() => void handleOpenDir('open_log_dir')}>查看日志</Button>
+                      </SettingRow>
+                      <SettingRow label="打开数据目录" desc={desktop ? '打开 Workspace 目录（%APPDATA%\\KnowledgeEditor\\workspace）' : '桌面版功能'}>
+                        <Button disabled={!desktop} onClick={() => void handleOpenDir('open_data_dir')}>打开数据目录</Button>
+                      </SettingRow>
+                      <SettingRow label="检查更新" desc="当前使用的应用版本">
+                        <span className="inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-[12px] text-secondary-foreground">
+                          已是最新
+                        </span>
+                      </SettingRow>
+                    </div>
+                  </div>
+                </section>
               </div>
-            </section>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-function ToggleRow({
+/** 卡片行：左侧 14px 标题 + 12px 描述，右侧控件，px-4 py-3.5（参考稿行结构） */
+function SettingRow({
   label,
   desc,
-  checked,
-  onChange,
+  children,
 }: {
   label: string
-  desc: string
+  desc?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-medium leading-5 text-foreground">{label}</p>
+        {desc ? <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{desc}</p> : null}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  )
+}
+
+/** 开关（h-5 w-9 rounded-full，开 = --primary 底白圆钮；参考稿） */
+function Switch({
+  checked,
+  ariaLabel,
+  onChange,
+}: {
   checked: boolean
+  ariaLabel: string
   onChange: (v: boolean) => void
 }) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <div className="min-w-0 pr-3">
-        <div className="text-[12px] text-foreground/80">{label}</div>
-        <div className="truncate text-[11px] text-muted-foreground" title={desc}>
-          {desc}
-        </div>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      className={[
+        'relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200',
+        checked ? 'bg-primary' : 'bg-muted',
+      ].join(' ')}
+    >
+      <span
         className={[
-          'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-          checked ? 'bg-primary' : 'bg-muted',
+          'absolute top-0.5 size-4 rounded-full bg-white shadow transition-all duration-200',
+          checked ? 'left-[18px]' : 'left-0.5',
         ].join(' ')}
-      >
-        <span
-          className={[
-            'absolute top-0.5 size-4 rounded-full bg-white shadow transition-all',
-            checked ? 'left-[18px]' : 'left-0.5',
-          ].join(' ')}
-        />
-      </button>
-    </div>
+      />
+    </button>
   )
 }
 
-/** 下拉行（常规分组：自动保存间隔） */
-function SelectRow({
-  label,
-  desc,
+/** 下拉（h-8 rounded-md border-input bg-popover，右侧 chevron；参考稿） */
+function Select({
   value,
   options,
+  ariaLabel,
   onChange,
 }: {
-  label: string
-  desc: string
   value: string
   options: Array<{ value: string; label: string }>
+  ariaLabel: string
   onChange: (v: string) => void
 }) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <div className="min-w-0 pr-3">
-        <div className="text-[12px] text-foreground/80">{label}</div>
-        <div className="truncate text-[11px] text-muted-foreground" title={desc}>
-          {desc}
-        </div>
-      </div>
+    <div className="relative">
       <select
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded-md border border-input bg-card px-2 text-[13px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        className="h-8 cursor-pointer appearance-none rounded-md border border-input bg-popover py-0 pl-3 pr-8 text-[13px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -409,81 +427,68 @@ function SelectRow({
           </option>
         ))}
       </select>
+      <Icon name="chevron-down" className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
     </div>
   )
 }
 
-function NumberRow({
-  label,
-  desc,
+/** 数字输入（h-8 rounded-md border-input bg-card；参考稿） */
+function NumberInput({
   value,
   onBlur,
   onKeyDown,
 }: {
-  label: string
-  desc: string
   value: number
   onBlur: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   return (
-    <div className="flex items-center justify-between py-1">
-      <div className="min-w-0 pr-3">
-        <div className="text-[12px] text-foreground/80">{label}</div>
-        <div className="truncate text-[11px] text-muted-foreground" title={desc}>
-          {desc}
-        </div>
-      </div>
-      <input
-        type="number"
-        className="w-24 rounded border border-input bg-card px-2 py-1 text-[13px] text-right text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
-        value={draft ?? value}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={(e) => {
-          onBlur(draft ?? e.target.value)
-          setDraft(null)
-        }}
-        onKeyDown={onKeyDown}
-      />
-    </div>
+    <input
+      type="number"
+      className="w-24 rounded-md border border-input bg-card px-2 py-1 text-[13px] text-right text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => {
+        onBlur(draft ?? e.target.value)
+        setDraft(null)
+      }}
+      onKeyDown={onKeyDown}
+    />
   )
 }
 
-/** 强调色行：色板 + hex 输入 + 重置按钮（空值 = 使用主题默认） */
-function AccentColorRow({
-  label,
+/** 强调色控件：色板 + hex 输入 + 重置按钮（空值 = 使用主题默认） */
+function AccentControl({
   value,
   fallback,
+  ariaLabel,
   onChange,
 }: {
-  label: string
   value?: string
   fallback: string
+  ariaLabel: string
   onChange: (v: string | null) => void
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   const current = draft ?? value ?? ''
   return (
-    <div className="flex items-center gap-2">
-      <label className="flex min-w-0 flex-1 items-center gap-2">
-        <input
-          type="color"
-          value={current || fallback}
-          aria-label={label}
-          onChange={(e) => {
-            setDraft(e.target.value)
-            onChange(e.target.value)
-          }}
-          className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
-        />
-        <span className="truncate text-[12px] text-foreground/80">{label}</span>
-      </label>
+    <div className="flex items-center gap-1.5">
+      <input
+        type="color"
+        value={current || fallback}
+        aria-label={ariaLabel}
+        onChange={(e) => {
+          setDraft(e.target.value)
+          onChange(e.target.value)
+        }}
+        className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
+      />
       <input
         type="text"
         value={current}
         placeholder={fallback}
-        aria-label={`${label} 色值`}
+        aria-label={`${ariaLabel} 色值`}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={(e) => {
           const v = e.target.value.trim()
@@ -498,12 +503,12 @@ function AccentColorRow({
         onKeyDown={(e) => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
         }}
-        className="w-18 shrink-0 rounded border border-input bg-card px-1.5 py-1 font-mono text-[11px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        className="w-[74px] shrink-0 rounded border border-input bg-card px-1.5 py-1 font-mono text-[11px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
       />
       <button
         type="button"
         title="重置为默认"
-        aria-label={`${label} 重置`}
+        aria-label={`${ariaLabel} 重置`}
         disabled={!value}
         onClick={() => onChange(null)}
         className="shrink-0 rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground/80 disabled:cursor-not-allowed disabled:opacity-40"
@@ -514,39 +519,34 @@ function AccentColorRow({
   )
 }
 
-function MaintenanceButton({
-  action,
-  label,
-  desc,
-  disabled,
+/** 维护操作按钮（h-8 rounded-md border bg-card，右侧可选 status 小字） */
+function Button({
+  children,
   onClick,
+  disabled,
+  status,
 }: {
-  action: string
-  label: string
-  desc: string
-  disabled: boolean
-  onClick: () => void
+  children: ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  status?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-col items-end gap-1">
       <button
         type="button"
-        data-action={action}
         disabled={disabled}
-        title={desc}
         onClick={onClick}
         className={[
-          'rounded border px-3 py-1.5 text-[12px] transition-colors',
+          'flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
           disabled
             ? 'cursor-not-allowed border-border/50 bg-muted/40 text-muted-foreground/50'
-            : 'border-border bg-background text-foreground/80 hover:bg-muted',
+            : 'border-border bg-card text-foreground/80 hover:bg-muted',
         ].join(' ')}
       >
-        {label}
+        {children}
       </button>
-      <span className="min-w-0 truncate text-[11px] text-muted-foreground" title={desc}>
-        {desc}
-      </span>
+      {status ? <p className="max-w-[220px] truncate text-[11px] text-muted-foreground" title={status}>{status}</p> : null}
     </div>
   )
 }

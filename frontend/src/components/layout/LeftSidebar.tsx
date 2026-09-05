@@ -100,7 +100,6 @@ export default function LeftSidebar({
   refreshKey = 0,
   onFsMutation,
   onOpenSettings,
-  workspaceRoot,
 }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
   // P2-8：文件树加载失败不再是「空」，而是明确错误提示
@@ -121,7 +120,6 @@ export default function LeftSidebar({
   // QuickNav 当前激活（参考稿：全部文档 = sidebar-primary 底白字，aria-current=page）
   const [nav, setNav] = useState<'all' | 'recent' | 'tags' | 'trash'>('all')
   const searchRef = useRef<HTMLInputElement | null>(null)
-  const monoPath = useMemo(() => (workspaceRoot ?? '').replace(/\\/g, '/'), [workspaceRoot])
 
   // Ctrl/Cmd+K：聚焦全局搜索（handoff §6）
   useEffect(() => {
@@ -715,21 +713,19 @@ export default function LeftSidebar({
         )}
       </div>
 
-      {/* DataSovereigntyFooter（handoff §3.2） */}
-      <div className="shrink-0 border-t border-sidebar-border px-3 py-2 text-[10px] text-muted-foreground">
-        <div className="flex items-center justify-between">
-          <span>Markdown 为唯一事实源</span>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            aria-label="打开设置"
-            title="设置"
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Icon name="settings" className="size-3.5" /> 设置
-          </button>
-        </div>
-        <div className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground/70">{monoPath}</div>
+      {/* 底部设置按钮（handoff §3.2 / 参考稿：整行 h-8 大按钮 + settings 图标） */}
+      <div className="shrink-0 border-t border-sidebar-border px-2.5 py-2">
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="打开设置"
+          title="设置"
+          className="flex h-8 w-full items-center gap-2.5 rounded-[6px] px-2 text-[13px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          style={{ color: 'var(--sidebar-foreground)' }}
+        >
+          <Icon name="settings" className="size-4" />
+          <span>设置</span>
+        </button>
       </div>
 
       {/* 上下文菜单 */}

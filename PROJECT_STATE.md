@@ -1,14 +1,14 @@
 # PROJECT_STATE.md
 
 > 项目状态唯一快速参考。每次阶段变更或影响架构的修改后更新。
-> 最后更新：2026-08-11 | 维护依据：docs/phase6u-report.md、docs/phase7-prep-freeze-check.md、README.md、代码版本常量
+> 最后更新：2026-09-05 | 维护依据：docs/phase6u-report.md、docs/phase7-prep-freeze-check.md、README.md、代码版本常量
 
 ## 当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 当前开发阶段 | Phase 6U（真实环境测试迭代）已完成；冻结与稳定性检查通过（2026-08-10）；**Phase 7 全部完成（M0 环境脚手架、M1 后端侧车、M2 前端适配、M3 设置系统、M4 workspace 适配与迁移、M5 桌面集成、M6 构建安装包、M7 回归发布 v1.0.0；决策点 D1-D7 已确认并冻结）。v1.0.0 起进入 Alpha 测试期** |
-| 当前版本号 | **v1.0.0**（唯一来源 `backend/app/__init__.py`；`frontend/src/version.ts`、`frontend/package.json`、`desktop/package.json`、`Cargo.toml`、`tauri.conf.json` 同步；v1.0.0 及以后版本算入 Alpha 测试） |
+| 当前开发阶段 | Phase 6U（真实环境测试迭代）已完成；冻结与稳定性检查通过（2026-08-10）；Phase 7 全部完成；**v1.1.0（UI/UX 重构）正式发布（2026-09-05）——设计令牌层/参考稿对齐/多轮审查修复，Alpha 测试期延续** |
+| 当前版本号 | **v1.1.0**（唯一来源 `backend/app/__init__.py`；`frontend/src/version.ts`、`frontend/package.json`、`desktop/package.json` + `desktop/package-lock.json`、`desktop/src-tauri/Cargo.toml` + `Cargo.lock`、`tauri.conf.json` 七处同步；v1.0.0 及以后版本算入 Alpha 测试） |
 | 启动方式 | `.\scripts\start.ps1`（前后端一键启动）/ `.\scripts\stop.ps1`（一键停止，含无 runtime.json 的端口+特征兜底） |
 | 前端地址 | http://localhost:5173 |
 | 后端地址 | http://127.0.0.1:8000 |

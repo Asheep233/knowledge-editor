@@ -2,7 +2,7 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-08-11
+> 最后更新：2026-09-05（v1.1.0 发布完成）
 
 ## 2026-08-11（发布：AI Agent 协作声明）
 
@@ -920,3 +920,33 @@ stable id（keStableId）、repro-main 移除、错误信息去绝对路径、re
 - 修复：新增 `import-export.saveOrDownload`（File System Access API `showSaveFilePicker` 原生另存为优先；AbortError 静默返回；否则回退 downloadBlob）；新增 `editor/export-actions.ts` 统一三种导出载荷（keExportPayload / plainExportPayload / packageExportAndSave）；EditorArea 三 handler 全部接入。
 - 回归：`export-actions.test.ts` 6 用例（三模式各走正确保存路径与参数；picker 优先/取消/回退）。
 - 验证：vitest 192 passed / 1 skipped（23 文件）、tsc 0、npm build ✓；WebView2 实机三模式真实点击均触发 showSaveFilePicker 且文件名正确。
+
+## 2026-09-05（v1.1.0：UI/UX 重构正式发布）
+
+### 里程碑完成：UI/UX 重构（设计令牌层 → 参考稿对齐 → 审查修复 → 正式发布）
+
+类型：Feature（里程碑）
+状态：Completed（v1.1.0-pre.1 审查 → 修复阻断 → 正式发布，本地与 GitHub Release 均完成）
+
+现象：v1.0.2a 之后 UI 与设计参考稿差异大，经历多轮重构与审查后定版。
+
+原因：用户要求按 `knowledge-editor-ui` 设计稿（editor/launcher/settings + handoff + colors_and_type.css）对齐前端 UI；随后两轮前端 agent 审查（视觉 + K3 对抗式）逐项修复；K3 判定"唯一阻断 = 版本源漂移"，修复后发布正式 v1.1.0。
+
+修改（覆盖 9 个提交：5ee3102 → 778b791）：
+- **批次 1A-1D**：语义令牌层（浅/深两套 + Tailwind `@theme inline` 桥接）+ 渲染前主题注入；三栏壳 AppShell/StatusBar；左栏（品牌块/搜索胶囊 Ctrl+K/QuickNav/模块区/数据主权页脚）；单行 40px 工具栏（正文▾/B/I/U/列表/引用/代码/链接/图片/公式×2/模块▾/代码块/注释/信息块/表格/撤销重做，左右滑不收起）；右栏三卡（属性/大纲/附件+孤儿引用徽章/历史快照）；NodeView 视觉（图片灯箱+图注、公式透明+双击、信息块圆角卡+徽章色板、模块 display:none 无边界、视频保留）；设置页整页（左分组 220px 锚点跳转 + 卡片式）；启动器卡片式（BrandHero+两操作卡+最近 3 条）。
+- **工具**：`icons.tsx` 线性 SVG 集（~60 枚）；`slug.ts` 文件名 slug（对齐后端契约）。
+- **主题**：Phase 2 自定义强调色（浅/深两套 + `accentColor` settings schema + `applyTheme` 覆写 `--primary`/`--sidebar-primary`/`--ring` + 派生 token `color-mix` 全链路跟随）；深色默认 #3b82f6（主理人拍板，非设计稿 #fc2c50；用户可在设置改）。
+- **字体**：DM Sans（`@fontsource/dm-sans` 本地打包 400/500/700，主理人拍板引入）。
+- **后端/壳**：`GET /api/modules` 增 `version`（批准变更）；新文档模板去掉自动 `# {title}`（标题由可编辑页眉承载，blur/回车同步 frontmatter title + 文件名 slug 重命名）；原生菜单补齐新建工作区/关闭/恢复检查/设置入口；`indexer._title_of` 防御数字 title（YAML `title: 111` 曾致 workspace open 500）；`slug` 保留名对齐（con.txt→_con.txt）。
+- **审查修复（K3）**：RC-VERSION 版本源三处漂移（desktop/package.json、lock、WorkspacePicker 重复常量→import APP_VERSION）；F1 表格网格高亮类拼写 `bg-primary-soft0`→`bg-primary-soft`；F2 全局 `:focus-visible` 环 --ring（正文/搜索框蓝框随后修复：contenteditable 排除 + React state 驱动胶囊聚焦态）；版本源七处统一 1.1.0（Cargo/tauri/frontend/desktop/backend/version.ts/Cargo.lock，grep 零残留）。
+- **v1.1.x backlog**：K3-I1/I2/T1/B1 延后项写 `docs/backlog-1.1.x.md`；构建环境备忘 `docs/tauri-build-env-notes.md`（WSL 挂载盘 symlink 坑 + NSIS 绕行方案）。
+
+影响范围：前端全部 UI 层、后端 3 文件、桌面壳 menu.rs/settings.rs、新建文档模板；导出管线（plain-export/export-actions）零改动。
+
+验证：
+- 前端 vitest **205 passed** / 1 skipped（+8 slug 契约测试）；tsc 0；构建产物 `frontend/dist-build`。
+- 后端 pytest 全绿；Rust 11 passed；导出专项 14 passed 且 diff=0。
+- sidecar 运行时校验：独立拉起 `/api/health` = **1.1.0**（前后端版本告警消除）。
+- GUI 实测：浅/深/自定义强调色三态；公式双按钮/保存按钮/未保存橙点/标签索引/无文档库/焦点环 #4285f4/F1 网格高亮 6 格；正文与搜索框无蓝框。
+- 发布：GitHub Release **v1.1.0**（Pre 票 v1.1.0-pre.1 先行）附件四件套：sidecar exe、“KnowledgeEditor_1.1.0_x64-setup.exe”（NSIS 50.7MB，本机构建）、manifest.sha256、versions.json（81 项）；CI 三个 push 工作流 success。
+- 版本一致性：远端 master = 本地 HEAD；v1.1.0 tag 与其构建产物一致（后续 ccd6814/778b791 为构建依赖与文档，不进 tag 语义正确）。

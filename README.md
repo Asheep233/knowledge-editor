@@ -2,13 +2,13 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.0.2**（Alpha 测试期）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前版本 **v1.1.0**（Alpha 测试期）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
 本项目开发过程包含 AI Agent 协作，透明性声明见 [docs/agent-collaboration.md](docs/agent-collaboration.md)。
 
 ## 安装（Windows 桌面版）
 
-1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.0.2_x64-setup.exe`。
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.1.0_x64-setup.exe`。
 2. 双击安装：安装到 `%LOCALAPPDATA%\KnowledgeEditor`，开始菜单创建快捷方式。
 3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
 
@@ -98,6 +98,8 @@ KnowledgeEditor/
 | `docs/phase6e-report.md` | Phase 6E 冻结审计（API 冻结清单 / 迁移测试 / 侧车交接） |
 | `docs/agent-collaboration.md` | AI Agent 协作声明（开发过程透明度说明） |
 | `docs/knowledge-editor-plain-export-design.md` | 导出为普通 .md 设计（KE 方言 → 朴素 Markdown 降级规则） |
+| `docs/backlog-1.1.x.md` | v1.1.x 延后项清单（K3 审查 K3-I1/I2/T1/B1，含拍板记录） |
+| `docs/tauri-build-env-notes.md` | Tauri 构建环境备忘（WSL 挂载盘 symlink 坑与 NSIS 绕行方案） |
 | `docs/report/` | 审计清单与版本交付报告归档（v1.0.1 / v1.0.2） |
 
 ## 阶段状态

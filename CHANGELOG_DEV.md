@@ -2,7 +2,25 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-06（v1.1.1-pre.1 发布前审查修复轮）
+> 最后更新：2026-09-06（v1.1.1 正式发布）
+
+## 2026-09-06（v1.1.1 正式发布）
+
+### 发布：v1.1.1（发布前全面审查修复闭环后转正）
+
+类型：Release
+状态：Completed
+
+变更（相对 v1.1.1-pre.1）：
+- 发布前全面审查（2026-09-06）三阻断项 + 数据完整性项全部修复：R1 改名丢编辑 / R2 外部版本重载失效 / R3 空 ke-note 吞噬后续 / F01 历史快照孤立 / F02 跨工作区串写 / F03 大小写变体丢失 / F05 fs/dir 校验绕过 / F06 块级 footnote 丢失 / F11 子目录 rename 误报 / F12 package-lock 版本（详见上一节修复记录）。
+- 版本九处源统一 **1.1.1**（backend __version__ / frontend package+lock / desktop package+lock / Cargo.toml+Cargo.lock / tauri.conf.json / version.ts）。
+
+验证：
+- 前端 vitest **220 passed** / 1 skipped；tsc -b 0 错误；构建产物 frontend/dist-build。
+- 后端 pytest **166 passed** / 2 skipped；cargo test settings **11 passed**。
+- sidecar 独立拉起 `/api/health` = **1.1.1**（运行时校验通过）；manifest/versions 重新生成（81 项；NSIS 不入 manifest）。
+- GUI（WebView2 + CDP）R1/R2 触发路径回归 PASS（本轮修复前已录证据）。
+- 发布：GitHub Release **v1.1.1**（正式，Latest）附件四件套：sidecar exe / KnowledgeEditor_1.1.1_x64-setup.exe（NSIS）/ manifest.sha256 / versions.json。
 
 ## 2026-09-06（v1.1.1-pre.1 发布前全面审查修复）
 

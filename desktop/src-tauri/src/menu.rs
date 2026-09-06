@@ -94,7 +94,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         &[&MenuItem::with_id(
             app,
             MID_ABOUT,
-            "关于 KnowledgeEditor",
+            "关于 AstraNota",
             true,
             None::<&str>,
         )?],
@@ -181,12 +181,12 @@ fn show_about(app: &AppHandle) {
         workspace = info.workspace;
     }
     let text = format!(
-        "KnowledgeEditor\n\n版本：{version}\n工作区：{workspace}\n\n桌面壳：{shell_version}"
+        "AstraNota\n\n版本：{version}\n工作区：{workspace}\n\n桌面壳：{shell_version}"
     );
     let _ = app
         .dialog()
         .message(text)
-        .title("关于 KnowledgeEditor")
+        .title("关于 AstraNota")
         .kind(MessageDialogKind::Info)
         .show(|_| {});
 }

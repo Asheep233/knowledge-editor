@@ -22,6 +22,8 @@ import {
 } from '../../settings'
 import { Icon } from '../icons'
 import { APP_VERSION } from '../../version'
+import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-light-800x200.png'
+import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
 
 interface Props {
   open: boolean
@@ -152,7 +154,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
           <span className="text-[16px] font-semibold tracking-tight text-foreground">设置</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[12px] text-muted-foreground">KnowledgeEditor v{APP_VERSION} · Alpha</span>
+          <span className="text-[12px] text-muted-foreground">AstraNota v{APP_VERSION} · Alpha</span>
           <button
             type="button"
             data-action="close-settings"
@@ -164,6 +166,21 @@ export default function SettingsPanel({ open, onClose }: Props) {
           </button>
         </div>
       </header>
+      {/* AstraNota 品牌横幅（浅/深主题双版本，CSS 按 data-theme 切换） */}
+      <div className="flex shrink-0 items-center justify-center border-b border-border bg-card py-4">
+        <img
+          src={horizontalLogoLight}
+          alt="AstraNota"
+          className="an-logo-light h-[72px] w-auto"
+          draggable={false}
+        />
+        <img
+          src={horizontalLogoDark}
+          alt="AstraNota"
+          className="an-logo-dark h-[72px] w-auto"
+          draggable={false}
+        />
+      </div>
 
       <div className="flex min-h-0 flex-1">
         {/* 左分组栏（参考稿 §3.6：220px popover 底 + 34px rounded-lg 按钮，点击锚点跳转） */}

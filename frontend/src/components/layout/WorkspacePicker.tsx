@@ -129,7 +129,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
             <div className="mb-4 grid size-12 place-items-center rounded-[12px] text-lg font-bold" style={{ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }}>
               KE
             </div>
-            <h1 className="text-[22px] font-semibold" style={{ color: 'var(--foreground)' }}>KnowledgeEditor</h1>
+            <h1 className="text-[22px] font-semibold" style={{ color: 'var(--foreground)' }}>AstraNota</h1>
             <p className="mt-1 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>Alpha</p>
             <p className="mt-3 max-w-[420px] text-[13px] leading-[1.6]" style={{ color: 'var(--muted-foreground)' }}>
               {guide

@@ -32,6 +32,8 @@ import type {
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
 import { Icon } from '../icons'
+import iconLogoLight from '../../assets/astranota/astranota-icon-light-256.png'
+import iconLogoDark from '../../assets/astranota/astranota-icon-dark-256.png'
 
 interface Props {
   activeId: string | null
@@ -477,12 +479,13 @@ export default function LeftSidebar({
     <aside className="flex h-full w-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* BrandBlock（handoff §3.2：KE 方块 + 名称/Alpha 两行） */}
       <div className="flex h-[52px] shrink-0 items-center gap-2.5 px-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-[8px] text-[14px] font-bold" style={{ backgroundColor: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }}>
-          KE
+        <span className="relative block size-8 shrink-0 overflow-hidden rounded-[8px]">
+          <img src={iconLogoLight} alt="AstraNota" className="an-logo-light absolute inset-0 size-full" draggable={false} />
+          <img src={iconLogoDark} alt="AstraNota" className="an-logo-dark absolute inset-0 size-full" draggable={false} />
         </span>
         <div className="min-w-0">
           <div className="truncate text-[14px] font-semibold leading-tight" style={{ color: 'var(--sidebar-foreground)' }}>
-            KnowledgeEditor
+            AstraNota
           </div>
           <div className="text-[11px] leading-tight" style={{ color: 'var(--muted-foreground)' }}>
             Alpha

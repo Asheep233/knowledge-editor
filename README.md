@@ -1,18 +1,18 @@
-# KnowledgeEditor
+# AstraNota
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.1.3**（正式发布）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前版本 **v1.1.4**（正式发布）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
 本项目开发过程包含 AI Agent 协作，透明性声明见 [docs/agent-collaboration.md](docs/agent-collaboration.md)。
 
 ## 安装（Windows 桌面版）
 
-1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.1.3_x64-setup.exe`（当前正式安装包）。
-2. 双击安装：安装到 `%LOCALAPPDATA%\KnowledgeEditor`，开始菜单创建快捷方式。
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `AstraNota_1.1.4_x64-setup.exe`（当前正式安装包）。
+2. 双击安装：安装到 `%LOCALAPPDATA%\AstraNota`，开始菜单创建快捷方式。
 3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
 
-程序与数据分离：文档存放在 `%APPDATA%\KnowledgeEditor\workspace\`，卸载软件不删除数据。安装包未签名，首次运行若出现「无法验证发布者」提示属正常现象（Windows 按路径记忆确认），确认即可。
+程序与数据分离：文档存放在 `%APPDATA%\AstraNota\workspace\`，卸载软件不删除数据。安装包未签名，首次运行若出现「无法验证发布者」提示属正常现象（Windows 按路径记忆确认），确认即可。
 
 ## 目录结构
 

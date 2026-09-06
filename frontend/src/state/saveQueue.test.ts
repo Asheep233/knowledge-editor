@@ -2,9 +2,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_DEBOUNCE_MS,
+  cancelPending,
   enqueueSave,
   flushPending,
   flushPendingAll,
+  flushWithTimeout,
   hasPending,
   pendingDocIds,
 } from './saveQueue'
@@ -150,5 +152,73 @@ describe('saveQueue — P1-6 并发保存串行化为 latest-wins', () => {
     }, DEFAULT_DEBOUNCE_MS)
     await flushPendingAll(['doc-A', 'doc-B'])
     expect(saved.sort()).toEqual(['A', 'B'])
+  })
+})
+
+describe('saveQueue — R2 cancelPending（重新加载外部版本前取消未决保存）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('cancelPending 取消防抖计时器与最新待保存函数：推进时间不再触发保存', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    enqueueSave('doc-A', save, DEFAULT_DEBOUNCE_MS)
+    cancelPending('doc-A')
+
+    vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS * 3)
+    expect(save).not.toHaveBeenCalled()
+    expect(hasPending('doc-A')).toBe(false)
+  })
+
+  it('cancelPending 不中断已在途保存（在途链仍完成，latest 已被取消不补跑）', async () => {
+    const order: string[] = []
+    let resolveFirst: () => void
+    const first = new Promise<void>((r) => {
+      resolveFirst = r
+    })
+    enqueueSave('doc-A', () => {
+      order.push('save-1')
+      return first
+    }, 0)
+    await Promise.resolve()
+    // 在途期间取消：新内容不再补跑，在途保存本身完成
+    enqueueSave('doc-A', () => {
+      order.push('save-2')
+      return Promise.resolve()
+    }, 0)
+    cancelPending('doc-A')
+    resolveFirst!()
+    await Promise.resolve()
+    expect(order).toEqual(['save-1'])
+    expect(hasPending('doc-A')).toBe(false)
+  })
+
+  it('flushWithTimeout：保存快速完成时返回 true（未决内容已落盘）', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    enqueueSave('doc-A', save, DEFAULT_DEBOUNCE_MS)
+    const ok = await flushWithTimeout('doc-A')
+    expect(ok).toBe(true)
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('flushWithTimeout：保存超时返回 false（R1/F02 改为 confirm 兜底）', async () => {
+    let resolveSlow: () => void
+    const slow = new Promise<void>((r) => {
+      resolveSlow = r
+    })
+    enqueueSave('doc-A', () => slow, 0)
+    await Promise.resolve()
+    const p = flushWithTimeout('doc-A', 3000)
+    vi.advanceTimersByTime(3000)
+    await expect(p).resolves.toBe(false)
+    resolveSlow!()
+  })
+
+  it('flushWithTimeout：无未决保存时立即返回 true', async () => {
+    await expect(flushWithTimeout('no-such-doc')).resolves.toBe(true)
   })
 })

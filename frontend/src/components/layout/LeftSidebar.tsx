@@ -38,6 +38,9 @@ interface Props {
   onOpenArticle: (id: string) => void
   refreshKey?: number
   onFsMutation?: (m: FsMutation) => void
+  /** R1-B：文件系统变更（重命名/移动/删除）执行前的钩子——返回 false 中止操作。
+   * 用于先 flush 当前文档未决保存（变更后旧路径已不存在，flush 将 404）。 */
+  onBeforeFsMutation?: (node: TreeNode) => Promise<boolean>
   /** 打开设置面板（DataSovereigntyFooter「设置」入口，handoff §3.2 btn-settings） */
   onOpenSettings?: () => void
   /** workspace 根路径（Footer mono 展示） */
@@ -99,6 +102,7 @@ export default function LeftSidebar({
   onOpenArticle,
   refreshKey = 0,
   onFsMutation,
+  onBeforeFsMutation,
   onOpenSettings,
   workspaceRoot,
 }: Props) {
@@ -290,6 +294,8 @@ export default function LeftSidebar({
     async (node: TreeNode) => {
       const newName = window.prompt('新名称', node.name)
       if (!newName || newName === node.name) return
+      // R1-B：变更前 flush 未决保存（当前文档受此操作影响时）
+      if (onBeforeFsMutation && !(await onBeforeFsMutation(node))) return
       try {
         const result =
           node.type === 'folder'
@@ -300,12 +306,14 @@ export default function LeftSidebar({
         window.alert(String(e))
       }
     },
-    [notify],
+    [notify, onBeforeFsMutation],
   )
 
   const handleDelete = useCallback(
     async (node: TreeNode) => {
       if (!confirmDelete(node.name)) return
+      // R1-B：删除前 flush 未决保存（避免删除后的迟到保存 404 假警报/孤儿恢复点）
+      if (onBeforeFsMutation && !(await onBeforeFsMutation(node))) return
       try {
         if (node.type === 'folder') {
           await deleteFolder(node.relPath)
@@ -317,7 +325,7 @@ export default function LeftSidebar({
         window.alert(String(e))
       }
     },
-    [confirmDelete, notify],
+    [confirmDelete, notify, onBeforeFsMutation],
   )
 
   const handleMove = useCallback(
@@ -328,6 +336,8 @@ export default function LeftSidebar({
       )
       if (!target) return
       const dst = `${target.trim().replace(/\/+$/, '')}/${node.name}`
+      // R1-B：移动前 flush 未决保存
+      if (onBeforeFsMutation && !(await onBeforeFsMutation(node))) return
       try {
         const result = await movePath(node.relPath, dst)
         notify({ type: 'move', from: result.from, to: result.to })
@@ -335,7 +345,7 @@ export default function LeftSidebar({
         window.alert(String(e))
       }
     },
-    [notify],
+    [notify, onBeforeFsMutation],
   )
 
   const handleOpenFromTree = useCallback(

@@ -24,6 +24,9 @@ MAX_VERSIONS = 30
 # 列表按名称排序即时间序）
 _TS_RE = re.compile(r"^\d{8}-\d{6}-\d{3}$")
 
+# 文档快照目录名后缀（目录名 = doc_rel，含扩展名）
+_DOC_SUFFIXES = {".md", ".markdown"}
+
 
 def _ts(prev_ts: str | None = None) -> str:
     """当前时间戳；与上一次同毫秒时单调递增 1ms（P2-3：防同毫秒覆盖）。"""
@@ -119,3 +122,80 @@ class HistoryStore:
             return dt.isoformat(timespec="seconds")
         except ValueError:
             return stem
+
+    # ---------- 迁移 ----------
+
+    def move_path(self, old_rel: str, new_rel: str) -> None:
+        """文档/目录重命名或移动后迁移其历史快照目录（F01）。
+
+        快照目录布局：Drafts/backup/{doc_rel}/（doc_rel 为含扩展名的相对路径：
+        目录名即文档路径，如 `Articles/Sub/note.md`）。因此：
+        - 单文档操作：old_rel 本身即一个快照目录（后缀 .md）；
+        - 目录级操作：old_rel 下每个 *.md 命名的子目录都是一个文档的快照目录。
+
+        历史为辅助能力：迁移失败（OSError）一律静默，不阻断主操作。
+        """
+        old_root = markdown_io.safe_rel_path(self.backup_root, old_rel)
+        if old_root is None or not old_root.is_dir():
+            return
+        try:
+            if old_root.suffix.lower() in _DOC_SUFFIXES:
+                leaves = [old_root]
+            else:
+                leaves = [
+                    p
+                    for p in old_root.rglob("*")
+                    if p.is_dir() and p.suffix.lower() in _DOC_SUFFIXES
+                ]
+            for src in leaves:
+                rel_src = src.relative_to(self.backup_root).as_posix()
+                rel_dst = new_rel + rel_src[len(old_rel) :]
+                dst = markdown_io.safe_rel_path(self.backup_root, rel_dst)
+                if dst is None or dst == src:
+                    continue
+                if dst.exists():
+                    self._merge_snaps(src, dst)
+                else:
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    src.rename(dst)
+            # 目录级操作：清理迁移后遗留的空目录骨架（父容器/层级）
+            if old_root.suffix.lower() not in _DOC_SUFFIXES:
+                for d in sorted(old_root.rglob("*"), reverse=True):
+                    try:
+                        if d.is_dir():
+                            d.rmdir()
+                    except OSError:
+                        pass
+                try:
+                    old_root.rmdir()
+                except OSError:
+                    pass
+        except OSError:
+            return
+
+    def _merge_snaps(self, src: Path, dst: Path) -> None:
+        """目标快照目录已存在时合并：源侧快照文件搬入（同名保留目标侧），
+        随后按 MAX_VERSIONS 修剪并清理源目录。"""
+        dst.mkdir(parents=True, exist_ok=True)
+        for p in sorted(src.glob("*.md")):
+            if not _TS_RE.match(p.stem):
+                continue
+            target = dst / p.name
+            if not target.exists():
+                try:
+                    p.rename(target)
+                except OSError:
+                    pass
+        self._prune(dst)
+        for leftover in sorted(src.rglob("*"), reverse=True):
+            try:
+                if leftover.is_dir():
+                    leftover.rmdir()
+                else:
+                    leftover.unlink()
+            except OSError:
+                pass
+        try:
+            src.rmdir()
+        except OSError:
+            pass

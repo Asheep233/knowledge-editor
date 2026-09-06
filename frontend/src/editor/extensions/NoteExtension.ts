@@ -185,6 +185,9 @@ export const NoteExtension = Node.create({
     }
     const head = `<!-- ke-note: ${keJson(payload, 'note', KE_FIELD_ORDER.note)} -->`
     const inner = content && content.length ? helpers.renderChildren(content) : ''
-    return inner ? `${head}\n${inner}\n<!-- /ke-note -->` : head
+    // R3：空内容也必须输出闭合标记 `<!-- /ke-note -->`——否则产出与旧自闭合
+    // 格式不可区分，重开时 keNoteTokenizer 会在文档剩余全文寻找结束标记，
+    // 把下一个信息块的头标记与内容吞进空信息块，破坏 ke-note 包裹格式不变量。
+    return inner ? `${head}\n${inner}\n<!-- /ke-note -->` : `${head}\n<!-- /ke-note -->`
   },
 })

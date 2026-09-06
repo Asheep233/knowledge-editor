@@ -2,7 +2,53 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-05（v1.1.1-pre.1 预发布）
+> 最后更新：2026-09-06（v1.1.1-pre.1 发布前审查修复轮）
+
+## 2026-09-06（v1.1.1-pre.1 发布前全面审查修复）
+
+### 修复：三阻断项（R1 改名丢编辑 / R2 外部版本重载失效 / R3 空信息块吞噬后续）
+
+类型：Bug 修复（数据完整性 + 格式不变量）
+状态：Completed（待正式 v1.1.1 发布；未推送）
+
+背景：v1.1.1-pre.1 发布前全面审查（2026-09-06）判定「需修复后发布」，阻断项 3 条 + 优先数据完整性项 4 条。本轮全部落地。
+
+**R1（P0）改名链路丢失未保存编辑**：
+- `EditorArea.handleTitleBlur` 改名（路径变更）前先 `flushWithTimeout(docId)`（3s 超时 + confirm 兜底），避免防抖窗口内输入被陈旧快照静默抹掉；
+- `LeftSidebar` 新增 `onBeforeFsMutation` 钩子：文件树重命名/移动/删除当前文档（或其所在目录）前先 flush（变更后旧路径已不存在，flush 会 404）；
+- 配套修复 **F11**：`oldSlug` 取文件名基线（原先 `replace(/^Articles\//)` 对子目录文档永不相等 → 每次改标题都 rename 撞自身 409）。
+- GUI 实测：防抖窗口内输入草稿 → 页眉改名 → 编辑器内容保留、文件名已改名、旧路径 404、无「保存失败」假警报。
+
+**R2（P1）「重新加载外部版本」不重载且本地回写覆盖外部**：
+- `saveQueue` 新增 `cancelPending(docId)`（取消防抖计时器 + 最新待保存函数；在途链无法撤销，调用方随后 flushPending 等待）；
+- `App.handleReloadExternal`：cancelPending → await flushPending（在途序化）→ openArticle(rel) → `reloadToken` 递增强制编辑器重载（原 `[article?.id]` effect 对同 id 不触发）；
+- `EditorArea` 文档加载 effect 依赖改为 `[article?.id, reloadToken]`（id 变 → flush 上一文档；token 变 → 仅重载）。
+- GUI 实测：外部覆盖文件 → 弹窗 → 点「重新加载外部版本」→ 编辑器=外部版本，4s 后磁盘仍=外部版本（未决保存被取消，未覆盖）。
+
+**R3（P1）空 ke-note 重开吞噬后续内容（包裹格式不变量）**：
+- `NoteExtension.renderMarkdown`：空内容也输出 `<!-- /ke-note -->`（不再与旧自闭合格式混淆）；
+- `tokenizers.keNoteTokenizer`：结束标记搜索限界——按行扫描，遇到下一个块级 ke-* 标记即判定自闭合（旧实现在文档剩余全文 indexOf，会把下一个信息块头标记与内容吞进空信息块）；
+- 回归测试：空信息块+非空信息块解析/往返/旧格式兼容 3 例。
+
+**F03（P1）大小写变体 ke- 注释静默丢失**：兜底正则放开大小写（`[a-zA-Z]`），`isPlainHtmlComment` 的 ke- 前缀判定 `/i`；ke-NOTE 等大小写变体落入 GenericFallback 原样保留（document-format §4「大小写不符→原样保留」）。
+
+**F06（P2）块级 footnote 系静默丢失**：块级兜底不再排除 footnote 系；独占一行的 ke-footnote 引用 / 未闭合 ke-footnotes 区域 / 孤儿 footnote-item 原样保留。段首脚注（注释后同行有正文）只保留注释原文、正文照常成段，绝不整行吞掉（有回归测试锁定 5 例）。
+
+**F01（P1）改名后历史快照孤立**：`HistoryStore.move_path` 迁移 `Drafts/backup/{doc_rel}`（单文档 + 目录级递归；目标存在时合并 + 修剪）；`fs.py` rename_doc/rename_dir/move_path 挂接 `_migrate_history`（失败只记日志不阻断）。
+
+**F02（P1）切换/关闭工作区不 flush 未决保存**：`switchWorkspace`/`handleCloseWorkspace` 先 `flushWithTimeout(当前 id)`（flushed=false 才 confirm），内容先落到旧 workspace root，杜绝跨工作区同相对路径串写。
+
+**F05（P2）fs/dir 顶层目录约束可绕过**：`create_dir` 改为规范化后校验——`_guard_rel` → `_require_business_top`（`Articles/../evil` 原来可在 workspace 根建目录，现在 400）。
+
+**F12**：`frontend/package-lock.json` 根版本 1.0.2 → 1.1.1-pre.1（七处版本源 + lock 全部一致）。
+
+影响范围：前端 App/EditorArea/LeftSidebar/saveQueue/tokenizers/NoteExtension + 后端 fs.py/history_store.py；三种导出（plain-export/export-actions）零改动（红线保持）。
+
+验证：
+- 前端 vitest **220 passed** / 1 skipped（24 文件；+15 新用例：saveQueue cancelPending/flushWithTimeout 5、R3 3、F03 2、F06 5）；tsc -b 0 错误；`npm run build` dist-build 成功。
+- 后端 pytest **166 passed** / 2 skipped（+5：F05 2、F01 rename/move/folder 3）。
+- GUI（WebView2 + CDP 9222）实测：R1/R2 触发路径全链路 PASS（含无 404 假警报、无未决保存覆盖外部版本）；F05/F01 经运行中 sidecar API 冒烟 PASS。
+- 未复验（延续审查 UNVERIFIED 清单）：NSIS 安装包、cargo test（本轮无 Rust 改动）、干净环境安装验收。
 
 ## 2026-08-11（发布：AI Agent 协作声明）
 

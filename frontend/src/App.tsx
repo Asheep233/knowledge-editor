@@ -36,10 +36,11 @@ import { shouldBlockUnload } from './state/closeGuard'
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
 import { recoveryCheckShouldRun } from './state/recovery'
-import { flushPending, flushPendingAll, pendingDocIds } from './state/saveQueue'
+import { cancelPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
 import { planStartup } from './state/settingsGates'
 import { APP_VERSION } from './version'
 import type { ArticleMeta, FsEvent, HealthInfo, RecoveryItem, WorkspaceState } from './types'
+import type { TreeNode } from './utils/tree'
 
 /** 编辑器保存状态（与 EditorArea 对齐，App 只需区分是否可安全覆盖） */
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -91,6 +92,8 @@ export default function App() {
   }, [article?.id])
   // P1-7：打开请求序号，防止旧响应覆盖后发起的请求
   const openSeqRef = useRef(createRequestSeq())
+  // R2：外部版本重载令牌（同 id 下强制编辑器重载磁盘内容）
+  const [reloadToken, setReloadToken] = useState(0)
   // P3-8：恢复检测失败标记（允许重试）
   const recoveryLastFailedRef = useRef(false)
   // P1-7：loading 计数（多请求并发时不误清空 spinner）
@@ -288,10 +291,7 @@ export default function App() {
   const requestOpenArticle = useCallback(
     async (id: string) => {
       if (hasUnsaved && articleIdRef.current) {
-        const flushed = await Promise.race([
-          flushPending(articleIdRef.current).then(() => true),
-          new Promise<boolean>((r) => setTimeout(() => r(false), 3000)),
-        ])
+        const flushed = await flushWithTimeout(articleIdRef.current)
         if (!flushed && !window.confirm('当前有未保存修改，切换将放弃这些修改，是否继续？')) {
           return
         }
@@ -356,6 +356,11 @@ export default function App() {
   }, [])
 
   // 外部修改弹窗：重新加载 / 保留当前编辑
+  // R2：用户选择「重新加载外部版本」= 以磁盘内容为准。
+  // 1) 先取消该文档未决防抖保存（否则数秒内自动保存把本地旧内容写回、覆盖外部版本）；
+  // 2) 等待在途保存完成（保证重载看到的 = 最终落盘内容，无乱序）；
+  // 3) openArticle 拉取磁盘版本 + reloadToken 强制编辑器重载
+  //    （id 相同导致 [article?.id] effect 不触发的旧缺陷）。
   const handleReloadExternal = useCallback(async () => {
     const rel = extModal?.rel
     setExtModal(null)
@@ -363,29 +368,15 @@ export default function App() {
     if (hasUnsaved && !window.confirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？')) {
       return
     }
+    cancelPending(rel)
+    await flushPending(rel)
     await openArticle(rel)
-    setSaveState('saved')
+    setReloadToken((t) => t + 1)
   }, [extModal, hasUnsaved, openArticle])
 
   const handleKeepLocal = useCallback(() => {
     setExtModal(null)
   }, [])
-
-  // ---------- Workspace 切换（未保存确认，Phase 4 补充约束 1） ----------
-  const switchWorkspace = useCallback(
-    async (path: string, mode: 'open' | 'create') => {
-      if (hasUnsaved && !window.confirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？')) {
-        return
-      }
-      try {
-        const state = mode === 'create' ? await createWorkspace(path) : await openWorkspace(path)
-        applyWorkspace(state)
-      } catch (e) {
-        window.alert(`${mode === 'create' ? '创建' : '打开'}失败：${e instanceof Error ? e.message : String(e)}`)
-      }
-    },
-    [hasUnsaved],
-  )
 
   const applyWorkspace = useCallback((state: WorkspaceState) => {
     setWorkspace(state)
@@ -396,6 +387,27 @@ export default function App() {
     lastSavedAt.current.clear()
     setFirstRun(false)
   }, [])
+
+  // ---------- Workspace 切换（未保存确认，Phase 4 补充约束 1） ----------
+  // F02：切换前先 flush 未决保存（内容落到旧 workspace root），
+  // 避免后端 root 已切换后保存回调把 ws1 内容写入 ws2 同相对路径文件。
+  const switchWorkspace = useCallback(
+    async (path: string, mode: 'open' | 'create') => {
+      if (hasUnsaved && articleIdRef.current) {
+        const flushed = await flushWithTimeout(articleIdRef.current)
+        if (!flushed && !window.confirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？')) {
+          return
+        }
+      }
+      try {
+        const state = mode === 'create' ? await createWorkspace(path) : await openWorkspace(path)
+        applyWorkspace(state)
+      } catch (e) {
+        window.alert(`${mode === 'create' ? '创建' : '打开'}失败：${e instanceof Error ? e.message : String(e)}`)
+      }
+    },
+    [hasUnsaved, applyWorkspace],
+  )
 
   /** 顶栏「打开工作区…」：桌面用原生目录选择器，Web 回退手动输入（M4） */
   const handleOpenWorkspaceMenu = useCallback(async () => {
@@ -433,8 +445,12 @@ export default function App() {
   }, [workspace?.root, applyWorkspace])
 
   const handleCloseWorkspace = useCallback(async () => {
-    if (hasUnsaved && !window.confirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？')) {
-      return
+    if (hasUnsaved && articleIdRef.current) {
+      // F02：关闭前先 flush 未决保存（与 switchWorkspace 同款），防跨工作区串写
+      const flushed = await flushWithTimeout(articleIdRef.current)
+      if (!flushed && !window.confirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？')) {
+        return
+      }
     }
     await closeWorkspace()
     applyWorkspace({ open: false })
@@ -443,10 +459,7 @@ export default function App() {
   const handleNewArticle = useCallback(async () => {
     // P0-2：新建会替换当前文档，先处理未保存修改（flush + confirm 兜底）
     if (hasUnsaved && articleIdRef.current) {
-      const flushed = await Promise.race([
-        flushPending(articleIdRef.current).then(() => true),
-        new Promise<boolean>((r) => setTimeout(() => r(false), 3000)),
-      ])
+      const flushed = await flushWithTimeout(articleIdRef.current)
       if (!flushed && !window.confirm('当前有未保存修改，新建将放弃这些修改，是否继续？')) return
     }
     const title = window.prompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
@@ -499,6 +512,22 @@ export default function App() {
     },
     [article, requestOpenArticle],
   )
+
+  // R1-B：文件树重命名/移动/删除当前文档（或其所在目录）前，先 flush 未决保存。
+  // 必须在后端执行变更前调用——变更后旧路径已不存在，flush 会 404 且编辑器
+  // 被磁盘内容覆盖，未保存输入静默丢失。
+  const handleBeforeFsMutation = useCallback(async (node: TreeNode): Promise<boolean> => {
+    const curId = articleIdRef.current
+    if (!curId) return true
+    const affected =
+      node.type === 'folder' ? curId.startsWith(node.relPath + '/') : curId === node.relPath
+    if (!affected) return true
+    const flushed = await flushWithTimeout(curId)
+    if (!flushed) {
+      return window.confirm('当前文档有未保存修改，此操作将放弃这些修改，是否继续？')
+    }
+    return true
+  }, [])
 
   // ---------- P3-8：「恢复检查…」再入口（稍后处理后可手动重新检测） ----------
   const runRecoveryCheck = useCallback(async () => {
@@ -643,6 +672,7 @@ export default function App() {
           onOpenArticle={requestOpenArticle}
           refreshKey={treeRefresh}
           onFsMutation={handleFsMutation}
+          onBeforeFsMutation={handleBeforeFsMutation}
           onOpenSettings={() => setSettingsOpen(true)}
           workspaceRoot={workspace?.root ?? null}
         />
@@ -652,6 +682,7 @@ export default function App() {
         <EditorArea
           article={article}
           loading={loading}
+          reloadToken={reloadToken}
           onNewArticle={handleNewArticle}
           onSaveStateChange={setSaveState}
           onSaved={handleSaved}

@@ -115,6 +115,35 @@ export function flushPendingAll(ids?: string[]): Promise<void> {
   return Promise.all(target.map((id) => flushPending(id))).then(() => undefined)
 }
 
+/**
+ * 取消该 doc 的未决防抖保存（R2：重新加载外部版本前使用）。
+ * 只取消「尚未执行」的保存（防抖计时器 + 最新待保存函数）；
+ * 已在途的请求无法撤销——调用方可随后 flushPending(docId) 等待在途链完成
+ * 再做后续动作（重载/切换），保证「看到的磁盘内容 = 最终落盘内容」。
+ */
+export function cancelPending(docId: string): void {
+  const e = entries.get(docId)
+  if (!e) return
+  if (e.timer !== null) {
+    clearTimeout(e.timer)
+    e.timer = null
+  }
+  e.latest = undefined
+  if (e.running === null) entries.delete(docId)
+}
+
+/**
+ * 带超时兜底的「取消并触发保存」（R1/F02 通用前置：改名、移动、切换工作区等
+ * 一切路径变更前先落盘未决内容）。
+ * @returns true = 未决保存已清空（已落盘或本无未决）；false = 超时（保存未完成）。
+ */
+export function flushWithTimeout(docId: string, timeoutMs = 3000): Promise<boolean> {
+  return Promise.race([
+    flushPending(docId).then(() => true),
+    new Promise<boolean>((r) => setTimeout(() => r(false), timeoutMs)),
+  ])
+}
+
 /** 是否存在未决（防抖中/在途待补）保存。 */
 export function hasPending(docId: string): boolean {
   const e = entries.get(docId)

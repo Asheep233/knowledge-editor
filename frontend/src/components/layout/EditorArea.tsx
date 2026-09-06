@@ -19,7 +19,7 @@ import { setKeContent, useKeEditor } from '../../editor'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
-import { enqueueSave, flushPending, type SaveFn } from '../../state/saveQueue'
+import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { slugify } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
@@ -37,6 +37,9 @@ interface Props {
   onArticleRestored?: (doc: ArticleMeta) => void
   /** 页眉标题重命名成功（文件名 + frontmatter 均已更新）：App 同步树/激活态 */
   onRenamed?: (from: string, to: string, newTitle: string) => void
+  /** R2：外部版本重载令牌。App 调 handleReloadExternal 后 +1，同一文档 id
+   * 下强制编辑器重载磁盘内容（id 变化之外的显式 reload 触发源）。 */
+  reloadToken?: number
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -49,7 +52,7 @@ const SAVE_LABEL: Record<SaveState, { text: string; cls: string; kind: SaveState
   error: { text: '保存失败', cls: 'text-rose-600 font-medium', kind: 'error' },
 }
 
-export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed }: Props) {
+export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -89,17 +92,28 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     setTitleDraft(null)
     if (!next || next === article.title) return
     try {
+      // R1：改名是「路径变更」——先 flush 未决防抖保存（否则改名后旧路径
+      // PUT 404 被吞、editor 被陈旧 article.content 快照重置，输入静默抹掉）。
+      // 与 requestOpenArticle 同款 3s 超时兜底：超时则让用户显式确认。
+      const docId = article.id
+      if (!(await flushWithTimeout(docId))) {
+        if (!window.confirm('当前有未保存修改且保存超时，继续改名将丢弃这些修改，是否继续？')) return
+      }
       // 1) frontmatter/meta title（展示与列表立即同步）
-      await updateArticleMeta(article.id, { title: next })
+      await updateArticleMeta(docId, { title: next })
       // 2) 文件名同步（slug 变化时重命名；失败不阻塞已完成的 meta 更新）
-      const oldSlug = article.id.replace(/^Articles\//, '').replace(/\.md$/, '')
+      // F11：oldSlug 取文件名基线（含子目录文档）；旧实现 replace(/^Articles\//)
+      // 对「Articles/Sub/note.md」得「Sub/note」，与 slugify 输出永不相等，
+      // 导致子目录文档每次改标题都触发 rename 撞自身 409 误报。
+      const base = docId.split('/').pop() ?? docId
+      const oldSlug = base.replace(/\.(md|markdown)$/i, '')
       const newSlug = slugify(next)
       if (newSlug && newSlug !== oldSlug) {
-        const res = await renameDoc(article.id, `${newSlug}.md`)
+        const res = await renameDoc(docId, `${newSlug}.md`)
         onRenamed?.(res.from, res.to, next)
         return
       }
-      onRenamed?.(article.id, article.id, next)
+      onRenamed?.(docId, docId, next)
     } catch (e) {
       window.alert(`标题保存失败：${e instanceof Error ? e.message : String(e)}`)
     }
@@ -186,7 +200,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     editorRef.current = editor
   }, [editor])
 
-  // 文档切换：flush 上一文档的未决防抖保存（P0-2，不再丢弃输入），再重载内容
+  // 文档切换：flush 上一文档的未决防抖保存（P0-2，不再丢弃输入），再重载内容。
+  // R2：reloadToken 变化（同一文档的外部版本重载）也触发重载，但跳过 flush
+  // （id 未变，无「上一文档」；未决保存已由 App.handleReloadExternal 取消）。
   useEffect(() => {
     const newId = article?.id ?? null
     const prevId = prevArticleIdRef.current
@@ -198,7 +214,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     setSaveState('idle')
     if (editor && article) setKeContent(editor, stripFrontmatter(article.content).content)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [article?.id])
+  }, [article?.id, reloadToken])
 
   // 可编辑状态跟随文档打开状态：
   // useEditor 的 editable 仅在创建时生效（挂载时 article=null 会以只读创建），

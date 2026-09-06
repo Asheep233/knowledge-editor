@@ -23,12 +23,6 @@ from ..services.references import referencing_docs
 router = APIRouter(prefix="/api/fs", tags=["fs"])
 
 # 顶层受保护目录（自身不可删/改名/移动；.knowledgeeditor 与 Drafts 内部也不可经 fs 操作）
-_TOP_LEVEL = {
-    config.DIR_ARTICLES,
-    config.DIR_MODULES,
-    config.DIR_ATTACHMENTS,
-    config.DIR_DRAFTS,
-}
 _FORBIDDEN_ROOT = {
     config.DIR_INTERNAL,
     config.DIR_DRAFTS,
@@ -114,15 +108,33 @@ def _finish(request: Request, rel: str) -> None:
         w.mark_internal(rel)
 
 
+def _migrate_history(request: Request, old_rel: str, new_rel: str) -> None:
+    """F01：重命名/移动后迁移历史快照目录（Drafts/backup/{doc_rel}）。
+
+    历史为辅助能力：迁移失败只静默（记日志），绝不阻断主操作。
+    """
+    hist = getattr(request.app.state, "history", None)
+    if hist is None:
+        return
+    try:
+        hist.move_path(old_rel, new_rel)
+    except OSError:
+        import logging
+
+        logging.getLogger(__name__).warning("历史快照迁移失败（不影响主操作）: %s -> %s", old_rel, new_rel)
+
+
 # ---------- folder ----------
 
 @router.post("/dir", status_code=201)
 def create_dir(request: Request, body: DirCreate) -> dict:
     root = _require_ws(request)
     rel = body.path.strip("/")
-    if not rel or not rel.startswith(tuple(d + "/" for d in _TOP_LEVEL)) or rel.lower() in _TOP_LEVEL:
-        raise HTTPException(status_code=400, detail="目录必须位于 Articles/Modules/Attachments 下")
+    # F05：顶层目录约束必须在路径规范化后校验。原实现先于 _guard_rel 在原始
+    # 字符串上 startswith（`Articles/../evil` 可通过），_guard_rel 只校验不越出
+    # workspace 根——「必须位于三大顶层目录下」的约束实际可被绕过。
     full = _guard_rel(root, rel)
+    _require_business_top(root, full)
     full.mkdir(parents=True, exist_ok=True)
     return {"path": rel, "created": True}
 
@@ -145,6 +157,8 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     full.rename(target)
     new_rel = target.relative_to(root).as_posix()
     request.app.state.indexer.update_move(old_rel, new_rel)
+    # F01：历史快照目录随目录迁移，避免「历史快照→恢复」对改名后的目录立即为空
+    _migrate_history(request, old_rel, new_rel)
     return {"from": old_rel, "to": new_rel}
 
 
@@ -245,6 +259,8 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
     full.rename(target)
     new_rel = target.relative_to(root).as_posix()
     request.app.state.indexer.update_move(old_rel, new_rel)
+    # F01：历史快照目录随文档迁移
+    _migrate_history(request, old_rel, new_rel)
     return {"from": old_rel, "to": new_rel}
 
 
@@ -289,6 +305,8 @@ def move_path(request: Request, body: MoveBody) -> dict:
         raise HTTPException(status_code=409, detail=f"目标已存在: {dst_rel}")
     src.rename(dst)
     request.app.state.indexer.update_move(src_rel, dst_rel)
+    # F01：历史快照目录随移动迁移
+    _migrate_history(request, src_rel, dst_rel)
     return {"from": src_rel, "to": dst_rel}
 
 

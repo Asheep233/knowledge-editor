@@ -479,3 +479,129 @@ describe('Markdown <-> Document Model 往返', () => {
     expect(back).toContain('```\nhello world\n```')
   })
 })
+
+// ---------- R3 / F03 / F06 回归（v1.1.1-pre.1 审查） ----------
+
+describe('R3 — 空 ke-note 不吞噬后续内容（ke-note 包裹格式不变量）', () => {
+  const N1 = '<!-- ke-note: {"kind":"note","id":"n1","title":"空"} -->'
+  const N2 = '<!-- ke-note: {"kind":"note","id":"n2","title":"非空"} -->'
+  const END2 = '<!-- /ke-note -->'
+
+  it('空信息块 + 非空信息块：两个 note 节点都保留，n2 内容不被吞', () => {
+    const md = `${N1}\n\n${N2}\n内容X\n${END2}`
+    const ed = makeEditor(md)
+    const json = ed.getJSON()
+    const notes = (json.content ?? []).filter((n) => n.type === 'note') as JSONContent[]
+    expect(notes).toHaveLength(2)
+    expect(notes[0]?.attrs?.id).toBe('n1')
+    expect(notes[1]?.attrs?.id).toBe('n2')
+    expect((notes[1]?.content ?? []).map((n) => n.text ?? '').join('')).toContain('内容X')
+    ed.destroy()
+  })
+
+  it('空信息块往返：序列化输出闭合标记，重开仍为两个独立的 note', () => {
+    const md = `${N1}\n\n${N2}\n内容X\n${END2}`
+    const ed = makeEditor(md)
+    const back = ed.getMarkdown()
+    // R3 第一部分：空内容也输出 <!-- /ke-note -->（不再与旧自闭合格式混淆）
+    expect(back.split('<!-- ke-note:').length - 1).toBe(2)
+    expect(back.split('<!-- /ke-note -->').length - 1).toBe(2)
+    expect(back).toContain('内容X')
+    ed.destroy()
+
+    // 往返稳定：重开序列化结果，两个 note 仍在
+    const ed2 = makeEditor(back)
+    const notes = (ed2.getJSON().content ?? []).filter((n) => n.type === 'note') as JSONContent[]
+    expect(notes).toHaveLength(2)
+    expect((notes[1]?.content ?? []).map((n) => n.text ?? '').join('')).toContain('内容X')
+    ed2.destroy()
+  })
+
+  it('旧格式（自闭合无内容）后跟非空信息块：不吞后续（旧文档兼容）', () => {
+    const md = `<!-- ke-note: {"kind":"note","id":"old","title":"旧空"} -->\n\n${N2}\n内容Y\n${END2}`
+    const ed = makeEditor(md)
+    const notes = (ed.getJSON().content ?? []).filter((n) => n.type === 'note') as JSONContent[]
+    expect(notes).toHaveLength(2)
+    expect((notes[1]?.content ?? []).map((n) => n.text ?? '').join('')).toContain('内容Y')
+    ed.destroy()
+  })
+})
+
+describe('F03 — 大小写变体 ke- 注释原样保留（document-format §4）', () => {
+  it('ke-NOTE 块级大小写变体：解析为 fallback 保留原文，往返不丢', () => {
+    const md = '<!-- ke-NOTE: {"kind":"note","id":"x1","title":"大标题"} -->'
+    const ed = makeEditor(md)
+    const json = ed.getJSON()
+    const fallback = (json.content ?? []).find((n) => n.type === 'keFallback')
+    expect(fallback).toBeTruthy()
+    const back = ed.getMarkdown()
+    expect(back).toContain('<!-- ke-NOTE:')
+    ed.destroy()
+  })
+
+  it('ke-Footnote 大小写变体（行内）：保留原文不丢', () => {
+    const md = '正文<!-- ke-Footnote: {"kind":"footnote","id":"f9","n":9} -->结尾。'
+    const ed = makeEditor(md)
+    const back = ed.getMarkdown()
+    expect(back).toContain('<!-- ke-Footnote:')
+    ed.destroy()
+  })
+})
+
+describe('F06 — 块级 footnote 系不再静默丢失', () => {
+  it('独占一行的 ke-footnote 引用：原样保留', () => {
+    const md = '正文。\n\n<!-- ke-footnote: {"kind":"footnote","id":"f1","n":1} -->\n\n结尾。'
+    const ed = makeEditor(md)
+    const back = ed.getMarkdown()
+    expect(back).toContain('<!-- ke-footnote:')
+    ed.destroy()
+  })
+
+  it('未闭合 ke-footnotes 区域：start 与 item 标记均保留', () => {
+    const md = '正文。\n\n<!-- ke-footnotes:start -->\n<!-- ke-footnote-item: {"id":"f1","n":1,"text":"注释"} -->'
+    const ed = makeEditor(md)
+    const back = ed.getMarkdown()
+    expect(back).toContain('<!-- ke-footnotes:start -->')
+    expect(back).toContain('<!-- ke-footnote-item:')
+    ed.destroy()
+  })
+
+  it('孤儿 footnote-item：原样保留', () => {
+    const md = '<!-- ke-footnote-item: {"id":"f2","n":2,"text":"孤儿女"} -->'
+    const ed = makeEditor(md)
+    const back = ed.getMarkdown()
+    expect(back).toContain('<!-- ke-footnote-item:')
+    ed.destroy()
+  })
+
+  it('行内 footnote（段落中部）仍解析为 footnote 节点（兜底不干扰正常用例）', () => {
+    const md = '这是正文<!-- ke-footnote: {"kind":"footnote","id":"f3","n":3} -->带脚注。'
+    const ed = makeEditor(md)
+    const json = ed.getJSON()
+    const inline = (json.content ?? [])
+      .flatMap((n) => n.content ?? [])
+      .find((n) => n.type === 'footnote')
+    expect(inline).toBeTruthy()
+    expect((inline as unknown as { attrs?: { id?: string } })?.attrs?.id).toBe('f3')
+    ed.destroy()
+  })
+
+  it('段首脚注（注释后同行有正文）：注释保留为 fallback 块，正文照常成段不丢', () => {
+    // 编辑器可产出：光标置于段首插入脚注 → 序列化后行首为 ke-footnote 引用。
+    // 该形态无法在块级重建 inline 脚注节点（marked html 规则会吞掉），
+    // 要求：注释原文保留（不静默丢失）+ 正文照常成段。
+    const md = '<!-- ke-footnote: {"kind":"footnote","id":"f4","n":4} -->第一段开头正文。'
+    const ed = makeEditor(md)
+    const json = ed.getJSON()
+    const blocks = json.content ?? []
+    const fb = blocks.find((n) => n.type === 'keFallback')
+    expect(fb).toBeTruthy()
+    expect((fb?.attrs as { raw?: string } | undefined)?.raw).toContain('ke-footnote')
+    expect(blocks.some((n) => n.type === 'paragraph')).toBe(true)
+    // 往返稳定：正文保留、脚注引用保留
+    const back = ed.getMarkdown()
+    expect(back).toContain('第一段开头正文。')
+    expect(back).toContain('ke-footnote')
+    ed.destroy()
+  })
+})

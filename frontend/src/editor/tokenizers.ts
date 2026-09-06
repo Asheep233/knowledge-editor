@@ -113,8 +113,11 @@ export const keNoteTokenizer = {
     if (typeof attrs !== 'object' || attrs === null) return undefined
     const headLen = bodyStart + jsonStr.length + close[0].length
     const contentSrc = src.slice(headLen)
-    const endTag = '<!-- /ke-note -->'
-    const endIdx = contentSrc.indexOf(endTag)
+    // R3：结束标记只在「本块范围内」有效——下一个块级 ke-* 标记行出现前。
+    // 旧实现 indexOf 在文档剩余全文搜索：空信息块（旧格式无闭合标记）之后
+    // 若存在任何包裹笔记的结束标记，中间所有内容（含下一个笔记的头标记）会被
+    // 吞为本笔记的块内文本，下一个笔记节点被整体消灭。
+    const endIdx = findNoteEnd(contentSrc)
     if (endIdx < 0) {
       // 自闭合（旧格式）：content/text 存于 attr，无块内内容
       const raw = src.slice(0, headLen)
@@ -124,9 +127,34 @@ export const keNoteTokenizer = {
     let inner = contentSrc.slice(0, endIdx)
     // 去掉内容首尾的空白行，保证 parseMarkdown 解析干净
     inner = inner.replace(/^\s*\n/, '').replace(/\s+$/, '')
-    const raw = src.slice(0, headLen + endIdx + endTag.length)
+    const raw = src.slice(0, headLen + endIdx + NOTE_END_TAG.length)
     return { type: 'ke_note', raw, attrs, content: inner }
   },
+}
+
+/** ke-note 包裹格式的闭合标记（与 NoteExtension.renderMarkdown 输出一致）。 */
+const NOTE_END_TAG = '<!-- /ke-note -->'
+
+/**
+ * 在本块范围内查找闭合标记 `<!-- /ke-note -->` 的起始位置。
+ * 扫描规则（R3）：按行前进；
+ * - 命中本块闭合标记 → 返回其位置；
+ * - 命中其他任何 ke-* 标记行（下一个信息块头标记、模块标记、闭合标记等）
+ *   → 本块无闭合标记（旧格式自闭合），返回 -1；
+ * - 其余内容（含公式、普通文本等）继续扫描。
+ */
+function findNoteEnd(contentSrc: string): number {
+  let pos = 0
+  while (pos < contentSrc.length) {
+    const eol = contentSrc.indexOf('\n', pos)
+    const lineEnd = eol === -1 ? contentSrc.length : eol
+    const line = contentSrc.slice(pos, lineEnd).trim()
+    if (/^<!--\s*\/\s*ke-note\s*-->$/.test(line)) return pos
+    if (/^<!--\s*\/?ke-[a-zA-Z]/.test(line)) return -1
+    if (eol === -1) break
+    pos = eol + 1
+  }
+  return -1
 }
 
 /**
@@ -316,26 +344,47 @@ function parseFootnoteItem(src: string, start: number): { obj: Record<string, un
 
 /**
  * 兜底 tokenizer（块级 + 行内）：保留未被具体扩展消费的 ke-* 注释原文。
- * - 命中范围：任意 `<!-- ke-...: ` 注释（含已知 kind + 未知 kind）。
+ * - 命中范围：任意 `<!-- ke-...: ` 注释（含已知 kind + 未知 kind + 大小写变体）。
  * - 依赖注册顺序：@tiptap/markdown 通过 marked.use + unshift 注册 tokenizer，
  *   后注册的先执行；GenericFallback 是最先注册的，因此其 tokenizer 最后执行。
  *   于是：具体 ke-* tokenizer（keNote / keComment / footnote / footnotes）先执行，
  *   能正常解析的已知 kind 会被它们消费；只有解析失败（JSON 损坏 / 括号不匹配）
- *   的已知 kind 或未知 kind 才会落到本 fallback，按原文保留。
- * - kind 允许连字符/数字（如 ke-future-block、ke-x2:），确保任意标记可保留。
+ *   的已知 kind、未知 kind 或大小写变体（ke-NOTE 等，document-format §4：
+ *   「大小写不符→原样保留」）才会落到本 fallback，按原文保留。
+ * - F06：块级兜底不再排除 footnote 系——独占一行的 ke-footnote 引用、
+ *   未闭合 ke-footnotes 区域、孤儿 footnote-item 此前整条消失；改为原样保留
+ *   （行内脚注仍由 footnoteTokenizer 在段落内消费，不受影响）。
+ * - kind 允许连字符/数字/大写（如 ke-future-block、ke-x2:、ke-NOTE:），
+ *   确保任意标记可保留。
  */
-// 行内兜底：匹配任意 ke-* 注释（含已知 kind + footnote），用于「已知 kind + 损坏 JSON」保留。
-const KE_INLINE_CATCH_PATTERN = `^<!--\\s*ke-[a-z][a-z0-9-]*:`
-// 块级兜底：排除 footnote（footnote/footnotes/footnote-item 前缀）——footnote 是行内 token，
-// 允许块级兜底匹配它会把段落开头的行内脚注引用整块吞掉。note/module/attach/video 等
+// 行内兜底：匹配任意 ke-* 注释（含已知 kind + footnote + 大小写变体）。
+const KE_INLINE_CATCH_PATTERN = `^<!--\\s*ke-[a-zA-Z][a-zA-Z0-9-]*:`
+// 块级兜底：不排除 footnote 系（F06，见上）；note/module/attach/video 等
 // 块级已知 kind 仍允许命中，用于「块级已知 kind + 损坏 JSON」的兜底保留。
-const KE_BLOCK_CATCH_PATTERN = `^<!--\\s*ke-(?!footnote)[a-z][a-z0-9-]*:`
+const KE_BLOCK_CATCH_PATTERN = `^<!--\\s*ke-[a-zA-Z][a-zA-Z0-9-]*:`
 
 export const keFallbackTokenizer = {
   name: 'ke_fallback',
   level: 'block' as const,
   start: (src: string) => (new RegExp(KE_BLOCK_CATCH_PATTERN).test(src) ? 0 : -1),
   tokenize(src: string): MarkdownToken | undefined {
+    // F06：行首的 ke-footnote 引用可能是「段首行内脚注」（编辑器可产出：
+    // 光标置于段首插入脚注后，注释后紧跟正文）。若注释后同一行仍有内容，
+    // 让位给段落规则 + inline tokenizer（正规脚注解析为 footnote 节点）；
+    // 仅当注释独占一行（其后只有空白/行尾）时才作为块级 fallback 原样保留。
+    // 其余 case（已知块级 kind 损坏 JSON / 未知 kind / 大小写变体）照旧保留。
+    const m0 = new RegExp(KE_BLOCK_CATCH_PATTERN).exec(src)
+    if (!m0) return undefined
+    const after = src.slice(m0[0].length)
+    const commentEnd = after.indexOf('-->')
+    if (commentEnd >= 0) {
+      const lineTail = after.slice(commentEnd + 3).split('\n')[0].trim()
+      if (lineTail !== '') {
+        // 段首脚注（注释后同行还有正文，如「<!-- ke-footnote: {...} -->正文」）：
+        // 只保留注释本身（原样、不丢），后续正文照常成段；绝不整行吞掉。
+        return { type: 'ke_fallback', raw: src.slice(0, m0[0].length + commentEnd + 3) }
+      }
+    }
     // 非贪婪匹配到行尾的 -->（独占行）。已知块级 kind 已由各自 tokenizer 消费，
     // 能走到这里说明 kind 未知或 JSON 损坏：保留原始文本。
     const m = new RegExp(`${KE_BLOCK_CATCH_PATTERN}[\\s\\S]*?-->\\s*(?:\\n|$)`).exec(src)
@@ -373,7 +422,9 @@ const HTML_INLINE_TAGS = new Set([
 ])
 
 function isPlainHtmlComment(src: string): boolean {
-  return /^<!--/.test(src) && !/^<!--\s*ke-/.test(src)
+  // F03：ke- 前缀判定大小写不敏感——`ke-NOTE` 等大小写变体不被当作普通注释
+  // 转 html 保真路径，而是统一落入 GenericFallback 按原文保留。
+  return /^<!--/.test(src) && !/^<!--\s*ke-/i.test(src)
 }
 
 /** 块级 HTML：注释或块级元素（tag 非行内格式化标签、非 ke-*）。 */

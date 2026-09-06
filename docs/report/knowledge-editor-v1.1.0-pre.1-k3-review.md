@@ -10,11 +10,13 @@
 
 ```
 发布判定:需修复后发布(低修复成本)
-发布阻断项数量:1(版本一致性,P2 严重度但属发布流程 BLOCKING)
-核心数据完整性 / 保存读取 / 导出 / Markdown 方言兼容:全部 PASS,无任何 P0/P1
+发布阻断项数量:2(①版本一致性 P2;②新建文件夹功能缺失 P1 — 用户实测不可用)
+核心数据完整性 / 保存读取 / 导出 / Markdown 方言兼容:全部 PASS
 ```
 
-**一句话结论：不存在足以阻止正式 1.1.0 发布的功能性或数据完整性问题；唯一阻断项是版本源漂移（`desktop/package.json` 仍为 1.0.2，且第一轮报告误报「全链一致」），属于发布前必须一次性对齐的低工作量修复。**
+> **勘误（K3 自我修正，用户实测驱动）：** 初版报告结论「不存在阻止发布的功能性问题」**不成立**。用户实测「新建文件夹功能不可用」，K3 复核确认这是一个第一轮与 K3 初版都漏报的 **false negative**——后端 mkdir 成功且测试全绿，但空文件夹在前端树中根本不渲染，功能等同于缺失。已补入 K3-U1【BLOCKING】。
+
+**一句话结论：存在 2 个发布阻断项——① 版本源漂移（`desktop/package.json` 仍为 1.0.2，第一轮误报「全链一致」）；② 新建文件夹功能因「空文件夹不进树」而实际不可用（K3 初版漏报）。两者均为低/中工作量修复，修复后可发布正式 1.1.0。**
 
 ### 验证环境与实跑结果
 
@@ -45,11 +47,30 @@
 | O5（localStorage 与 Rust 并存） | 观察项 | **REJECTED** | schema camelCase 一致，双端 merge 语义对齐（settings.ts:86-114 vs settings.rs)，无独立问题 |
 | 硬约束⑥「APP_VERSION 全链一致」 | PASS | **REJECTED（第一轮误报）** | 实测 `desktop/package.json:4` = `"1.0.2"`、`desktop/package-lock.json:3` = `"1.0.0"`，与 Cargo.toml / tauri.conf.json / Cargo.lock / frontend / backend `__version__`（均 1.1.0-pre.1）**不一致**——第一轮「全链一致」结论错误（见 K3-V1） |
 
-**第一轮漏报的重要问题（false negatives）：** K3-V1（desktop/package.json 版本漂移，且被第一轮明确误报为一致）、K3-V3（前后端 slugify 在 Windows 保留名带扩展名场景行为分歧）、K3-I1（indexer 增量更新不刷新扫描签名，reconcile 退化为永久全量重建）、K3-I2（rename_doc / move_path 非原子、无 fsync，崩溃窗口内可丢文件）。详见下节。
+**第一轮漏报的重要问题（false negatives）：** **K3-U1（新建文件夹空目录不进树、功能不可用——第一轮与 K3 初版双双漏报，用户实测发现）**、K3-V1（desktop/package.json 版本漂移，且被第一轮明确误报为一致）、K3-V3（前后端 slugify 在 Windows 保留名带扩展名场景行为分歧）、K3-I1（indexer 增量更新不刷新扫描签名，reconcile 退化为永久全量重建）、K3-I2（rename_doc / move_path 非原子、无 fsync，崩溃窗口内可丢文件）。详见下节。
 
 ---
 
 ## 二、架构级新发现（K3-only，按 Release Impact 排序）
+
+### K3-U1 — 新建文件夹功能不可用：空文件夹不进文件树【BLOCKING】
+
+- **ID:** K3-U1
+- **Severity:** P1（核心功能实际不可用）
+- **Category:** 跨模块数据流（Editor → Backend API → 文件树渲染）
+- **Root Cause:** RC-EMPTY-DIR — 文件树数据源（`/api/tree`）只返回**文件**（`walk_files`），前端 `buildFileTree` 只从**文件路径推导**父文件夹，空文件夹不产生任何节点，故「创建成功的空文件夹」在 UI 中完全不渲染。
+- **Disposition:** NEW（第一轮 + K3 初版双双漏报，用户实测发现）
+- **K3 Confidence:** HIGH（代码路径 + 后端测试 + 用户实测三方印证）
+- **Release Impact:** **BLOCKING**（核心文件管理功能实际不可用）
+- **File/Line:**
+  - 后端：`backend/app/routers/documents.py:127-149`（`walk()` 用 `markdown_io.walk_files` 只枚举文件）；`fs.py:119-127`（`POST /dir` mkdir 成功但不影响树内容）
+  - 前端：`frontend/src/utils/tree.ts:10-36`（`buildFileTree` 仅从文件路径 `parts[i]` 推导 folder 节点，无独立目录条目）；`LeftSidebar.tsx:458`（`buildFileTree(tree?.articles ?? [])`）
+- **Evidence:**
+  - 支持证据 — ① 后端 `POST /api/fs/dir` 返回 201、目录确实落盘（`test_file_tree.py:31-44` 等 7/7 通过）；② 但 `/api/tree` 的 `articles` 仅为 `.md` 文件路径数组，`buildFileTree` 对「无文件的目录」不生成任何 `TreeNode`；③ 「新建文件夹」入口（`LeftSidebar.tsx:412` hover 按钮 / `:743` 右键菜单）只在**已存在的文件夹**上提供，新建成功后 `notify→refreshAll→getTree` 刷新，但新空文件夹无文件 → 不渲染 → 用户看到「点了没反应」= 不可用。
+  - 反证 — 若在新建文件夹里再新建文档，文档出现则父文件夹「被迫」渲染（间接证明目录已建）；说明后端与创建链路本身无缺陷，缺陷在**树渲染数据源不含空目录**。
+- **Baseline comparison:** Introduced / Expanded（`buildFileTree` 为既有工具，但本轮 UI 重构把它接入新 LeftSidebar 且「新建文件夹」成为显眼入口，使该缺陷从「无入口无人触发」变为「显眼入口触发后无反馈」）
+- **Impact:** 用户无法通过 UI 创建并看到空文件夹；唯一 workaround 是「先建文件夹再立即在其中建文档」，不符合直觉。文件管理核心能力受损。
+- **Fix direction:** 两条路任选（建议①）：① 后端 `/api/tree` 增加目录列表（`walk_dirs`），前端 `buildFileTree` 接受文件+目录两个数组合并建树（空目录作为显式 folder 节点）；② 前端在「新建文件夹」成功后乐观插入一个空 folder 节点（治标，刷新后仍消失，不推荐）。工作量：**中**（涉前后端契约 + 树构建逻辑 + 测试）。
 
 ### K3-V1 — 版本源三处漂移且第一轮误报「全链一致」【BLOCKING】
 
@@ -157,9 +178,10 @@
 
 | Root Cause | File/Line | 问题 | 修复方向 | 工作量 |
 |---|---|---|---|---|
+| **RC-EMPTY-DIR**（K3-U1） | `documents.py:127-149`、`utils/tree.ts:10-36`、`LeftSidebar.tsx:458` | 新建空文件夹不进文件树 → 「新建文件夹」功能实际不可用（用户实测） | 后端 `/api/tree` 返回目录列表（`walk_dirs`），前端 `buildFileTree` 合并文件+目录建树，空目录作显式 folder 节点；补前后端测试 | **中** |
 | **RC-VERSION**（K3-V1 / K3-V2 / F3 合并） | `desktop/package.json:4`、`desktop/package-lock.json:3`、`WorkspacePicker.tsx:28` | 版本源三处漂移：desktop 两文件未随 1.1.0-pre.1 升级；WorkspacePicker 重复常量带 v 前缀且与 version.ts 解耦 | ① desktop/package.json + lock 同步 1.1.0；② WorkspacePicker `import { APP_VERSION }` 唯一来源，展示层统一 `v${APP_VERSION}`；③ 正式发布时以同一常量重打 NSIS 并复核 Cargo.toml / tauri.conf.json / lock | **小** |
 
-**仅此 1 项阻断。** F1 / F2 / K3-V3 / K3-I1 / K3-I2 / K3-T1 均为 NON-BLOCKING（功能不损、有 workaround 或概率极低），建议进入 1.1.x 修复队列而非阻断 1.1.0。
+**共 2 项阻断（RC-EMPTY-DIR 为 K3 初版漏报、用户实测补回）。** F1 / F2 / K3-V3 / K3-I1 / K3-I2 / K3-T1 均为 NON-BLOCKING（功能不损、有 workaround 或概率极低），建议进入 1.1.x 修复队列而非阻断 1.1.0。
 
 ---
 
@@ -173,11 +195,22 @@
 
 ## 六、最终建议
 
-**可进正式 1.1.0，但发布前必须先完成 RC-VERSION 一次性对齐（小工作量）。** 建议行动顺序：
+**可进正式 1.1.0，但发布前必须完成 2 个阻断项修复。** 建议行动顺序：
 
-1. **修 RC-VERSION**（同步 desktop 版本 + WorkspacePicker 去重）→ 这是唯一阻断项，也是第一轮「全链一致 PASS」误报的纠正；
-2. **顺手修 F1**（`bg-primary-soft0`→`bg-primary-soft`，一行）与 K3-V3（slug.ts 保留名对齐后端 + 补 slug.test.ts），成本极低、消除两个真实用户可感知缺陷；
-3. 重打 NSIS，复核 Cargo.toml / tauri.conf.json / Cargo.lock / frontend version / backend `__version__` 五链均为 1.1.0（去 pre 后缀），并在 Windows 真机补验 U1（cargo test）与 U2（CDP 视觉复核 F1/F2 修复）；
-4. K3-I1 / K3-I2 / K3-T1 / B1 排 1.1.x；O4 待主理人拍板。
+1. **修 RC-EMPTY-DIR（K3-U1，新建文件夹可用性）** → 核心功能，用户实测不可用，涉前后端契约，工作量中；
+2. **修 RC-VERSION**（同步 desktop 版本 + WorkspacePicker 去重）→ 第一轮「全链一致 PASS」误报的纠正，工作量小；
+3. **顺手修 F1**（`bg-primary-soft0`→`bg-primary-soft`，一行）与 K3-V3（slug.ts 保留名对齐后端 + 补 slug.test.ts），成本极低、消除两个真实用户可感知缺陷；
+4. 重打 NSIS，复核 Cargo.toml / tauri.conf.json / Cargo.lock / frontend version / backend `__version__` 五链均为 1.1.0（去 pre 后缀），并在 Windows 真机补验 U1（cargo test）、U2（CDP 视觉复核 F1/F2 修复）与 **K3-U1 的 GUI 端到端验证（新建空文件夹 → 树中立即可见）**；
+5. K3-I1 / K3-I2 / K3-T1 / B1 排 1.1.x；O4 待主理人拍板。
 
-**在 ab4ca1d 当前状态下，不存在阻止正式 1.1.0 发布的数据完整性 / 兼容性 / 保存读取类真实问题；修复 RC-VERSION（含顺手 F1）后即可发布。**
+**在 ab4ca1d 当前状态下，新建文件夹功能不可用（K3-U1）与版本源漂移（K3-V1）是 2 个必须修复的发布阻断项；修复后即可发布正式 1.1.0。数据完整性 / 兼容性 / 保存读取类无阻断问题。**
+
+---
+
+## 七、K3 自我复核记录（方法论诚实）
+
+本条为发布后对 K3 自身的复盘，非发布阻断项。
+
+- **漏报教训：** K3 初版与第一轮都犯了同一类错误——把「后端 API + 单元测试全绿」误当作「端到端功能可用」。新建文件夹后端 mkdir 成功、`test_file_tree.py` 7/7 通过，但**测试断言停留在「目录落盘 + 含文件的树」，从未断言「空目录出现在树里」**；前端 `buildFileTree` 从文件路径推导目录这一间接数据源，使「空目录不可见」成为测试盲区。
+- **触发：** 用户一句「新建文件夹不可用，你没跑出来吗」——K3 的审查清单（导出/方言/保存/版本/主题）覆盖了大量架构面，却漏掉了这个最朴素的用户路径。
+- **改进：** 架构级审查应补一条「**核心 CRUD 用户路径端到端走查**」清单（新建/重命名/删除/移动 文档与文件夹各跑一遍真实数据流，而非只看 API 测试），避免「测试全绿但功能不可用」的系统性盲区。

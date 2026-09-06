@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_DEBOUNCE_MS,
+  abortPending,
   cancelPending,
   enqueueSave,
   flushPending,
@@ -152,6 +153,50 @@ describe('saveQueue — P1-6 并发保存串行化为 latest-wins', () => {
     }, DEFAULT_DEBOUNCE_MS)
     await flushPendingAll(['doc-A', 'doc-B'])
     expect(saved.sort()).toEqual(['A', 'B'])
+  })
+})
+
+describe('saveQueue — R2 残余 abortPending（取消未决 + 中止在途保存）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('abortPending 取消未决并中止在途：在途 saveFn 收到已中止的 AbortSignal', async () => {
+    const order: string[] = []
+    let seenSignal: AbortSignal | undefined
+    let resolveFirst: () => void
+    const first = new Promise<void>((r) => {
+      resolveFirst = r
+    })
+    enqueueSave('doc-A', (signal?: AbortSignal) => {
+      seenSignal = signal
+      order.push('save-1')
+      return first
+    }, 0)
+    await Promise.resolve()
+    // 在途期间 abort：latest 被丢弃 + 在途保存被中止
+    enqueueSave('doc-A', () => {
+      order.push('save-2')
+      return Promise.resolve()
+    }, 0)
+    abortPending('doc-A')
+    expect(seenSignal?.aborted).toBe(true)
+    resolveFirst!()
+    await Promise.resolve()
+    expect(order).toEqual(['save-1'])
+    expect(hasPending('doc-A')).toBe(false)
+  })
+
+  it('abortPending 无在途时等同 cancelPending：推进时间不再触发保存', async () => {
+    const save = vi.fn().mockResolvedValue(undefined)
+    enqueueSave('doc-A', save, DEFAULT_DEBOUNCE_MS)
+    abortPending('doc-A')
+    vi.advanceTimersByTime(DEFAULT_DEBOUNCE_MS * 3)
+    expect(save).not.toHaveBeenCalled()
   })
 })
 

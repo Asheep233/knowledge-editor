@@ -36,7 +36,7 @@ import { shouldBlockUnload } from './state/closeGuard'
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
 import { recoveryCheckShouldRun } from './state/recovery'
-import { cancelPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
+import { abortPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
 import { planStartup } from './state/settingsGates'
 import { APP_VERSION } from './version'
 import type { ArticleMeta, FsEvent, HealthInfo, RecoveryItem, WorkspaceState } from './types'
@@ -357,8 +357,8 @@ export default function App() {
 
   // 外部修改弹窗：重新加载 / 保留当前编辑
   // R2：用户选择「重新加载外部版本」= 以磁盘内容为准。
-  // 1) 先取消该文档未决防抖保存（否则数秒内自动保存把本地旧内容写回、覆盖外部版本）；
-  // 2) 等待在途保存完成（保证重载看到的 = 最终落盘内容，无乱序）；
+  // 1) abortPending 取消未决**并中止在途**保存（否则自动保存把本地旧内容写回、覆盖外部版本）；
+  // 2) 等待保存链收尾（保证重载看到的 = 最终落盘内容，无乱序）；
   // 3) openArticle 拉取磁盘版本 + reloadToken 强制编辑器重载
   //    （id 相同导致 [article?.id] effect 不触发的旧缺陷）。
   const handleReloadExternal = useCallback(async () => {
@@ -368,7 +368,7 @@ export default function App() {
     if (hasUnsaved && !window.confirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？')) {
       return
     }
-    cancelPending(rel)
+    abortPending(rel)
     await flushPending(rel)
     await openArticle(rel)
     setReloadToken((t) => t + 1)

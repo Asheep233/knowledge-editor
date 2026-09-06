@@ -20,7 +20,7 @@
  * saveState / 恢复点 / onSaved 等副作用由调用方（EditorArea）在 saveFn 中处理。
  */
 
-export type SaveFn = () => Promise<unknown>
+export type SaveFn = (signal?: AbortSignal) => Promise<unknown>
 
 export const DEFAULT_DEBOUNCE_MS = 3000
 
@@ -32,6 +32,8 @@ interface Entry {
   running: Promise<void> | null
   /** 防抖计时器 */
   timer: ReturnType<typeof setTimeout> | null
+  /** 当前在途保存在途用的 AbortController（R2 残余：可中止在途 PUT） */
+  abort?: AbortController
 }
 
 const entries = new Map<string, Entry>()
@@ -53,12 +55,16 @@ function drain(e: Entry): Promise<void> {
       while (e.latest !== undefined) {
         const fn = e.latest
         e.latest = undefined
+        // R2 残余：每次执行建立独立 AbortController，abortPending 可中止在途请求
+        e.abort = new AbortController()
         // 保存成败由调用方 saveFn 自行处理（EditorArea 区分 error/恢复点）；
         // 队列只保证串行与“完成后再补一次”，不中断后续保存。
         try {
-          await fn()
+          await fn(e.abort.signal)
         } catch {
           /* 继续取下一个（若有最新内容） */
+        } finally {
+          e.abort = undefined
         }
       }
     } finally {
@@ -129,6 +135,22 @@ export function cancelPending(docId: string): void {
     e.timer = null
   }
   e.latest = undefined
+  if (e.running === null) entries.delete(docId)
+}
+
+/**
+ * 取消未决保存并**中止在途保存**（R2 残余：极端时序下在途 PUT 会把本地旧内容
+ * 写回磁盘、覆盖外部版本）。调用方随后 flushPending(docId) 等待在途链收尾。
+ */
+export function abortPending(docId: string): void {
+  const e = entries.get(docId)
+  if (!e) return
+  if (e.timer !== null) {
+    clearTimeout(e.timer)
+    e.timer = null
+  }
+  e.latest = undefined
+  e.abort?.abort()
   if (e.running === null) entries.delete(docId)
 }
 

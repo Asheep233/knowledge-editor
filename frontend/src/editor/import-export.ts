@@ -32,22 +32,58 @@ export function extractAttachmentRefs(md: string): string[] {
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return
     refs.add(s)
   }
-  // 按出现顺序一次扫描：ke-attach / ke-video JSON 节点 + 标准图片 ![alt](src "title")
+  // 单遍扫描（保持文档顺序）：ke-attach/video 头标记（JSON 用括号平衡匹配，
+  // F07：title/caption 含 `}` 不截断）+ 标准图片 ![alt](src "title")
   const re =
-    /<!--\s*ke-(?:attach|video):\s*(\{[\s\S]*?\})\s*-->|!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g
+    /<!--\s*ke-(?:attach|video):\s*|!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g
   let m: RegExpExecArray | null
   while ((m = re.exec(md))) {
-    if (m[1] !== undefined) {
-      try {
-        add((JSON.parse(m[1]) as { src?: string }).src)
-      } catch {
-        /* 非法 JSON 忽略，由 GenericFallback 原样保留 */
+    if (m[0].startsWith('<!--')) {
+      // ke-* 分支：跨 JSON 推进 lastIndex 到头标记整体结束（不重扫中间内容）
+      const bodyStart = m.index + m[0].length
+      if (md[bodyStart] === '{') {
+        const parsed = scanBalancedJson(md, bodyStart)
+        if (parsed !== null) {
+          const jsonEnd = bodyStart + parsed.length
+          const close = /^\s*-->/.exec(md.slice(jsonEnd))
+          if (close) {
+            re.lastIndex = jsonEnd + close[0].length
+            try {
+              add((JSON.parse(parsed) as { src?: string }).src)
+            } catch {
+              /* 非法 JSON 忽略，由 GenericFallback 原样保留 */
+            }
+          }
+        }
       }
     } else {
-      add(m[2])
+      add(m[1])
     }
   }
   return [...refs]
+}
+
+/** 从 src[start]（须为 '{'）做括号平衡匹配，返回完整 JSON 字符串（F07）。 */
+function scanBalancedJson(src: string, start: number): string | null {
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = start; i < src.length; i++) {
+    const ch = src[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (ch === '\\') esc = true
+      else if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') inStr = true
+    else if (ch === '{') depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) return src.slice(start, i + 1)
+    }
+  }
+  return null
 }
 
 /** 与后端 slugify 对齐的简化下载文件名（保留 CJK，非法字符折叠为 '-'）。 */

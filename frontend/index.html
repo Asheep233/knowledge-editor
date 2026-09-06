@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KnowledgeEditor</title>
+    <script>
+      // F16：内联预置主题（首帧防闪烁）——JS bundle 加载前从 localStorage 读出
+      // 主题并写 data-theme/color-scheme；非法/缺失值回退 system（浅色）。
+      (function () {
+        try {
+          var raw = localStorage.getItem('ke.settings.v1')
+          if (!raw) return
+          var parsed = JSON.parse(raw) || {}
+          var theme = parsed.ui ? parsed.ui.theme : 'system'
+          var dark =
+            typeof matchMedia === 'function' &&
+            matchMedia('(prefers-color-scheme: dark)').matches
+          var effective = theme === 'dark' || (theme === 'system' && dark) ? 'dark' : 'light'
+          document.documentElement.dataset.theme = effective
+          document.documentElement.style.colorScheme = effective
+        } catch (e) {
+          /* 设置缺失/损坏：保持默认（浅色），由 loadSettings 兜底 */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

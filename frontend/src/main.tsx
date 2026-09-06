@@ -84,18 +84,22 @@ async function resolveApiBase(): Promise<string | null> {
 }
 
 async function bootstrap() {
+  // F16：主题应用与 resolveApiBase 并行（两者无依赖）——深色持久化用户
+  // 在 sidecar 冷启动（最长 30s）期间首帧即深色，不再出现浅色首屏闪烁。
+  // index.html 另有内联预置脚本兜底首帧（localStorage 直接读）。
+  const settingsTask = loadSettings()
+    .then((s) => {
+      applyTheme(s.ui.theme, s.ui.accentColor)
+      return s
+    })
+    .catch(() => undefined)
   const apiBase = await resolveApiBase()
   if (apiBase) {
     window.__KE_API_BASE__ = apiBase
     console.info('[ke] 运行时注入 API 基址:', window.__KE_API_BASE__)
   }
   // handoff §8.3：渲染前应用主题，避免首屏闪烁（App 内启动 effect 幂等兜底）
-  try {
-    const settings = await loadSettings()
-    applyTheme(settings.ui.theme, settings.ui.accentColor)
-  } catch {
-    /* 设置不可用：保持默认浅色 */
-  }
+  await settingsTask
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

@@ -124,6 +124,22 @@ def _migrate_history(request: Request, old_rel: str, new_rel: str) -> None:
         logging.getLogger(__name__).warning("历史快照迁移失败（不影响主操作）: %s -> %s", old_rel, new_rel)
 
 
+def _sync_after_move(request: Request, old_rel: str, new_rel: str) -> None:
+    """重命名/移动后的索引与历史同步（K3-I2）。
+
+    文件系统变更（os.replace 原子 rename）已成功，此处同步任务失败**不阻断 200**：
+    - 索引不一致：K3-I1 修复后扫描签名会保持过期状态，下次启动 reconcile 自愈（全量重建）；
+    - 历史快照：辅助能力，失败仅记日志。
+    """
+    try:
+        request.app.state.indexer.update_move(old_rel, new_rel)
+    except Exception:  # noqa: BLE001 索引同步失败不 500（FS 已变更，下次 reconcile 自愈）
+        import logging
+
+        logging.getLogger(__name__).exception("索引 move 同步失败（下次 reconcile 自愈）: %s -> %s", old_rel, new_rel)
+    _migrate_history(request, old_rel, new_rel)
+
+
 # ---------- folder ----------
 
 @router.post("/dir", status_code=201)
@@ -156,9 +172,8 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     old_rel = full.relative_to(root).as_posix()
     full.rename(target)
     new_rel = target.relative_to(root).as_posix()
-    request.app.state.indexer.update_move(old_rel, new_rel)
-    # F01：历史快照目录随目录迁移，避免「历史快照→恢复」对改名后的目录立即为空
-    _migrate_history(request, old_rel, new_rel)
+    # K3-I2：索引/历史同步失败不阻断（签名过期由下次 reconcile 自愈）
+    _sync_after_move(request, old_rel, new_rel)
     return {"from": old_rel, "to": new_rel}
 
 
@@ -185,7 +200,9 @@ def delete_dir(request: Request, path: str = Query(...)) -> None:
     for p in sorted(markdown_io.walk_files(full), reverse=True):
         rel_p = p.relative_to(root).as_posix()
         p.unlink()
-        request.app.state.indexer.store.delete_file(rel_p)
+        # K3-I1：经索引器删除以同步扫描签名（直接 store.delete_file 会让
+        # 下次启动 reconcile 因签名不一致退化为全量重建）
+        request.app.state.indexer.delete_file(rel_p)
     for link in sorted(markdown_io.walk_links(full), reverse=True):
         markdown_io.unlink_link(link)
     for d in sorted(markdown_io.walk_dirs(full), reverse=True):
@@ -258,9 +275,7 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
     old_rel = full.relative_to(root).as_posix()
     full.rename(target)
     new_rel = target.relative_to(root).as_posix()
-    request.app.state.indexer.update_move(old_rel, new_rel)
-    # F01：历史快照目录随文档迁移
-    _migrate_history(request, old_rel, new_rel)
+    _sync_after_move(request, old_rel, new_rel)
     return {"from": old_rel, "to": new_rel}
 
 
@@ -304,9 +319,7 @@ def move_path(request: Request, body: MoveBody) -> dict:
     if dst.exists():
         raise HTTPException(status_code=409, detail=f"目标已存在: {dst_rel}")
     src.rename(dst)
-    request.app.state.indexer.update_move(src_rel, dst_rel)
-    # F01：历史快照目录随移动迁移
-    _migrate_history(request, src_rel, dst_rel)
+    _sync_after_move(request, src_rel, dst_rel)
     return {"from": src_rel, "to": dst_rel}
 
 

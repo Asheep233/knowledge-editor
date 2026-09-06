@@ -78,6 +78,24 @@ def test_attachment_refs_normalization(client, paused_watcher):
     md = "![网络](https://example.com/a.png)\n![绝对](C:/x.png)\n![本地](Attachments/images/ok.png)\n"
     assert markdown_io.attachment_refs_in(md) == {"Attachments/images/ok.png"}
 
+def test_attachment_refs_title_with_brace_balanced_parse():
+    """F07：ke-attach title/caption 含 `}` 时括号平衡匹配仍能提取（非贪婪截断修复）。"""
+    md = (
+        '<!-- ke-attach: {"kind":"attach","id":"a1","type":"file",'
+        '"src":"Attachments/files/doc.pdf","title":"含}花括号的标题"} -->\n'
+        '<!-- ke-video: {"kind":"video","id":"v1","src":"Attachments/videos/demo.mp4",'
+        '"title":"caption}带括号"} -->'
+    )
+    refs = markdown_io.attachment_refs_in(md)
+    assert "Attachments/files/doc.pdf" in refs
+    assert "Attachments/videos/demo.mp4" in refs
+
+
+def test_attachment_refs_malformed_json_ignored():
+    """未闭合 / 非法 JSON 的 ke-attach 头标记不误提取、也不抛错。"""
+    md = '<!-- ke-attach: {"kind":"attach","src":"Attachments/files/a.pdf" -->'
+    assert markdown_io.attachment_refs_in(md) == set()
+
 
 def test_delete_orphan_attachment(client, paused_watcher):
     """v0.6.1：孤儿附件可手动删除（仅手动、绝不自动）。"""

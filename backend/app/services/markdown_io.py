@@ -24,8 +24,10 @@ _WIN_RESERVED = {
     *(f"lpt{i}" for i in range(1, 10)),
 }
 
-# 附件引用提取（与前端 extractAttachmentRefs 语义一致）
-_RE_KE_REF = re.compile(r"<!--\s*ke-(?:attach|video):\s*(\{[\s\S]*?\})\s*-->")
+# 附件引用提取（与前端 extractAttachmentRefs 语义一致）。
+# F07：ke-*(attach|video) 头标记改为括号平衡匹配（见 attachment_refs_in），
+# 非贪婪 `\{[\s\S]*?\}` 会在 title/caption 含 `}` 时截断 JSON。
+_RE_KE_HEAD = re.compile(r"<!--\s*ke-(?:attach|video):\s*")
 _RE_MD_IMAGE = re.compile(r"!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+\"[^\"]*\")?\s*\)")
 
 # CJK 字符范围（字数统计）
@@ -289,19 +291,29 @@ def attachment_refs_in(content: str) -> set[str]:
     网络 URL 与绝对路径不属于 workspace 附件，直接忽略。
     """
     refs: set[str] = set()
-    for m in _RE_KE_REF.finditer(content):
-        try:
-            import json
+    # F07：括号平衡匹配（non-greedy 会在 title/caption 含 `}` 时截断）
+    pos = 0
+    while True:
+        m = _RE_KE_HEAD.search(content, pos)
+        if not m:
+            break
+        body_start = m.end()
+        if body_start < len(content) and content[body_start] == "{":
+            json_str = _match_balanced_json(content, body_start)
+            if json_str is not None and re.match(r"\s*-->", content[body_start + len(json_str):]):
+                try:
+                    import json
 
-            src = (json.loads(m.group(1)) or {}).get("src")
-        except ValueError:
-            continue
-        if isinstance(src, str):
-            ref = src.strip()
-            if ref.startswith("./"):
-                ref = ref[2:]
-            if ref.startswith("Attachments/") and ".." not in Path(ref).parts:
-                refs.add(ref)
+                    src = (json.loads(json_str) or {}).get("src")
+                except ValueError:
+                    src = None
+                if isinstance(src, str):
+                    ref = src.strip()
+                    if ref.startswith("./"):
+                        ref = ref[2:]
+                    if ref.startswith("Attachments/") and ".." not in Path(ref).parts:
+                        refs.add(ref)
+        pos = m.end()
     for m in _RE_MD_IMAGE.finditer(content):
         ref = m.group(1).strip()
         if ref.startswith("./"):
@@ -313,6 +325,36 @@ def attachment_refs_in(content: str) -> set[str]:
 
 def content_hash(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _match_balanced_json(src: str, start: int) -> Optional[str]:
+    """从 src[start]（须为 '{'）做括号平衡匹配，返回完整 JSON 字符串。
+
+    F07：正确跳过字符串内的 `}` 与转义（与前端 tokenizers.matchBalancedJson
+    语义一致）；返回 None 表示未闭合/非法。
+    """
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(src)):
+        ch = src[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return src[start : i + 1]
+    return None
 
 
 def atomic_write(path: Path, content: str) -> None:

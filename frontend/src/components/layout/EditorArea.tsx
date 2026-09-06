@@ -75,6 +75,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const articleRef = useRef(article)
   // P0-2：切换文档时记住「上一文档 id」，以便把其未决防抖保存 flush 掉，不静默丢失输入。
   const prevArticleIdRef = useRef<string | null>(null)
+  // F14：文档内容快照（docId → 序列化 Markdown）。切换文档瞬间为「离开的文档」
+  // 拍下最终内容，供其在途/后续保存使用（避免经 editorRef 重读新文档内容串写）。
+  const contentSnapshotRef = useRef(new Map<string, string>())
 
   useEffect(() => {
     articleRef.current = article
@@ -151,23 +154,48 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 保存函数构造：读取当前编辑器正文、登记/清除恢复点、更新 saveState 与 onSaved。
   // 经 saveQueue 串行化（P1-6：同一 doc 至多一个在途保存，latest-wins），
   // 并仅在「本次保存对应序号仍为最新」时判定已保存/清除恢复点（P0-2/P1-6）。
+  // R2 残余：saveFn 接收 AbortSignal（abortPending 中止在途 PUT）；此处负责
+  // 被中止后的清理（恢复点/保存状态复位）。
   const buildSaveFn = useCallback(
     (docId: string): SaveFn => {
-      return async () => {
+      return async (signal?: AbortSignal) => {
         const ed = editorRef.current
-        if (!ed) return
         const seq = editSeqRef.current
         const isCurrent = articleRef.current?.id === docId
-        const md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
+        // F14：保存内容来源——当前文档用编辑器实时序列化；已切走的文档用
+        // 切换瞬间的内容快照（原实现经 editorRef 执行时重读，会把新文档内容
+        // 写入旧路径造成跨文档串写）。
+        let md: string
+        if (ed && isCurrent) {
+          md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
+        } else {
+          const snap = contentSnapshotRef.current.get(docId)
+          if (snap === undefined) return
+          md = snap
+        }
         try {
           if (isCurrent) setSaveState('saving')
           await registerRecoveryPoint(docId, md)
-          const saved = await saveArticle(docId, md)
+          const saved = await saveArticle(docId, md, signal)
           const latest = editSeqRef.current === seq
           if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
           onSaved?.(docId, saved)
           if (latest) void clearRecoveryPoint(docId)
+          // F15：A→B→A 回退竞态——GET 先于在途 PUT 返回旧内容时，保存完成后
+          // 若正文与编辑器不一致（且期间无新编辑），用保存结果对齐编辑器。
+          if (isCurrent && latest && ed) {
+            const savedBody = stripFrontmatter(saved.content).content
+            if (stripFrontmatter(md).content !== savedBody) {
+              setKeContent(ed, savedBody)
+            }
+          }
         } catch (e) {
+          if (signal?.aborted) {
+            // R2：主动中止（重新加载外部版本）——放弃本次内容并清理恢复点
+            if (isCurrent) setSaveState('idle')
+            void clearRecoveryPoint(docId)
+            return
+          }
           if (isCurrent) setSaveState('error')
           // P3-7：保存时 404 说明文档已被外部删除，明确提示而非静默失败
           if (is404Error(e)) window.alert('保存失败：文档已被删除（404）')
@@ -207,6 +235,15 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     const newId = article?.id ?? null
     const prevId = prevArticleIdRef.current
     if (prevId && prevId !== newId) {
+      // F14：先为离开的文档拍下内容快照（含其最新编辑），
+      // 再触发其未决保存（在途第二棒可能晚于 setKeContent 执行）
+      if (editor && articleRef.current?.id === prevId) {
+        contentSnapshotRef.current.set(prevId, withFrontmatter(editor.getMarkdown(), KE_VERSION))
+        if (contentSnapshotRef.current.size > 16) {
+          const oldest = contentSnapshotRef.current.keys().next().value
+          if (oldest !== undefined) contentSnapshotRef.current.delete(oldest)
+        }
+      }
       // 切换离开旧文档：立即触发其未决保存，避免防抖窗口内输入静默丢失
       void flushPending(prevId)
     }

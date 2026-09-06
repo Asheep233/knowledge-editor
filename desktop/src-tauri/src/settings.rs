@@ -129,7 +129,63 @@ fn load_from(path: &std::path::Path) -> AppSettings {
         Err(_) => return AppSettings::default(),
     };
     let text = raw.trim_start_matches('\u{feff}');
-    serde_json::from_str::<AppSettings>(text).unwrap_or_default()
+    let value: serde_json::Value = match serde_json::from_str(text) {
+        Ok(v) => v,
+        Err(_) => return AppSettings::default(),
+    };
+    from_value_lenient(&value)
+}
+
+/// F17：字段级宽松解析——单个字段类型错误不再让整份设置静默归零：
+/// 合法字段保留、非法字段回退默认（原 `from_value::<AppSettings>` 整包解析失败
+/// 会 unwrap_or_default 全丢）。
+fn from_value_lenient(raw: &serde_json::Value) -> AppSettings {
+    let mut s = AppSettings::default();
+    let obj = match raw.as_object() {
+        Some(o) => o,
+        None => return s,
+    };
+    let get_u32 = |v: &serde_json::Value| v.as_u64().and_then(|n| u32::try_from(n).ok());
+    if let Some(sv) = obj.get("schemaVersion").and_then(get_u32) {
+        s.schema_version = sv;
+    }
+    if let Some(so) = obj.get("startup").and_then(|v| v.as_object()) {
+        if let Some(b) = so.get("restoreLastState").and_then(|v| v.as_bool()) {
+            s.startup.restore_last_state = b;
+        }
+        if let Some(b) = so.get("autoOpenRecentWorkspace").and_then(|v| v.as_bool()) {
+            s.startup.auto_open_recent_workspace = b;
+        }
+    }
+    if let Some(eo) = obj.get("editor").and_then(|v| v.as_object()) {
+        if let Some(n) = eo.get("autosaveIntervalMs").and_then(get_u32) {
+            s.editor.autosave_interval_ms = n;
+        }
+        if let Some(n) = eo.get("historyRetentionCount").and_then(get_u32) {
+            s.editor.history_retention_count = n;
+        }
+        if let Some(d) = eo.get("display") {
+            s.editor.display = d.clone();
+        }
+    }
+    if let Some(uo) = obj.get("ui").and_then(|v| v.as_object()) {
+        if let Some(t) = uo.get("theme").and_then(|v| v.as_str()) {
+            s.ui.theme = t.to_string();
+        }
+        if let Some(d) = uo.get("displayPreference") {
+            s.ui.display_preference = d.clone();
+        }
+        if let Some(ao) = uo.get("accentColor").and_then(|v| v.as_object()) {
+            s.ui.accent_color = Some(AccentColor {
+                light: ao.get("light").and_then(|v| v.as_str()).map(|x| x.to_string()),
+                dark: ao.get("dark").and_then(|v| v.as_str()).map(|x| x.to_string()),
+            });
+        }
+    }
+    if let Some(m) = obj.get("maintenance") {
+        s.maintenance = m.clone();
+    }
+    s
 }
 
 fn load() -> AppSettings {
@@ -210,14 +266,21 @@ fn sanitize(mut settings: AppSettings) -> AppSettings {
     settings
 }
 
-/// 校验十六进制颜色：#RGB / #RRGGBB（大小写均可）→ 输出 #RRGGBB；非法返回 None。
+/// 校验十六进制颜色：#RGB / #RRGGBB（大小写均可，容忍首字符 # 与前后空白）
+/// → 输出 #RRGGBB；非法返回 None。
+/// F17：增加字符校验——原实现只验长度，`#zzzzzz` 可落盘。
 fn sanitize_hex(value: &str) -> Option<String> {
-    let t = value.trim_start_matches('#');
-    if t.len() == 3 {
-        let chars: Vec<char> = t.chars().collect();
-        Some(format!("#{}{}{}{}{}{}", chars[0], chars[0], chars[1], chars[1], chars[2], chars[2]))
-    } else if t.len() == 6 {
-        Some(format!("#{t}"))
+    let t = value.trim().trim_start_matches('#');
+    let ok = |c: char| c.is_ascii_hexdigit();
+    if t.chars().all(ok) {
+        if t.len() == 3 {
+            let chars: Vec<char> = t.chars().collect();
+            Some(format!("#{}{}{}{}{}{}", chars[0], chars[0], chars[1], chars[1], chars[2], chars[2]))
+        } else if t.len() == 6 {
+            Some(format!("#{t}"))
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -236,8 +299,8 @@ pub fn update_settings(patch: serde_json::Value) -> Result<AppSettings, String> 
     let mut merged = serde_json::to_value(&current)
         .map_err(|e| format!("序列化当前设置失败: {e}"))?;
     merge_value(&mut merged, &patch);
-    let settings = serde_json::from_value::<AppSettings>(merged)
-        .map_err(|e| format!("设置补丁非法: {e}"))?;
+    // F17：字段级宽松解析——patch 中单字段类型错误不再整包 500/归零
+    let settings = from_value_lenient(&merged);
     let settings = sanitize(settings);
     save(&settings)?;
     Ok(settings)
@@ -354,6 +417,51 @@ mod tests {
         let ac = out.ui.accent_color.expect("accent kept");
         assert_eq!(ac.light.as_deref(), Some("#4285f4"));
         assert_eq!(ac.dark.as_deref(), Some("#3b82f6"));
+    }
+
+    #[test]
+    fn sanitize_hex_rejects_non_hex_chars() {
+        // F17：只验长度的旧实现会放行 #zzzzzz
+        assert_eq!(sanitize_hex("#zzzzzz"), None);
+        assert_eq!(sanitize_hex("zzzzzz"), None);
+        assert_eq!(sanitize_hex("#gggggg"), None);
+        // 合法值仍归一化（前后空白、缺 #、3 位展开）；大小写归一化由 sanitize 负责
+        assert_eq!(sanitize_hex(" #3B82F6 ").as_deref(), Some("#3B82F6"));
+        assert_eq!(sanitize_hex("#3B82F6").as_deref().map(|s| s.to_lowercase()).as_deref(), Some("#3b82f6"));
+        assert_eq!(sanitize_hex("#123456").as_deref(), Some("#123456"));
+        assert_eq!(sanitize_hex("AbC").as_deref(), Some("#AAbbCC"));
+        assert_eq!(sanitize_hex("abc").as_deref(), Some("#aabbcc"));
+    }
+
+    #[test]
+    fn load_from_preserves_valid_fields_on_single_type_error() {
+        // F17：一个字段类型错误不应让整份设置静默归零
+        let mut path = std::env::temp_dir();
+        path.push(format!("ke-settings-f17-{}.json", std::process::id()));
+        let bad = r##"{
+            "schemaVersion": 1,
+            "startup": {"restoreLastState": true, "autoOpenRecentWorkspace": false},
+            "editor": {"autosaveIntervalMs": "not-a-number", "historyRetentionCount": 42, "display": {"x": 1}},
+            "ui": {"theme": "dark", "accentColor": {"light": "#1a2b3c", "dark": "#zzzzzz"}}
+        }"##;
+        std::fs::write(&path, bad).unwrap();
+        let s = load_from(&path);
+        let _ = std::fs::remove_file(&path);
+        // 合法字段保留
+        assert!(s.startup.restore_last_state);
+        assert!(!s.startup.auto_open_recent_workspace);
+        assert_eq!(s.editor.history_retention_count, 42);
+        assert_eq!(s.ui.theme, "dark");
+        // 非法字段回退默认（不抛错、不整份归零）
+        assert_eq!(s.editor.autosave_interval_ms, EditorSettings::default().autosave_interval_ms);
+        assert_eq!(
+            s.editor.display.get("x").and_then(|v| v.as_i64()),
+            Some(1)
+        );
+        // sanitize 层再清非法 hex（#zzzzzz → None）
+        let san = sanitize(s);
+        assert_eq!(san.ui.accent_color.as_ref().and_then(|a| a.light.as_deref()), Some("#1a2b3c"));
+        assert!(san.ui.accent_color.as_ref().and_then(|a| a.dark.as_deref()).is_none());
     }
 
     #[test]

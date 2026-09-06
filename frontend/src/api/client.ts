@@ -66,10 +66,11 @@ export function createArticle(title: string, content = ''): Promise<ArticleMeta>
   })
 }
 
-export function saveArticle(id: string, content: string): Promise<ArticleMeta> {
+export function saveArticle(id: string, content: string, signal?: AbortSignal): Promise<ArticleMeta> {
   return request<ArticleMeta>(`/api/articles/${encodeURIComponent(id)}`, {
     method: 'PUT',
     body: JSON.stringify({ content }),
+    signal,
   })
 }
 

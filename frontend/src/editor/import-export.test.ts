@@ -24,6 +24,18 @@ describe('Phase 3E：extractAttachmentRefs', () => {
     ])
   })
 
+  it('F07：title/caption 含 `}` 时附件引用仍可提取（括号平衡）', () => {
+    const md = [
+      '<!-- ke-attach: {"kind":"attach","id":"a1","type":"file","src":"Attachments/files/doc.pdf","title":"含}花括号标题"} -->',
+      '',
+      '<!-- ke-video: {"kind":"video","id":"v1","src":"Attachments/videos/demo.mp4","title":"caption}带括号"} -->',
+    ].join('\n')
+    expect(extractAttachmentRefs(md)).toEqual([
+      'Attachments/files/doc.pdf',
+      'Attachments/videos/demo.mp4',
+    ])
+  })
+
   it('忽略网络 URL 与本地绝对路径（Phase 4 范围外，保持原样）', () => {
     const md = [
       '![远程](https://example.com/a.png)',

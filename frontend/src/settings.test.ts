@@ -1,6 +1,6 @@
 /** 应用设置纯函数单测（Phase 7 M3）：mergeSettings / sanitizeTheme。 */
-import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, mergeSettings, sanitizeHexColor, sanitizeTheme } from './settings'
+import { describe, expect, it, vi } from 'vitest'
+import { applyTheme, DEFAULT_SETTINGS, mergeSettings, normalizeSettings, sanitizeHexColor, sanitizeTheme } from './settings'
 
 describe('sanitizeTheme', () => {
   it('接受 system/light/dark', () => {
@@ -84,6 +84,69 @@ describe('mergeSettings', () => {
     })
     const out = mergeSettings(base, { ui: { accentColor: { light: '' } } })
     expect(out.ui.accentColor).toEqual({ light: undefined, dark: '#3b82f6' })
+  })
+})
+
+describe('F08 — 嵌套对象深合并（与 Rust merge_value 对齐）', () => {
+  it('display 深合并：独立键保留，不整体替换', () => {
+    const base = {
+      ...DEFAULT_SETTINGS,
+      editor: { ...DEFAULT_SETTINGS.editor, display: { font: 'dm-sans', spacing: 1 } },
+    }
+    const out = mergeSettings(base, { editor: { display: { font: 'other' } } })
+    expect(out.editor.display).toEqual({ font: 'other', spacing: 1 })
+  })
+
+  it('displayPreference / maintenance 深合并；非对象值整体替换', () => {
+    const base = {
+      ...DEFAULT_SETTINGS,
+      ui: { ...DEFAULT_SETTINGS.ui, displayPreference: { a: 1, nested: { x: 1 } } },
+      maintenance: { enabled: true, deep: { k: 'v' } },
+    }
+    const out = mergeSettings(base, {
+      ui: { displayPreference: { nested: { x: 2 } } },
+      maintenance: { deep: { k2: 'v2' } },
+    })
+    expect(out.ui.displayPreference).toEqual({ a: 1, nested: { x: 2 } })
+    expect(out.maintenance).toEqual({ enabled: true, deep: { k: 'v', k2: 'v2' } })
+  })
+})
+
+describe('F09 — normalizeSettings 缺失键/非法值兜底', () => {
+  it('缺 startup 键 / 非法 theme / 非法 accent：渲染安全且回退默认', () => {
+    const out = normalizeSettings({
+      editor: { autosaveIntervalMs: 5000 },
+      ui: { theme: 'neon', accentColor: { light: '#zzzzzz' } },
+    })
+    expect(out.startup).toEqual(DEFAULT_SETTINGS.startup)
+    expect(out.editor.autosaveIntervalMs).toBe(5000)
+    expect(out.ui.theme).toBe('system')
+    expect(out.ui.accentColor).toBeUndefined()
+  })
+
+  it('非对象输入返回默认副本（互不引用）', () => {
+    const out = normalizeSettings('garbage')
+    expect(out).toEqual(DEFAULT_SETTINGS)
+    out.editor.autosaveIntervalMs = 9999
+    expect(DEFAULT_SETTINGS.editor.autosaveIntervalMs).toBe(3000)
+  })
+})
+
+describe('F13 — applyTheme 系统主题监听器单例（不累积）', () => {
+  it('多次调用 applyTheme 只注册一次 matchMedia change 监听器', () => {
+    // happy-dom 每次 matchMedia 调用返回新 MediaQueryList 实例，故在原型上计数
+    const proto = (window.matchMedia('x') as unknown as object).constructor.prototype as {
+      addEventListener: (...a: unknown[]) => void
+    }
+    const addSpy = vi.spyOn(proto, 'addEventListener')
+    applyTheme('system')
+    applyTheme('system')
+    applyTheme('dark')
+    applyTheme('light')
+    expect(addSpy).toHaveBeenCalledTimes(1)
+    // 主题正确写入
+    expect(document.documentElement.dataset.theme).toBe('light')
+    addSpy.mockRestore()
   })
 })
 

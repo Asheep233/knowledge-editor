@@ -91,11 +91,16 @@ export default function SettingsPanel({ open, onClose }: Props) {
 
   const desktop = isTauri()
 
-  /** 即时保存（开关/单选），成功后应用主题并刷新缓存 */
+  /** 即时保存（开关/单选），成功后应用主题并刷新缓存。
+   * F19：失败不再静默——显示明确错误（原实现抛错阻塞调用链且无反馈）。 */
   const patchAndSave = async (patch: SettingsPatch) => {
-    const next = await saveSettings(patch)
-    setSettings(next)
-    applyTheme(next.ui.theme, next.ui.accentColor)
+    try {
+      const next = await saveSettings(patch)
+      setSettings(next)
+      applyTheme(next.ui.theme, next.ui.accentColor)
+    } catch (e) {
+      window.alert(`设置保存失败：${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const setNumber = async (group: 'startup' | 'editor', key: string, value: number) => {
@@ -459,7 +464,8 @@ function NumberInput({
   )
 }
 
-/** 强调色控件：色板 + hex 输入 + 重置按钮（空值 = 使用主题默认） */
+/** 强调色控件：色板 + hex 输入 + 重置按钮（空值 = 使用主题默认）。
+ * F19：色板拖动 300ms 去抖落盘——原实现每次 onchange 立即保存（写放大）。 */
 function AccentControl({
   value,
   fallback,
@@ -473,6 +479,17 @@ function AccentControl({
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   const current = draft ?? value ?? ''
+  const debounceRef = useRef<number | null>(null)
+  useEffect(
+    () => () => {
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
+    },
+    [],
+  )
+  const schedulePersist = (v: string) => {
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
+    debounceRef.current = window.setTimeout(() => onChange(v), 300)
+  }
   return (
     <div className="flex items-center gap-1.5">
       <input
@@ -481,7 +498,7 @@ function AccentControl({
         aria-label={ariaLabel}
         onChange={(e) => {
           setDraft(e.target.value)
-          onChange(e.target.value)
+          schedulePersist(e.target.value)
         }}
         className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
       />
@@ -492,6 +509,7 @@ function AccentControl({
         aria-label={`${ariaLabel} 色值`}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={(e) => {
+          if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
           const v = e.target.value.trim()
           setDraft(null)
           if (!v) {

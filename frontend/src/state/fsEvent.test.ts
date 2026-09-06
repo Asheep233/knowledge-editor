@@ -33,6 +33,14 @@ describe('classifyFsEvent — P1-8 外部修改检测', () => {
     expect(d.surface).toBe('none')
   })
 
+  it('F10：冷却窗 600ms，保存后 1.5s 的真实外部修改仍弹窗（不再被吞）', () => {
+    const d = classifyFsEvent(
+      { type: 'modified', rel: 'Articles/a.md' } as never,
+      { currentId: 'Articles/a.md', lastSavedAt: 90000, nowMs: 90000 + 1500 },
+    )
+    expect(d.surface).toBe('modified')
+  })
+
   it('超过 2.5s 的 modified 事件 → 恢复弹窗', () => {
     const d = classifyFsEvent(ev('modified', 'Articles/a.md'), {
       currentId: 'Articles/a.md',

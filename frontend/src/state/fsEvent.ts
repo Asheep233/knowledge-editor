@@ -7,8 +7,11 @@
  */
 import type { FsEvent } from '../types'
 
-/** 自身保存写入后，此窗口内收到后端 modified 事件视为「自己写的不算外部修改」 */
-export const SELF_WRITE_COOLDOWN_MS = 2500
+/** 自身保存写入后，此窗口内收到后端 modified 事件视为「自己写的不算外部修改」。
+ * F10：原 2500ms 冷却覆盖 ~83% 的默认自动保存周期（3s），窗内真实外部修改
+ * 不弹窗、被下一轮自动保存静默覆盖。抑制已由后端 mark_internal 精确标记兜底，
+ * 前端冷却仅保留极小窗口（600ms）用于标记竞态避免重复弹窗。 */
+export const SELF_WRITE_COOLDOWN_MS = 600
 
 /** 可变的「最新值」容器（等效 useRef，但可在纯函数里模拟其行为）。 */
 export interface LatestRef<T> {

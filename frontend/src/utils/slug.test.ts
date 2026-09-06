@@ -51,6 +51,13 @@ describe('slugify（与后端契约一致）', () => {
     expect(slugify('nulL')).toBe('null')
   })
 
+  it('F18：前导点/混合前导剥离（.note 不再产出隐藏文件，与后端 strip("-.") 对齐）', () => {
+    expect(slugify('.note')).toBe('note')
+    expect(slugify('..hidden')).toBe('hidden')
+    expect(slugify('-.draft')).toBe('draft')
+    expect(slugify('.名称.')).toBe('名称')
+  })
+
   it('空串回退 fallback（非保留字符如 ! 保留，与后端一致）', () => {
     expect(slugify('')).toBe('untitled')
     expect(slugify('   ')).toBe('untitled')

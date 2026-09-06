@@ -379,6 +379,8 @@ export default function App() {
   }, [])
 
   const applyWorkspace = useCallback((state: WorkspaceState) => {
+    // F04：切换工作区推进打开序号——旧工作区的迟到 GET 不得渗入新工作区
+    openSeqRef.current.next()
     setWorkspace(state)
     setArticle(null)
     setSaveState('idle')
@@ -465,6 +467,8 @@ export default function App() {
     const title = window.prompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
     if (!title) return
     try {
+      // F04：新建文档推进打开序号——迟到在途 GET 不得覆盖新建文档视图
+      openSeqRef.current.next()
       const created = await createArticle(title)
       setArticle(created)
       setTreeRefresh((n) => n + 1)

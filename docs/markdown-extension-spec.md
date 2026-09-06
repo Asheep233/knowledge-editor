@@ -64,48 +64,48 @@ KE 扩展以 **HTML 注释** 形式承载结构化元数据，设计原则：
 > 这是对第三方 Markdown 编辑器友好性的硬性要求（决策点 2）。
 
 ## 3. 节点定义
-
 ### 3.1 注释节点 `ke-note`
 
-用途：文内批注、评论、待办提醒。编辑器内显示为可折叠的高亮卡片。
+用途：文内批注、信息块、待办提醒。编辑器内显示为信息块（NoteNodeView：
+可自定义标题/标签/颜色，块内文字为真实可编辑内容，可插入脚注上标等 inline 节点）。
+
+**包裹格式（当前序列化形式，v0.7.0 起）**：
 
 ```
-<!-- ke-note: {"id":"9f8c4e1a-...","kind":"note","created":"2026-08-08T10:00:00+08:00","updated":"2026-08-08T10:00:00+08:00","author":"作者名","color":"yellow","text":"**待办**：补充数据来源"} -->
+<!-- ke-note: {"id":"9f8c4e1a-...","kind":"note","title":"要点","label":"提示","color":"yellow"} -->
+块内内容（可含脚注上标等 inline 标记）
+<!-- /ke-note -->
 ```
+
+**旧自闭合格式（v0~v3，解析兼容）**：`<!-- ke-note: {json} -->`，
+`content`/`text` 属性在解析时迁移为文本子节点，保存后自动升级为包裹格式。
 
 字段说明：
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| `id` | 是 | UUID，节点唯一标识 |
+| `id` | 是 | UUID，节点唯一标识（缺失时由标题/颜色/内容生成确定性 id） |
 | `kind` | 是 | 固定为 `"note"` |
-| `created` / `updated` | 否 | ISO 8601 时间戳 |
-| `author` | 否 | 作者名 |
-| `color` | 否 | `yellow` / `red` / `green` / `blue` / `default` |
-| `text` | 是 | 注释正文，允许包含 Markdown（渲染时解析） |
+| `title` | 否 | 信息块标题（缺省「信息块 HH:mm」） |
+| `label` | 否 | 左上角徽章文字（缺省空串，NodeView 显示时兜底「信息」） |
+| `color` | 否 | `blue`（默认）/ `yellow` / `red` / `green` 等 |
+| `author` / `created` / `updated` | 否 | 元信息（保留字段） |
 
-渲染约定：卡片样式 + 对应颜色底纹；`text` 按 Markdown 渲染；折叠状态由编辑器本地记忆，不写入文件。
+格式不变量（v1.1.1 R3 修复）：**空内容也必须输出闭合标记**
+`<!-- /ke-note -->`——否则与旧自闭合格式混淆，重开时后续信息块
+可能被空信息块吞噬。解析器按行扫描，闭合标记只认「本块范围」内
+（下一个块级 ke-* 标记之前）者。
 
 ### 3.2 模块节点 `ke-module`
 
-用途：可复用模块系统。**定义**在 `Modules/` 目录的独立 `.md` 文件中，**引用**发生在文章内。
+用途：可复用模块。**当前实现（v1.1.0 拍板）采用「插入后复制内容」方案：
+不做动态引用/嵌套解析。** 编辑器主交互为「插入模块」——从 `Modules/` 拉取
+内容并复制为普通文档正文；本文中的 `ke-module` 标记仅用于解析/兼容既有文档。
 
-**模块定义**（`Modules/formula-tips.md` 的 frontmatter）：
-
-```
----
-title: 常用公式速查
-ke-module:
-  name: formula-tips
-  version: 1
-  description: 高频 LaTeX 公式集合
----
-```
-
-**文章内引用**：
+**序列化格式**（原子节点，独占行）：
 
 ```
-<!-- ke-module: {"id":"a1b2c3d4-...","kind":"module","name":"formula-tips","version":1,"mode":"inline","params":{}} -->
+<!-- ke-module: {"id":"a1b2c3d4-...","kind":"module","name":"formula-tips","version":1,"mode":"card","params":{},"source":"Modules/formula-tips.md"} -->
 ```
 
 字段说明：
@@ -114,16 +114,20 @@ ke-module:
 | --- | --- | --- |
 | `id` | 是 | UUID |
 | `kind` | 是 | 固定为 `"module"` |
-| `name` | 是 | 模块名，对应 `Modules/{name}.md` |
-| `version` | 否 | 引用的模块版本；缺省取最新 |
-| `mode` | 否 | `inline`（内嵌渲染，默认）/ `card`（卡片链接） |
-| `params` | 否 | 传入模块的 JSON 参数对象 |
+| `name` | 否 | 模块名（保留字段） |
+| `version` | 否 | 引用的模块版本（保留字段） |
+| `mode` | 否 | 保留字段（历史上 `inline`/`card`）——**当前不产生任何渲染行为** |
+| `params` | 否 | JSON 参数对象（保留字段） |
+| `source` | 否 | 模块来源相对路径（Phase 5 记录，不参与动态同步） |
 
-渲染约定：
+渲染约定（拍板：模块无边界）：
 
-- `mode=inline`：在引用位置展开模块正文，模块内可再次引用其他模块（嵌套层级 ≤ 8，防循环）
-- `mode=card`：显示可点击的模块卡片，点击打开模块详情
-- 模块文件缺失 / 版本不符时显示占位提示，不报错
+- **编辑器内不渲染卡片/徽章/边框**——ModuleNodeView 仅渲染
+  `display:none` + `aria-hidden` 的不可见占位（节点仍在 Document Model，
+  保存时照常序列化为注释；用户感知不到底层标记）。
+- 无 `mode=inline` 展开、无 `mode=card` 链接、无嵌套层级解析——
+  这些行为不在当前实现范围（旧版设计的残留字段仅作保留兼容）。
+- 模块文件缺失 / 版本不符：与插入式方案一致，不产生错误提示。
 
 ### 3.3 附件节点 `ke-attach`
 

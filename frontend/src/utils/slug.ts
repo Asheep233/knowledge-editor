@@ -11,11 +11,13 @@ const SLUG_MAX = 80
 
 export function slugify(name: string, fallback = 'untitled'): string {
   let s = name.normalize('NFKC').trim().toLowerCase()
-  // 与后端 rstrip(". ") 一致：反复去除尾部点与空格（Python str.rstrip 语义）
+  // 与后端一致：反复去除尾部点与空格（Python str.rstrip(".") 语义）
   s = s.replace(/[.\s]+$/, '')
   s = s.replace(BAD_CHARS, '-')
   s = s.replace(/\s+/g, '-')
-  s = s.replace(/-{2,}/g, '-').replace(/^-+/, '').replace(/\.+$/, '')
+  // F18：与后端 strip("-.") 对齐——去除首尾的 '-' 与 '.'（原实现只剥首 '-'）
+  // 否则 `.note` 标题产出隐藏文件（前后端契约不一致）
+  s = s.replace(/-{2,}/g, '-').replace(/^[-.]+/, '').replace(/[-.]+$/, '')
   const head = s.slice(0, SLUG_MAX)
   s = (head.replace(/-+$/, '').replace(/\.+$/, '') || head).slice(0, SLUG_MAX)
   if (!s) return fallback

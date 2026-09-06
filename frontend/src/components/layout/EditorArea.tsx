@@ -7,6 +7,7 @@ import { EditorContent, EditorContext, type Editor } from '@tiptap/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   discardRecovery,
+  getArticle,
   listHistory,
   previewHistory,
   registerRecovery,
@@ -69,7 +70,19 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const [showCurrent, setShowCurrent] = useState(false)
   // 编辑序号：每次内容变更递增。保存完成时与触发时的序号比对，
   // 若保存期间有新编辑则保持「未保存」，否则判定为「已保存」。
-  const editSeqRef = useRef(0)
+  // F21：序号按文档隔离——原实现单一共享序号，切到 B 后 A 的在途保存
+  // 判定 latest=false，恢复点永不清除、下次启动对 A 误报「未恢复编辑」。
+  const editSeqRef = useRef(new Map<string, number>())
+  const docSeq = useCallback((docId: string): number => editSeqRef.current.get(docId) ?? 0, [])
+  const bumpSeq = useCallback((docId: string): number => {
+    const next = (editSeqRef.current.get(docId) ?? 0) + 1
+    if (editSeqRef.current.size > 32) {
+      const oldest = editSeqRef.current.keys().next().value
+      if (oldest !== undefined) editSeqRef.current.delete(oldest)
+    }
+    editSeqRef.current.set(docId, next)
+    return next
+  }, [])
   // Phase 6.4：ref 版本，供防抖保存回调在任意时刻拿到最新 editor/article
   const editorRef = useRef<Editor | null>(null)
   const articleRef = useRef(article)
@@ -78,6 +91,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // F14：文档内容快照（docId → 序列化 Markdown）。切换文档瞬间为「离开的文档」
   // 拍下最终内容，供其在途/后续保存使用（避免经 editorRef 重读新文档内容串写）。
   const contentSnapshotRef = useRef(new Map<string, string>())
+  // F22：大文档首开解析提示——@tiptap/markdown 对 256KB 级文档首次解析需 12-17s，
+  // 用一帧「正在解析大文档…」占位告知用户进程未死（解析仍同步，但不再无声卡死）。
+  const [parsingLarge, setParsingLarge] = useState(false)
 
   useEffect(() => {
     articleRef.current = article
@@ -94,11 +110,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     const next = titleDraft.trim()
     setTitleDraft(null)
     if (!next || next === article.title) return
+    const docId = article.id
     try {
       // R1：改名是「路径变更」——先 flush 未决防抖保存（否则改名后旧路径
       // PUT 404 被吞、editor 被陈旧 article.content 快照重置，输入静默抹掉）。
       // 与 requestOpenArticle 同款 3s 超时兜底：超时则让用户显式确认。
-      const docId = article.id
       if (!(await flushWithTimeout(docId))) {
         if (!window.confirm('当前有未保存修改且保存超时，继续改名将丢弃这些修改，是否继续？')) return
       }
@@ -118,9 +134,23 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       }
       onRenamed?.(docId, docId, next)
     } catch (e) {
-      window.alert(`标题保存失败：${e instanceof Error ? e.message : String(e)}`)
+      const msg = e instanceof Error ? e.message : String(e)
+      // F18：rename 409 = 目标文件名已存在（同名文档/文件）——
+      // frontmatter 标题已更新但文件名未变；回填磁盘标题使 UI==磁盘，
+      // 并明确提示文件名冲突（原实现只弹 409 且 UI 与磁盘标题永久分叉）。
+      if (/^409\b/.test(msg)) {
+        try {
+          const fresh = await getArticle(docId)
+          onArticleRestored?.(fresh)
+        } catch {
+          /* 回填失败：保持现状（下一帧以磁盘为准） */
+        }
+        window.alert('标题已保存，但存在同名文档/文件，文件名未变更')
+        return
+      }
+      window.alert(`标题保存失败：${msg}`)
     }
-  }, [article, titleDraft, onRenamed])
+  }, [article, titleDraft, onRenamed, onArticleRestored])
 
   // 保存状态上报（App 导入前检查是否有未保存修改）
   useEffect(() => {
@@ -160,7 +190,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     (docId: string): SaveFn => {
       return async (signal?: AbortSignal) => {
         const ed = editorRef.current
-        const seq = editSeqRef.current
+        const seq = docSeq(docId)
         const isCurrent = articleRef.current?.id === docId
         // F14：保存内容来源——当前文档用编辑器实时序列化；已切走的文档用
         // 切换瞬间的内容快照（原实现经 editorRef 执行时重读，会把新文档内容
@@ -177,7 +207,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           if (isCurrent) setSaveState('saving')
           await registerRecoveryPoint(docId, md)
           const saved = await saveArticle(docId, md, signal)
-          const latest = editSeqRef.current === seq
+          const latest = docSeq(docId) === seq
           if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
           onSaved?.(docId, saved)
           if (latest) void clearRecoveryPoint(docId)
@@ -198,22 +228,24 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           }
           if (isCurrent) setSaveState('error')
           // P3-7：保存时 404 说明文档已被外部删除，明确提示而非静默失败
-          if (is404Error(e)) window.alert('保存失败：文档已被删除（404）')
+          // F19：404 提示门控 isCurrent——后台文档（已切走的旧文档）404
+          // 对当前无关文档弹窗、且可能双弹窗（旧实现不门控）
+          if (is404Error(e) && isCurrent) window.alert('保存失败：文档已被删除（404）')
         }
       }
     },
-    [onSaved, registerRecoveryPoint, clearRecoveryPoint],
+    [onSaved, registerRecoveryPoint, clearRecoveryPoint, docSeq],
   )
 
   const handleUpdate = useCallback(() => {
     if (!articleRef.current) return
-    editSeqRef.current += 1
+    const docId = articleRef.current.id
+    bumpSeq(docId)
     setSaveState('dirty')
     // M3：自动保存间隔由应用设置驱动（默认 3000ms）。统一走 saveQueue：
     // 同一 doc 防抖合并；在途时 latest-wins；完成后若有新内容再补一次。
-    const docId = articleRef.current.id
     enqueueSave(docId, buildSaveFn(docId), getAutosaveIntervalMs())
-  }, [buildSaveFn])
+  }, [buildSaveFn, bumpSeq])
 
   // Phase 6.4：content 固定为空，文档内容统一由下方 useEffect 的
   // setKeContent 加载一次，避免初始化与切换时重复解析大文档（Document Model）。
@@ -249,7 +281,23 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
     prevArticleIdRef.current = newId
     setSaveState('idle')
-    if (editor && article) setKeContent(editor, stripFrontmatter(article.content).content)
+    const body = article ? stripFrontmatter(article.content).content : ''
+    const large = body.length > 200_000
+    if (editor && article) {
+      if (large) {
+        // 先让一帧「解析中」占位绘制（同步解析会阻塞渲染，抢占一个渲染帧）
+        setParsingLarge(true)
+        window.setTimeout(() => {
+          setKeContent(editor, body)
+          setParsingLarge(false)
+        }, 0)
+      } else {
+        setParsingLarge(false)
+        setKeContent(editor, body)
+      }
+    } else {
+      setParsingLarge(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [article?.id, reloadToken])
 
@@ -485,9 +533,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
 
   return (
     <main className="flex h-full min-w-0 flex-1 flex-col bg-background">
-      {loading ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          加载中…
+      {loading || parsingLarge ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span>{loading ? '加载中…' : '正在解析大文档…'}</span>
+          {parsingLarge && (
+            <span className="text-xs opacity-70">首次打开大文档解析较慢，请稍候（再次打开走缓存）</span>
+          )}
         </div>
       ) : article && editor ? (
         <EditorContext.Provider value={{ editor }}>

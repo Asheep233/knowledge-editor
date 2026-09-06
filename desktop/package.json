@@ -1,7 +1,7 @@
 {
   "name": "knowledgeeditor-desktop",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.1.2",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",

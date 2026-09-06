@@ -2,7 +2,7 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-05（v1.1.0 发布完成）
+> 最后更新：2026-09-05（v1.1.1-pre.1 预发布）
 
 ## 2026-08-11（发布：AI Agent 协作声明）
 
@@ -950,3 +950,28 @@ stable id（keStableId）、repro-main 移除、错误信息去绝对路径、re
 - GUI 实测：浅/深/自定义强调色三态；公式双按钮/保存按钮/未保存橙点/标签索引/无文档库/焦点环 #4285f4/F1 网格高亮 6 格；正文与搜索框无蓝框。
 - 发布：GitHub Release **v1.1.0**（Pre 票 v1.1.0-pre.1 先行）附件四件套：sidecar exe、“KnowledgeEditor_1.1.0_x64-setup.exe”（NSIS 50.7MB，本机构建）、manifest.sha256、versions.json（81 项）；CI 三个 push 工作流 success。
 - 版本一致性：远端 master = 本地 HEAD；v1.1.0 tag 与其构建产物一致（后续 ccd6814/778b791 为构建依赖与文档，不进 tag 语义正确）。
+
+## 2026-09-05（v1.1.1-pre.1：新建文件夹入口修复预发布）
+
+### 修复：左侧「文章」大栏目新增顶层「新建文件夹」按钮
+
+类型：Bug 修复（UI）
+状态：Completed（预发布，正式 v1.1.1 待安装包）
+
+现象：左侧文件管理栏「文章」大栏目下原只有「新建文档」按钮；「新建文件夹」功能仅存在于文件夹行 hover 时的小图标，点击区域小、入口难发现，实际不可用。
+
+原因：新建文件夹入口依赖 `group-hover:flex` 显示——功能本身（`create_dir` → `Articles/文件夹名` 后端 201）正常，但 UI 可达性差。
+
+修改：
+- 「文章」Section 动作区新增显式「新建文件夹」按钮（与「新建文档」并列，顶层 `Articles/` 下创建）——`handleNewFolder('Articles')`
+- 文件夹行 hover 快捷按钮保留（子文件夹内快速创建文档/文件夹）
+- SettingsPanel 标题徽标 `KnowledgeEditor v1.1.0 · Alpha` 硬编码 → 改 `import { APP_VERSION }`（消除展示层版本硬编码，防再漂移）
+- 七处版本源统一 `1.1.1-pre.1`（Cargo/tauri/frontend/desktop/backend/version.ts/Cargo.lock）
+
+影响范围：前端左栏 + 设置徽标；后端/导出/模块链路零改动。
+
+验证：
+- GUI 实测：点击「新建文件夹」→ prompt 拦截 → `Articles/测试夹-0905` 目录创建成功（后端链路 OK）
+- 前端 vitest 205 passed / tsc 0；后端 pytest 全绿；导出专项 14 passed（三种导出 zero diff）
+- sidecar 运行时校验 `/api/health` = 1.1.1-pre.1；manifest/versions 重新生成（81 项）
+- Pre-release：GitHub **v1.1.1-pre.1**（三附件：sidecar/manifest/versions；NSIS 随正式 1.1.1 产出）

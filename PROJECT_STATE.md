@@ -1,14 +1,14 @@
 # PROJECT_STATE.md
 
 > 项目状态唯一快速参考。每次阶段变更或影响架构的修改后更新。
-> 最后更新：2026-09-06（v1.1.2 正式发布） | 维护依据：docs/phase6u-report.md、docs/phase7-prep-freeze-check.md、README.md、代码版本常量
+> 最后更新：2026-09-06（v1.1.3 正式发布） | 维护依据：docs/phase6u-report.md、docs/phase7-prep-freeze-check.md、README.md、代码版本常量
 
 ## 当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 当前开发阶段 | Phase 6U（真实环境测试迭代）已完成；冻结与稳定性检查通过（2026-08-10）；Phase 7 全部完成；v1.1.0（UI/UX 重构）正式发布（2026-09-05）；**v1.1.1 正式发布（2026-09-06）：发布前全面审查三阻断项 + 数据完整性项全部修复后转正；v1.1.2 正式发布（2026-09-06）：迭代修复（索引签名 hash 化+增量刷新 / rename 同步自愈 / 附件提取平衡 / 慢保存并发 / 在途 abort / 设置契约四件）** |
-| 当前版本号 | **v1.1.2**（唯一来源 `backend/app/__init__.py`；`frontend/src/version.ts`、`frontend/package.json`、`desktop/package.json` + `desktop/package-lock.json`、`desktop/src-tauri/Cargo.toml` + `Cargo.lock`、`tauri.conf.json` 七处同步；v1.0.0 及以后版本算入 Alpha 测试） |
+| 当前开发阶段 | Phase 6U（真实环境测试迭代）已完成；冻结与稳定性检查通过（2026-08-10）；Phase 7 全部完成；v1.1.0（UI/UX 重构）正式发布（2026-09-05）；**v1.1.1 正式发布（2026-09-06）：发布前全面审查三阻断项 + 数据完整性项全部修复后转正；v1.1.2 正式发布（2026-09-06）：迭代修复（索引签名 hash 化+增量刷新 / rename 同步自愈 / 附件提取平衡 / 慢保存并发 / 在途 abort / 设置契约四件）；v1.1.3 正式发布（2026-09-06）：迭代修复（抑制窗收敛 / rename 409 自愈+前导点 slug / 404 门控+色板去抖+失败反馈 / 序号按文档隔离 / openSeq 覆盖 / 大文档解析提示 / spec 对齐）；实机安装验收已执行（A 部分 7 步，见 docs/release-acceptance-checklist.md 记录）** |
+| 当前版本号 | **v1.1.3**（唯一来源 `backend/app/__init__.py`；`frontend/src/version.ts`、`frontend/package.json`、`desktop/package.json` + `desktop/package-lock.json`、`desktop/src-tauri/Cargo.toml` + `Cargo.lock`、`tauri.conf.json` 七处同步；v1.0.0 及以后版本算入 Alpha 测试） |
 | 启动方式 | `.\scripts\start.ps1`（前后端一键启动）/ `.\scripts\stop.ps1`（一键停止，含无 runtime.json 的端口+特征兜底） |
 | 前端地址 | http://localhost:5173 |
 | 后端地址 | http://127.0.0.1:8000 |

@@ -676,15 +676,24 @@ export default function LeftSidebar({
           )}
         </Section>
 
-        {/* 文件树（Phase 4.2）；「文章」Section 承担文档库标题，不再单列 */}
+        {/* 文件树（Phase 4.2）；「文章」Section 承担文档库标题，新建文档/文件夹入口均在此（顶层按钮，不依赖 hover） */}
         <Section title="文章" action={
-          <button
-            className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary"
-            title="新建文档"
-            onClick={() => void handleNewDoc(TOP_ARTICLES)}
-          >
-            <Icon name="plus" className="size-3" /> 新建
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              className="flex items-center gap-0.5 rounded px-1 text-[11px] text-muted-foreground hover:text-primary"
+              title="新建文档"
+              onClick={() => void handleNewDoc(TOP_ARTICLES)}
+            >
+              <Icon name="plus" className="size-3" /> 新建
+            </button>
+            <button
+              className="flex items-center gap-0.5 rounded px-1 text-[11px] text-muted-foreground hover:text-primary"
+              title="新建文件夹"
+              onClick={() => void handleNewFolder(TOP_ARTICLES)}
+            >
+              <Icon name="folder-plus" className="size-3" /> 新建文件夹
+            </button>
+          </div>
         }>
           {treeError ? (
             <LoadError onRetry={() => void loadTree()} />

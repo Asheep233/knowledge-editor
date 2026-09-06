@@ -287,10 +287,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       if (large) {
         // 先让一帧「解析中」占位绘制（同步解析会阻塞渲染，抢占一个渲染帧）
         setParsingLarge(true)
+        // 80ms：给 React commit + 浏览器一次 paint 的时间，占位帧先可见再阻塞解析
         window.setTimeout(() => {
           setKeContent(editor, body)
           setParsingLarge(false)
-        }, 0)
+        }, 80)
       } else {
         setParsingLarge(false)
         setKeContent(editor, body)

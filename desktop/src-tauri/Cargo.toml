@@ -1,6 +1,6 @@
 [package]
 name = "knowledgeeditor"
-version = "1.1.0"
+version = "1.1.1-pre.1"
 # 升级版本时仅改本 [package] version；Cargo.lock 中的依赖条目由 cargo 维护，勿全局替换（曾致 CI 失败）。
 description = "Knowledge Editor desktop shell (Tauri v2)"
 edition = "2021"

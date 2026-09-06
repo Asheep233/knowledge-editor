@@ -2,7 +2,33 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-06（v1.1.1 正式发布）
+> 最后更新：2026-09-06（v1.1.2 正式发布）
+
+## 2026-09-06（v1.1.2 正式发布）
+
+### 发布：v1.1.2（迭代修复：数据完整性与设置契约）
+
+类型：Release
+状态：Completed
+
+变更（按 `docs/iteration-plan-1.1.x.md` v1.1.2 条目全部落地）：
+- **B1/K3-I1**：索引扫描签名判据加入文档内容 hash（等长同 tick 修改可识别）；`update_file`/`update_move`/`delete_file` 增量同步签名（原仅 rebuild 写入 → 每次启动退化全量重建）；delete_dir 改经索引器删除。
+- **K3-I2**：rename/move 的索引与历史同步改为 graceful（失败不阻断 200，签名过期由下次 reconcile 自愈）；原子写/fsync 由既有 atomic_write 承担。
+- **F07**：ke-attach/video 附件引用提取改括号平衡匹配（前后端同源；title/caption 含 `}` 不再漏打包附件）。
+- **F14/F15**：saveFn 用「切换瞬间内容快照」替代执行时经 editorRef 重读（防跨文档串写）；A→B→A 回退时保存完成后对齐编辑器。
+- **R2 残余**：saveQueue 新增 `abortPending`（中止在途 PUT）+ `saveArticle` 透传 AbortSignal；「重新加载外部版本」改为中止而非仅取消，杜绝在途写回覆盖外部版本。
+- **F13**：applyTheme 系统主题监听器模块级单例（原每次调用注册匿名监听器，指数级累积泄漏）。
+- **F17**：Rust `sanitize_hex` 增加字符校验（`#zzzzzz` 不再落盘）；`load_from`/`update_settings` 改字段级宽松解析（单字段类型错误不再整份设置静默归零）。
+- **F08**：前端 `mergeSettings` 嵌套对象改深合并（display/displayPreference/maintenance，与 Rust merge_value 对齐）。
+- **F09**：`loadSettings` 增加 `normalizeSettings` 兜底（缺键补默认/非法 theme 回退/非法 accent 清除，Web 降级路径主防线）。
+- **F16**：主题应用与 `resolveApiBase` 并行 + index.html 内联预置脚本（deep 色用户不再浅色首屏闪烁）。
+
+验证：
+- 前端 vitest **228 passed** / 1 skipped（+8）；tsc -b 0 错误；构建 dist-build 成功。
+- 后端 pytest **170 passed** / 2 skipped（+4）；cargo test settings **13 passed**（+2）；无 Rust 行为回退。
+- sidecar 独立拉起 `/api/health` = **1.1.2**；manifest/versions 重生成 81 项（NSIS 不入 manifest）。
+- NSIS 本机构建成功：`KnowledgeEditor_1.1.2_x64-setup.exe`（50.7MB）；实机安装验收待补（见 `docs/release-acceptance-checklist.md`，计划 v1.1.3 发布前执行）。
+- 版本九处源同步 1.1.2（backend/frontend package+lock/desktop package+lock/Cargo.toml+Cargo.lock/tauri.conf/version.ts）。
 
 ## 2026-09-06（v1.1.1 正式发布）
 

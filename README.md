@@ -2,13 +2,13 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.1.1**（正式发布）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前版本 **v1.1.2**（正式发布）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
 本项目开发过程包含 AI Agent 协作，透明性声明见 [docs/agent-collaboration.md](docs/agent-collaboration.md)。
 
 ## 安装（Windows 桌面版）
 
-1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.1.1_x64-setup.exe`（当前正式安装包）。
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `KnowledgeEditor_1.1.2_x64-setup.exe`（当前正式安装包）。
 2. 双击安装：安装到 `%LOCALAPPDATA%\KnowledgeEditor`，开始菜单创建快捷方式。
 3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
 

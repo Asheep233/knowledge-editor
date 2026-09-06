@@ -99,6 +99,8 @@ KnowledgeEditor/
 | `docs/agent-collaboration.md` | AI Agent 协作声明（开发过程透明度说明） |
 | `docs/knowledge-editor-plain-export-design.md` | 导出为普通 .md 设计（KE 方言 → 朴素 Markdown 降级规则） |
 | `docs/backlog-1.1.x.md` | v1.1.x 延后项清单（K3 审查 K3-I1/I2/T1/B1，含拍板记录） |
+| `docs/iteration-plan-1.1.x.md` | v1.1.x 迭代计划（合并为 v1.1.2 正确性 / v1.1.3 体验 两版排期，v1.1.1 后起草） |
+| `docs/release-acceptance-checklist.md` | 发布验收清单（NSIS 实机安装 7 步闭环 + 通用门禁 B1-B4 + 红线复核） |
 | `docs/tauri-build-env-notes.md` | Tauri 构建环境备忘（WSL 挂载盘 symlink 坑与 NSIS 绕行方案） |
 | `docs/agent-handoff-v1.1.0.md` | 主 Agent 交接文档（状态基线/拍板决策/环境坑/发布剧本/backlog） |
 | `docs/reports/` | 审查与冲突分析报告（v1.1.0-pre.1 审查总汇报 / visual-diff / conflict-analysis） |

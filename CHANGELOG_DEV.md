@@ -2,7 +2,30 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-06（v1.1.3 正式发布）
+> 最后更新：2026-09-07（v1.1.4 正式发布 · 更名 AstraNota）
+
+## 2026-09-07（v1.1.4 正式发布 · 品牌改版）
+
+### 发布：v1.1.4（更名 AstraNota + 全新品牌标识）
+
+类型：Release（品牌）
+状态：Completed
+
+变更（仅 A 层显示名与品牌，B/C/D 层标识与数据格式不动）：
+- **项目更名 AstraNota**：窗口标题、产品名（productName → 安装包/快捷方式/注册表 DisplayName 同步为 AstraNota）、关于对话框、侧栏品牌块、启动器页、设置面板徽标、README。
+- **新 Logo（AstraNota 轨道-A 形标 + AstraNota · YOUR KNOWLEDGE UNIVERSE 横版）**：
+  - 应用图标 19 件全套重新生成（`npx tauri icon`，深色方形标 1024 → **22% 圆角透明蒙版**）；
+  - 侧栏品牌块：KE 方块 → 圆角图标（浅/深主题双版本 CSS 切换）；
+  - 设置页面顶端：横版品牌横幅（浅/深双版本，`[data-theme]` 切换）。
+- 用户 Logo 资产统一尺寸：方标 1024²、横版 1600×400（背景延展不失真）→ 前端展示用 256²/800×200 双主题版本（来源 `/mnt/d/KE Project/Logo/unified/`，已同步至前端 `assets/astranota/`）。
+- **未动**（按拍板）：应用标识 `com.knowledgeeditor.desktop`、数据目录 `%APPDATA%\KnowledgeEditor`、侧车/包名/进程名、`.knowledgeeditor`、`ke-*` 文件格式与内部键——老用户升级零迁移。
+
+验证：
+- 前端 vitest **230 passed** / 1 skipped；tsc 0 错误；构建 dist-build 成功。
+- 后端 pytest **170 passed** / 2 skipped；cargo test settings **13 passed**。
+- sidecar 独立拉起 `/api/health` = **1.1.4**；manifest/versions 重生成（85 项，NSIS 不入 manifest）。
+- GUI（CDP）品牌验证：侧栏 AstraNota 图标/名称、窗口标题、设置页横版横幅（深/浅主题切换正确）、徽标 AstraNota v1.1.4。
+- NSIS：**AstraNota_1.1.4_x64-setup.exe**（51.0MB，sha256 B7622AC9…F36D）本机构建成功。
 
 ## 2026-09-06（v1.1.3 正式发布）
 

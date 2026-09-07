@@ -32,6 +32,7 @@ import type {
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
 import { Icon } from '../icons'
+import { askPrompt } from '../common/PromptDialog'
 
 interface Props {
   activeId: string | null
@@ -264,7 +265,7 @@ export default function LeftSidebar({
 
   const handleNewDoc = useCallback(
     async (dir: string) => {
-      const title = window.prompt('文档标题')
+      const title = await askPrompt('文档标题')
       if (!title) return
       try {
         await createDocIn(dir, title)
@@ -278,7 +279,7 @@ export default function LeftSidebar({
 
   const handleNewFolder = useCallback(
     async (parent: string) => {
-      const name = window.prompt('文件夹名称')
+      const name = await askPrompt('文件夹名称')
       if (!name) return
       try {
         await createFolder(parent === TOP_ARTICLES ? `${TOP_ARTICLES}/${name}` : `${parent}/${name}`)
@@ -292,7 +293,7 @@ export default function LeftSidebar({
 
   const handleRename = useCallback(
     async (node: TreeNode) => {
-      const newName = window.prompt('新名称', node.name)
+      const newName = await askPrompt('新名称', node.name)
       if (!newName || newName === node.name) return
       // R1-B：变更前 flush 未决保存（当前文档受此操作影响时）
       if (onBeforeFsMutation && !(await onBeforeFsMutation(node))) return
@@ -330,7 +331,7 @@ export default function LeftSidebar({
 
   const handleMove = useCallback(
     async (node: TreeNode) => {
-      const target = window.prompt(
+      const target = await askPrompt(
         '移动到哪个目录？（相对工作区的完整目录路径，如 Articles/归档）',
         TOP_ARTICLES,
       )

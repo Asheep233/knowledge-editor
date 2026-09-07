@@ -188,3 +188,16 @@ def test_rename_folder_migrates_doc_history_snapshots(client, paused_watcher):
     new_rel = "Articles/新目录/目录内文档.md"
     after = client.get("/api/history/list", params={"doc": new_rel}).json()
     assert len(after["versions"]) == len(before["versions"]), after
+
+
+def test_empty_folder_appears_in_tree(client):
+    """新建的空文件夹必须出现在 /api/tree（前端树由文件路径反推，无此修复空文件夹不可见）。"""
+    r = client.post("/api/fs/dir", json={"path": "Articles/空目录可见性"})
+    assert r.status_code == 201, r.text
+    tree = client.get("/api/tree").json()
+    assert "Articles/空目录可见性/" in tree["articles"], tree["articles"]
+    # 嵌套空目录同样可见
+    r = client.post("/api/fs/dir", json={"path": "Articles/空目录可见性/更深"})
+    assert r.status_code == 201, r.text
+    tree = client.get("/api/tree").json()
+    assert "Articles/空目录可见性/更深/" in tree["articles"]

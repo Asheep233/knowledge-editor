@@ -33,6 +33,7 @@ import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, type AppSettings } from './settings'
 import { shouldBlockUnload } from './state/closeGuard'
+import { askPrompt, PromptRoot } from './components/common/PromptDialog'
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
 import { recoveryCheckShouldRun } from './state/recovery'
@@ -417,7 +418,7 @@ export default function App() {
     const dir = await pickDirectory('选择工作区目录')
     if (dir) void switchWorkspace(dir, 'open')
     else if (!isDesktop()) {
-      const p = window.prompt('打开工作区路径')
+      const p = await askPrompt('打开工作区路径')
       if (p) void switchWorkspace(p, 'open')
     }
   }, [switchWorkspace])
@@ -428,7 +429,7 @@ export default function App() {
     const dir = await pickDirectory('选择新建工作区目录（需为空）')
     if (dir) void switchWorkspace(dir, 'create')
     else if (!isDesktop()) {
-      const p = window.prompt('新建工作区路径')
+      const p = await askPrompt('新建工作区路径')
       if (p) void switchWorkspace(p, 'create')
     }
   }, [switchWorkspace])
@@ -464,7 +465,7 @@ export default function App() {
       const flushed = await flushWithTimeout(articleIdRef.current)
       if (!flushed && !window.confirm('当前有未保存修改，新建将放弃这些修改，是否继续？')) return
     }
-    const title = window.prompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
+    const title = await askPrompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
     if (!title) return
     try {
       // F04：新建文档推进打开序号——迟到在途 GET 不得覆盖新建文档视图
@@ -653,7 +654,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <PromptRoot>
     <AppShell
       header={
         <>
@@ -837,7 +838,7 @@ export default function App() {
           </div>
         </div>
       )}
-    </>
+    </PromptRoot>
   )
 }
 

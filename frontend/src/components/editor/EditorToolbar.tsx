@@ -542,7 +542,10 @@ export default function EditorToolbar({
           style={{ background: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }}
         >
           {/* 与行内公式同规格（size-4），正方形外框、grid 严格居中 */}
-          <Icon name="sigma" className="size-4 leading-none" />
+          {/* Σ 路径墨迹中心略偏右（viewBox 内 ≈1.2px），补偿平移保持视觉正中 */}
+          <span className="block" style={{ transform: 'translateX(-1.2px)' }}>
+            <Icon name="sigma" className="size-4 leading-none" />
+          </span>
         </span>
       </ToolIcon>
 

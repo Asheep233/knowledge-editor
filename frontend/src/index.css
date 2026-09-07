@@ -285,15 +285,19 @@ body {
   color: var(--muted-foreground);
   pointer-events: none;
 }
+/* v1.1.6：信息块内容【空态】单行处理——占位符改为 0 高度浮动，叠在光标行上；
+   托尾 <br> 保留（点击进入后仍有光标行，不会整行消失；输入后占位符自然让位） */
+
 /* v1.1.6 二2：信息块占位符隐藏——「输入中」由 PM 选区判定（ke-note-content--focused）：
    光标进入该信息块内容即隐藏（PM 焦点在编辑器根，:focus-within 反向不匹配不可用） */
 .ke-note-content.ke-note-content--empty.ke-note-content--focused::before {
   display: none !important;
 }
 .ke-note-content.ke-note-content--empty::before {
-  display: inline-block;
-  min-height: 1.7em;
+  float: left;
+  height: 0;
   line-height: 1.7;
+  pointer-events: none;
 }
 
 
@@ -498,6 +502,17 @@ body {
 }
 
 /* 空文档占位（点击直接输入正文） */
+/* v1.1.6：信息块后的托尾空段压为 0 尺寸——新建信息块视觉上只有一行
+   （托尾段为 PM 结构元素不可删；隐藏其高度即可，信息块内输入不受影响）
+   注意：信息块在 DOM 中为 react-renderer node-note 包装，兄弟选择器须用该包装类 */
+.ke-editor-prose > .node-note + p {
+  font-size: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
 /* 文档级占位符：is-empty（Placeholder 扩展实际挂的类）+ data-placeholder；
    仅当该空段是编辑器的唯一内容时显示（文档有内容——如信息块——即隐藏，防叠层） */
 .ke-editor-prose .is-empty[data-placeholder]:only-child::before {

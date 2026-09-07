@@ -37,3 +37,25 @@ describe('buildFileTree', () => {
     expect(leaf.relPath).toBe('Articles/子目录/文档.md')
   })
 })
+
+describe('FIX：空目录条目（尾 /）在树中可见', () => {
+  it('新建的空文件夹（后端返回 "Articles/xxx/"）在树中显示为文件夹节点', () => {
+    const tree = buildFileTree(['Articles/空目录/', 'Articles/a.md'])
+    const articles = tree.find((n) => n.type === 'folder' && n.name === 'Articles')
+    const folder = (articles?.children ?? []).find((n) => n.type === 'folder' && n.name === '空目录')
+    expect(folder).toBeTruthy()
+    expect(folder?.children ?? []).toEqual([])
+    expect((articles?.children ?? []).some((n) => n.type === 'file' && n.name === 'a.md')).toBe(true)
+  })
+
+  it('嵌套空目录与既有目录合并，不产生空文件叶子', () => {
+    const tree = buildFileTree(['Articles/甲/乙/', 'Articles/甲/丙/', 'Articles/甲/乙/doc.md'])
+    const articles = tree.find((n) => n.type === 'folder' && n.name === 'Articles')
+    const jia = (articles?.children ?? []).find((n) => n.type === 'folder' && n.name === '甲')
+    const names = (jia?.children ?? []).map((n) => n.name)
+    expect([...names].sort()).toEqual(['丙', '乙'])
+    const yi = (jia?.children ?? []).find((n) => n.name === '乙')
+    expect((yi?.children ?? []).map((n) => n.name)).toEqual(['doc.md'])
+    expect((yi?.children ?? []).every((n) => n.type === 'file')).toBe(true)
+  })
+})

@@ -124,11 +124,17 @@ def file_tree(request: Request) -> dict:
     """返回 Articles / Modules / Attachments 的文件树（相对路径）。"""
     root = request.app.state.workspace_root
 
-    def walk(rel: str, exts: Optional[set] = None, skip: set = frozenset({".gitkeep"})):
+    def walk(rel: str, exts: Optional[set] = None, skip: set = frozenset({".gitkeep"}),
+             include_dirs: bool = True):
         base = root / rel
         out = []
         if base.exists():
             # P1-17：跳过符号链接/Junction，防止枚举/索引到 workspace 外部
+            # 空目录必须返回（尾缀 "/" 标记）：前端从文件路径反推文件夹，
+            # 空文件夹（新建后尚无文档）会被树完全遗漏——「新建文件夹」看起来没生效
+            if include_dirs:
+                for d in sorted(markdown_io.walk_dirs(base)):
+                    out.append(d.relative_to(root).as_posix() + "/")
             for p in sorted(markdown_io.walk_files(base)):
                 if p.name in skip:
                     continue
@@ -142,9 +148,9 @@ def file_tree(request: Request) -> dict:
         "articles": walk(config.DIR_ARTICLES, exts={".md", ".markdown"}),
         "modules": walk(config.DIR_MODULES, exts={".md", ".markdown"}),
         "attachments": {
-            "images": walk(config.DIR_ATTACH_IMAGES),
-            "videos": walk(config.DIR_ATTACH_VIDEOS),
-            "files": walk(config.DIR_ATTACH_FILES),
+            "images": walk(config.DIR_ATTACH_IMAGES, include_dirs=False),
+            "videos": walk(config.DIR_ATTACH_VIDEOS, include_dirs=False),
+            "files": walk(config.DIR_ATTACH_FILES, include_dirs=False),
         },
     }
 

@@ -151,7 +151,10 @@ def create_dir(request: Request, body: DirCreate) -> dict:
     # workspace 根——「必须位于三大顶层目录下」的约束实际可被绕过。
     full = _guard_rel(root, rel)
     _require_business_top(root, full)
-    full.mkdir(parents=True, exist_ok=True)
+    # 同名目录显式报错（原来 exist_ok=True 静默成功→用户无感知）
+    if full.exists():
+        raise HTTPException(status_code=409, detail=f"文件夹已存在：{rel}")
+    full.mkdir(parents=True, exist_ok=False)
     return {"path": rel, "created": True}
 
 

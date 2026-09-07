@@ -33,6 +33,13 @@ pub fn run() {
             sidecar::start(app.handle().clone());
             // M5：构建原生菜单（文件/编辑/视图/帮助）
             let _ = menu::build(app.handle());
+            // 窗口图标固定为 256×256 高分辨率源（任务栏/Alt-Tab 从大图高质下采样，
+            // 避免默认 32×32 源在 24px 任务栏按钮上被低质缩放发糊）。
+            if let Some(w) = app.get_webview_window("main") {
+                if let Ok(img) = tauri::image::Image::from_bytes(include_bytes!("../icons/128x128@2x.png")) {
+                    let _ = w.set_icon(img);
+                }
+            }
             Ok(())
         })
         .on_window_event(|window, event| {

@@ -13,6 +13,7 @@ import { getModule, listModules, uploadAttachment, type ModuleInfo } from '../..
 import { newId } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
 import { Icon } from '../icons'
+import { askPrompt } from '../common/PromptDialog'
 
 /** 工具栏图标按钮（方形 32px，hover --muted 底；激活 --primary 色） */
 function ToolIcon({
@@ -510,9 +511,9 @@ export default function EditorToolbar({
       <ToolIcon title="行内代码" active={st.code} onClick={() => editor.chain().focus().toggleCode().run()}>
         <Icon name="code" className="size-4" />
       </ToolIcon>
-      <ToolIcon title="插入链接" onClick={() => {
+      <ToolIcon title="插入链接" onClick={async () => {
         const prev = editor.getAttributes('link').href as string | undefined
-        const url = window.prompt('链接地址：', prev ?? 'https://')
+        const url = await askPrompt('链接地址：', prev ?? 'https://')
         if (url === null) return
         if (url === '') {
           editor.chain().focus().extendMarkRange('link').unsetLink().run()

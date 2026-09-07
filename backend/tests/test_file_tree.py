@@ -188,3 +188,25 @@ def test_rename_folder_migrates_doc_history_snapshots(client, paused_watcher):
     new_rel = "Articles/新目录/目录内文档.md"
     after = client.get("/api/history/list", params={"doc": new_rel}).json()
     assert len(after["versions"]) == len(before["versions"]), after
+
+
+def test_empty_folder_appears_in_tree(client):
+    """新建的空文件夹必须出现在 /api/tree（前端树由文件路径反推，无此修复空文件夹不可见）。"""
+    r = client.post("/api/fs/dir", json={"path": "Articles/空目录可见性"})
+    assert r.status_code == 201, r.text
+    tree = client.get("/api/tree").json()
+    assert "Articles/空目录可见性/" in tree["articles"], tree["articles"]
+    # 嵌套空目录同样可见
+    r = client.post("/api/fs/dir", json={"path": "Articles/空目录可见性/更深"})
+    assert r.status_code == 201, r.text
+    tree = client.get("/api/tree").json()
+    assert "Articles/空目录可见性/更深/" in tree["articles"]
+
+
+def test_create_dir_duplicate_conflict(client):
+    """同名目录：第二次创建必须显式 409（不能静默 exist_ok 成功）。"""
+    r = client.post("/api/fs/dir", json={"path": "Modules/重复目录"})
+    assert r.status_code == 201, r.text
+    r2 = client.post("/api/fs/dir", json={"path": "Modules/重复目录"})
+    assert r2.status_code == 409, r2.text
+    assert "已存在" in r2.json().get("detail", "")

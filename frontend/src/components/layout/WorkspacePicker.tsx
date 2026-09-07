@@ -16,6 +16,7 @@ import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
 import { APP_VERSION } from '../../version'
 import { Icon } from '../icons'
+import { askPrompt } from '../common/PromptDialog'
 
 interface Props {
   onOpened: (ws: WorkspaceState) => void
@@ -100,7 +101,7 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
     const dir = await pickDirectory('选择已有工作区目录')
     if (dir) void open(dir)
     else if (!isDesktop()) {
-      const p = window.prompt('打开已有工作区路径')
+      const p = await askPrompt('打开已有工作区路径')
       if (p) void open(p)
     }
   }, [open])

@@ -22,14 +22,20 @@ export function buildFileTree(paths: string[]): TreeNode[] {
 
   const sorted = [...paths].sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
   for (const p of sorted) {
-    const parts = p.split('/')
+    const isDirEntry = p.endsWith('/')
+    const clean = isDirEntry ? p.slice(0, -1) : p
+    const parts = clean.split('/')
     let parent = roots
     let acc = ''
-    for (let i = 0; i < parts.length - 1; i++) {
+    // 目录条目需把「末级文件夹」本身也 ensure（否则空目录只有祖先、自身不出现）
+    const ensureCount = isDirEntry ? parts.length : parts.length - 1
+    for (let i = 0; i < ensureCount; i++) {
       acc = acc ? `${acc}/${parts[i]}` : parts[i]
       parent = ensureFolder(acc, parts[i], parent).children ?? parent
     }
-    parent.push({ name: parts[parts.length - 1], relPath: p, type: 'file' })
+    if (!isDirEntry) {
+      parent.push({ name: parts[parts.length - 1], relPath: p, type: 'file' })
+    }
   }
   sortTree(roots)
   return roots

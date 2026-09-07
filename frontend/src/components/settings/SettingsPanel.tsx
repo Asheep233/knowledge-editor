@@ -166,22 +166,6 @@ export default function SettingsPanel({ open, onClose }: Props) {
           </button>
         </div>
       </header>
-      {/* AstraNota 品牌横幅（浅/深主题双版本，CSS 按 data-theme 切换） */}
-      <div className="flex shrink-0 items-center justify-center border-b border-border bg-card py-4">
-        <img
-          src={horizontalLogoLight}
-          alt="AstraNota"
-          className="an-logo-light h-[72px] w-auto"
-          draggable={false}
-        />
-        <img
-          src={horizontalLogoDark}
-          alt="AstraNota"
-          className="an-logo-dark h-[72px] w-auto"
-          draggable={false}
-        />
-      </div>
-
       <div className="flex min-h-0 flex-1">
         {/* 左分组栏（参考稿 §3.6：220px popover 底 + 34px rounded-lg 按钮，点击锚点跳转） */}
         <aside
@@ -226,6 +210,21 @@ export default function SettingsPanel({ open, onClose }: Props) {
             <p className="py-8 text-center text-muted-foreground">加载设置中…</p>
           ) : (
             <div className="mx-auto flex w-full max-w-[680px] flex-col gap-7 px-6 py-6">
+              {/* AstraNota 品牌横幅（右内容区顶端；浅/深双版本按 data-theme 切换） */}
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src={horizontalLogoLight}
+                  alt="AstraNota"
+                  className="an-logo-light h-[76px] w-auto"
+                  draggable={false}
+                />
+                <img
+                  src={horizontalLogoDark}
+                  alt="AstraNota"
+                  className="an-logo-dark h-[76px] w-auto"
+                  draggable={false}
+                />
+              </div>
               {/* 常规：启动、恢复与保存偏好（锚点 general） */}
               <div id="settings-group-general" data-group="general" className="scroll-mt-4">
                 <section aria-labelledby="section-general">

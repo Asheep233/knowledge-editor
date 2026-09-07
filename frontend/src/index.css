@@ -285,6 +285,10 @@ body {
   color: var(--muted-foreground);
   pointer-events: none;
 }
+/* v1.1.6 二2：信息块内有光标/聚焦时不显示占位符（避免「提示在光标上方」的错位感） */
+.ke-note:focus-within .ke-note-content.ke-note-content--empty::before {
+  display: none;
+}
 
 /* 脚注上标引用（注释功能）
    line-height 不可设为 0：0 行高会使上标数字字形溢出当前行框，

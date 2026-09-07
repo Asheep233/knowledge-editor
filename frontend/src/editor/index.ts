@@ -9,6 +9,7 @@
  * Markdown 仅作为存储/交换格式，由 @tiptap/markdown 双向转换。
  */
 import { useEditor, type Editor } from '@tiptap/react'
+import { Extension } from '@tiptap/core'
 import type { JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
@@ -62,6 +63,24 @@ export interface KeEditorOptions {
   editable?: boolean
 }
 
+/** 快捷键（v1.1.6 三5）：Ctrl/⌘+N = 插入行内公式；Ctrl/⌘+M = 插入公式块。
+ * 在编辑器层注册（任意焦点态可用）；与浏览器默认（新窗口/静音）不冲突的桌面场景优先。 */
+const MathShortcuts = Extension.create({
+  name: 'mathShortcuts',
+  addKeyboardShortcuts() {
+    return {
+      'Mod-n': () => {
+        this.editor.chain().focus().insertContent({ type: 'math', attrs: { id: crypto.randomUUID?.() ?? `m${Date.now()}`, latex: '' } }).run()
+        return true
+      },
+      'Mod-m': () => {
+        this.editor.chain().focus().insertContent({ type: 'mathBlock', attrs: { id: crypto.randomUUID?.() ?? `m${Date.now()}`, latex: '' } }).run()
+        return true
+      },
+    }
+  },
+})
+
 export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOptions) {
   const ed = useEditor({
     extensions: [
@@ -96,6 +115,8 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       OrderedListParenExtension,
       // v1.1.5 ⑥ 补：空列表项 Enter = 继续列表（Obsidian 式），第二次回车退出
       KeListItem,
+      // v1.1.6 三5：Ctrl+N / Ctrl+M 插入公式
+      MathShortcuts,
       // 标准 Markdown 图片：![alt](src)
       ImageMarkdownExtension,
       // KE 扩展节点（math / mathBlock / note / module / attach / video / footnote）

@@ -129,9 +129,20 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
                 updateAttributes({ latex: e.target.value })
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') {
+                // v1.1.6 三6：块级公式——Enter 保存；Ctrl/⌘+Enter 换行；Esc 空块删除
+                if (isBlock && e.key === 'Enter') {
+                  if (e.ctrlKey || e.metaKey) return // 允许默认换行
                   e.preventDefault()
                   setEditing(false)
+                  return
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  if (isBlock && !latex.trim()) {
+                    deleteNode() // 空块直接删除整节点
+                  } else {
+                    setEditing(false)
+                  }
                 }
               }}
             />
@@ -158,9 +169,20 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
                 updateAttributes({ latex: v })
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') {
+                // v1.1.6 三6：块级公式——Enter 保存；Ctrl/⌘+Enter 换行；Esc 空块删除
+                if (isBlock && e.key === 'Enter') {
+                  if (e.ctrlKey || e.metaKey) return // 允许默认换行
                   e.preventDefault()
                   setEditing(false)
+                  return
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  if (isBlock && !latex.trim()) {
+                    deleteNode() // 空块直接删除整节点
+                  } else {
+                    setEditing(false)
+                  }
                 }
               }}
               onBlur={() => setEditing(false)}

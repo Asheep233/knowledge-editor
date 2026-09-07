@@ -33,6 +33,8 @@ import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, type AppSettings } from './settings'
 import { shouldBlockUnload } from './state/closeGuard'
+import horizontalLogoLight from './assets/astranota/astranota-horizontal-light-800x200.png'
+import horizontalLogoDark from './assets/astranota/astranota-horizontal-dark-800x200.png'
 import { askPrompt, PromptRoot } from './components/common/PromptDialog'
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
@@ -653,7 +655,20 @@ export default function App() {
     )
   }
 
+  // v1.1.6 一1：启动品牌页——设置与工作区就绪前显示（侧车拉起/工作区读取通常在 1-3s）
+  const bootLoading = !settingsReady || !workspaceChecked
   return (
+    <>
+      {bootLoading ? (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-5" style={{ background: 'var(--background)' }}>
+          <img src={horizontalLogoLight} alt="AstraNota" className="an-logo-light h-12 w-auto" draggable={false} />
+          <img src={horizontalLogoDark} alt="AstraNota" className="an-logo-dark h-12 w-auto" draggable={false} />
+          <div className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            正在打开工作区…
+          </div>
+        </div>
+      ) : null}
     <PromptRoot>
     <AppShell
       header={
@@ -839,6 +854,7 @@ export default function App() {
         </div>
       )}
     </PromptRoot>
+    </>
   )
 }
 

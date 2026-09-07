@@ -209,7 +209,7 @@ def create_article(request: Request, body: ArticleCreate) -> ArticleOut:
         # UI 重构（dual-title 修复）：正文不再自动生成 `# {title}`——
         # 标题由编辑器页眉（可编辑、同步 frontmatter）承载，避免双大标题。
         content = (
-            f"---\ntitle: {body.title}\n---\n\n"
+            f"---\ntitle: {markdown_io.yaml_scalar(body.title)}\n---\n\n"
         )
     markdown_io.atomic_write(full, content)
     request.app.state.indexer.update_file(rel)

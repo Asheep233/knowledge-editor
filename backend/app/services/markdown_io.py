@@ -59,6 +59,26 @@ def slugify(name: str, fallback: str = "untitled") -> str:
     return s
 
 
+def yaml_scalar(value) -> str:
+    """YAML 安全标量：字符串会被误解析为 int/float/bool 时加双引号（如 title: 1 → title: "1"）。
+    数字/布尔/空串/含特殊字符 → 双引号（内部转义 \" 与 \\）；普通字符串原样。"""
+    if not isinstance(value, str):
+        return str(value)
+    if value == "":
+        return '""'
+    lowered = value.lower()
+    if lowered in ("true", "false", "null", "yes", "no", "on", "off"):
+        return f'"{value}"'
+    try:
+        float(value)
+        return f'"{value}"'  # 纯数字（含 1/1.5/1e3）→ 引号
+    except ValueError:
+        pass
+    if value != value.strip() or value.startswith(("-", "?", "!", ">", "|", "@", "`", "#", "%", "&", "*", "[", "{", "~", ":")):
+        return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return value
+
+
 def _coerce_value(raw: str):
     """标量值类型化：内联列表 [a, b] -> list；整数 -> int；其余去引号字符串。"""
     raw = raw.strip()
@@ -111,6 +131,11 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
             continue
         meta[key] = _coerce_value(raw)
         i += 1
+    # 字符串语义键：数值被 _coerce_value 转成 int（如 title: 1）——历史文件/外部编辑
+    # 常裸写数字标题，必须转回 str（否则 ArticleOut.title 校验 500 → 文档打不开）
+    for k in ("title", "author", "label"):
+        if isinstance(meta.get(k), (int, float)):
+            meta[k] = str(meta[k])
     return meta, content[m.end():]
 
 
@@ -125,7 +150,7 @@ def render_frontmatter(meta: dict) -> str:
             for v in value:
                 lines.append(f"  - {v}")
         else:
-            lines.append(f"{key}: {value}")
+            lines.append(f"{key}: {yaml_scalar(value)}")
     lines.append("---")
     return "\n".join(lines) + "\n\n"
 

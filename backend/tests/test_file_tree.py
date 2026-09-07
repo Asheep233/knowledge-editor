@@ -231,3 +231,20 @@ def test_create_doc_no_heading(client):
     body = art.json()["content"]
     assert "# 无标题测试" not in body, body
     assert "title: 无标题测试" in body, body
+
+
+def test_numeric_title_document(client):
+    """数字标题（如 1 / 111）不得 500：frontmatter title: 1 实为 int，需转 str。
+    写入模板要加引号（title: "1"）；对历史裸数字文件解析兜底转 str。"""
+    r = client.post("/api/fs/doc", json={"dir": "Articles", "title": "666"})
+    assert r.status_code == 201, r.text
+    # 模板应为 yaml 安全标量
+    import pathlib, app.config as config
+    # 读回校验 GET（此前 int title → ArticleOut 校验失败 → 500）
+    g = client.get("/api/articles/Articles/666.md")
+    assert g.status_code == 200, g.text
+    assert g.json()["title"] == "666"
+    # parse 兜底（模拟历史裸数字文件）
+    from app.services import markdown_io
+    meta, body = markdown_io.parse_frontmatter("---\ntitle: 1\n---\n\n")
+    assert meta["title"] == "1" and isinstance(meta["title"], str)

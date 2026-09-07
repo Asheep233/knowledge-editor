@@ -86,12 +86,17 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
   useEffect(() => {
     if (editing && mode === 'latex' && textareaRef.current) {
       const el = textareaRef.current
-      el.focus()
-      try {
-        el.setSelectionRange(el.value.length, el.value.length)
-      } catch {
-        /* ignore */
-      }
+      // v1.1.6 二4：延迟聚焦——工具栏插入后 ProseMirror 会先抢一次焦点，
+      // 立即 focus 会被覆盖；60ms 后再聚焦并置光标于末尾。
+      const t = setTimeout(() => {
+        el.focus()
+        try {
+          el.setSelectionRange(el.value.length, el.value.length)
+        } catch {
+          /* ignore */
+        }
+      }, 60)
+      return () => clearTimeout(t)
     }
   }, [editing, mode])
 
@@ -133,7 +138,12 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
                 if (isBlock && e.key === 'Enter') {
                   if (e.ctrlKey || e.metaKey) return // 允许默认换行
                   e.preventDefault()
-                  setEditing(false)
+                  // 空公式：Enter 保存也直接删除（与 Esc 一致，不留无内容公式）
+                  if (!latex.trim()) {
+                    deleteNode()
+                  } else {
+                    setEditing(false)
+                  }
                   return
                 }
                 if (e.key === 'Escape') {
@@ -173,7 +183,12 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
                 if (isBlock && e.key === 'Enter') {
                   if (e.ctrlKey || e.metaKey) return // 允许默认换行
                   e.preventDefault()
-                  setEditing(false)
+                  // 空公式：Enter 保存也直接删除（与 Esc 一致，不留无内容公式）
+                  if (!latex.trim()) {
+                    deleteNode()
+                  } else {
+                    setEditing(false)
+                  }
                   return
                 }
                 if (e.key === 'Escape') {

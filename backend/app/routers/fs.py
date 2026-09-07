@@ -254,7 +254,7 @@ def create_doc(request: Request, body: DocCreate) -> dict:
         raise HTTPException(status_code=409, detail=f"已存在同名文档: {slug}.md")
     # P3-12/dual-title 对齐：新建文档正文不生成 `# {title}`（标题由编辑器页眉承载、
     # 同步 frontmatter），与 /api/articles 创建路径保持一致
-    content = f"---\ntitle: {body.title}\n---\n\n"
+    content = f"---\ntitle: {markdown_io.yaml_scalar(body.title)}\n---\n\n"
     markdown_io.atomic_write(full, content)
     _finish(request, rel)
     return {"id": rel, "path": rel, "title": body.title, "created": True}

@@ -287,6 +287,16 @@ body {
 }
 /* v1.1.6 二2：信息块内有光标/聚焦时不显示占位符（避免「提示在光标上方」的错位感） */
 .ke-note:focus-within .ke-note-content.ke-note-content--empty::before {
+  display: none !important;
+}
+.ke-note-content.ke-note-content--empty::before {
+  display: inline-block;
+  min-height: 1.7em;
+  line-height: 1.7;
+}
+/* v1.1.6 二2：文档级「开始输入正文…」占位符只属于空文档——
+   文档已有内容（如信息块后拖尾空段）时不应再显示，避免与信息块占位符叠层 */
+.ke-editor-prose p.is-empty:not(:first-child)[data-placeholder]::before {
   display: none;
 }
 

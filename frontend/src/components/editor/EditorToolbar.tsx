@@ -536,14 +536,12 @@ export default function EditorToolbar({
         const node = { type: 'mathBlock', attrs: { id: newId(), latex: '' } }
         editor.chain().focus().insertContent(node).run()
       }}>
-        {/* v1.1.6 二3：块级公式 = Σ + 右上角小长方形（与行内公式区分） */}
-        <span className="relative inline-flex">
-          <Icon name="sigma" className="size-4" />
-          <span
-            aria-hidden
-            className="absolute -right-1.5 -top-1.5 h-2.5 w-3.5 rounded-[2px] border border-current opacity-80"
-            style={{ background: 'var(--background)' }}
-          />
+        {/* v1.1.6 二3：块级公式 = Σ 外框（背景边框放大版，与行内公式区分） */}
+        <span
+          className="inline-flex h-4.5 w-5.5 items-center justify-center rounded-[3px] border border-current/70 -mx-0.5"
+          style={{ background: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }}
+        >
+          <Icon name="sigma" className="size-3" />
         </span>
       </ToolIcon>
 

@@ -600,6 +600,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 }}
                 title="标题（编辑后回车/失焦保存，同步文件名）"
                 aria-label="文档标题"
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+                onSelect={(e) => e.stopPropagation()}
                 className="mt-4 block w-full bg-transparent text-[28px] font-bold leading-[1.25] outline-none"
                 style={{ color: 'var(--foreground)' }}
               />

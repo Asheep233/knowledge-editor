@@ -65,7 +65,33 @@ function resolveBadgeStyle(color: string | undefined): { badge: string; fg: stri
   return DEFAULT_BADGE
 }
 
-export default function NoteNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
+export default function NoteNodeView({ node, updateAttributes, deleteNode, editor, getPos }: NodeViewProps) {
+  // v1.1.6：占位符隐藏不能用 :focus-within——PM 焦点在编辑器根（note 是后代），
+  // 反向不匹配。改用 PM 选区判定：光标落在本 note 内容范围即视为「输入中」。
+  const [contentFocused, setContentFocused] = useState(false)
+  useEffect(() => {
+    const update = () => {
+      const pos = getPos?.() ?? -1
+      if (pos < 0) return
+      const { from } = editor.state.selection
+      // 光标在信息块内 → 聚焦；光标在【紧邻其后的空段落】（编辑器托尾空段，
+      // 视觉上像信息块的第二行）→ 同样视为聚焦（用户点击该行占位符也应隐藏）
+      let inNote = from > pos + 1 && from <= pos + node.nodeSize
+      if (!inNote) {
+        const after = pos + node.nodeSize
+        const sibling = editor.state.doc.nodeAt(after)
+        if (sibling && sibling.type.name === 'paragraph' && sibling.textContent === '') {
+          inNote = from > after && from <= after + sibling.nodeSize
+        }
+      }
+      setContentFocused(inNote)
+    }
+    update()
+    editor.on('selectionUpdate', update)
+    return () => {
+      editor.off('selectionUpdate', update)
+    }
+  }, [editor, getPos, node])
   const attrs = node.attrs as Record<string, unknown>
   const label = (attrs.label as string) ?? ''
   const title = (attrs.title as string) ?? ''
@@ -211,7 +237,9 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
       {/* PM 可编辑内容区：块内文字可插入脚注上标等 inline 节点 */}
       <NodeViewContent
         as="div"
-        className={`ke-note-content mt-1.5 px-0 text-[14px] leading-[1.7] outline-none focus:ring-0${isEmpty ? ' ke-note-content--empty' : ''}`}
+        className={`ke-note-content mt-1.5 px-0 text-[14px] leading-[1.7] outline-none focus:ring-0${isEmpty ? ' ke-note-content--empty' : ''}${isEmpty && contentFocused ? ' ke-note-content--focused' : ''}`}
+        data-note-content-area
+        onMouseDown={() => setContentFocused(true)}
         style={{ color: 'var(--foreground)' }}
       />
     </NodeViewWrapper>

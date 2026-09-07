@@ -538,11 +538,11 @@ export default function EditorToolbar({
       }}>
         {/* v1.1.6 二3：块级公式 = Σ 外框（背景边框放大版，与行内公式区分） */}
         <span
-          className="inline-flex h-[18px] w-[20px] items-center justify-center rounded-[3px] border border-current/60"
+          className="inline-grid h-5 w-5 place-items-center rounded-[3px] border border-current/60"
           style={{ background: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }}
         >
-          {/* 与行内公式同规格（size-4），仅外围多一个方块 */}
-          <Icon name="sigma" className="size-4" />
+          {/* 与行内公式同规格（size-4），正方形外框、grid 严格居中 */}
+          <Icon name="sigma" className="size-4 leading-none" />
         </span>
       </ToolIcon>
 

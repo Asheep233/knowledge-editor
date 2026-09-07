@@ -285,8 +285,9 @@ body {
   color: var(--muted-foreground);
   pointer-events: none;
 }
-/* v1.1.6 二2：信息块内有光标/聚焦时不显示占位符（避免「提示在光标上方」的错位感） */
-.ke-note:focus-within .ke-note-content.ke-note-content--empty::before {
+/* v1.1.6 二2：信息块占位符隐藏——「输入中」由 PM 选区判定（ke-note-content--focused）：
+   光标进入该信息块内容即隐藏（PM 焦点在编辑器根，:focus-within 反向不匹配不可用） */
+.ke-note-content.ke-note-content--empty.ke-note-content--focused::before {
   display: none !important;
 }
 .ke-note-content.ke-note-content--empty::before {

@@ -105,9 +105,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   useEffect(() => {
     setTitleDraft(null)
   }, [article?.id])
-  const handleTitleBlur = useCallback(async () => {
-    if (!article || titleDraft === null) return
-    const next = titleDraft.trim()
+  // 非受控输入（v1.1.5）：React 不写 value → 任何重渲染都不会重置选区/光标
+  const handleTitleBlur = useCallback(async (value?: string) => {
+    if (!article) return
+    const next = (value ?? titleDraft ?? '').trim()
     setTitleDraft(null)
     if (!next || next === article.title) return
     const docId = article.id
@@ -591,12 +592,16 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               </div>
               {/* 页眉标题：可编辑，blur 同步 frontmatter title + 文件名（dual-title 修复） */}
               <input
-                value={titleDraft ?? article.title}
+                key={article.id}
+                defaultValue={article.title}
                 onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={() => void handleTitleBlur()}
+                onBlur={(e) => void handleTitleBlur(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-                  else if (e.key === 'Escape') setTitleDraft(null)
+                  else if (e.key === 'Escape') {
+                    setTitleDraft(null)
+                    ;(e.target as HTMLInputElement).value = article.title
+                  }
                 }}
                 title="标题（编辑后回车/失焦保存，同步文件名）"
                 aria-label="文档标题"

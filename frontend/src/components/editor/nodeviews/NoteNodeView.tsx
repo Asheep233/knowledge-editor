@@ -136,7 +136,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
             <Icon name="more-horizontal" className="size-3.5" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full z-10 mt-0.5 w-36 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg">
+            <div className="absolute right-0 top-full z-10 mt-0.5 w-56 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg">
               <button
                 type="button"
                 contentEditable={false}
@@ -150,7 +150,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
               >
                 重命名徽章…
               </button>
-              <div className="flex items-center gap-1.5 border-t border-border px-2.5 py-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-border px-2.5 py-1.5">
                 {COLOR_OPTIONS.map((c) => (
                   <button
                     key={c.key}
@@ -185,10 +185,10 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
                       updateAttributes({ color: v.startsWith('#') ? v : `#${v}` })
                     })()
                   }}
-                  className="ml-auto flex h-5 items-center rounded px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                  className="flex w-full items-center justify-center gap-1 rounded border border-border bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  <Icon name="paint" className="mr-0.5 size-3" />
-                  自定义
+                  <Icon name="paint" className="size-3" />
+                  自定义颜色…
                 </button>
               </div>
               <button

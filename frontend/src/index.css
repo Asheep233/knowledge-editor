@@ -185,7 +185,7 @@ body {
   border-radius: 2px 8px 8px 2px;
 }
 [data-theme='dark'] .ke-editor-prose blockquote {
-  background: var(--popover);
+  background: color-mix(in srgb, var(--popover) calc(var(--quote-bg-alpha, 1) * 100%), transparent);
 }
 .ke-editor-prose code {
   font-family: "Cascadia Code", Consolas, "JetBrains Mono", monospace;

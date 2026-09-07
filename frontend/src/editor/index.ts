@@ -15,7 +15,7 @@ import { Markdown } from '@tiptap/markdown'
 import { history } from '@tiptap/pm/history'
 import { EditorState } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
-import { OrderedListParenExtension } from './extensions/ListExtension'
+import { OrderedListParenExtension, KeListItem } from './extensions/ListExtension'
 import { MathExtension } from './extensions/MathExtension'
 import { MathBlockExtension } from './extensions/MathBlockExtension'
 import { NoteExtension } from './extensions/NoteExtension'
@@ -63,10 +63,11 @@ export interface KeEditorOptions {
 }
 
 export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOptions) {
-  return useEditor({
+  const ed = useEditor({
     extensions: [
       StarterKit.configure({
         orderedList: false,
+        listItem: false,
         link: {
           openOnClick: false,
           autolink: true,
@@ -93,6 +94,8 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       GenericFallbackInlineExtension,
       // v1.1.5 ⑥：输入规则支持 `1. ` / `1) `（Obsidian 式），序列化仍输出规范的 `1. `
       OrderedListParenExtension,
+      // v1.1.5 ⑥ 补：空列表项 Enter = 继续列表（Obsidian 式），第二次回车退出
+      KeListItem,
       // 标准 Markdown 图片：![alt](src)
       ImageMarkdownExtension,
       // KE 扩展节点（math / mathBlock / note / module / attach / video / footnote）
@@ -155,7 +158,7 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       },
     },
   })
-}
+  return ed}
 
 /** `Branch.empty` 为 prosemirror-history 的模块级常量，只需捕获一次即可复用。 */
 let emptyHistoryBranch: unknown

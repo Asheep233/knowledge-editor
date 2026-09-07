@@ -41,11 +41,7 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser",
-        "languages": [
-          "SimpChinese",
-          "English"
-        ]
+        "installerHooks": "nsis/legacy-migration.nsh"
       }
     }
   }

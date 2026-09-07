@@ -102,6 +102,39 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 页眉标题编辑（dual-title 修复）：编辑态 → blur 时同步 frontmatter title；
   // 文件名同步：仅当 slug 变化时重命名（409 时保留 meta title 并提示）。
   const [titleDraft, setTitleDraft] = useState<string | null>(null)
+  // 拖选回收（v1.1.5）：标题输入框内按下并拖出（非空选区），在框外松开时
+  // 焦点被页面其他部分（编辑器）抢走 → 原生收起输入框选区。
+  // 松开瞬间若输入框仍有非空选区 → 自动归还焦点 + 恢复选区（高亮保持）；
+  // 此后任意一次正常点击即可离开（flag 在下次 mousedown 清除）。
+  const titleDragStartRef = useRef(false)
+  useEffect(() => {
+    const onWinMouseUp = () => {
+      const i = document.querySelector('input[aria-label="文档标题"]') as HTMLInputElement | null
+      if (!i || !titleDragStartRef.current) return
+      const a = i.selectionStart ?? 0
+      const b = i.selectionEnd ?? 0
+      if (a === b) {
+        titleDragStartRef.current = false
+        return
+      }
+      setTimeout(() => {
+        if (document.activeElement !== i) {
+          i.focus()
+          i.setSelectionRange(a, b)
+        }
+        titleDragStartRef.current = false
+      }, 0)
+    }
+    window.addEventListener('mouseup', onWinMouseUp, true)
+    const onWinMouseDown = () => {
+      titleDragStartRef.current = false
+    }
+    window.addEventListener('mousedown', onWinMouseDown, true)
+    return () => {
+      window.removeEventListener('mouseup', onWinMouseUp, true)
+      window.removeEventListener('mousedown', onWinMouseDown, true)
+    }
+  }, [])
   useEffect(() => {
     setTitleDraft(null)
   }, [article?.id])
@@ -605,7 +638,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 }}
                 title="标题（编辑后回车/失焦保存，同步文件名）"
                 aria-label="文档标题"
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  titleDragStartRef.current = true
+                }}
                 onMouseUp={(e) => e.stopPropagation()}
                 onSelect={(e) => e.stopPropagation()}
                 className="mt-4 block w-full bg-transparent text-[28px] font-bold leading-[1.25] outline-none"

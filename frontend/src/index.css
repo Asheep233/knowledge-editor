@@ -294,11 +294,7 @@ body {
   min-height: 1.7em;
   line-height: 1.7;
 }
-/* v1.1.6 二2：文档级「开始输入正文…」占位符只属于空文档——
-   文档已有内容（如信息块后拖尾空段）时不应再显示，避免与信息块占位符叠层 */
-.ke-editor-prose p.is-empty:not(:first-child)[data-placeholder]::before {
-  display: none;
-}
+
 
 /* 脚注上标引用（注释功能）
    line-height 不可设为 0：0 行高会使上标数字字形溢出当前行框，
@@ -501,7 +497,9 @@ body {
 }
 
 /* 空文档占位（点击直接输入正文） */
-.ke-editor-prose .is-editor-empty:first-child::before {
+/* 文档级占位符：is-empty（Placeholder 扩展实际挂的类）+ data-placeholder；
+   仅当该空段是编辑器的唯一内容时显示（文档有内容——如信息块——即隐藏，防叠层） */
+.ke-editor-prose .is-empty[data-placeholder]:only-child::before {
   content: attr(data-placeholder);
   color: #9ca3af;
   pointer-events: none;

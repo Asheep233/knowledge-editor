@@ -117,6 +117,22 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
     return (
       <NodeViewWrapper
         ref={wrapperRef}
+        // v1.1.6 三6：键位挂在节点根级（不依赖输入框聚焦——按钮插入后立即按 Esc 也命中）
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (!isBlock) return
+          if (e.key === 'Enter') {
+            if (e.ctrlKey || e.metaKey) return // 允许默认换行（textarea/mathfield）
+            e.preventDefault()
+            if (!latex.trim()) deleteNode() // 空公式 Enter 亦删除
+            else setEditing(false)
+            return
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            if (!latex.trim()) deleteNode() // 空块删除
+            else setEditing(false)
+          }
+        }}
         contentEditable={false}
         className={isBlock ? 'ke-math ke-math--block' : 'ke-math ke-math--inline'}
       >
@@ -133,28 +149,7 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
               onChange={(e) => {
                 updateAttributes({ latex: e.target.value })
               }}
-              onKeyDown={(e) => {
-                // v1.1.6 三6：块级公式——Enter 保存；Ctrl/⌘+Enter 换行；Esc 空块删除
-                if (isBlock && e.key === 'Enter') {
-                  if (e.ctrlKey || e.metaKey) return // 允许默认换行
-                  e.preventDefault()
-                  // 空公式：Enter 保存也直接删除（与 Esc 一致，不留无内容公式）
-                  if (!latex.trim()) {
-                    deleteNode()
-                  } else {
-                    setEditing(false)
-                  }
-                  return
-                }
-                if (e.key === 'Escape') {
-                  e.preventDefault()
-                  if (isBlock && !latex.trim()) {
-                    deleteNode() // 空块直接删除整节点
-                  } else {
-                    setEditing(false)
-                  }
-                }
-              }}
+
             />
             <div className="ke-math-preview">
               <span className="ke-math-preview-label">渲染预览</span>
@@ -178,28 +173,7 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
                 const v = (e.target as MathfieldElement).value
                 updateAttributes({ latex: v })
               }}
-              onKeyDown={(e) => {
-                // v1.1.6 三6：块级公式——Enter 保存；Ctrl/⌘+Enter 换行；Esc 空块删除
-                if (isBlock && e.key === 'Enter') {
-                  if (e.ctrlKey || e.metaKey) return // 允许默认换行
-                  e.preventDefault()
-                  // 空公式：Enter 保存也直接删除（与 Esc 一致，不留无内容公式）
-                  if (!latex.trim()) {
-                    deleteNode()
-                  } else {
-                    setEditing(false)
-                  }
-                  return
-                }
-                if (e.key === 'Escape') {
-                  e.preventDefault()
-                  if (isBlock && !latex.trim()) {
-                    deleteNode() // 空块直接删除整节点
-                  } else {
-                    setEditing(false)
-                  }
-                }
-              }}
+
               onBlur={() => setEditing(false)}
             />
           </div>

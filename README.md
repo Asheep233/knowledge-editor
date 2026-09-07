@@ -2,8 +2,10 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.1.4**（正式发布）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前版本 **v1.1.5**（正式发布）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
+> **v1.1.5（细节优化版）**：主题/编辑器打磨（见 CHANGELOG 与 Releases）；继承 v1.1.4 品牌改版。
+>
 > **v1.1.4（品牌改版版）**：项目更名 **AstraNota**（应用标识/数据目录不变，老用户升级零迁移），
 > 全新品牌 Logo（应用图标全套重生成 + 设置页横版横幅深/浅主题自适应）并**根治任务栏图标显示发糊**
 > （窗口图标改用 256px 高分辨率源，Tauri 默认仅 32px 源会被任务栏低质缩放）。
@@ -15,7 +17,7 @@
 
 ## 安装（Windows 桌面版）
 
-1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `AstraNota_1.1.4_x64-setup.exe`（当前正式安装包）。
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `AstraNota_1.1.5_x64-setup.exe`（当前正式安装包）。
 2. 双击安装：安装到 `%LOCALAPPDATA%\AstraNota`，开始菜单创建快捷方式。
 3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
 

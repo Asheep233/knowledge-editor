@@ -42,7 +42,10 @@ def test_create_module_via_fs_doc(client):
     rel = r.json()["id"]
     assert rel == "Modules/定义.md"
     assert _fs_path(client, rel).exists()
-    assert _read(client, rel).startswith("# 定义")  # Markdown 文件
+    # v1.1.5 ②：dual-title 对齐——新建文档/模块正文不含 `# {title}`，标题入 frontmatter
+    body = _read(client, rel)
+    assert body.startswith("---\ntitle: 定义\n---")  # Markdown 文件（frontmatter 承载标题）
+    assert "# 定义" not in body
     assert client.app.state.store.get_file(rel) is not None  # 仅索引
     assert rel in client.get("/api/tree").json()["modules"]
 

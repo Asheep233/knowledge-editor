@@ -210,3 +210,24 @@ def test_create_dir_duplicate_conflict(client):
     r2 = client.post("/api/fs/dir", json={"path": "Modules/重复目录"})
     assert r2.status_code == 409, r2.text
     assert "已存在" in r2.json().get("detail", "")
+
+
+def test_create_doc_no_heading(client):
+    """新建文档正文不含 `# {title}`（dual-title：标题只入 frontmatter，由页眉承载）。"""
+    r = client.post("/api/fs/doc", json={"dir": "Articles", "title": "无标题测试"})
+    assert r.status_code == 201, r.text
+    p = (client.get("/api/tree").json()["root"])  # root 仅用于定位
+    # 直接读内容校验
+    content = r.json()
+    assert "无标题测试.md" in content.get("path", "")
+    # 通过文章接口读回
+    from pathlib import Path
+    import re
+    import app.config as config
+    mount = None
+    # 简化：用存储读回
+    art = client.get("/api/articles/Articles/无标题测试.md")
+    assert art.status_code == 200, art.text
+    body = art.json()["content"]
+    assert "# 无标题测试" not in body, body
+    assert "title: 无标题测试" in body, body

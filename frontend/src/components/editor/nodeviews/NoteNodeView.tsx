@@ -11,14 +11,20 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../icons'
+import { askPrompt } from '../../common/PromptDialog'
 
-/** 徽章/激活色（色板收进 ⋯ 菜单；default = primary 系而不是整块染色） */
+/** 徽章/激活色（色板收进 ⋯ 菜单；default = primary 系而不是整块染色）
+ * v1.1.5 ③：预设色板 + 跟随强调色 + 自定义任意色号 */
 const COLOR_OPTIONS: Array<{ key: string; cls: string; title: string }> = [
   { key: 'blue', cls: 'bg-sky-400', title: '蓝色' },
   { key: 'yellow', cls: 'bg-amber-400', title: '黄色' },
   { key: 'green', cls: 'bg-emerald-400', title: '绿色' },
   { key: 'red', cls: 'bg-rose-400', title: '红色' },
   { key: 'purple', cls: 'bg-violet-400', title: '紫色' },
+  { key: 'cyan', cls: 'bg-cyan-400', title: '青色' },
+  { key: 'orange', cls: 'bg-orange-400', title: '橙色' },
+  { key: 'slate', cls: 'bg-slate-400', title: '灰色' },
+  { key: 'accent', cls: 'bg-[var(--primary)]', title: '跟随强调色' },
 ]
 
 /** 徽章底色（参考稿：--accent 淡蓝底 + --accent-foreground 深蓝字） */
@@ -32,8 +38,32 @@ const COLOR_MAP: Record<string, { badge: string; fg: string }> = {
   green: { badge: '#d1fae5', fg: '#065f46' },
   red: { badge: '#fee2e2', fg: '#991b1b' },
   purple: { badge: '#ede9fe', fg: '#5b21b6' },
+  cyan: { badge: '#cffafe', fg: '#155e75' },
+  orange: { badge: '#ffedd5', fg: '#9a3412' },
+  slate: { badge: '#e2e8f0', fg: '#334155' },
+  accent: { badge: 'var(--accent)', fg: 'var(--accent-foreground)' },
 }
 const DEFAULT_BADGE = { badge: 'var(--accent)', fg: 'var(--accent-foreground)' }
+
+/** 任意 hex → 可读文字色（亮度阈值；v1.1.5 ③ 自定义色号） */
+function readableFg(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return 'var(--foreground)'
+  const c = parseInt(m[1], 16)
+  const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return lum > 150 ? '#1f2937' : '#ffffff'
+}
+
+/** 解析徽章色：hex → 直接用；预设 → 映射；其他 → 默认 */
+function resolveBadgeStyle(color: string | undefined): { badge: string; fg: string } {
+  if (typeof color === 'string' && /^#?[0-9a-fA-F]{6}$/.test(color.trim())) {
+    const c = color.trim().startsWith('#') ? color.trim() : `#${color.trim()}`
+    return { badge: c, fg: readableFg(c) }
+  }
+  if (color && COLOR_MAP[color]) return COLOR_MAP[color]
+  return DEFAULT_BADGE
+}
 
 export default function NoteNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
   const attrs = node.attrs as Record<string, unknown>
@@ -41,7 +71,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
   const title = (attrs.title as string) ?? ''
   const isEmpty = node.content.size === 0
   const color = (attrs.color as string) || ''
-  const badgeStyle = COLOR_MAP[color] ?? DEFAULT_BADGE
+  const badgeStyle = resolveBadgeStyle(color)
 
   // 块菜单（⋯）：重命名徽章 / 更换颜色 / 删除信息块
   const [menuOpen, setMenuOpen] = useState(false)
@@ -69,7 +99,7 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
       data-created={attrs.created ?? ''}
       data-updated={attrs.updated ?? ''}
       className="ke-note mt-5 rounded-[8px] border px-3 pb-3 pt-2.5"
-      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--popover)' }}
+      style={{ borderColor: 'var(--border)', backgroundColor: 'color-mix(in srgb, var(--popover) calc(var(--note-bg-alpha, 1) * 100%), transparent)' }}
     >
       {/* 顶行：徽章 + 标题 + ⋯ 菜单 */}
       <div className="flex items-center gap-2">
@@ -136,6 +166,30 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode }: Nod
                     ].join(' ')}
                   />
                 ))}
+                <button
+                  type="button"
+                  contentEditable={false}
+                  title="自定义颜色（输入色号）"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    void (async () => {
+                      setMenuOpen(false)
+                      const curColor = (attrs.color as string | undefined) ?? ''
+                      const hex = await askPrompt('徽标颜色（色号，如 #e11d48）', curColor.startsWith('#') ? curColor : '')
+                      if (hex === null) return
+                      const v = hex.trim()
+                      if (!/^#?[0-9a-fA-F]{6}$/.test(v)) {
+                        window.alert('请输入 6 位十六进制色号（如 #e11d48）')
+                        return
+                      }
+                      updateAttributes({ color: v.startsWith('#') ? v : `#${v}` })
+                    })()
+                  }}
+                  className="ml-auto flex h-5 items-center rounded px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <Icon name="paint" className="mr-0.5 size-3" />
+                  自定义
+                </button>
               </div>
               <button
                 type="button"

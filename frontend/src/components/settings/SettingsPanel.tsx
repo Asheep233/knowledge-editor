@@ -324,6 +324,20 @@ export default function SettingsPanel({ open, onClose }: Props) {
                           onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
                         />
                       </SettingRow>
+                      <SettingRow label="信息块背景透明度" desc="ke-note 背景不透明度（100% = 不透明）">
+                        <OpacityControl
+                          value={settings.editor.noteBgOpacity ?? 100}
+                          ariaLabel="信息块背景透明度"
+                          onChange={(v) => void patchAndSave({ editor: { noteBgOpacity: v } })}
+                        />
+                      </SettingRow>
+                      <SettingRow label="引用块背景透明度" desc="引用块背景不透明度（100% = 不透明）">
+                        <OpacityControl
+                          value={settings.editor.quoteBgOpacity ?? 100}
+                          ariaLabel="引用块背景透明度"
+                          onChange={(v) => void patchAndSave({ editor: { quoteBgOpacity: v } })}
+                        />
+                      </SettingRow>
                     </div>
                   </div>
                 </section>
@@ -387,6 +401,33 @@ function SettingRow({
         {desc ? <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{desc}</p> : null}
       </div>
       <div className="shrink-0">{children}</div>
+    </div>
+  )
+}
+
+/** 透明度滑杆（0-100；v1.1.5 ④ 信息块/引用块背景） */
+function OpacityControl({ value, onChange, ariaLabel }: { value: number; onChange: (v: number) => void; ariaLabel: string }) {
+  const pct = Math.round(value)
+  return (
+    <div className="flex items-center gap-2" aria-label={ariaLabel}>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={pct}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-1.5 w-28 accent-[var(--primary)]"
+      />
+      <span className="w-9 text-right text-[12px] tabular-nums text-muted-foreground">{pct}%</span>
+      <button
+        type="button"
+        title="恢复默认（100%）"
+        onClick={() => onChange(100)}
+        className="grid h-6 w-6 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Icon name="undo" className="size-3" />
+      </button>
     </div>
   )
 }

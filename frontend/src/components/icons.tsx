@@ -44,6 +44,7 @@ export type IconName =
   | 'bulb'
   | 'table'
   | 'undo'
+  | 'paint'
   | 'redo'
   | 'edit'
   | 'alert'
@@ -202,6 +203,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <rect x="1.5" y="2.5" width="13" height="11" rx="1" />
       <path d="M1.5 6h13M7 6v7.5" />
+    </>
+  ),
+  paint: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M8 12.5h8M8 16h5" />
+      <circle cx="12" cy="8.5" r="1.5" fill="currentColor" stroke="none" />
     </>
   ),
   undo: (

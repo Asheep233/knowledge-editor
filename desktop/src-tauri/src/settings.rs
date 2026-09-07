@@ -46,6 +46,10 @@ impl Default for StartupSettings {
 pub struct EditorSettings {
     pub autosave_interval_ms: u32,
     pub history_retention_count: u32,
+    /// v1.1.5 ④：信息块背景不透明度（0-100）
+    pub note_bg_opacity: Option<u32>,
+    /// v1.1.5 ④：引用块背景不透明度（0-100）
+    pub quote_bg_opacity: Option<u32>,
     pub display: serde_json::Value,
 }
 
@@ -54,6 +58,8 @@ impl Default for EditorSettings {
         Self {
             autosave_interval_ms: 3000,
             history_retention_count: 30,
+            note_bg_opacity: None,
+            quote_bg_opacity: None,
             display: serde_json::Value::Object(Default::default()),
         }
     }
@@ -163,6 +169,12 @@ fn from_value_lenient(raw: &serde_json::Value) -> AppSettings {
         }
         if let Some(n) = eo.get("historyRetentionCount").and_then(get_u32) {
             s.editor.history_retention_count = n;
+        }
+        if let Some(n) = eo.get("noteBgOpacity").and_then(get_u32) {
+            s.editor.note_bg_opacity = Some(n.min(100));
+        }
+        if let Some(n) = eo.get("quoteBgOpacity").and_then(get_u32) {
+            s.editor.quote_bg_opacity = Some(n.min(100));
         }
         if let Some(d) = eo.get("display") {
             s.editor.display = d.clone();

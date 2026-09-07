@@ -664,3 +664,27 @@ describe('P3-16：脚注光标零宽空格 U+200B 不写入文件', () => {
   })
 })
 
+
+
+describe('v1.1.5 ⑥：有序列表 `1)` 输入与序列化连续性', () => {
+  it('`1) a` / `2) b` 解析为同一列表的两项（Obsidian 式输入兼容）', () => {
+    const ed = makeEditor('1) 第一项内容\n2) 第二项内容\n')
+    ed.state.doc.descendants((n): boolean | void => n.type.name === 'listItem' && undefined !== n)
+    // 用序列化回推：输出应为连续 `1. ` 格式（规范归一、无空行）
+    const out = ed.getMarkdown()
+    expect(out).toBe('1. 第一项内容\n2. 第二项内容')
+    ed.destroy()
+  })
+  it('标准 `1. ` 输入保持不变（round-trip 稳定）', () => {
+    const ed = makeEditor('1. 第一项内容\n2. 第二项内容\n')
+    const out = ed.getMarkdown()
+    expect(out).toBe('1. 第一项内容\n2. 第二项内容')
+    ed.destroy()
+  })
+  it('列表项之间不产生空行（对齐根因回归）', () => {
+    const ed = makeEditor('1) 第一项内容\n2) 第二项内容\n')
+    const out = ed.getMarkdown()
+    expect(out.includes('\n\n')).toBe(false)
+    ed.destroy()
+  })
+})

@@ -177,10 +177,11 @@ body {
 .ke-editor-prose blockquote {
   margin: 1.5em 0;
   padding: 0.75em 1em;
-  /* 参考稿：3px 主色左缘 + popover 底 + 圆角 2px 8px 8px 2px */
+  /* 参考稿：3px 主色左缘 + popover 底 + 圆角 2px 8px 8px 2px
+     v1.1.5 ④：颜色经 color-mix 按 --quote-bg-alpha（0-1）透明化（设置项）*/
   border-left: 3px solid var(--primary);
   color: var(--foreground);
-  background: var(--popover);
+  background: color-mix(in srgb, var(--popover) calc(var(--quote-bg-alpha, 1) * 100%), transparent);
   border-radius: 2px 8px 8px 2px;
 }
 [data-theme='dark'] .ke-editor-prose blockquote {
@@ -635,4 +636,35 @@ body {
 }
 [data-theme='dark'] .an-logo-dark {
   display: block;
+}
+
+
+/* ===== v1.1.5 ①：KaTeX 公式深色配色（默认黑字在深底下不可见） ===== */
+[data-theme='dark'] .ke-math-render .katex {
+  color: var(--foreground);
+}
+[data-theme='dark'] .ke-math-render:hover {
+  background: var(--muted);
+}
+[data-theme='dark'] .ke-math-edit-btn,
+[data-theme='dark'] .ke-math-del-btn {
+  background: var(--popover);
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+[data-theme='dark'] .ke-math-edit-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+[data-theme='dark'] .ke-math-del-btn:hover {
+  color: #f87171;
+  border-color: #f87171;
+}
+
+/* ===== v1.1.5 ⑤：列表标记（数字/圆点）浅灰色（Obsidian 式弱化标记） ===== */
+.ke-editor-prose li::marker {
+  color: var(--muted-foreground);
+}
+.ke-editor-prose li[data-type]::marker {
+  color: var(--muted-foreground);
 }

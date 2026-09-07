@@ -15,6 +15,7 @@ import { Markdown } from '@tiptap/markdown'
 import { history } from '@tiptap/pm/history'
 import { EditorState } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
+import { OrderedListParenExtension } from './extensions/ListExtension'
 import { MathExtension } from './extensions/MathExtension'
 import { MathBlockExtension } from './extensions/MathBlockExtension'
 import { NoteExtension } from './extensions/NoteExtension'
@@ -65,6 +66,7 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
   return useEditor({
     extensions: [
       StarterKit.configure({
+        orderedList: false,
         link: {
           openOnClick: false,
           autolink: true,
@@ -89,6 +91,8 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       // fallback 只兜底未知 kind 与损坏 JSON 的已知 kind。
       GenericFallbackExtension,
       GenericFallbackInlineExtension,
+      // v1.1.5 ⑥：输入规则支持 `1. ` / `1) `（Obsidian 式），序列化仍输出规范的 `1. `
+      OrderedListParenExtension,
       // 标准 Markdown 图片：![alt](src)
       ImageMarkdownExtension,
       // KE 扩展节点（math / mathBlock / note / module / attach / video / footnote）

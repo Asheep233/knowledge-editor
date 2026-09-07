@@ -13,6 +13,10 @@ export interface StartupSettings {
 export interface EditorSettings {
   autosaveIntervalMs: number
   historyRetentionCount: number
+  /** v1.1.5 ④：信息块背景不透明度（0-100，默认 100） */
+  noteBgOpacity?: number
+  /** v1.1.5 ④：引用块背景不透明度（0-100，默认 100） */
+  quoteBgOpacity?: number
   display: Record<string, unknown>
 }
 
@@ -54,7 +58,7 @@ export type SettingsPatch = {
 export const DEFAULT_SETTINGS: AppSettings = {
   schemaVersion: 1,
   startup: { restoreLastState: true, autoOpenRecentWorkspace: true },
-  editor: { autosaveIntervalMs: 3000, historyRetentionCount: 30, display: {} },
+  editor: { autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, display: {} },
   ui: { theme: 'system', displayPreference: {} },
   maintenance: {},
 }
@@ -165,8 +169,11 @@ export function normalizeSettings(raw: unknown): AppSettings {
       ...DEFAULT_SETTINGS.editor,
       ...(typeof editor.autosaveIntervalMs === 'number' ? { autosaveIntervalMs: editor.autosaveIntervalMs } : {}),
       ...(typeof editor.historyRetentionCount === 'number'
-        ? { historyRetentionCount: editor.historyRetentionCount }
-        : {}),
+        ? { historyRetentionCount: editor.historyRetentionCount } : {}),
+      ...(typeof editor.noteBgOpacity === 'number'
+        ? { noteBgOpacity: Math.min(100, Math.max(0, editor.noteBgOpacity)) } : {}),
+      ...(typeof editor.quoteBgOpacity === 'number'
+        ? { quoteBgOpacity: Math.min(100, Math.max(0, editor.quoteBgOpacity)) } : {}),
       display: isPlainRecord(editor.display) ? editor.display : {},
     },
     ui: {
@@ -248,6 +255,10 @@ export function applyTheme(theme: UiSettings['theme'], accent?: UiSettings['acce
     el.style.removeProperty('--ring')
     // 派生 token 依赖 --primary 的 color-mix，自动随变量变化；无需处理
   }
+  // v1.1.5 ④：信息块/引用块背景透明度（0-1 alpha 变量）
+  const cached = getCachedSettings().editor
+  el.style.setProperty('--note-bg-alpha', String((cached.noteBgOpacity ?? 100) / 100))
+  el.style.setProperty('--quote-bg-alpha', String((cached.quoteBgOpacity ?? 100) / 100))
   // F13：监听器单例——原实现每次调用注册匿名监听器且回调内再 applyTheme
   // 再注册（指数级累积泄漏）。改为模块级一次性注册，回调每次重读缓存
   // （设置面板改主题后，系统切换按最新设置生效；非 system 模式幂等无副作用）。

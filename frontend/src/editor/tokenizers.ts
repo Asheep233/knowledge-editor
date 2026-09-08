@@ -1,3 +1,4 @@
+import type { MarkdownToken as TsMarkdownToken, MarkdownLexerConfiguration } from '@tiptap/core'
 /**
  * 自定义 marked tokenizers（KE 扩展语法 + 数学公式）。
  * 通过扩展字段 markdownTokenizer 注入：@tiptap/markdown 的 registerExtension
@@ -94,7 +95,7 @@ export const keNoteTokenizer = {
   name: 'ke_note',
   level: 'block' as const,
   start: (src: string) => (/^<!--\s*ke-note:/.test(src) ? 0 : -1),
-  tokenize(src: string): MarkdownToken | undefined {
+  tokenize(src: string, _tokens: TsMarkdownToken[], lexer: MarkdownLexerConfiguration): TsMarkdownToken | undefined {
     const m0 = /^<!--\s*ke-note:\s*/.exec(src)
     if (!m0) return undefined
     const bodyStart = m0[0].length
@@ -128,7 +129,9 @@ export const keNoteTokenizer = {
     // 去掉内容首尾的空白行，保证 parseMarkdown 解析干净
     inner = inner.replace(/^\s*\n/, '').replace(/\s+$/, '')
     const raw = src.slice(0, headLen + endIdx + NOTE_END_TAG.length)
-    return { type: 'ke_note', raw, attrs, content: inner }
+    // v1.1.7（A）：内部 markdown 由 marked lexer 词法化 → tokens → 块级解析
+    const innerTokens = lexer?.blockTokens(inner) ?? []
+    return { type: 'ke_note', raw, attrs, content: inner, tokens: innerTokens }
   },
 }
 

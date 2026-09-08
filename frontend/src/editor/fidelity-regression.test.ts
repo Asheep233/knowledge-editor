@@ -688,3 +688,37 @@ describe('v1.1.5 ⑥：有序列表 `1)` 输入与序列化连续性', () => {
     ed.destroy()
   })
 })
+
+
+describe('v1.1.7（A）：信息块块级内容', () => {
+  const wrap = (inner: string) => `<!-- ke-note: {"kind":"note","id":"n1","label":"N","title":"T","color":"blue"} -->\n${inner}\n<!-- /ke-note -->`
+  it('包裹内含列表与多段——整块进信息块（block+）', () => {
+    const md = wrap('**阶梯型矩阵** 定义：\n\n1. 所有的0行都在底部\n2. （非零行）最左端在最右端')
+    const ed = makeEditor(md)
+    const note = ed.state.doc.firstChild
+    expect(note?.type.name).toBe('note')
+    // 块内应为 block 内容（列表 + 段落）
+    const types: string[] = []
+    ;(note?.content as unknown as { forEach: (fn: (n: { type: { name: string } }) => void) => void }).forEach((n) => types.push(n.type.name))
+    expect(types).toContain('orderedList')
+    const out = ed.getMarkdown()
+    expect(out).toContain('1. 所有的0行都在底部')
+    expect(out).toContain('<!-- /ke-note -->')
+    ed.destroy()
+  })
+  it('单行旧笔记文本：往返保持（段落化）', () => {
+    const md = wrap('单片内容文字')
+    const ed = makeEditor(md)
+    const out = ed.getMarkdown()
+    expect(out).toContain('单片内容文字')
+    expect(out).toContain('<!-- /ke-note -->')
+    ed.destroy()
+  })
+  it('空信息块：闭合标记照常（R3 不变量）', () => {
+    const md = '<!-- ke-note: {"kind":"note","id":"n2"} -->\n<!-- /ke-note -->\n\n后文'
+    const ed = makeEditor(md)
+    const out = ed.getMarkdown()
+    expect(out).toContain('<!-- /ke-note -->')
+    ed.destroy()
+  })
+})

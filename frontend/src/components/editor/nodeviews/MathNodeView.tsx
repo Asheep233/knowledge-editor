@@ -137,7 +137,9 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
             <textarea
               ref={textareaRef}
               className="ke-math-latex-input"
-              value={latex}
+              // 非受控（v1.1.6）：typing 经 updateAttributes 回流节点，
+              // React 不写 value —— 光标不被重置到末尾（受控文本域每击键重定位的经典问题）
+              defaultValue={latex}
               spellCheck={false}
               placeholder="输入 LaTeX 公式，例如 E=mc^2"
               rows={isBlock ? 3 : 1}

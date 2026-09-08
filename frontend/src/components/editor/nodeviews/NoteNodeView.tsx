@@ -95,7 +95,10 @@ export default function NoteNodeView({ node, updateAttributes, deleteNode, edito
   const attrs = node.attrs as Record<string, unknown>
   const label = (attrs.label as string) ?? ''
   const title = (attrs.title as string) ?? ''
-  const isEmpty = node.content.size === 0
+  // v1.1.7（A）：block+ 后空信息块 = 单个空段落（size>0）——空判定改为「无任何非空白文本」
+  const isEmpty =
+    node.content.size === 0 ||
+    (node.content.childCount <= 1 && node.textContent.trim() === '')
   const color = (attrs.color as string) || ''
   const badgeStyle = resolveBadgeStyle(color)
 

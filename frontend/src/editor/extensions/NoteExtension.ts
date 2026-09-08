@@ -50,7 +50,9 @@ function noteAttrsFrom(el: HTMLElement) {
 export const NoteExtension = Node.create({
   name: 'note',
   group: 'block',
-  content: 'inline*',
+  // v1.1.7（A 方案）：块内内容升级为块级——粘贴列表/多段落整体进信息块
+  // （ke-note 包裹格式不变；旧 inline 内容文档兼容：单段文本解析为段落）
+  content: 'block+',
   // 防止 Backspace/Delete 在块边界误删整个信息块
   defining: true,
   selectable: true,
@@ -156,7 +158,13 @@ export const NoteExtension = Node.create({
     }
     const inner = (token.content as string) ?? ''
     if (inner) {
-      // 包裹格式：块内内容解析为 inline 节点（可含脚注上标等）
+      // 包裹格式：块内内容解析为块级（list/多段落整体进信息块）。
+      // 优先用 token.tokens（tokenizer 里由 marked lexer 词法化）；
+      // 缺失时回退 inline（兼容 lexer 未传入的旧路径）。
+      const blockTokens = (token.tokens as MarkdownToken[] | undefined) ?? []
+      if (blockTokens.length) {
+        return { type: 'note', attrs, content: helpers.parseBlockChildren?.(blockTokens) ?? [] }
+      }
       const inlineTokens = helpers.tokenizeInline?.(inner) ?? []
       const content = inlineTokens.length ? helpers.parseInline(inlineTokens) : []
       return { type: 'note', attrs, content }

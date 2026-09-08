@@ -119,6 +119,27 @@ export const NoteExtension = Node.create({
     return ReactNodeViewRenderer(NoteNodeView)
   },
 
+  // v1.1.7：空信息块内 Enter = 移出信息块，在其下方新建段落（不再触发块内分割/删除）
+  addKeyboardShortcuts() {
+    return {
+      Enter: () => {
+        const { state } = this.editor
+        const { $from } = state.selection
+        const container = $from.node(-1)
+        if (container?.type.name === 'note' && container.textContent.trim() === '') {
+          const noteStart = $from.before(-1)
+          const after = noteStart + container.nodeSize
+          return this.editor
+            .chain()
+            .insertContentAt(after, [{ type: 'paragraph' }], { updateSelection: true })
+            .setTextSelection(after + 1)
+            .run()
+        }
+        return false
+      },
+    }
+  },
+
   addCommands() {
     return {
       insertNote:

@@ -680,12 +680,12 @@ export default function App() {
               <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               {!settingsReady || !workspaceChecked ? '正在启动服务…' : '正在打开工作区…'}
             </div>
-            {/* v1.1.7 M1：真实事件驱动进度（非假动画；侧车/设置就绪 → 40%；工作区就绪 → 80%） */}
-            <div className="h-1 w-44 overflow-hidden rounded-full" style={{ background: 'var(--muted)' }}>
+            {/* v1.1.7 M1：真实事件驱动进度（非假动画；服务/设置 → 40%；工作区 → 80%；就绪 → 100%） */}
+            <div className="h-1.5 w-56 overflow-hidden rounded-full" style={{ background: 'var(--muted)' }}>
               <div
-                className="h-full rounded-full transition-all duration-300"
+                className="h-full rounded-full transition-all duration-500 ease-out"
                 style={{
-                  width: !settingsReady || !workspaceChecked ? '40%' : '80%',
+                  width: !settingsReady || !workspaceChecked ? '40%' : bootStartupDone ? '100%' : '80%',
                   background: 'var(--primary)',
                 }}
               />

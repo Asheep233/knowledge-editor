@@ -134,3 +134,19 @@
 - `docs/test-report-v1.1.8-pre.md`（执行报告：矩阵结果 + 缺陷清单）
 - 缺陷修复提交（若有 S0/S1）
 - 基线数据表（供 v1.1.8 前后对比）
+
+---
+
+## 附录：发布流程教训（2026-09-08 · v1.1.7 版本不一致事故）
+
+**现象**：GUI 版本横幅报警「前端 v1.1.6 / 后端 v1.1.7」——已发布安装包内嵌旧前端资源。
+
+**根因**：版本 bump 后未重新 `npm run build`，NSIS 构建时 beforeBuildCommand 为 no-op，
+内嵌 = 上一版 dist；侧车为新构建 → 前后端版本漂移。
+
+**修复**：重建前端 → 重打 exe/安装包 → 重生成 manifest → `gh release upload --clobber` 覆盖 4 附件。
+
+**检查单（发布必过）**：
+1. bump 后先 `npm run build`，确认 `dist-build/assets` 内含当前版本号、无旧版本残留
+2. 打 NSIS 前 `grep -o '1\.1\.[0-9]*' dist-build/assets/*.js | sort -u` 校验
+3. 安装后看版本横幅（不一致即报警 = 该机制已生效）

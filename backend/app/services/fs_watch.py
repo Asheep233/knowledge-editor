@@ -39,7 +39,7 @@ class FsWatcher:
     ):
         self.interval = interval
         # P3-4：空闲退避上限（无变化时降低全树 rglob+stat 频率，节省磁盘 I/O）
-        self.idle_interval = idle_interval if idle_interval is not None else max(interval * 5, 5.0)
+        self.idle_interval = idle_interval if idle_interval is not None else max(interval * 2.5, 2.5)  # v1.1.7：空闲嗅探 5s→2.5s（外部修改提示延迟）
         self.max_events = max_events
         self.snapshot: dict[str, tuple[int, int]] = {}
         self.events: deque = deque(maxlen=max_events)

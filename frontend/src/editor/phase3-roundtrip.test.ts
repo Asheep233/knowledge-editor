@@ -225,7 +225,9 @@ describe('Phase 3：InfoBlock 通用信息块', () => {
     const md = '<!-- ke-note: {"kind":"note","id":"n1","title":"要点","color":"green","content":"重要内容"} -->'
     const ed = makeEditor(md)
     const note = blocksOf(ed.getJSON(), 'note')[0]
-    expect((note?.content ?? []).map((n) => n.text ?? '').join('')).toBe('重要内容')
+    expect(((note?.content ?? []) as Array<{ type?: string; content?: Array<{ text?: string }> }>)
+      .flatMap((n) => (n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : []))
+      .join('')).toBe('重要内容')
     expect(note?.attrs?.color).toBe('green')
     expect(note?.attrs?.title).toBe('要点')
     const back = ed.getMarkdown()
@@ -240,7 +242,9 @@ describe('Phase 3：InfoBlock 通用信息块', () => {
     const md = '<!-- ke-note: {"kind":"note","id":"n2","text":"旧内容","color":"blue"} -->'
     const ed = makeEditor(md)
     const note = blocksOf(ed.getJSON(), 'note')[0]
-    expect((note?.content ?? []).map((n) => n.text ?? '').join('')).toBe('旧内容')
+    expect(((note?.content ?? []) as Array<{ type?: string; content?: Array<{ text?: string }> }>)
+      .flatMap((n) => (n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : []))
+      .join('')).toBe('旧内容')
     expect(note?.attrs?.color).toBe('blue')
     const back = ed.getMarkdown()
     expect(back).toContain('旧内容')

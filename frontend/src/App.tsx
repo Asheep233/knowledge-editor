@@ -56,7 +56,7 @@ export interface FsMutation {
   to?: string
 }
 
-const FS_POLL_MS = 1500
+const FS_POLL_MS = 700 // v1.1.7：外部修改提示延迟优化（后端嗅探 1s，最坏 ~1.7s 内提示）
 
 export default function App() {
   const [health, setHealth] = useState<HealthInfo | null>(null)
@@ -433,6 +433,15 @@ export default function App() {
       if (p) void switchWorkspace(p, 'open')
     }
   }, [switchWorkspace])
+
+  // v1.1.7：设置面板「切换工作区…」按钮 → 复用「打开工作区」流程
+  useEffect(() => {
+    const onOpen = () => {
+      void handleOpenWorkspaceMenu()
+    }
+    window.addEventListener('ke:open-workspace-dialog', onOpen)
+    return () => window.removeEventListener('ke:open-workspace-dialog', onOpen)
+  }, [handleOpenWorkspaceMenu])
 
   /** 顶栏「新建工作区…」：桌面用原生目录选择器（目标需为空目录），Web 回退手动输入（M4） */
   const handleCreateWorkspaceMenu = useCallback(async () => {

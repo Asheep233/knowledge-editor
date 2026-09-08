@@ -772,8 +772,8 @@ def test_p34_watcher_idle_backoff_instance(tmp_path):
     from app.services.fs_watch import FsWatcher
 
     w = FsWatcher(root=tmp_path, interval=1.0)
-    assert w.idle_interval == 5.0
+    assert w.idle_interval == 2.5  # v1.1.7：空闲嗅探 5s→2.5s（外部修改提示延迟优化）
     w2 = FsWatcher(root=tmp_path, interval=2.0)
-    assert w2.idle_interval == 10.0
+    assert w2.idle_interval == 5.0
     w3 = FsWatcher(root=tmp_path, interval=0.2, idle_interval=2.0)
     assert w3.idle_interval == 2.0

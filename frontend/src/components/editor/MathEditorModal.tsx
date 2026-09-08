@@ -145,6 +145,14 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     const end = t.selectionStart ?? t.value.length
     const r = insertAt(t.value, start, end, insert)
     const selLen = r.cursor < r.value.length && r.value[r.cursor] === '□' ? 1 : 0
+    // v1.1.7 修复：先**选中前缀**再 execCommand——否则命令只会在光标处插入，
+    // 前缀 `\fr` 残留（结果为 `\fr\frac{□}{□}`，公式失效）
+    try {
+      t.focus()
+      t.setSelectionRange(start, end)
+    } catch {
+      /* ignore */
+    }
     if (!insertViaExec(insert, r.cursor, selLen)) {
       // 兜底：手动替换（非受控 DOM 写入）
       t.value = r.value
@@ -275,7 +283,10 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
                   }}
                 />
                 {suggOpen && suggestions.length > 0 && (
-                  <div className="absolute left-2 top-full z-10 mt-1 max-h-56 w-[320px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-lg">
+                  <div className="absolute left-2 top-full z-10 mt-1 max-h-56 w-[340px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-lg">
+                    <div className="border-b border-border px-3 py-1 text-[11px] text-muted-foreground">
+                      ↑↓ 切换 · <span className="font-medium">Tab</span> 插入 · Esc 关闭
+                    </div>
                     {suggestions.map((item, i) => (
                       <button
                         key={item.label + i}
@@ -287,7 +298,7 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
                         }}
                         className={[
                           'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[13px]',
-                          i === suggIdx ? 'bg-accent' : '',
+                          i === suggIdx ? 'bg-accent ring-1 ring-inset ring-[var(--primary)]' : '',
                         ].join('')}
                         style={{ color: 'var(--foreground)' }}
                       >

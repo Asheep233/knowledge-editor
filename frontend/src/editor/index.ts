@@ -14,7 +14,7 @@ import type { JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
 import { history } from '@tiptap/pm/history'
-import { EditorState } from '@tiptap/pm/state'
+import { EditorState, TextSelection } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
 import { OrderedListParenExtension, KeListItem } from './extensions/ListExtension'
 import { MathExtension } from './extensions/MathExtension'
@@ -69,17 +69,66 @@ const MathShortcuts = Extension.create({
   name: 'mathShortcuts',
   addKeyboardShortcuts() {
     return {
+      // v1.1.7：有选区时**不吞文本**——折叠到选区末尾再插入（选中一段文字按 Ctrl+N 不再删除原文）
       'Mod-n': () => {
-        this.editor.chain().focus().insertContent({ type: 'math', attrs: { id: crypto.randomUUID?.() ?? `m${Date.now()}`, latex: '' } }).run()
+        const id = crypto.randomUUID?.() ?? `m${Date.now()}`
+        this.editor
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
+            return true
+          })
+          .insertContent({ type: 'math', attrs: { id, latex: '' } })
+          .run()
+        openMathEditorById(this.editor, id)
         return true
       },
       'Mod-m': () => {
-        this.editor.chain().focus().insertContent({ type: 'mathBlock', attrs: { id: crypto.randomUUID?.() ?? `m${Date.now()}`, latex: '' } }).run()
+        const id = crypto.randomUUID?.() ?? `m${Date.now()}`
+        this.editor
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
+            return true
+          })
+          .insertContent({ type: 'mathBlock', attrs: { id, latex: '' } })
+          .run()
+        openMathEditorById(this.editor, id)
         return true
       },
     }
   },
 })
+
+
+/**
+ * v1.1.7：插入公式后按节点 id 定位并请求全屏编辑（替代「空节点自动弹窗」——
+ * 后者会在 Ctrl+Z 撤销回空内容时误弹）。
+ */
+export function openMathEditorById(editor: Editor, id: string): void {
+  if (!id) return
+  window.setTimeout(() => {
+    let found: { pos: number; nodeSize: number; latex: string; isBlock: boolean } | null = null
+    editor.state.doc.descendants((node, pos) => {
+      if (found) return false
+      if ((node.type.name === 'math' || node.type.name === 'mathBlock') && node.attrs.id === id) {
+        found = { pos, nodeSize: node.nodeSize, latex: (node.attrs.latex as string) ?? '', isBlock: node.type.name === 'mathBlock' }
+        return false
+      }
+      return true
+    })
+    if (found) {
+      const f = found as { pos: number; nodeSize: number; latex: string; isBlock: boolean }
+      window.dispatchEvent(
+        new CustomEvent('ke:math-edit-request', {
+          detail: { pos: f.pos, nodeSize: f.nodeSize, id, latex: f.latex, isBlock: f.isBlock },
+        }),
+      )
+    }
+  }, 0)
+}
 
 export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOptions) {
   const ed = useEditor({
@@ -155,6 +204,38 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       // base64 内联行为，改为上传后插入 attach/video 节点。必须在此层
       // 处理——PM 的原生 drop 监听先于 React 容器事件执行，容器层
       // onDrop 无法阻止默认插入。
+      // v1.1.7 修复：剪贴板图片/文件（截图 Ctrl+V、复制文件）→ 上传 + 插入附件节点。
+      // 原实现只处理 drop，粘贴图片走浏览器默认（被 CSP/PM 丢弃），表现为「粘贴完全无效」。
+      handlePaste: (view, event) => {
+        const dt = event.clipboardData
+        if (!dt) return false
+        const files: File[] = []
+        for (const item of Array.from(dt.items ?? [])) {
+          if (item.kind === 'file') {
+            const f = item.getAsFile()
+            if (f) files.push(f)
+          }
+        }
+        if (files.length === 0) {
+          for (const f of Array.from(dt.files ?? [])) files.push(f)
+        }
+        const real = files.filter(isRealFile)
+        if (real.length === 0) return false
+        event.preventDefault()
+        const pos = view.state.selection.from
+        void (async () => {
+          for (const f of real) {
+            try {
+              const res = await uploadAttachment(f)
+              const node = attachmentNode(view.state.schema, res, f.name)
+              view.dispatch(view.state.tr.insert(pos, node).scrollIntoView())
+            } catch (err) {
+              window.alert(`附件上传失败：${String(err)}`)
+            }
+          }
+        })()
+        return true
+      },
       handleDrop: (view, event) => {
         const files = event.dataTransfer?.files
         if (!files || files.length === 0) return false

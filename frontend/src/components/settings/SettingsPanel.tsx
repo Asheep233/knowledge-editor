@@ -241,6 +241,15 @@ export default function SettingsPanel({ open, onClose }: Props) {
                           onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
                         />
                       </SettingRow>
+                      <SettingRow label="切换工作区…" desc="打开工作区选择窗口（与菜单「文件 → 打开工作区」等效）">
+                        <button
+                          type="button"
+                          onClick={() => window.dispatchEvent(new CustomEvent('ke:open-workspace-dialog'))}
+                          className="rounded-md border border-border bg-muted px-3 py-1 text-[12px] text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                          切换…
+                        </button>
+                      </SettingRow>
                       <SettingRow label="启动时自动打开最近 Workspace" desc="自动打开最近使用的工作区">
                         <Switch
                           checked={settings.startup.autoOpenRecentWorkspace}

@@ -98,7 +98,9 @@ describe('Markdown <-> Document Model 往返', () => {
     expect(note).toBeTruthy()
     expect(note?.attrs?.color).toBe('yellow')
     // 旧 content 属性迁移为文本子节点（不再存 attrs.content，v0.7.0）
-    const text = (note?.content ?? []).map((n) => n.text ?? '').join('')
+    const text = ((note?.content ?? []) as Array<{ type?: string; content?: Array<{ text?: string }> }>)
+      .flatMap((n) => (n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : []))
+      .join('')
     expect(text).toBe('这是注释')
     const back = ed.getMarkdown()
     // 往返输出新包裹格式：块内内容在开始/结束标记之间
@@ -113,7 +115,9 @@ describe('Markdown <-> Document Model 往返', () => {
     const ed = makeEditor(md)
     const note = findBlock(ed.getJSON(), 'note')
     expect(note?.attrs?.label).toBe('提示')
-    expect((note?.content ?? []).map((n) => n.text ?? '').join('')).toBe('注意这里')
+    expect(((note?.content ?? []) as Array<{ type?: string; content?: Array<{ text?: string }> }>)
+      .flatMap((n) => (n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : []))
+      .join('')).toBe('注意这里')
     const back = ed.getMarkdown()
     expect(back).toContain('"label":"提示"')
     // 旧文档无 label：解析为默认空串（NodeView 显示时兜底「信息」）

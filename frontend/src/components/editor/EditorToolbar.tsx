@@ -1,3 +1,5 @@
+import { openMathEditorById } from '../../editor'
+import { TextSelection } from '@tiptap/pm/state'
 /**
  * 编辑器工具栏（对齐参考稿 editor.html：单行 h-10 纯图标）。
  * 从左到右：标签（由 TabBar 提供）→ 字号▾ → 分隔线 → B/I/U/S → 分隔线 →
@@ -527,14 +529,33 @@ export default function EditorToolbar({
         <Icon name="image" className="size-4" />
       </ToolIcon>
       <ToolIcon title="插入公式" onClick={() => {
-        const node = { type: 'math', attrs: { id: newId(), latex: '' } }
-        editor.chain().focus().insertContent(node).run()
+        // v1.1.7：有选区不吞文本（折叠到末尾）+ 插入后按 id 派发全屏编辑
+        const id = newId()
+        editor
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
+            return true
+          })
+          .insertContent({ type: 'math', attrs: { id, latex: '' } })
+          .run()
+        openMathEditorById(editor, id)
       }}>
         <Icon name="sigma" className="size-4" />
       </ToolIcon>
       <ToolIcon title="插入块级公式" onClick={() => {
-        const node = { type: 'mathBlock', attrs: { id: newId(), latex: '' } }
-        editor.chain().focus().insertContent(node).run()
+        const id = newId()
+        editor
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
+            return true
+          })
+          .insertContent({ type: 'mathBlock', attrs: { id, latex: '' } })
+          .run()
+        openMathEditorById(editor, id)
       }}>
         {/* v1.1.6 二3：块级公式 = Σ 外框（背景边框放大版，与行内公式区分） */}
         <span

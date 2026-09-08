@@ -6,7 +6,6 @@
  * 同时服务行内 math 与块级 mathBlock 两个节点。
  */
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
-import { useEffect } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import { Icon } from '../../icons'
@@ -30,12 +29,8 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
   const isBlock = node.type.name === 'mathBlock'
   const latex = (node.attrs.latex as string) ?? ''
 
-  useEffect(() => {
-    // 空公式（新建/粘贴空）自动请求编辑
-    if (!latex.trim() && getPos()) {
-      requestEdit({ pos: getPos() || 0, nodeSize: node.nodeSize, id: (node.attrs.id as string) ?? '', latex, isBlock })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // v1.1.7：不再「空内容自动弹窗」——Ctrl+Z 撤销回空内容会误弹。
+  // 新建插入由 editor/index.ts 的 openMathEditorById 显式派发编辑请求。
 
   // LaTeX -> HTML（KaTeX）
   let html = ''

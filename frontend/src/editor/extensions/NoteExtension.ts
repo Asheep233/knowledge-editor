@@ -179,6 +179,15 @@ export const NoteExtension = Node.create({
       updated: (a.updated as string) ?? null,
     }
     const inner = (token.content as string) ?? ''
+    // v1.1.7：包裹格式但内容为空（<!-- ke-note -->\n<!-- /ke-note -->）也必须带一个空段落——
+    // block* 允许 0 子节点，空内容会渲染成 0 行（历史回归：空信息块"消失"）
+    if (!inner) {
+      const legacy = (a.content as string) ?? (a.text as string) ?? ''
+      if (legacy) {
+        return { type: 'note', attrs, content: [{ type: 'paragraph', content: [{ type: 'text', text: legacy }] }] }
+      }
+      return { type: 'note', attrs, content: [{ type: 'paragraph' }] }
+    }
     if (inner) {
       // 包裹格式：块内内容解析为块级（list/多段落整体进信息块）。
       // 优先用 token.tokens（tokenizer 里由 marked lexer 词法化）；

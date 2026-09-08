@@ -117,20 +117,15 @@ export default function MathNodeView({ node, updateAttributes, deleteNode }: Nod
     return (
       <NodeViewWrapper
         ref={wrapperRef}
-        // v1.1.6 三6：键位挂在节点根级（不依赖输入框聚焦——按钮插入后立即按 Esc 也命中）
+        // v1.1.6 三6（主理人定义）：Enter = 换行（默认行为）；Esc = 保存/退出；
+        // 空内容 Esc 直接删除节点；键位挂节点根级（不依赖输入框聚焦）。
         onKeyDown={(e: React.KeyboardEvent) => {
           if (!isBlock) return
-          if (e.key === 'Enter') {
-            if (e.ctrlKey || e.metaKey) return // 允许默认换行（textarea/mathfield）
-            e.preventDefault()
-            if (!latex.trim()) deleteNode() // 空公式 Enter 亦删除
-            else setEditing(false)
-            return
-          }
+          if (e.key === 'Enter') return // 放行默认换行（textarea / mathfield 均插入换行）
           if (e.key === 'Escape') {
             e.preventDefault()
             if (!latex.trim()) deleteNode() // 空块删除
-            else setEditing(false)
+            else setEditing(false) // 保存退出（latex 已实时同步）
           }
         }}
         contentEditable={false}

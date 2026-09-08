@@ -153,13 +153,10 @@ pub fn request_exit(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
     }
-    // v1.1.6 加固：先杀后端/清理（独立线程，best-effort），随后**立即**退出主进程。
-    // 原实现把 5s 轮询放在 exit 之前，任一环节挂起（锁中毒/后端不响应）即出现
-    // 「主窗已关、进程残留、单实例把二次启动重定向到隐形窗口」的假死。
-    let app2 = app.clone();
-    std::thread::spawn(move || {
-        let _ = cleanup_on_exit(&app2);
-    });
+    // v1.1.7：清理**同步**执行但严格有界（force/tree 杀 + 1.2s 预算）——
+    // 保证侧车随主进程消亡（否则孤儿侧车占 8000，二次启动与陈旧后端交互）；
+    // 同时不再复现 v1.1.6 的 5s 阻塞假死（预算内必定返回）。
+    let _ = cleanup_on_exit(app);
     app.exit(0);
 }
 

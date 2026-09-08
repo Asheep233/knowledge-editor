@@ -32,7 +32,10 @@ const DEFAULT_PORT: u16 = 8000;
 const MAX_PORT_ATTEMPTS: u32 = 3;
 const HEALTH_TIMEOUT: Duration = Duration::from_secs(30);
 const HEALTH_INTERVAL: Duration = Duration::from_secs(1);
-const GRACEFUL_WAIT: Duration = Duration::from_secs(5);
+// v1.1.7 修复：退出清理必须**有界且快速**——主进程在同步清理后立即退出。
+// force/tree 杀 + 1.2s 预算，既保证侧车随主进程消亡（不再孤儿占端口），
+// 又不复现 v1.1.6 的「5s 轮询阻塞退出」假死。
+const GRACEFUL_WAIT: Duration = Duration::from_millis(1200);
 const MAX_CRASH_RESTARTS: u32 = 3;
 
 /// 供 get_runtime_info 命令（M2 前端基址注入）与状态管理的运行时信息。
@@ -458,7 +461,7 @@ pub fn cleanup_on_exit(app: &AppHandle) {
             let pid = info.pid;
             std::thread::spawn(move || {
                 let _ = Command::new("taskkill")
-                    .args(["/PID", &pid.to_string()])
+                    .args(["/F", "/T", "/PID", &pid.to_string()])
                     .creation_flags(CREATE_NO_WINDOW)
                     .stdout(Stdio::null())
                     .stderr(Stdio::null())

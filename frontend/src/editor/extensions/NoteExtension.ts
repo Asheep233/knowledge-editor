@@ -52,7 +52,7 @@ export const NoteExtension = Node.create({
   group: 'block',
   // v1.1.7（A 方案）：块内内容升级为块级——粘贴列表/多段落整体进信息块
   // （ke-note 包裹格式不变；旧 inline 内容文档兼容：单段文本解析为段落）
-  content: 'block+',
+  content: 'block*',  // 零或更多块（空信息块合法——block+ 会使无内容插入违反 schema）
   // 防止 Backspace/Delete 在块边界误删整个信息块
   defining: true,
   selectable: true,
@@ -125,9 +125,10 @@ export const NoteExtension = Node.create({
         (content = '', color = 'blue', title?: string) =>
         ({ commands }) => {
           const now = new Date().toISOString()
-          const children: JSONContent[] = content
-            ? [{ type: 'text', text: content }]
-            : []
+          // v1.1.7（A）：block* 下内容必须段落包裹；空内容也给一个空段落（保证输入行存在）
+          const children: JSONContent[] = [
+            { type: 'paragraph', ...(content ? { content: [{ type: 'text', text: content }] } : {}) },
+          ]
           return commands.insertContent({
             type: this.name,
             attrs: {
@@ -163,11 +164,16 @@ export const NoteExtension = Node.create({
       // 缺失时回退 inline（兼容 lexer 未传入的旧路径）。
       const blockTokens = (token.tokens as MarkdownToken[] | undefined) ?? []
       if (blockTokens.length) {
-        return { type: 'note', attrs, content: helpers.parseBlockChildren?.(blockTokens) ?? [] }
+        const parsed = helpers.parseBlockChildren?.(blockTokens) ?? []
+      return parsed.length
+        ? { type: 'note', attrs, content: parsed }
+        : { type: 'note', attrs, content: [{ type: 'paragraph' }] }
       }
       const inlineTokens = helpers.tokenizeInline?.(inner) ?? []
       const content = inlineTokens.length ? helpers.parseInline(inlineTokens) : []
-      return { type: 'note', attrs, content }
+      return content.length
+        ? { type: 'note', attrs, content }
+        : { type: 'note', attrs, content: [{ type: 'paragraph' }] }
     }
     // 旧格式（自闭合）：content/text 属性迁移为文本子节点
     const legacy = (a.content as string) ?? (a.text as string) ?? ''

@@ -47,7 +47,7 @@ ke_version: 1
 
 | Markdown 标记 | ProseMirror 节点 | attrs（序列化顺序） |
 | --- | --- | --- |
-| `<!-- ke-note: {...} -->` | `note`（InfoBlock 通用信息块） | `id, created, updated, author, title, color, content` |
+| `<!-- ke-note: {...} -->` | `note`（InfoBlock 通用信息块，包裹格式见 §2.1.1） | `id, created, updated, author, title, color`（`content`/`text` 为 v0 遗留属性，解析时迁移为子节点）|
 | `<!-- ke-module: {...} -->` | `module` | `id, name, version, mode, params, source` |
 | `<!-- ke-attach: {...} -->` | `attach` | `id, type, src, title, caption, width` |
 | `<!-- ke-video: {...} -->` | `video` | `id, src, title, poster, controls, autoplay, loop` |
@@ -56,6 +56,20 @@ ke_version: 1
 | GFM 表格 | `table / tableRow / tableHeader / tableCell` | — |
 | `![alt](src)` | `image` | `src, alt, title` |
 | `$$ ... $$` | `mathBlock` | `latex` |
+
+#### 2.1.1 `ke-note` 包裹格式与块内内容（v1.1.7 更新）
+
+```
+<!-- ke-note: {"kind":"note","id":"n1","title":"要点","color":"blue"} -->
+块内 Markdown 内容（**块级**）
+<!-- /ke-note -->
+```
+
+- **块内内容为块级 Markdown**（v1.1.7 起）：列表 / 多段落 / 加粗段落等整体属于信息块；
+  旧行内文档兼容（单段文本解析为一个段落，往返稳定）。
+- 块内内容不得出现其他 `ke-*` 头标记（R3 不变量：结束标记只在块范围内有效）。
+- 空信息块序列化为 `<!-- ke-note: {...} -->\n<!-- /ke-note -->`，解析时补一个空段落
+  （保证编辑器内始终存在可输入的输入行）。
 
 ### 2.2 行内节点
 
@@ -143,7 +157,9 @@ $$
 
 脚注引用<!-- ke-footnote: {"kind":"footnote","id":"f1","n":1} -->在此。
 
-<!-- ke-note: {"kind":"note","id":"n1","title":"要点","color":"yellow","content":"重要内容"} -->
+<!-- ke-note: {"kind":"note","id":"n1","title":"要点","color":"yellow"} -->
+**重要内容**（块级：段落/列表均可）
+<!-- /ke-note -->
 
 ```ts
 const a = 1

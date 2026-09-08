@@ -248,6 +248,13 @@ export default function SettingsPanel({ open, onClose }: Props) {
                           onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
                         />
                       </SettingRow>
+                      <SettingRow label="公式自动补全" desc="输入 \\ 命令时悬浮建议，Tab 选择（如 \\fr → \\frac）">
+                        <Switch
+                          checked={settings.editor.mathAutocomplete !== false}
+                          ariaLabel="公式自动补全"
+                          onChange={(v) => void patchAndSave({ editor: { mathAutocomplete: v } })}
+                        />
+                      </SettingRow>
                       <SettingRow label="自动保存间隔" desc="停止输入后延迟保存">
                         <Select
                           value={String(settings.editor.autosaveIntervalMs)}

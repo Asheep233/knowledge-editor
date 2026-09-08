@@ -50,6 +50,8 @@ pub struct EditorSettings {
     pub note_bg_opacity: Option<u32>,
     /// v1.1.5 ④：引用块背景不透明度（0-100）
     pub quote_bg_opacity: Option<u32>,
+    /// v1.1.7 ②：公式自动补全开关
+    pub math_autocomplete: Option<bool>,
     pub display: serde_json::Value,
 }
 
@@ -60,6 +62,7 @@ impl Default for EditorSettings {
             history_retention_count: 30,
             note_bg_opacity: None,
             quote_bg_opacity: None,
+            math_autocomplete: None,
             display: serde_json::Value::Object(Default::default()),
         }
     }
@@ -175,6 +178,9 @@ fn from_value_lenient(raw: &serde_json::Value) -> AppSettings {
         }
         if let Some(n) = eo.get("quoteBgOpacity").and_then(get_u32) {
             s.editor.quote_bg_opacity = Some(n.min(100));
+        }
+        if let Some(b) = eo.get("mathAutocomplete").and_then(|v| v.as_bool()) {
+            s.editor.math_autocomplete = Some(b);
         }
         if let Some(d) = eo.get("display") {
             s.editor.display = d.clone();

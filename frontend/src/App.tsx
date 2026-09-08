@@ -33,6 +33,7 @@ import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, type AppSettings } from './settings'
 import { shouldBlockUnload } from './state/closeGuard'
+import { bootMark, BOOT_PHASE, type BootPhase } from './bootTimings'
 import horizontalLogoLight from './assets/astranota/astranota-horizontal-light-800x200.png'
 import horizontalLogoDark from './assets/astranota/astranota-horizontal-dark-800x200.png'
 import { askPrompt, PromptRoot } from './components/common/PromptDialog'
@@ -62,6 +63,10 @@ export default function App() {
   const [backendDown, setBackendDown] = useState(false)
   /** P2-7：设置已加载（供启动时 restoreLastState / autoOpenRecentWorkspace 接线） */
   const [settingsReady, setSettingsReady] = useState(false)
+  // v1.1.7 M1：品牌页分段进度（真实阶段事件驱动，不用假动画）
+  const [bootPhase, setBootPhase] = useState<BootPhase>(BOOT_PHASE.service)
+  const [bootStartupDone, setBootStartupDone] = useState(false)
+  void bootPhase
   /** Phase 5E：前后端版本不一致（仅提示，不阻塞） */
   const [versionMismatch, setVersionMismatch] = useState(false)
   const [workspace, setWorkspace] = useState<WorkspaceState | null>(null)
@@ -148,6 +153,8 @@ export default function App() {
         settingsRef.current = s
         // 主题变化后通知下游（若有依赖设置的组件需要重读设置缓存）。
         setSettingsReady(true)
+        bootMark('settings')
+        setBootPhase((p) => (p === BOOT_PHASE.service ? BOOT_PHASE.workspace : p))
       })
       .catch(() => undefined)
     return () => {
@@ -163,6 +170,8 @@ export default function App() {
         if (!alive) return
         setWorkspace(ws)
         setWorkspaceChecked(true)
+        bootMark('workspace')
+        setBootPhase((p) => (p === BOOT_PHASE.service ? BOOT_PHASE.workspace : p))
       })
       .catch(() => {
         if (!alive) return
@@ -600,6 +609,9 @@ export default function App() {
       decide(false)
     }
     startupAppliedRef.current = true
+    bootMark('startup')
+    setBootStartupDone(true)
+    setBootPhase(BOOT_PHASE.ready)
   }, [settingsReady, settingsRef, workspaceChecked, workspace?.open, workspace?.root, openArticle, switchWorkspace])
 
   // ---------- 桌面原生菜单事件（M5）：菜单项 → 复用既有动作 ----------
@@ -656,16 +668,28 @@ export default function App() {
   }
 
   // v1.1.6 一1：启动品牌页——设置与工作区就绪前显示（侧车拉起/工作区读取通常在 1-3s）
-  const bootLoading = !settingsReady || !workspaceChecked
+  const bootLoading = !(settingsReady && workspaceChecked && bootStartupDone)
   return (
     <>
       {bootLoading ? (
         <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-5" style={{ background: 'var(--background)' }}>
           <img src={horizontalLogoLight} alt="AstraNota" className="an-logo-light h-12 w-auto" draggable={false} />
           <img src={horizontalLogoDark} alt="AstraNota" className="an-logo-dark h-12 w-auto" draggable={false} />
-          <div className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
-            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            正在打开工作区…
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+              <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              {!settingsReady || !workspaceChecked ? '正在启动服务…' : '正在打开工作区…'}
+            </div>
+            {/* v1.1.7 M1：真实事件驱动进度（非假动画；侧车/设置就绪 → 40%；工作区就绪 → 80%） */}
+            <div className="h-1 w-44 overflow-hidden rounded-full" style={{ background: 'var(--muted)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: !settingsReady || !workspaceChecked ? '40%' : '80%',
+                  background: 'var(--primary)',
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : null}

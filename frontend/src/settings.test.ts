@@ -21,7 +21,7 @@ describe('mergeSettings', () => {
   it('默认值与规划 schema v1 一致', () => {
     expect(DEFAULT_SETTINGS.schemaVersion).toBe(1)
     expect(DEFAULT_SETTINGS.startup).toEqual({ restoreLastState: true, autoOpenRecentWorkspace: true })
-    expect(DEFAULT_SETTINGS.editor).toEqual({ autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, display: {} })
+    expect(DEFAULT_SETTINGS.editor).toEqual({ autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, mathAutocomplete: true, display: {} })
     expect(DEFAULT_SETTINGS.ui.theme).toBe('system')
     expect(DEFAULT_SETTINGS.maintenance).toEqual({})
   })

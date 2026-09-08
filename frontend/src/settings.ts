@@ -17,6 +17,8 @@ export interface EditorSettings {
   noteBgOpacity?: number
   /** v1.1.5 ④：引用块背景不透明度（0-100，默认 100） */
   quoteBgOpacity?: number
+  /** v1.1.7 ②：公式自动补全（VS Code 式 r → Tab 选择；默认开） */
+  mathAutocomplete?: boolean
   display: Record<string, unknown>
 }
 
@@ -58,7 +60,7 @@ export type SettingsPatch = {
 export const DEFAULT_SETTINGS: AppSettings = {
   schemaVersion: 1,
   startup: { restoreLastState: true, autoOpenRecentWorkspace: true },
-  editor: { autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, display: {} },
+  editor: { autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, mathAutocomplete: true, display: {} },
   ui: { theme: 'system', displayPreference: {} },
   maintenance: {},
 }
@@ -174,6 +176,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
         ? { noteBgOpacity: Math.min(100, Math.max(0, editor.noteBgOpacity)) } : {}),
       ...(typeof editor.quoteBgOpacity === 'number'
         ? { quoteBgOpacity: Math.min(100, Math.max(0, editor.quoteBgOpacity)) } : {}),
+      ...(typeof editor.mathAutocomplete === 'boolean' ? { mathAutocomplete: editor.mathAutocomplete } : {}),
       display: isPlainRecord(editor.display) ? editor.display : {},
     },
     ui: {

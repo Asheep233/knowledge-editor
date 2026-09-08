@@ -130,7 +130,13 @@ describe('Markdown <-> Document Model 往返', () => {
     const json = ed.getJSON()
     const note = findBlock(json, 'note')
     expect(note).toBeTruthy()
-    expect((note?.content ?? []).map((n) => n.text ?? '').join('')).toBe('块内文字。')
+    // v1.1.7（A）：note 内容为块级——文字位于段落节点内
+    const texts = (note?.content ?? [])
+      .flatMap((n: { type?: string; content?: Array<{ text?: string }> }) =>
+        n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : [],
+      )
+      .join('')
+    expect(texts).toBe('块内文字。')
 
     // 定位光标到块内文字末尾（doc 偏移：paragraph '正文。' 占 [1,5)，note 内文本占 [6,11)）
     expect(ed.commands.setTextSelection(11)).toBe(true)
@@ -139,7 +145,11 @@ describe('Markdown <-> Document Model 往返', () => {
     const note2 = findBlock(json2, 'note')
     // 块内出现 footnote 上标，块本身未被删除
     expect(note2).toBeTruthy()
-    expect((note2?.content ?? []).find((n) => n.type === 'footnote')).toBeTruthy()
+    const nestedFootnote = (note2?.content ?? []).some(
+      (n: { type?: string; content?: Array<{ type?: string }> }) =>
+        n.type === 'footnote' || (n.content ?? []).some((c) => c.type === 'footnote'),
+    )
+    expect(nestedFootnote).toBeTruthy()
     // 底部 footnotes 节点同步维护条目
     const fnBlock = (json2.content ?? []).find((n) => n.type === 'footnotes')
     expect((fnBlock?.attrs?.items as unknown[] | undefined)?.length).toBe(1)
@@ -495,7 +505,12 @@ describe('R3 — 空 ke-note 不吞噬后续内容（ke-note 包裹格式不变�
     expect(notes).toHaveLength(2)
     expect(notes[0]?.attrs?.id).toBe('n1')
     expect(notes[1]?.attrs?.id).toBe('n2')
-    expect((notes[1]?.content ?? []).map((n) => n.text ?? '').join('')).toContain('内容X')
+    const texts2 = (notes[1]?.content ?? [])
+      .flatMap((n: { type?: string; content?: Array<{ type?: string; text?: string; content?: Array<{ text?: string }> }> }) =>
+        n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : [],
+      )
+      .join('')
+    expect(texts2).toContain('内容X')
     ed.destroy()
   })
 
@@ -513,7 +528,12 @@ describe('R3 — 空 ke-note 不吞噬后续内容（ke-note 包裹格式不变�
     const ed2 = makeEditor(back)
     const notes = (ed2.getJSON().content ?? []).filter((n) => n.type === 'note') as JSONContent[]
     expect(notes).toHaveLength(2)
-    expect((notes[1]?.content ?? []).map((n) => n.text ?? '').join('')).toContain('内容X')
+    const texts2 = (notes[1]?.content ?? [])
+      .flatMap((n: { type?: string; content?: Array<{ type?: string; text?: string; content?: Array<{ text?: string }> }> }) =>
+        n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : [],
+      )
+      .join('')
+    expect(texts2).toContain('内容X')
     ed2.destroy()
   })
 
@@ -522,7 +542,12 @@ describe('R3 — 空 ke-note 不吞噬后续内容（ke-note 包裹格式不变�
     const ed = makeEditor(md)
     const notes = (ed.getJSON().content ?? []).filter((n) => n.type === 'note') as JSONContent[]
     expect(notes).toHaveLength(2)
-    expect((notes[1]?.content ?? []).map((n) => n.text ?? '').join('')).toContain('内容Y')
+    const textsY = (notes[1]?.content ?? [])
+      .flatMap((n: { type?: string; content?: Array<{ text?: string }> }) =>
+        n.type === 'paragraph' ? (n.content ?? []).map((c) => c.text ?? '') : [],
+      )
+      .join('')
+    expect(textsY).toContain('内容Y')
     ed.destroy()
   })
 })

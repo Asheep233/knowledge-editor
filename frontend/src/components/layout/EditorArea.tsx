@@ -24,6 +24,8 @@ import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../
 import { slugify } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
+import MathEditorModal from '../editor/MathEditorModal'
+import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathNodeView'
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
 
@@ -61,6 +63,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const [dragOver, setDragOver] = useState(false)
   // Phase 6.3：历史版本面板
   const [historyOpen, setHistoryOpen] = useState(false)
+  // v1.1.7 M2：全屏公式模态（编辑器根持有——PM 事务从根组件发起，nodeview 根会 #300）
+  const [mathEdit, setMathEdit] = useState<(MathEditRequest & { open: boolean }) | null>(null)
   const [versions, setVersions] = useState<HistoryVersion[]>([])
   // P2-8：历史加载失败不再是「空列表」，而是明确错误提示
   const [historyError, setHistoryError] = useState('')
@@ -293,6 +297,16 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   useEffect(() => {
     editorRef.current = editor
   }, [editor])
+
+  // v1.1.7 M2：公式节点请求编辑 → 打开根级模态
+  useEffect(() => {
+    const onReq = (ev: Event) => {
+      const req = (ev as CustomEvent<MathEditRequest>).detail
+      setMathEdit({ ...req, open: true })
+    }
+    window.addEventListener(MATH_EDIT_EVENT, onReq)
+    return () => window.removeEventListener(MATH_EDIT_EVENT, onReq)
+  }, [])
 
   // 文档切换：flush 上一文档的未决防抖保存（P0-2，不再丢弃输入），再重载内容。
   // R2：reloadToken 变化（同一文档的外部版本重载）也触发重载，但跳过 flush
@@ -671,6 +685,60 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               ) : null}
             </article>
             <EditorContent editor={editor} />
+            {/* v1.1.7 M2：全屏公式模态（编辑器根——PM 事务安全；nodeview 独立 React 根会 #300） */}
+            {mathEdit?.open && (
+              <MathEditorModal
+                open={mathEdit.open}
+                initialValue={mathEdit.latex}
+                isBlock={mathEdit.isBlock}
+                onSave={(v) => {
+                  const ed = editorRef.current
+                  if (ed && mathEdit) {
+                    ed.commands.command(({ tr }) => {
+                      // 主定位 = 节点 id（mount 期 getPos 可能过期）；备选 = pos
+                      let target = -1
+                      tr.doc.descendants((node, pos) => {
+                        if (target >= 0) return false
+                        if ((node.type.name === 'math' || node.type.name === 'mathBlock') && node.attrs.id && node.attrs.id === mathEdit.id) {
+                          target = pos
+                          return false
+                        }
+                        return true
+                      })
+                      if (target < 0) target = mathEdit.pos
+                      const node = tr.doc.nodeAt(target)
+                      if (!node) return false
+                      tr.setNodeMarkup(target, undefined, { ...(node.attrs as Record<string, unknown>), latex: v })
+                      return true
+                    })
+                  }
+                  setMathEdit(null)
+                }}
+                onDeleteEmpty={() => {
+                  const ed = editorRef.current
+                  if (ed && mathEdit) {
+                    ed.commands.command(({ tr }) => {
+                      let target = -1
+                      tr.doc.descendants((node, pos) => {
+                        if (target >= 0) return false
+                        if ((node.type.name === 'math' || node.type.name === 'mathBlock') && node.attrs.id && node.attrs.id === mathEdit.id) {
+                          target = pos
+                          return false
+                        }
+                        return true
+                      })
+                      if (target < 0) target = mathEdit.pos
+                      const node = tr.doc.nodeAt(target)
+                      if (!node) return false
+                      tr.delete(target, target + node.nodeSize)
+                      return true
+                    })
+                  }
+                  setMathEdit(null)
+                }}
+                onClose={() => setMathEdit(null)}
+              />
+            )}
           </div>
         </EditorContext.Provider>
       ) : (

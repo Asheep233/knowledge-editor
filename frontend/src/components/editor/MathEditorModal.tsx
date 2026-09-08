@@ -80,15 +80,22 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
   if (!open) return null
 
   const close = (save: boolean) => {
+    onClose()
     if (save) {
       const cleaned = stripSlots(latex).trim()
-      if (cleaned === '') {
-        onDeleteEmpty()
-      } else {
-        onSave(cleaned)
-      }
+      // double-rAF：等 NodeView 根与 Editor 根（跨根渲染）全部落定后，再发起 PM 事务——
+      // 模态（portal，独立 React 根）内直接触发 PM 更新会撞 #300 update-during-render
+      const op = window.requestAnimationFrame(() =>
+        window.requestAnimationFrame(() => {
+          if (cleaned === '') {
+            onDeleteEmpty()
+          } else {
+            onSave(cleaned)
+          }
+        }),
+      )
+      return () => window.cancelAnimationFrame(op)
     }
-    onClose()
   }
 
   /** 光标当前 `\` 前缀（供 Tab 选择） */
@@ -112,19 +119,37 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
   }
 
   /** 前缀替换：把 `\fr` 替换为选中项（普通命令：光标末尾；含槽：光标首槽） */
+  /** execCommand('insertText') 插入——走原生撤销栈（Ctrl+Z 可撤模板/补全插入，VS Code 手感） */
+  const insertViaExec = (insert: string, nextCursor: number, selectLen = 0): boolean => {
+    const t = textareaRef.current
+    if (!t) return false
+    t.focus()
+    let ok = false
+    try {
+      ok = document.execCommand('insertText', false, insert) && t.value.includes(insert)
+    } catch {
+      ok = false
+    }
+    if (ok) {
+      setLatex(t.value)
+      focusAt(nextCursor, selectLen)
+      return true
+    }
+    return false
+  }
+
   const applyCompletion = (insert: string) => {
     const t = textareaRef.current
     if (!t) return
     const start = (t.selectionStart ?? 0) - currentPrefix().length
     const end = t.selectionStart ?? t.value.length
     const r = insertAt(t.value, start, end, insert)
-    setLatex(r.value)
-    // 非受控：手动写 DOM value 保持光标轨道
-    t.value = r.value
-    if (r.cursor < r.value.length && r.value[r.cursor] === '□') {
-      focusAt(r.cursor, 1) // 选中首槽，直接打字覆盖
-    } else {
-      focusAt(r.cursor)
+    const selLen = r.cursor < r.value.length && r.value[r.cursor] === '□' ? 1 : 0
+    if (!insertViaExec(insert, r.cursor, selLen)) {
+      // 兜底：手动替换（非受控 DOM 写入）
+      t.value = r.value
+      setLatex(r.value)
+      focusAt(r.cursor, selLen)
     }
     setSuggOpen(false)
   }
@@ -171,9 +196,12 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     const start = t.selectionStart ?? t.value.length
     const end = t.selectionEnd ?? start
     const r = insertAt(t.value, start, end, latexTpl)
-    setLatex(r.value)
-    t.value = r.value
-    focusAt(r.cursor, 1)
+    const selLen = r.cursor < r.value.length && r.value[r.cursor] === '□' ? 1 : 0
+    if (!insertViaExec(latexTpl, r.cursor, selLen)) {
+      t.value = r.value
+      setLatex(r.value)
+      focusAt(r.cursor, selLen)
+    }
     setSuggOpen(false)
   }
 

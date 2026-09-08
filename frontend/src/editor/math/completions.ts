@@ -2,7 +2,8 @@
  * 公式自动补全（v1.1.7 M2，VS Code 式）：`\fr` 前缀 → 悬浮建议 → Tab 选择。
  * 候选 = KaTeX 常用命令 + 模板（带槽位骨架）。
  */
-import { SLOT_CHAR, MATH_TEMPLATES } from './templates'
+import { MATH_TEMPLATES } from './templates'
+import LATEX_CATALOG from './latex-catalog.json'
 
 export interface CompletionItem {
   label: string
@@ -13,8 +14,8 @@ export interface CompletionItem {
   detail?: string
 }
 
-/** KaTeX 常用命令（v1 固定 ~120 条，高频优先） */
-const COMMANDS: Array<[string, string]> = [
+/** 骨架常用命令（带槽位；优先级最高） */
+const SKELETONS: Array<[string, string]> = [
   ['\\frac{}{}', '分式'],
   ['\\sqrt{}', '平方根'],
   ['\\sqrt[n]{}', 'n 次根'],
@@ -106,12 +107,11 @@ const COMMANDS: Array<[string, string]> = [
   ['\\in', '∈'],
 ]
 
-const CMD_ITEMS: CompletionItem[] = COMMANDS.filter(([s]) => s.includes(SLOT_CHAR)).map(([s, d]) => ({
-  label: s,
-  insert: s,
-  kind: 'command',
-  detail: d,
-}))
+// 骨架命令（槽位高亮）优先；其次全量 LaTeX 目录（compute-engine 字典 459 条触发器）
+const CMD_ITEMS: CompletionItem[] = [
+  ...SKELETONS.map(([s, d]) => ({ label: s, insert: s, kind: 'command' as const, detail: d })),
+  ...LATEX_CATALOG.map((cmd) => ({ label: cmd, insert: cmd, kind: 'command' as const })),
+]
 
 /** 前缀匹配（`\fr` → 所有 \fr* 开头项；含模板名匹配） */
 export function completions(raw: string): CompletionItem[] {

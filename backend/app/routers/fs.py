@@ -247,7 +247,7 @@ def create_doc(request: Request, body: DocCreate) -> dict:
             raise HTTPException(status_code=400, detail="文档只能创建在 Articles 或 Modules 下")
         if sub:
             _guard_rel(root, f"{top}/{sub}")
-    slug = markdown_io.slugify(body.title)
+    slug = markdown_io.sanitize_filename(body.title)
     rel = f"{top}/{sub}/{slug}.md" if sub else f"{top}/{slug}.md"
     full = root / rel
     if full.exists():

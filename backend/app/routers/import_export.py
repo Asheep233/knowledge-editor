@@ -97,7 +97,7 @@ def _collect_attachments(root: Path, refs: list[str]) -> list[tuple[Path, str]]:
 def export_package(request: Request, body: ExportPackageReq) -> Response:
     """导出文档包：{slug}_export/{slug}.md + Attachments/（保留相对路径）。"""
     root: Path = request.app.state.workspace_root
-    slug = markdown_io.slugify(body.title)
+    slug = markdown_io.sanitize_filename(body.title)
     prefix = f"{slug}_export"
 
     buf = io.BytesIO()
@@ -202,7 +202,7 @@ def _validate_refs(md: str, doc_dir: Path) -> None:
 
 def _unique_article_path(root: Path, title: str) -> str:
     """Articles/{slug}.md 冲突时自动去重：{slug}-2.md、{slug}-3.md…"""
-    slug = markdown_io.slugify(title)
+    slug = markdown_io.sanitize_filename(title)
     base = f"{config.DIR_ARTICLES}/{slug}.md"
     if not (root / base).exists():
         return base

@@ -248,3 +248,21 @@ def test_numeric_title_document(client):
     from app.services import markdown_io
     meta, body = markdown_io.parse_frontmatter("---\ntitle: 1\n---\n\n")
     assert meta["title"] == "1" and isinstance(meta["title"], str)
+
+
+def test_filename_preserves_title_case_and_spaces(client):
+    """v1.1.8：新建文档文件名保留原标题（大小写/空格/中文），仅替换非法字符。"""
+    from app.services.markdown_io import sanitize_filename as f
+    assert f('Linear Algebra 笔记') == 'Linear Algebra 笔记'
+    assert f('A01验证文档') == 'A01验证文档'
+    assert f('带 空格 的标题') == '带 空格 的标题'
+    assert f('a/b:c*d?') == 'a b c d'
+    assert f('CON') == '_CON'
+    assert f('尾部点.  ') == '尾部点'
+    assert f('') == 'untitled'
+    # 端到端：新建带大小写/空格的标题 → 磁盘文件名一致 + 可读
+    r = client.post('/api/fs/doc', json={'dir': 'Articles', 'title': 'My Big Note'})
+    assert r.status_code == 201, r.text
+    assert (client.app.state.workspace_root / 'Articles' / 'My Big Note.md').is_file()
+    g = client.get('/api/articles/Articles/My Big Note.md')
+    assert g.status_code == 200, g.text

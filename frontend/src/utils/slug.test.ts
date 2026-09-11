@@ -4,7 +4,7 @@
  * Windows 保留名（含带扩展名形式 con.txt → _con.txt）。
  */
 import { describe, expect, it } from 'vitest'
-import { slugify } from './slug'
+import { slugify, filenameFromTitle } from './slug'
 
 describe('slugify（与后端契约一致）', () => {
   it('ASCII 转小写、空白/非法字符折叠为单个 -', () => {
@@ -62,5 +62,26 @@ describe('slugify（与后端契约一致）', () => {
     expect(slugify('')).toBe('untitled')
     expect(slugify('   ')).toBe('untitled')
     expect(slugify('', 'doc')).toBe('doc')
+  })
+})
+
+describe('filenameFromTitle（v1.1.8：保留原标题）', () => {
+  it('保留大小写/空格/中文', () => {
+    expect(filenameFromTitle('Linear Algebra 笔记')).toBe('Linear Algebra 笔记')
+    expect(filenameFromTitle('A01验证文档')).toBe('A01验证文档')
+    expect(filenameFromTitle('带 空格 的标题')).toBe('带 空格 的标题')
+  })
+  it('仅替换文件系统非法字符并折叠空白', () => {
+    expect(filenameFromTitle('a/b:c*d?')).toBe('a b c d')
+    expect(filenameFromTitle('多   空格')).toBe('多 空格')
+  })
+  it('Windows 语义与保留名', () => {
+    expect(filenameFromTitle('尾部点.  ')).toBe('尾部点')
+    expect(filenameFromTitle('...隐藏')).toBe('隐藏')
+    expect(filenameFromTitle('CON')).toBe('_CON')
+    expect(filenameFromTitle('')).toBe('untitled')
+  })
+  it('超长截断至 80 字符', () => {
+    expect(filenameFromTitle('x'.repeat(100)).length).toBe(80)
   })
 })

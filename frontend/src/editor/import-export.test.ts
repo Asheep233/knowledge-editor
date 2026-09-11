@@ -89,10 +89,10 @@ describe('Phase 3E：extractAttachmentRefs', () => {
   })
 })
 
-describe('Phase 3E：slugForDownload', () => {
-  it('保留 CJK，ASCII 小写，非法字符折叠', () => {
-    expect(slugForDownload('我的 文档: 测试')).toBe('我的-文档-测试')
-    expect(slugForDownload('Hello World')).toBe('hello-world')
+describe('Phase 3E：slugForDownload（v1.1.8：保留原标题）', () => {
+  it('保留 CJK 与大小写/空格，仅替换非法字符', () => {
+    expect(slugForDownload('我的 文档: 测试')).toBe('我的 文档 测试')
+    expect(slugForDownload('Hello World')).toBe('Hello World')
   })
 
   it('空标题回退 untitled', () => {

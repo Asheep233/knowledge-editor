@@ -21,7 +21,7 @@ import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } 
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
-import { slugify } from '../../utils/slug'
+import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
 import MathEditorModal from '../editor/MathEditorModal'
@@ -164,7 +164,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       // 导致子目录文档每次改标题都触发 rename 撞自身 409 误报。
       const base = docId.split('/').pop() ?? docId
       const oldSlug = base.replace(/\.(md|markdown)$/i, '')
-      const newSlug = slugify(next)
+      // v1.1.8：文件名保留原标题（大小写/空格）——仅替换文件系统非法字符
+      const newSlug = filenameFromTitle(next)
       if (newSlug && newSlug !== oldSlug) {
         const res = await renameDoc(docId, `${newSlug}.md`)
         onRenamed?.(res.from, res.to, next)

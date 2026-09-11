@@ -25,3 +25,25 @@ export function slugify(name: string, fallback = 'untitled'): string {
   if (RESERVED.test(s.split('.', 1)[0])) s = `_${s}`
   return s
 }
+
+
+/**
+ * 标题 → 文件名（v1.1.8 起默认策略）：**保留原标题的大小写、空格与中文**，
+ * 仅处理文件系统非法部分。与后端 `markdown_io.sanitize_filename` 契约一致（K3-V3 对齐）：
+ * - Windows 非法字符 `< > : " / \ | ? *` 与控制字符 → 空格，随后折叠连续空白；
+ * - 去首尾空白；去首部点（隐藏文件）；去尾部点与空格（Windows 语义）；
+ * - 超长按字符截断（80）；Windows 保留名前缀 `_`；空标题回退 fallback。
+ */
+export function filenameFromTitle(name: string, fallback = 'untitled'): string {
+  const raw = (name ?? '').normalize('NFC').trim()
+  let s = raw
+    .replace(BAD_CHARS, ' ')
+    .replace(/[\u0000-\u001f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  s = s.replace(/^\.+/, '').trim().replace(/[.\s]+$/, '')
+  if (s.length > SLUG_MAX) s = s.slice(0, SLUG_MAX).replace(/[.\s]+$/, '')
+  if (!s) return fallback
+  if (RESERVED.test(s.split('.', 1)[0])) s = `_${s}`
+  return s
+}

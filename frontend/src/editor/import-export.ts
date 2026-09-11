@@ -1,3 +1,4 @@
+import { filenameFromTitle } from '../utils/slug'
 /**
  * 导入导出公共工具（Phase 3E）。
  *
@@ -86,16 +87,12 @@ function scanBalancedJson(src: string, start: number): string | null {
   return null
 }
 
-/** 与后端 slugify 对齐的简化下载文件名（保留 CJK，非法字符折叠为 '-'）。 */
+/**
+ * 下载文件名（v1.1.8）：与磁盘命名策略一致——保留原标题大小写/空格/中文，
+ * 仅替换文件系统非法字符（委托 filenameFromTitle，避免两套命名规则分叉）。
+ */
 export function slugForDownload(title: string): string {
-  const s = title
-    .trim()
-    .toLowerCase()
-    .replace(/[\\/:*?"<>|\r\n\t]+/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return s || 'untitled'
+  return filenameFromTitle(title)
 }
 
 /** 触发浏览器下载。 */

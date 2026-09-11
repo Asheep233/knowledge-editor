@@ -196,7 +196,7 @@ def get_article(request: Request, article_id: str) -> ArticleOut:
 @router.post("/articles", response_model=ArticleOut, status_code=201)
 def create_article(request: Request, body: ArticleCreate) -> ArticleOut:
     articles = _articles_dir(request)
-    slug = markdown_io.slugify(body.title)
+    slug = markdown_io.sanitize_filename(body.title)
     rel = f"{config.DIR_ARTICLES}/{slug}.md"
     full = articles / f"{slug}.md"
     if full.exists():

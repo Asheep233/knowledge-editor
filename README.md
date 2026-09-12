@@ -2,7 +2,7 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.1.7**（公式编辑体验版 · 最新正式）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前版本 **v1.1.7**（公式编辑体验版 · 最新正式）· 预发布 **v1.1.8-pre.1**（文件名保留原标题）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
 > **v1.1.7（公式编辑体验版）**：全屏公式编辑器（模板/Tab 补全/槽位）+ 信息块块级内容 + 启动进度；继承 v1.1.6。
 > 发布后补丁（17:21 包）：图片 CSP/粘贴与拖拽修复、公式插入与撤销行为、空信息块 0 行、补全前缀、设置工作区入口、侧车孤儿、版本一致性。

@@ -47,7 +47,7 @@ function Read-Runtime {
 # ---------- 0) 从项目根目录执行 ----------
 if ((Get-Location).Path.TrimEnd('\') -ne $root.TrimEnd('\')) {
     Write-Host '错误: 本脚本必须在项目根目录执行。' -ForegroundColor Red
-    Write-Host '  正确用法: cd D:\Agent\KnowledgeEditor ; .\scripts\start.ps1' -ForegroundColor Yellow
+    Write-Host '  正确用法: cd <项目根> ; .\scripts\start.ps1' -ForegroundColor Yellow
     exit 1
 }
 

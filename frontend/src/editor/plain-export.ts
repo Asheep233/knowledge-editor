@@ -228,7 +228,9 @@ function downgradeFootnotesRegion(md: string): { out: string; items: Array<{ n: 
   for (const it of items) {
     const textLines = it.text.split('\n')
     lines.push(`[^${it.n}]: ${textLines[0] ?? ''}`)
-    for (const tl of textLines.slice(1)) lines.push(tl.trim() ? `    ${tl.trim()}` : '    ')
+    // S-2：保留续行**自身的缩进**（GFM 语义：4 空格=续行，8 空格=脚注内代码块）。
+    // 原实现 `tl.trim()` 会把脚注内代码块压平，回读后不再是代码块（E3）。
+    for (const tl of textLines.slice(1)) lines.push(tl.trim() ? `    ${tl}` : '    ')
   }
   return { out: md.slice(0, startIdx) + lines.join('\n') + md.slice(regionEnd), items }
 }

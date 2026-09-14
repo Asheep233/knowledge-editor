@@ -369,7 +369,18 @@ const KE_BLOCK_CATCH_PATTERN = `^<!--\\s*ke-[a-zA-Z][a-zA-Z0-9-]*:`
 export const keFallbackTokenizer = {
   name: 'ke_fallback',
   level: 'block' as const,
-  start: (src: string) => (new RegExp(KE_BLOCK_CATCH_PATTERN).test(src) ? 0 : -1),
+  // S-2 附带修复：`start` 必须恒返回 -1（不「抢」块起点）。
+  // 原实现 `start: (src) => /^<!--\s*ke-/.test(src) ? 0 : -1`：marked 的块级词法分析器
+  // 用各扩展的 start() 决定「从哪里截断当前段落」。当一行是「1 个字符 + 行内脚注」时
+  // （如 `一<!-- ke-footnote … -->。`——GFM 文档 `一[^1]。` 转换后正是此形态），
+  // 分析器推进 1 个字符后 slice 以 `<!--` 开头 → start() 返回 0 → **段落被从第 1 个
+  // 字符处截断**，该注释被当块级 fallback 消费，引用不再是行内 footnote 节点
+  // （实测 `一[^x] 二[^x] 三[^x]。` 的 refs 由 3 变 2）。
+  // 返回 -1 后 marked 不再据此截断；真正处于块级位置时仍会调用 tokenize()，
+  // 未知 kind / 损坏 JSON / 大小写变体的 ke-* 注释原样保留能力不变
+  // （fidelity-regression 的 P1-2/P1-3 全绿）。该缺陷在干净基线 HEAD c256515 上
+  // 以原生 ke 方言同样可复现，属**既有缺陷**，S-2 只是让它对普通 GFM 文档可达。
+  start: () => -1,
   tokenize(src: string): MarkdownToken | undefined {
     // F06：行首的 ke-footnote 引用可能是「段首行内脚注」（编辑器可产出：
     // 光标置于段首插入脚注后，注释后紧跟正文）。若注释后同一行仍有内容，

@@ -34,6 +34,7 @@ import {
 import { GenericFallbackExtension, GenericFallbackInlineExtension } from './extensions/GenericFallbackExtension'
 import { HtmlPassthroughExtension, HtmlPassthroughInlineExtension } from './extensions/HtmlPassthroughExtension'
 import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
+import { normalizeGfmFootnotes } from './gfm-footnote'
 import { uploadAttachment } from '../api/client'
 import { attachmentNode, isRealFile } from './upload'
 
@@ -324,7 +325,10 @@ export function setKeContent(editor: Editor, markdown: string): void {
       emitUpdate: false,
     })
   } else {
-    editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
+    // S-2：解析前把 GFM 脚注语法规范化为 ke 方言（规范 document-format.md §2.3.1）。
+    // 生产环境 markdown 解析入口仅此一处；无脚注定义时函数原样返回（零行为变化）。
+    // 缓存仍以**原始 markdown** 为键，故重复打开同一文件命中缓存。
+    editor.commands.setContent(normalizeGfmFootnotes(markdown), { contentType: 'markdown', emitUpdate: false })
     mdDocCache.set(markdown, editor.getJSON())
     if (mdDocCache.size > MD_CACHE_MAX) {
       const oldest = mdDocCache.keys().next().value

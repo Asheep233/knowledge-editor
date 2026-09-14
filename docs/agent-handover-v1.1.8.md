@@ -170,6 +170,14 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
 10. **非受控输入**：标题输入框与公式源码框必须非受控（受控会导致光标跳尾/选区丢失）。
 11. **`%TEMP%` 膨胀**：PyInstaller `_MEI*` 每次构建 200-500MB；构建前顺手清理（曾积 15GB）。
 12. **设置字段三处同步**（§3.3），漏 `from_value_lenient` = 设置静默失效。
+13. **版本 bump 绝不能用全局正则改 lockfile**：`"version": "1\.1\.\d[^"]*"` 会把第三方包
+    （picocolors、@standard-schema/spec …）的版本一起改写 → `npm ci` 永久失败（上游无该版本）。
+    **统一用 `node scripts/bump-version.mjs <版本>`**（只改项目自身 9 处字段）。
+14. **双平台 node_modules（WSL + Windows）**：`npm install` 在哪个平台跑，就只装哪个平台的
+    esbuild/rollup 可选二进制。本仓库的 vitest/tsc/前端构建都在 **WSL** 跑 →
+    **依赖安装必须从 WSL 执行**（`cd frontend && npm install`）；Windows 侧只跑 tauri CLI
+    （发布流程已把 `beforeBuildCommand` 置为 no-op，前端在 WSL 预构建）。
+    症状：`[ke-vite] 未找到 esbuild 二进制: .../@esbuild/linux-x64/bin/esbuild`。
 
 ## 9. 工作区迁移核对清单（★ 主理人迁移后必做）
 
@@ -242,3 +250,24 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
 
 **交接完成度**：代码/标签/预发布/文档/环境说明齐备。接收方若有疑问，先查本文档 §7 索引，
 再查 GitHub Releases 与仓库历史（所有决策与根因都有提交信息留痕）。
+
+
+---
+
+## 附：迁移后实测记录（2026-09-14 · 由上一任 Agent 在 F 盘新路径执行）
+
+主理人已将工作区迁移至 **`F:\Work\KE Project\knowledge-editor`**（原 `D:\KE Project\knowledge-editor` 已不存在）。
+接收方无需重复以下步骤，仅作状态留痕：
+
+| 核对项 | 结果 |
+|---|---|
+| 仓库完整性 | ✅ HEAD `f04d0f5`、标签至 `v1.1.8-pre.1`、工作树干净 |
+| 迁移保留 | ✅ `frontend/src`、`backend/app`、`desktop/src-tauri/src`、`docs/`、`.git`、`binaries/`（侧车 45MB）|
+| 迁移剔除（可再生）| `frontend/node_modules`、`desktop/src-tauri/target`（按 §9 建议跳过）|
+| 依赖安装 | ✅ 从 WSL 执行 `npm install`（见坑 14；Windows 侧安装会导致 vitest 缺 linux 二进制）|
+| 工具链验证 | ✅ tsc 0 错 · vitest **248**（247+1skip）· `npm run build` 成功（dist-build 11:00）|
+| 修复的问题 | ① lockfile 被历史 bump 正则污染（picocolors 1.1.2 / @standard-schema/spec）→ 重建 lock + `overrides: { picocolors: 1.1.1 }`；② `desktop/package-lock.json` 根版本漏 bump（停留 1.1.4）→ 已同步；③ 新增 `scripts/bump-version.mjs` 防复发 |
+| 工具链路径 | `C:\ke-tmp\*`（CDP 探针/发布脚本）已批量改为 F 盘路径 |
+
+**遗留**：`desktop/src-tauri/target` 未重建（首次 `cargo build`/打包需 ~10 分钟）；后端 pytest 与
+cargo 验证见仓库最新提交信息。

@@ -296,6 +296,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             // R2：主动中止（重新加载外部版本）——放弃本次内容并清理恢复点
             if (isCurrent) setSaveState('idle')
             void clearRecoveryPoint(docId)
+            // S-1：本次编辑已被放弃（编辑器随后由外部版本重载覆盖），必须**一并放弃未决的
+            // 恢复点登记**。否则 3s 后调度器会用重载后的磁盘内容再登记一条「孤儿草稿」——
+            // 保存路径刚 clearRecoveryPoint，草稿又出现，下次启动误弹「检测到未恢复的编辑内容」。
+            // （对抗验证用例 T3 实测复现：POST → PUT → DELETE → 又 POST）
+            draftRegRef.current?.cancel()
             return
           }
           if (isCurrent) setSaveState('error')

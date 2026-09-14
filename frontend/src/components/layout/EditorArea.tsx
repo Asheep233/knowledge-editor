@@ -21,6 +21,7 @@ import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } 
 import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
+import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
@@ -95,6 +96,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // F14：文档内容快照（docId → 序列化 Markdown）。切换文档瞬间为「离开的文档」
   // 拍下最终内容，供其在途/后续保存使用（避免经 editorRef 重读新文档内容串写）。
   const contentSnapshotRef = useRef(new Map<string, string>())
+  // S-1：编辑期恢复点登记（「有界年龄」调度）。
+  // saveQueue.enqueueSave 是纯尾沿防抖且无 maxWait——连续输入时计时器被反复重置、
+  // 永不触发，于是既不自动保存也不登记恢复点，硬崩溃的丢失窗口**无界**（不是「一个
+  // autosave 周期」）。本调度把登记节奏与保存防抖解耦：自首笔未登记编辑起至多
+  // RECOVERY_MAX_AGE_MS 内必登记一次，且不因后续编辑重置。
+  const draftRegRef = useRef<DraftDebounce | null>(null)
   // F22：大文档首开解析提示——@tiptap/markdown 对 256KB 级文档首次解析需 12-17s，
   // 用一帧「正在解析大文档…」占位告知用户进程未死（解析仍同步，但不再无声卡死）。
   const [parsingLarge, setParsingLarge] = useState(false)
@@ -220,6 +227,24 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
   }, [])
 
+  // S-1：登记回调。序列化**只在该时机执行一次**（不在每次击键），因此不引入输入卡顿。
+  const flushDraftRecovery = useCallback(() => {
+    const ed = editorRef.current
+    const doc = articleRef.current
+    if (!ed || !doc) return
+    void registerRecoveryPoint(doc.id, withFrontmatter(ed.getMarkdown(), KE_VERSION))
+  }, [registerRecoveryPoint])
+
+  const ensureDraftReg = useCallback((): DraftDebounce => {
+    if (!draftRegRef.current) {
+      draftRegRef.current = createDraftDebounce({ onFlush: flushDraftRecovery })
+    }
+    return draftRegRef.current
+  }, [flushDraftRecovery])
+
+  // S-1：卸载时清理登记计时器。
+  useEffect(() => () => { draftRegRef.current?.dispose() }, [])
+
   // 保存函数构造：读取当前编辑器正文、登记/清除恢复点、更新 saveState 与 onSaved。
   // 经 saveQueue 串行化（P1-6：同一 doc 至多一个在途保存，latest-wins），
   // 并仅在「本次保存对应序号仍为最新」时判定已保存/清除恢复点（P0-2/P1-6）。
@@ -249,7 +274,15 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           const latest = docSeq(docId) === seq
           if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
           onSaved?.(docId, saved)
-          if (latest) void clearRecoveryPoint(docId)
+          if (latest) {
+            void clearRecoveryPoint(docId)
+            // S-1：该次保存覆盖了最新编辑、且该文档仍是当前文档 → 清除「未保存」标记，
+            // 避免登记调度器在保存已清除恢复点之后又登记一条孤儿草稿
+            // （否则下次启动会误弹「检测到未恢复的编辑内容」）。
+            // 反例（必须不清）：保存期间用户切到别的文档并在新文档输入——此时
+            // articleRef.current?.id !== docId，旧文档的保存完成不得影响新文档的未保存状态。
+            if (articleRef.current?.id === docId) draftRegRef.current?.markSaved(true)
+          }
           // F15：A→B→A 回退竞态——GET 先于在途 PUT 返回旧内容时，保存完成后
           // 若正文与编辑器不一致（且期间无新编辑），用保存结果对齐编辑器。
           if (isCurrent && latest && ed) {
@@ -284,7 +317,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     // M3：自动保存间隔由应用设置驱动（默认 3000ms）。统一走 saveQueue：
     // 同一 doc 防抖合并；在途时 latest-wins；完成后若有新内容再补一次。
     enqueueSave(docId, buildSaveFn(docId), getAutosaveIntervalMs())
-  }, [buildSaveFn, bumpSeq])
+    // S-1：同时喂给恢复点登记调度器（O(1)，不序列化）。它的计时器**不因后续编辑重置**，
+    // 因此在 saveQueue 的尾沿防抖被连续输入无限推迟时，恢复点仍至多 3s 登记一次。
+    ensureDraftReg().touch()
+  }, [buildSaveFn, bumpSeq, ensureDraftReg])
 
   // Phase 6.4：content 固定为空，文档内容统一由下方 useEffect 的
   // setKeContent 加载一次，避免初始化与切换时重复解析大文档（Document Model）。
@@ -327,6 +363,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       }
       // 切换离开旧文档：立即触发其未决保存，避免防抖窗口内输入静默丢失
       void flushPending(prevId)
+      // S-1：旧文档的恢复点已由上面的保存路径登记；必须放弃本调度器的未决计时器，
+      // 否则它到点时会用**新文档**的编辑器内容（且以新文档 id）登记，造成串档。
+      draftRegRef.current?.cancel()
     }
     prevArticleIdRef.current = newId
     setSaveState('idle')

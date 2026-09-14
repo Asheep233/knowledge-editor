@@ -300,7 +300,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             // 恢复点登记**。否则 3s 后调度器会用重载后的磁盘内容再登记一条「孤儿草稿」——
             // 保存路径刚 clearRecoveryPoint，草稿又出现，下次启动误弹「检测到未恢复的编辑内容」。
             // （对抗验证用例 T3 实测复现：POST → PUT → DELETE → 又 POST）
-            draftRegRef.current?.cancel()
+            // 注意必须门控「**中止时刻**仍为当前文档」：clearRecoveryPoint 按 docId 精确
+            // 作用于被中止的文档，而本调度器只有**一个**实例、服务的是**当前**编辑器内容。
+            // 用起始时快照的 isCurrent 不够——保存可能在「A 尚为当前」时启动、用户随后切到 B
+            // 才发生中止，此时 isCurrent 已过期；若据此 cancel()，会把当前文档 B 尚未登记的
+            // 编辑一并丢弃（对抗验证用例 T8：B 的登记数 = 0）。故此处重读 articleRef。
+            if (articleRef.current?.id === docId) draftRegRef.current?.cancel()
             return
           }
           if (isCurrent) setSaveState('error')

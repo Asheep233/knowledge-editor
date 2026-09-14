@@ -615,22 +615,24 @@ describe('F06 — 块级 footnote 系不再静默丢失', () => {
     ed.destroy()
   })
 
-  it('段首脚注（注释后同行有正文）：注释保留为 fallback 块，正文照常成段不丢', () => {
+  it('段首脚注（注释后同行有正文）：重建为 footnote 节点，正文照常成段不丢', () => {
     // 编辑器可产出：光标置于段首插入脚注 → 序列化后行首为 ke-footnote 引用。
-    // 该形态无法在块级重建 inline 脚注节点（marked html 规则会吞掉），
-    // 要求：注释原文保留（不静默丢失）+ 正文照常成段。
+    // S-2：该形态此前只能保留为 fallback 块（引用退化为纯文本，footnoteRefs=0）。
+    // 现由块级 keFallbackTokenizer 直接产出 `ke_footnote` token → 重建为**真正的
+    // footnote 节点**。原不变量（注释不静默丢失 + 正文照常成段）依旧成立且语义更强。
     const md = '<!-- ke-footnote: {"kind":"footnote","id":"f4","n":4} -->第一段开头正文。'
     const ed = makeEditor(md)
     const json = ed.getJSON()
     const blocks = json.content ?? []
-    const fb = blocks.find((n) => n.type === 'keFallback')
-    expect(fb).toBeTruthy()
-    expect((fb?.attrs as { raw?: string } | undefined)?.raw).toContain('ke-footnote')
+    const fn = blocks.find((n) => n.type === 'footnote')
+    expect(fn).toBeTruthy()
+    expect((fn?.attrs as { id?: string } | undefined)?.id).toBe('f4')
     expect(blocks.some((n) => n.type === 'paragraph')).toBe(true)
     // 往返稳定：正文保留、脚注引用保留
     const back = ed.getMarkdown()
     expect(back).toContain('第一段开头正文。')
     expect(back).toContain('ke-footnote')
+    expect(back).toContain('"id":"f4"')
     ed.destroy()
   })
 })

@@ -137,6 +137,17 @@ export function inlineMaskRanges(line: string): Range[] {
         continue
       }
     }
+    // 图片 alt 段 `![…]`：alt 是纯字符串，GFM 不在其中解析脚注引用（C28）。
+    // 注意**不**掩码链接文本 `[text](url)`——cmark 在链接文本内确实解析脚注，
+    // 掩码它会偏离规范（该项独立验证列为「未定罪」，保持不掩码）。
+    if (ch === '!' && line[i + 1] === '[') {
+      const close = line.indexOf(']', i + 2)
+      if (close !== -1) {
+        out.push([i, close + 1])
+        i = close + 1
+        continue
+      }
+    }
     // 链接 / 图片目标：`](` … 配平 `)`（C21）
     if (ch === '(' && i > 0 && line[i - 1] === ']') {
       let depth = 0

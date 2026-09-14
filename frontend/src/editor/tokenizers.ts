@@ -394,9 +394,30 @@ export const keFallbackTokenizer = {
     if (commentEnd >= 0) {
       const lineTail = after.slice(commentEnd + 3).split('\n')[0].trim()
       if (lineTail !== '') {
-        // 段首脚注（注释后同行还有正文，如「<!-- ke-footnote: {...} -->正文」）：
-        // 只保留注释本身（原样、不丢），后续正文照常成段；绝不整行吞掉。
-        return { type: 'ke_fallback', raw: src.slice(0, m0[0].length + commentEnd + 3) }
+        // S-2 附带修复：行首且同行有正文的 ke-footnote，必须**在此处产出 footnote 节点**。
+        // 机制：行首 `<!-- … -->` 在 marked 里是**块级 HTML**（CommonMark type-2 注释），
+        // 块级规则先于行内规则生效，行内 footnoteTokenizer 拿不到机会。
+        //   · 原实现返回仅含注释的 ke_fallback 块 → 引用退化为纯文本（footnoteRefs=0，
+        //     正文还多出前导空格；`[^1][^2] 开头。` 产生 2 个 fallback 块）。
+        //   · 若改为让位（return undefined）→ marked 把注释当 HTML 块消费，
+        //     而 tiptap 无对应节点 → **注释被静默丢弃**（实测更糟）。
+        // 故：可解析时直接产出 `ke_footnote` token（复用 FootnoteExtension.parseMarkdown）；
+        // 损坏 JSON / 非 footnote kind 仍走原样保留，绝不丢内容。
+        // 该行为缺陷在干净基线 HEAD c256515 用原生 ke 方言即可复现（既有缺陷），
+        // S-2 只是让普通 GFM 文档可达该形态。
+        const commentText = src.slice(0, m0[0].length + commentEnd + 3)
+        const fm = /^<!--\s*ke-footnote:\s*(\{[\s\S]*?\})\s*-->$/.exec(commentText)
+        if (fm) {
+          try {
+            const attrs = JSON.parse(fm[1]) as Record<string, unknown>
+            if (attrs && typeof attrs === 'object') {
+              return { type: 'ke_footnote', raw: commentText, attrs }
+            }
+          } catch {
+            /* 损坏 JSON：落到下方原样保留 */
+          }
+        }
+        return { type: 'ke_fallback', raw: commentText }
       }
     }
     // 非贪婪匹配到行尾的 -->（独占行）。已知块级 kind 已由各自 tokenizer 消费，

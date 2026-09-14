@@ -2,7 +2,40 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-07（v1.1.4 正式发布 · 更名 AstraNota）
+> 最后更新：2026-09-14（接管核对 · F 盘迁移后环境收尾）
+
+## 2026-09-14（接管核对 · 环境收尾，无产品代码改动）
+
+类型：Maintenance
+状态：Completed
+范围：F 盘迁移（`D:\KE Project` → `F:\Work\KE Project`）后的接管核对 + 环境修复
+
+**验证：tsc 0 / vitest 247+1skip（248）/ pytest 175+2skip / cargo 13 / npm run build ✓；
+9 处版本源一致 = 1.1.8-pre.1；release GUI 构建 3m37s。**
+
+**修复的环境问题**：
+- `master` 领先远端 1 个提交（`08e5188` 环境修复）未推送 → 已推送，GitHub 恢复为唯一权威；
+- GUI 冒烟启动脚本 `C:\ke-tmp\launch-release-cdp.ps1` 指向**不存在的路径**
+  （`<repo>\desktop\src-tauri\target\release\`）→ 根因：cargo target 由 `CARGO_TARGET_DIR`
+  重定向到仓库外 `F:\Work\Dev\cargo-target` → 已改指正确路径，并补 `cargo build --release`；
+- `desktop/node_modules` 为空（迁移时漏装）→ `@tauri-apps/cli` 缺失、NSIS 打包链路不可执行
+  → 已在 **Windows 侧** `npm ci` 补装（`tauri-cli 2.11.4`）；
+- `C:\ke-tmp\README.md` 索引过时（CDP 9222 / `D:\` 旧路径 / 「81 项」manifest）→ 重写
+  （实际 **84 项**），并新增通用 CDP 探针 `cdp-eval.py`（统一 9333，替代约 200 个硬编码 9222 的历史脚本）。
+
+**GUI 冒烟（只读断言，全过）**：CDP 9333 目标 = AstraNota（非 Edge）；启动到可交互 **1.64s**
+（基线 1.7s）；版本横幅一致（无「版本不一致」）；文档打开 + 编辑器挂载 + 10 KaTeX 节点、
+0 console error；**关窗退出 2s / 侧车残留 0 / 8000 端口释放 —— v1.1.7 S1 缺陷（侧车孤儿）修复复验通过**
+（含「已打开文档时关窗」场景）。
+
+**重要风险发现（写数据安全）**：`KE_WORKSPACE` **不能隔离 GUI**。该变量只作用于侧车启动参数
+（`/api/health` 如实回报测试工作区），但**前端会从持久化设置恢复「上次工作区」并调切换 API 覆盖它**
+→ 界面实际打开主理人真实工作区 `...\Documents\KE Workspace`。二者不一致，极易让 Agent 误判已在隔离环境。
+本次核对全程只读，已确认真实工作区**无用户内容写入**（仅 `.knowledgeeditor/index.db-shm` 正常索引触及）。
+Agent 规则已写入交接文档坑 16。
+
+**备注**：另一处误导——`window.close()` 会绕过 Tauri 生命周期直接杀 WebView，造成「壳进程+侧车残留、
+端口不释放」的假象；关窗测试须用**全新实例 + 单次 `CloseMainWindow()`**（坑 17）。
 
 ## 2026-09-07（v1.1.4-pre.1 发布 · 新建文件夹/新建文档修复）
 

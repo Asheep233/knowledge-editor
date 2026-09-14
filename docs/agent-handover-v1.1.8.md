@@ -104,12 +104,26 @@ cd desktop/src-tauri && cargo test
 
 **GUI 冒烟（开发版）**：
 ```powershell
+# 先编出 release exe（注意：target 在仓库外，见坑 15）
+cd desktop\src-tauri && cargo build --release          # 首编 ~3.6 分钟（依赖缓存已在）
 # 启动脚本（已就绪）：设置 WebView2 调试端口 9333（9222 会被 Edge 抢占！）
 powershell -File C:\ke-tmp\launch-release-cdp.ps1
-# 连接：http://127.0.0.1:9333/json  → 找 type=page 的目标（url 含 tauri.localhost）
+# 连接：http://127.0.0.1:9333/json  → 找 type=page 的目标（url 含 tauri.localhost，title=AstraNota）
 ```
-- CDP 探针脚本示例在 `C:\ke-tmp\*.py`（python + websocket-client；`Runtime.evaluate` 驱动 DOM）
+- **★ CDP 探针统一入口：`python -X utf8 C:\ke-tmp\cdp-eval.py "JS表达式"`**（或 `@expr.js` 从文件读）
+  —— 自动找 9333 的 page 目标、求值、打印结果。**不要再用 `C:\ke-tmp\*.py` 里那批历史脚本**：
+  它们硬编码 9222（会打到 Edge）且多数写死了早已失效的 page id。
 - **人工验收归主理人**（视觉/手感）；Agent 只做程序化断言——不要试图用截图代替主理人判断
+
+**Agent 侧已可程序化断言的项（2026-09-14 实测通过）**：
+
+| 断言 | 方法 | 实测值 |
+|---|---|---|
+| 启动到可交互 | `Runtime.evaluate` 读 `window.__bootTimings` | 1.64s（基线 1.7s）|
+| 前后端版本一致 | DOM 找版本节点 + `/api/health` | `后端 v1.1.8-pre.1`，无「版本不一致」横幅 |
+| 文档打开 + 编辑器挂载 | `.ProseMirror` 存在 + 文本非空 | ✅ |
+| 公式渲染 | `.katex` / `.katex-error` 计数 | 10 节点 / 错误数取决于源文档 |
+| 关窗退出无孤儿（S1 回归）| 单次 `CloseMainWindow()` → 观察进程 + 8000 端口 | **2s 退出 / 0 残留 / 端口释放** |
 
 ## 6. 发布流程（照抄，勿即兴）
 
@@ -178,6 +192,24 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
     **依赖安装必须从 WSL 执行**（`cd frontend && npm install`）；Windows 侧只跑 tauri CLI
     （发布流程已把 `beforeBuildCommand` 置为 no-op，前端在 WSL 预构建）。
     症状：`[ke-vite] 未找到 esbuild 二进制: .../@esbuild/linux-x64/bin/esbuild`。
+    补：`desktop/` 恰好相反——它是 `@tauri-apps/cli` 的原生二进制，**必须在 Windows 侧装**
+    （`cmd /c "cd /d <repo>\desktop && npm ci"`），Windows 下才拿得到 `cli-win32-x64-msvc`。
+15. **cargo target 被重定向到仓库外**：Windows 用户环境变量 `CARGO_TARGET_DIR=F:\Work\Dev\cargo-target`
+    → **仓库内 `desktop\src-tauri\target\` 根本不存在**，产物在
+    `F:\Work\Dev\cargo-target\{release,debug}\`。任何写死 `<repo>\desktop\src-tauri\target\...`
+    的脚本（历史 `launch-*.ps1` / `run-gui-cdp.bat`）都会静默失效。
+    另：`target/release/` 无缓存时 `cargo build --release` 约 3.6 分钟（依赖缓存 3.9G 已随迁移保留）。
+16. **`KE_WORKSPACE` 不能隔离 GUI！**（★ 写数据安全相关）
+    `KE_WORKSPACE` 只影响**侧车启动参数**（`/api/health` 会如实回报该工作区），但**前端会从持久化设置
+    恢复「上次工作区」并调用切换 API 覆盖它** → 实际打开的是主理人**真实工作区**。
+    实测：带 `KE_WORKSPACE=...KE-TestWorkspace` 启动，状态栏与树仍显示 `...\Documents\KE Workspace`。
+    **Agent 规则**：GUI 自动化默认视为**无隔离**——只做只读操作（点击打开文档是只读的，不产生写入）；
+    需要写操作时必须先让主理人确认当前工作区，或改用后端 API 直连指定工作区做破坏性用例。
+17. **别叠加多种关窗方式**：`CloseMainWindow()`（≈用户点 X）是唯一等价路径，单次调用即可
+    （实测 2s 干净退出）。而 `window.close()` 会**绕过 Tauri 生命周期**直接杀掉 WebView ——
+    壳进程与侧车残留、8000 端口不释放，形成「半死」假象。若在同一次会话里把
+    CloseMainWindow + taskkill + window.close() 叠加，会得到误导性的「关窗不退出」结论。
+    测关窗退出：**每次都用全新实例 + 只调一次 `CloseMainWindow()`**。
 
 ## 9. 工作区迁移核对清单（★ 主理人迁移后必做）
 
@@ -187,8 +219,11 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
 **迁移后（接收方按序核对）**：
 1. **确认新路径**：向主理人问清新仓库路径（本文档中所有 `D:\KE Project\...` 均为旧路径）
 2. **可丢弃/需重建**（可安全删除，迁移时可跳过以省时间）：
-   - `desktop/src-tauri/target/`（17GB Rust 构建缓存；重建 ~10 分钟）
-   - `frontend/node_modules/`、`desktop/node_modules/`（`npm ci` 重建）
+   - ~~`desktop/src-tauri/target/`（17GB Rust 构建缓存）~~ **【2026-09-14 更正】此条前提有误**：
+     cargo target 由 `CARGO_TARGET_DIR` 重定向到 **`F:\Work\Dev\cargo-target`**（仓库外），
+     仓库内 `desktop/src-tauri/target/` **本来就不存在**；该缓存 3.9G（996 deps）随迁移**已保留**，
+     `cargo test` 仅 9.4s、`cargo build --release` 3.6 分钟，**无需 10 分钟重建**。
+   - `frontend/node_modules/`（`npm ci` 重建，**WSL 侧**）、`desktop/node_modules/`（**Windows 侧**，见坑 14）
    - `frontend/dist-build/`（`npm run build` 重建）
    - `workspace/`（本地 vite 缓存，可再生）
 3. **必须随仓库一起迁移**：`frontend/src`、`backend/app`、`desktop/src-tauri/src`、
@@ -198,9 +233,14 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
    `tauri.conf.json` frontendDist/beforeBuildCommand）→ 整目录搬迁即可；**已核实无硬编码绝对路径**
    （唯一历史遗留：`scripts/start.ps1` 的使用提示文本，若仍指向 `D:\Agent\KnowledgeEditor` 可顺手改）
 5. **仓库外的依赖（不随仓库迁移，需重建/注意）**：
-   - `C:\ke-tmp\`：Agent 工具脚本（CDP 探针 `launch-release-cdp.ps1`、`gen-manifest.py`、
-     `mkfixtures.py`、各验证脚本）。**建议随迁移一并复制或在新盘重建**（交接方已尽量把关键脚本
-     内容写入本文档 §5/§6）
+   - `C:\ke-tmp\`：Agent 工具脚本。**【2026-09-14 已核对并修复】**：
+     `README.md` 索引已重写（原来 CDP 写 9222、路径写 `D:\`、manifest 写「81 项」，全部过时）；
+     `launch-release-cdp.ps1` / `run-gui-cdp.bat` 指向的 exe 路径已改到
+     `F:\Work\Dev\cargo-target\release\`（原指向仓库内不存在的 target，**脚本曾完全不可用**）；
+     新增 **`cdp-eval.py`**（通用 CDP 探针：自动找 9333 page 目标 + 求值 JS）。
+     历史 `probe-*.py` / `verify-*.py` 等约 200 个一次性脚本**仍硬编码 9222，勿直接复用**。
+   - `desktop/node_modules/`：**必须在 Windows 侧 `npm ci`**（坑 14），迁移后曾漏装 →
+     NSIS 打包链路（§6 步骤 4）当时不可执行。**【2026-09-14 已补装】**，`tauri-cli 2.11.4` 可用。
    - `%APPDATA%\KnowledgeEditor\`：应用设置/数据（与仓库无关）
    - 测试夹具 `%USERPROFILE%\Documents\KE-TestWorkspace`（可重建：`mkfixtures.py`）
    - 主理人真实工作区 `%USERPROFILE%\Documents\KE Workspace`（**绝不写入**）
@@ -211,8 +251,12 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
    cd ../desktop/src-tauri && cargo test        # 先确认 GUI 已关闭
    ```
    期望：vitest **248**（247+1skip）/ pytest **175** / cargo **13** / tsc 0
-7. **GUI 冒烟**：启动开发版 exe（§5 脚本，注意改脚本里的 exe 路径为新路径）→ 打开文档 →
-   公式模态（Ctrl+M）→ 信息块 → 新建文档（文件名保留大小写/空格）→ 关窗后无侧车残留
+7. **GUI 冒烟**：`launch-release-cdp.ps1` 起 exe → 打开文档 → 公式模态（Ctrl+M）→ 信息块 →
+   新建文档（文件名保留大小写/空格）→ 关窗后无侧车残留。
+   **注意分工（坑 16）**：GUI 默认打开主理人**真实工作区**，`KE_WORKSPACE` 不生效 →
+   Agent 只做**只读**断言（打开文档/渲染/DOM/退出清理），**一切写入类步骤（新建/改名/删除）
+   交主理人**，或改走隔离的后端 API（`KE_WORKSPACE` + 直连 8001）。
+   程序化断言清单见 §5 表（2026-09-14 已实测通过）。
 8. **发布链路自检**：`gh auth status` + `git remote -v` + 尝试 `gh release view v1.1.7`
 
 ## 10. 当前待办与下一步
@@ -269,5 +313,42 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
 | 修复的问题 | ① lockfile 被历史 bump 正则污染（picocolors 1.1.2 / @standard-schema/spec）→ 重建 lock + `overrides: { picocolors: 1.1.1 }`；② `desktop/package-lock.json` 根版本漏 bump（停留 1.1.4）→ 已同步；③ 新增 `scripts/bump-version.mjs` 防复发 |
 | 工具链路径 | `C:\ke-tmp\*`（CDP 探针/发布脚本）已批量改为 F 盘路径 |
 
-**遗留**：`desktop/src-tauri/target` 未重建（首次 `cargo build`/打包需 ~10 分钟）；后端 pytest 与
-cargo 验证见仓库最新提交信息。
+**遗留（2026-09-14 首轮）**：`desktop/src-tauri/target` 未重建（首次 `cargo build`/打包需 ~10 分钟）；
+后端 pytest 与 cargo 验证见仓库最新提交信息。
+
+---
+
+## 附二：接管核对记录（2026-09-14 · 由下一任 Agent 执行）
+
+**结论**：代码与工具链健康，四套件全绿；环境层发现 5 处「文档描述 ≠ 实际」并已全部修复。
+
+| 核对项 | 期望（§9.6）| 实测 | 判定 |
+|---|---|---|---|
+| `tsc -b --noEmit` | 0 错 | 0 错 | ✅ |
+| vitest | 248（247+1skip）| 247 passed / 1 skipped | ✅ |
+| pytest | 175 | 175 passed / 2 skipped | ✅ |
+| cargo test | 13 | 13 passed（9.4s，依赖缓存命中）| ✅ |
+| `npm run build` | 成功 | ✓ 5.38s，产物内嵌版本仅 `1.1.8-pre.1`，无旧版残留 | ✅ |
+| 9 处版本源 | 一致 | 9/9 = `1.1.8-pre.1` | ✅ |
+| `gh auth` / Releases | 可查 | Asheep233 已认证；v1.1.8-pre.1 预发布在线 | ✅ |
+| git 同步 | — | HEAD `08e5188` 曾**未推送**（master ahead 1）→ **已推送**，远端已一致 | ✅ 已修 |
+| release GUI 构建 | — | `cargo build --release` 3m37s → exe 15MB + 侧车 exe | ✅ |
+| GUI 冒烟（只读）| — | CDP 9333 目标为 AstraNota（非 Edge）；启动 1.64s；版本横幅一致；文档打开 + 编辑器挂载 + 10 KaTeX 节点；**关窗 2s 退出 / 0 孤儿 / 8000 释放**（S1 修复复验通过）| ✅ |
+| C:\ke-tmp 工具链 | — | README/launcher 多处过时 → 已修（见 §9.5）；新增 `cdp-eval.py` | ✅ 已修 |
+
+**本次修正的 5 处偏差**（详见正文对应条目）：
+1. §9.2「target 17GB 需重建」→ 实为 `CARGO_TARGET_DIR` 重定向到仓库外，缓存**已保留**（坑 15）
+2. §5/§9.7 GUI 启动脚本**指向不存在的路径**（曾完全不可用）→ 已修 + 补程序化断言表
+3. `desktop/node_modules` 为空 → tauri CLI 缺失，打包链路不可执行 → **已在 Windows 侧补装**
+4. `master` 领先远端 1 个提交 → 已推送（GitHub 恢复为唯一权威）
+5. `C:\ke-tmp\README.md` CDP 9222 / `D:\` 路径 / 「81 项」manifest 全部过时 → 已重写（实为 **84 项**）
+
+**新增重要发现（写数据安全）**：`KE_WORKSPACE` **不能隔离 GUI**——前端会恢复上次工作区覆盖它，
+实测带 `KE_WORKSPACE=KE-TestWorkspace` 启动后，界面仍指向主理人真实工作区
+`...\Documents\KE Workspace`（`/api/health` 却回报测试工作区，**二者不一致，极易误判**）。
+本次核对全程只读，已确认真实工作区**无任何用户内容写入**（仅 `.knowledgeeditor/index.db-shm`
+正常索引触及）。Agent 规则见坑 16。
+
+**未做（按约定归属主理人）**：视觉/手感类验收（公式模态外观、信息块手感、拖拽/粘贴、快捷键矩阵），
+以及**新建文档「文件名保留大小写/空格」的端到端 GUI 实测**（属写入类，且 GUI 无隔离，故未执行；
+该策略在 pytest 175 / vitest 248 中已有格式层覆盖）。

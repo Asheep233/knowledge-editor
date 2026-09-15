@@ -58,6 +58,10 @@ DIR_DRAFTS = "Drafts"
 DIR_DRAFT_BACKUP = "Drafts/backup"
 DIR_DRAFT_RECOVERY = "Drafts/recovery"
 DIR_INTERNAL = ".knowledgeeditor"
+# 回收站（2026-09-15 立项）：workspace 根级**可见**目录。
+# 关键性质：不在任何扫描器的枚举范围内（indexer/fs_watch/references/tree 只认
+# Articles/Modules/Attachments）→ 内容天然不进索引/搜索/树/watcher（契约 C4 不变量）。
+DIR_TRASH = "Trash"
 
 # 附件类型 -> 子目录映射
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".avif"}

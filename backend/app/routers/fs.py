@@ -22,10 +22,13 @@ from ..services.references import referencing_docs
 
 router = APIRouter(prefix="/api/fs", tags=["fs"])
 
-# 顶层受保护目录（自身不可删/改名/移动；.knowledgeeditor 与 Drafts 内部也不可经 fs 操作）
+# 顶层受保护目录（自身不可删/改名/移动；.knowledgeeditor / Drafts / Trash 内部也不可经 fs 操作）
+# Trash（2026-09-15 立项）：此前它只是**偶然**不可达（_require_business_top 会顺带 400），
+# 现显式声明为受保护根，避免后人误把回收站挪进业务目录造成全面泄漏（契约 C1）。
 _FORBIDDEN_ROOT = {
     config.DIR_INTERNAL,
     config.DIR_DRAFTS,
+    config.DIR_TRASH,
 }
 _FORBIDDEN_ROOT_LOWER = {d.lower() for d in _FORBIDDEN_ROOT}
 

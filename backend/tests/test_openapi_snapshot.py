@@ -3,6 +3,11 @@
 冻结契约：路径集合必须与 Phase 6E 基线一致（36 个路径、42 个方法端点，
 含 1 处增量扩展 `DELETE /api/attachments/{rel_path}`）。
 任何新增/删除/改名都会使本测试失败并列出差异，防止侧车打包过程误动 API。
+
+**2026-09-15 显式评审更新（回收站立项，主理人已拍板）**：
+新增 3 个路径 / 4 个方法端点（`GET /api/trash`、`POST /api/trash/restore`、
+`DELETE /api/trash/{entry_id}`、`DELETE /api/trash`）+ 1 个 schema `RestoreBody`。
+基线由 36 路径 / 47 方法 → **39 路径 / 51 方法**。属**预期变更**，非契约漂移。
 """
 
 from __future__ import annotations
@@ -37,6 +42,9 @@ SNAPSHOT_PATHS = [
     "/api/search",
     "/api/tags",
     "/api/tags/{tag_name}",
+    "/api/trash",
+    "/api/trash/restore",
+    "/api/trash/{entry_id}",
     "/api/tree",
     "/api/workspace/close",
     "/api/workspace/create",
@@ -76,7 +84,7 @@ def test_openapi_method_count(client):
         len([m for m in item if m in {"get", "post", "put", "delete", "patch"}])
         for item in resp.json()["paths"].values()
     )
-    assert methods == 47, f"方法端点数偏离实测基线 47，实际 {methods}"
+    assert methods == 51, f"方法端点数偏离实测基线 51，实际 {methods}"
 
 
 # P3-19：schema 签名快照——字段名/类型/required 的改动也会被冻结契约拦截，
@@ -116,6 +124,8 @@ SNAPSHOT_SCHEMAS = {
     ],
     "RecoveryRestore": ["doc_path:string:req"],
     "RenameBody": ["new_name:string:req", "path:string:req"],
+    # 2026-09-15 回收站立项新增（POST /api/trash/restore）
+    "RestoreBody": ["id:string:req"],
     "ValidationError": [
         "ctx:object:opt",
         "input:obj:opt",

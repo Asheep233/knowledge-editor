@@ -33,6 +33,12 @@ from fastapi.responses import FileResponse
 
 from .. import config
 from ..services import markdown_io
+# 2026-09-15（回收站立项）：附件引用索引改为**委托共享服务**。
+# 本文件原先自带一份 `_doc_refs_index` 实现，与 `services/references.py` 漂移
+# （F7：后端曾有三份引用提取实现）。回收站要求「被回收站文档引用的附件不算孤儿」，
+# 两份并存会让此处漏掉 `Trash/`，导致「清理孤儿」毁掉可恢复文档的引用链（契约 §6）。
+# 共享服务 docstring 本就声明「避免两套实现漂移」，本次落实。
+from ..services.references import _doc_refs_index
 
 router = APIRouter(prefix="/api/attachments", tags=["attachments"])
 
@@ -215,29 +221,6 @@ def _guard_attachment_rel(request: Request, rel_path: str) -> Path:
     if full is None:
         raise HTTPException(status_code=400, detail="非法路径")
     return full
-
-
-def _doc_refs_index(root: Path) -> dict[str, list[str]]:
-    """扫描所有 Markdown 文档的附件引用 -> {附件rel: [文档rel,...]}。
-
-    P1-17：跳过符号链接/Junction；与 references 服务语义保持一致（P2-15）。
-    """
-    index: dict[str, list[str]] = {}
-    for top in (config.DIR_ARTICLES, config.DIR_MODULES):
-        base = root / top
-        if not base.exists():
-            continue
-        for p in markdown_io.walk_files(base):
-            if p.suffix.lower() not in (".md", ".markdown"):
-                continue
-            try:
-                content = markdown_io.read_text(p)
-            except UnicodeDecodeError:
-                continue
-            doc_rel = p.relative_to(root).as_posix()
-            for ref in markdown_io.attachment_refs_in(content):
-                index.setdefault(ref, []).append(doc_rel)
-    return index
 
 
 @router.get("/list")

@@ -12,9 +12,16 @@ from . import markdown_io
 
 
 def _doc_paths(root: Path) -> list[Path]:
-    """Articles/Modules 下的全部 Markdown 文件（跳过符号链接，P1-17）。"""
+    """Articles / Modules / **Trash** 下的全部 Markdown 文件（跳过符号链接，P1-17）。
+
+    2026-09-15（回收站立项，契约 §6 数据安全）：**必须包含 `Trash/`**。
+    否则文档进回收站后即从引用索引消失 → 其引用的附件被判「孤儿」→
+    前端提供删除按钮且 `DELETE /api/attachments` 只校验孤儿
+    → 用户「清理孤儿」会毁掉**可恢复文档**的引用链。
+    代价：`referenced_by` 可能包含 `Trash/...` 路径（属预期，前端展示原路径即可）。
+    """
     out: list[Path] = []
-    for top in (config.DIR_ARTICLES, config.DIR_MODULES):
+    for top in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_TRASH):
         base = root / top
         if not base.exists():
             continue

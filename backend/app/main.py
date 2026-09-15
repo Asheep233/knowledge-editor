@@ -32,6 +32,7 @@ from .routers import (
     modules,
     search,
     tags,
+    trash,
     workspace,
 )
 from .routers.workspace import activate_workspace
@@ -134,6 +135,7 @@ app.include_router(history.router)
 app.include_router(index.router)
 app.include_router(fs.router)
 app.include_router(tags.router)
+app.include_router(trash.router)
 
 
 if __name__ == "__main__":

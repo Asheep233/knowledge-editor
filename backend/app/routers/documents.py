@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from .. import config
 from ..services import markdown_io
+from ..services import trash
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
@@ -315,6 +316,11 @@ def delete_article(request: Request, article_id: str) -> None:
                 hist.snapshot(rel, old_raw)
             except OSError:
                 pass  # 快照失败不阻止删除（历史为辅助能力）
-    full.unlink()
     rel = full.relative_to(request.app.state.workspace_root).as_posix()
+    # 2026-09-15 立项：删除改为**移入回收站**（`Trash/<entry>/<原rel>`，原子 rename）。
+    # - 只改位置，**不修改 Markdown 内容**（契约 C2）
+    # - P1-11 的「删除前强制快照」行为**保持不变**（上方照旧执行；双份保留是有意的）
+    # - 回收站位于 workspace 根级，不在任何扫描器枚举范围内 → 天然不进索引/搜索/树（C4）
+    trash.move_to_trash(request.app.state.workspace_root, rel, src=full)
+    # 原路径已腾空 → indexer 依此清理索引记录
     request.app.state.indexer.update_file(rel)

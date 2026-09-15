@@ -11,6 +11,7 @@ from . import (
     modules,
     search,
     tags,
+    trash,
     workspace,
 )
 
@@ -26,5 +27,6 @@ __all__ = [
     "modules",
     "search",
     "tags",
+    "trash",
     "workspace",
 ]

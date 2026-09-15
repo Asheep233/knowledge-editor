@@ -106,6 +106,8 @@ cd desktop/src-tauri && cargo test
 ```powershell
 # 先编出 release exe（注意：target 在仓库外，见坑 15）
 cd desktop\src-tauri && cargo build --release          # 首编 ~3.6 分钟（依赖缓存已在）
+# ★ 若本次改动含 backend/**：必须先重建侧车再 cargo build（见坑 18），
+#   否则 GUI 里新端点一律 404，而「版本不一致」横幅检测不到（版本号没变）
 # 启动脚本（已就绪）：设置 WebView2 调试端口 9333（9222 会被 Edge 抢占！）
 powershell -File C:\ke-tmp\launch-release-cdp.ps1
 # 连接：http://127.0.0.1:9333/json  → 找 type=page 的目标（url 含 tauri.localhost，title=AstraNota）
@@ -134,7 +136,8 @@ powershell -File C:\ke-tmp\launch-release-cdp.ps1
 cd frontend && npm run build
 grep -o '1\.1\.\d[^"]*' dist-build/assets/index-*.js | sort -u    # 应只出现新版本
 # 3) 侧车重建 + 拷入 binaries
-cd backend && python -m PyInstaller --noconfirm knowledgeeditor-backend.spec
+#    ★ PyInstaller 只在 Windows 侧（WSL 未安装，且只能构建 Linux 二进制）
+powershell -Command "Set-Location 'F:\Work\KE Project\knowledge-editor\backend'; & 'C:\Users\y8882\AppData\Local\Python\pythoncore-3.14-64\python.exe' -m PyInstaller --noconfirm knowledgeeditor-backend.spec"
 copy backend\dist\knowledgeeditor-backend.exe desktop\src-tauri\binaries\knowledgeeditor-backend-x86_64-pc-windows-msvc.exe
 # 4) NSIS 构建（WSL 预构建 + no-op beforeBuildCommand 的绕行见 §8 坑 5）
 #    tauri.conf.json 的 beforeBuildCommand 临时改为 "echo frontend prebuilt"，构建后恢复
@@ -210,6 +213,24 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
     壳进程与侧车残留、8000 端口不释放，形成「半死」假象。若在同一次会话里把
     CloseMainWindow + taskkill + window.close() 叠加，会得到误导性的「关窗不退出」结论。
     测关窗退出：**每次都用全新实例 + 只调一次 `CloseMainWindow()`**。
+18. **★ 改了后端就必须重建侧车，否则 GUI 里的新端点全是 404**（2026-09-15 实测踩到）
+    GUI 嵌入的是**预构建的侧车 exe**（`desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`），
+    平时 `cargo build --release` **不会**重建它，只会把它拷进 target。
+    症状：前端新功能面板显示「加载失败，请重试」，实测对应端点返回 **404**
+    （本次：回收站面板 → `/api/trash` 404，因侧车停留在 9/13 的构建）。
+
+    **★ 且「版本不一致」横幅检测不到这种情况** —— 该横幅只比对前后端**版本号字符串**
+    （两侧都是 `1.1.8-pre.1`），而侧车是**旧代码**。坑 2 覆盖不了本坑，必须靠下面的流程预防。
+
+    日常 GUI 迭代的正确顺序（改了 `backend/**` 时）：
+    ```powershell
+    # PyInstaller 只在 Windows 侧可用（WSL 未装，且 WSL 只能构建 Linux 二进制）
+    powershell -Command "Set-Location 'F:\Work\KE Project\knowledge-editor\backend'; & 'C:\Users\y8882\AppData\Local\Python\pythoncore-3.14-64\python.exe' -m PyInstaller --noconfirm knowledgeeditor-backend.spec"
+    copy backend\dist\knowledgeeditor-backend.exe desktop\src-tauri\binaries\knowledgeeditor-backend-x86_64-pc-windows-msvc.exe
+    cd desktop\src-tauri && cargo build --release   # 重新拷入 target
+    ```
+    **自检**：启动后 `curl http://127.0.0.1:8000/<新端点>` 应非 404（本次 = `/api/trash`）。
+    另注：PyInstaller 每次构建在 `%TEMP%` 留 200–500MB `_MEI*`，顺手清理（坑 11）。
 
 ## 9. 工作区迁移核对清单（★ 主理人迁移后必做）
 

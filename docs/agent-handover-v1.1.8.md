@@ -231,6 +231,31 @@ gh release create v<ver> --repo Asheep233/knowledge-editor --title "..." --notes
     ```
     **自检**：启动后 `curl http://127.0.0.1:8000/<新端点>` 应非 404（本次 = `/api/trash`）。
     另注：PyInstaller 每次构建在 `%TEMP%` 留 200–500MB `_MEI*`，顺手清理（坑 11）。
+19. **★ 原生对话框在 Tauri 下全部不可靠 —— `window.confirm` 尤其阴险**（2026-09-15 主理人实测发现）
+    三种原生对话框**行为各不相同**，必须分别对待：
+
+    | API | Tauri 下的真实实现 | 后果 |
+    |---|---|---|
+    | `window.confirm` | **被替换为 async**：`async function(i){ return await invoke("plugin:dialog\|confirm",…) }` | **恒返回 Promise（truthy）** → `if (!window.confirm(…)) return` **判定永为假 → 确认被静默绕过** |
+    | `window.alert` | 被替换 → `plugin:dialog\|message` | 该命令**已授权**，可用 |
+    | `window.prompt` | 仍是 `[native code]`（WebView2 原生）| 输入值不返回 → 已改自绘（坑见 `PromptDialog.tsx` 注释）|
+
+    **叠加第二重坑**：`capabilities/default.json` 的 `dialog:default` **实测只授予
+    `allow-message` / `allow-save` / `allow-open` —— 不含 `allow-confirm` / `allow-ask`**。
+    于是 `window.confirm` 还会返回 rejected Promise，**仍是 truthy**，照样被绕过。
+    → **修 ACL 也没用**（返回类型仍是 Promise），唯一可靠解法是自绘。
+
+    **症状极具欺骗性**：界面不报错、操作"看起来正常"，只是**破坏性操作不再询问**。
+    2026-09-15 之前全仓 17 处确认（删文档/删文件夹/彻底删除/清空/**丢弃未保存修改**/
+    切换工作区/导入覆盖…）**全部失效**，靠人工点界面**发现不了**，是主理人在 GUI 验收时察觉的。
+
+    **规则**：
+    - 一律使用 `components/common/PromptDialog` 的 `askConfirm` / `askPrompt`（自绘、Promise、可测）
+    - **必须 `await`**（拿到 Promise 本身恒真）
+    - 已加回归守卫 `components/common/no-native-dialog.test.ts`：源码中再用
+      `window.confirm` / `window.prompt`，或把 `askConfirm` 的 Promise 当布尔用 → **测试直接失败**
+    - **CDP 自查法**：`cdp-eval.py` 求值 `Object.prototype.toString.call(window.confirm('x'))`
+      —— 得到 `[object Promise]` 即说明它已被 Tauri 替换（不是布尔）
 
 ## 9. 工作区迁移核对清单（★ 主理人迁移后必做）
 

@@ -2,7 +2,76 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-14（v1.1.8 候选 S-2 落地 · GFM 脚注等价解析）
+> 最后更新：2026-09-15（回收站 MVP 立项交付 + 原生确认框静默失效根治）
+
+## 2026-09-15（回收站 MVP 交付 + 原生确认框静默失效根治）
+
+类型：Feature（回收站，主理人立项）+ 安全性既有缺陷修复
+状态：Completed
+分支：master · 修订 `af7542e` → `c05de58` → `ff7e9b8` → `e6b902a` → `9d4d207`
+
+### 一、回收站 MVP（主理人 2026-09-15 显式立项，推翻原「拍板延后」）
+
+**落点＝workspace 根级 `Trash/`**。选它的关键理由（实测对照）：该目录**不在**任何扫描器的
+枚举范围内（indexer / fs_watch / references / `/api/documents/tree` 只认
+Articles/Modules/Attachments）→ 回收站内容**天然不进索引/搜索/树/watcher，零扫描器改动**。
+反例：放 `Articles/.trash/` 会进 tree + 搜索 + 附件列表 + watcher，需 9+ 处排除。
+
+**清单从目录结构派生**（entry 名 `YYYYMMDD-HHMMSS-<4~16hex>` 内含删除时间，条目下保留原 rel
+完整路径）→ 不引入 DB 表/sidecar，不把 SQLite 当虚拟文件系统（Markdown 单源红线）。
+
+- 删除文档改道：`documents.py::delete_article` → 原子 move 入 Trash（**P1-11 删除前快照保持不变**，
+  双份保留是有意的）；文件夹与附件仍硬删（MVP 仅文档）
+- 新增 4 端点：`GET /api/trash`、`POST /api/trash/restore`、`DELETE /api/trash/{id}`、`DELETE /api/trash`
+- 前端：启用侧栏「回收站」导航（原为 disabled 占位）+ `TrashPanel`（列表/恢复/彻底删除/清空）
+- 契约 §7 文案：文档删除改**单次确认 +「可在回收站恢复」**；文件夹删除保留「无法恢复」双重确认
+
+**独立对抗验证发现 6 处真缺陷（含 1 处数据丢失、2 处符号链接逃逸），全部修复**：
+id 碰撞致覆盖（独占创建 + 计数扩展 id 兜底）、`purge` 遇符号链接 entry 500、
+`restore` 对符号链接 entry 放行可搬运外部文件、手工 entry 可恢复到非文档位置（改用
+`is_doc_rel` 白名单）、去重上限耗尽 500（应 409）、路径参数名与契约不一致。
+契约同步新增硬约束 C7（符号链接拒绝）/C8（恢复过文档白名单）/C9（id 碰撞不丢数据）。
+
+**孤儿附件数据安全**：文档进回收站后若从引用索引消失，其附件会被判「孤儿」并可删除，
+用户「清理孤儿」即毁掉可恢复文档的引用链 → `references.py` 扫描范围**增加 `Trash/`**；
+并**删除 `attachments.py` 自带的重复 `_doc_refs_index` 实现**（收敛到共享服务——
+不收敛则本加固会在此漏掉）。
+
+### 二、★ 原生 `window.confirm` 在 Tauri 下恒真 → 全仓 17 处确认静默失效（安全性）
+
+主理人 GUI 验收时察觉「删除没弹窗」。CDP 实测查明：
+
+```js
+window.confirm = async function(i){ return await invoke("plugin:dialog|confirm", {...}) }
+```
+
+Tauri v2 **把 `window.confirm` 替换成 async 函数** → 恒返回 **Promise（truthy）** →
+`if (!window.confirm(…)) return` **判定永为假** → **确认全部被静默绕过**。
+叠加 `capabilities/default.json` 的 `dialog:default` **实测只授予
+allow-message / allow-save / allow-open（不含 allow-confirm）** → 返回 rejected Promise，
+**仍是 truthy** → **修 ACL 也无效**。
+
+**影响**：17 处确认全部失效，含**丢弃未保存修改**（切换文档/重载外部版本/切换工作区/
+关闭工作区/新建/导入覆盖）、改名丢弃、恢复历史版本、删除孤儿附件、重建索引 ——
+即**涉及数据丢失的操作一直没有二次确认**，且界面无报错、靠肉眼验收发现不了。
+
+**修复**：`PromptDialog` 扩展为 prompt + **confirm** 双形态（`askConfirm` 返回
+`Promise<boolean>`，危险操作初始焦点落「取消」防误触回车）；17 处全部改 `await askConfirm(…)`。
+**未动 `window.alert`**（其 `plugin:dialog|message` 已授权、确实可用）。
+新增回归守卫 `no-native-dialog.test.ts`（源码再用原生对话框或把 Promise 当布尔 → 测试直接失败）。
+
+**注意与 P0-2 的区别**：切换文档时「先 flush 未决保存再切换」是 **P0-2 的既有设计**（防丢输入），
+不是本次改动；`askConfirm` 只在 **flush 超时**时才出现。
+
+### 验证
+
+pytest **450 passed + 2 skipped**（基线 314+2）· tsc **0** ·
+vitest **33 files / 411 passed + 1 skipped**（基线 28/378+1）· cargo **13** · `npm run build` ✓ ·
+独立对抗套件 **120 用例 0 红**。
+
+> 独立性声明：对抗用例由独立 agent `verifier-trash` 按契约推导（不 import 实现模块），
+> 但该作者因 token 耗尽中断，**执行与判定由 Lead（实现者本人）完成** →
+> `docs/verification-trash.md` §0 已如实标注「不构成完整独立验证」。
 
 ## 2026-09-14（v1.1.8 候选 S-2 落地 · GFM 脚注 `[^1]` 等价解析）
 

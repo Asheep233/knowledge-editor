@@ -2,7 +2,10 @@
  * - 最近文档（4.8）：软件配置存储，点击快速重新打开
  * - 标签（4.5）：标签列表 + 点击筛选
  * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（文档=单次确认+可在回收站恢复；文件夹=二次确认）、移动
- * - 模块 / 附件：点击打开
+ * - 模块：点击打开
+ * - 附件（task-12 迁入，附件能力的家）：可折叠小节（默认展开）——行点击就地展开「附属情况与附属记录」
+ *   （全部 referenced_by 逐条可跳转；未引用显示自身详情）+ 行右侧「打开文件」独立 <a> + 孤儿附件手动删除。
+ *   数据源 = listAttachments() / listOrphans()（不再依赖 tree.attachments）。
  * - 回收站（MVP）：启用导航项，恢复 / 彻底删除 / 清空（契约 docs/design-trash-mvp.md）
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -12,12 +15,15 @@ import {
   createDocIn,
   createFolder,
   deleteArticle,
+  deleteAttachment,
   deleteFolder,
   getFilesByTag,
   getRecentDocuments,
   getTags,
   getTree,
+  listAttachments,
   listModules,
+  listOrphans,
   movePath,
   rebuildIndex,
   renameDoc,
@@ -26,6 +32,8 @@ import {
 } from '../../api/client'
 import type { FsMutation } from '../../App'
 import type {
+  AttachmentItem,
+  OrphanItem,
   RecentDocument,
   SearchResult,
   TagInfo,
@@ -62,6 +70,19 @@ interface CtxMenu {
 
 const TOP_ARTICLES = 'Articles'
 const TOP_MODULES = 'Modules'
+
+function fmtSize(n?: number): string {
+  if (n == null) return '—'
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
+}
+
+function fmtTime(iso?: string): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('zh-CN', { hour12: false })
+}
 
 /** QuickNav 导航项（参考稿：激活态 = sidebar-primary 底白字） */
 function NavItem({
@@ -120,6 +141,15 @@ export default function LeftSidebar({
   const [treeError, setTreeError] = useState(false)
   const [recent, setRecent] = useState<RecentDocument[]>([])
   const [tags, setTags] = useState<TagInfo[]>([])
+  // 附件区（task-12：附件能力的家）——数据源为 listAttachments()/listOrphans()，不依赖 tree.attachments
+  const [attachOpen, setAttachOpen] = useState(true) // 默认展开（保持左栏现有观感）
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([])
+  const [orphans, setOrphans] = useState<OrphanItem[]>([])
+  const [attachError, setAttachError] = useState(false)
+  // 已就地展开「附属情况与附属记录」的附件（同时只展开一行，点另一行 = 切换）
+  const [expandedAttach, setExpandedAttach] = useState<string | null>(null)
+  // 正在删除的孤儿附件路径（删除中禁用按钮，防止重复提交）
+  const [deletingAttach, setDeletingAttach] = useState<string | null>(null)
   // 模块版本号（已批准 API 变更：GET /api/modules 带 version），供模块树行 hover 标题/小字
   const [moduleVersions, setModuleVersions] = useState<Record<string, number>>({})
   const [activeTag, setActiveTag] = useState<string | null>(null)
@@ -185,6 +215,44 @@ export default function LeftSidebar({
     getRecentDocuments().then((r) => setRecent(r.documents)).catch(() => undefined)
     getTags().then((r) => setTags(r.tags)).catch(() => undefined)
   }, [loadTree])
+
+  // ---------- 附件加载（task-12：附件列表 + 孤儿检测，仅手动删除） ----------
+  const loadAttachments = useCallback(async () => {
+    setAttachError(false)
+    try {
+      const [a, o] = await Promise.all([listAttachments(), listOrphans()])
+      setAttachments(a.attachments)
+      setOrphans(o.orphans)
+    } catch {
+      // 与文件树一致：加载失败给可见错误 + 重试入口，不当作「空」
+      setAttachError(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadAttachments()
+  }, [loadAttachments, refreshKey])
+
+  const toggleAttachmentDetail = useCallback((rel: string) => {
+    setExpandedAttach((prev) => (prev === rel ? null : rel))
+  }, [])
+
+  // v0.6.1 约束：孤儿附件仅手动删除、绝不自动。显式确认后 DELETE（后端会二次校验孤儿身份）
+  const handleDeleteOrphan = useCallback(
+    async (o: OrphanItem) => {
+      if (!(await askConfirm(`确定删除孤儿附件「${o.name}」吗？\n删除后不可恢复。`))) return
+      setDeletingAttach(o.path)
+      try {
+        await deleteAttachment(o.path)
+        await loadAttachments()
+      } catch (e) {
+        window.alert(`删除失败：${e instanceof Error ? e.message : String(e)}`)
+      } finally {
+        setDeletingAttach(null)
+      }
+    },
+    [loadAttachments],
+  )
 
   // ---------- 全局搜索（Phase 6.1） ----------
   const doSearch = useCallback(async (q: string) => {
@@ -757,27 +825,181 @@ export default function LeftSidebar({
           )}
         </Section>
 
-        {/* 附件（点击打开） */}
-        <Section title="附件">
-          {!tree?.attachments || Object.values(tree.attachments).every((v) => v.length === 0) ? (
-            <Empty text="暂无附件" />
-          ) : (
-            ['images', 'videos', 'files'].map((cat) =>
-              (tree?.attachments[cat as keyof typeof tree.attachments] ?? []).map((a) => (
-                <a
-                  key={a}
-                  href={attachmentUrl(a)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block truncate rounded px-2 py-1 text-left text-[12px] text-foreground/80 hover:bg-accent"
-                  title={a}
-                >
-                  {a.replace(/^Attachments\//, '')}
-                </a>
-              )),
-            )
+        {/* 附件（task-12：附件能力的家）—— 可折叠小节（默认展开）；行点击看「附属情况与附属记录」；
+            行右侧独立「打开文件」<a>（不嵌套在行按钮内）；孤儿附件仅手动删除 */}
+        <div className="border-b border-border py-2">
+          <div className="mb-1 flex items-center justify-between gap-1 px-3">
+            <div className="flex min-w-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setAttachOpen((v) => !v)}
+                aria-expanded={attachOpen}
+                aria-label={attachOpen ? '收起附件' : '展开附件'}
+                title={attachOpen ? '收起附件' : '展开附件'}
+                data-testid="attachments-toggle"
+                className="flex items-center gap-1 text-[12px] font-normal text-sidebar-foreground transition-colors hover:text-foreground/80"
+              >
+                <Icon name={attachOpen ? 'chevron-down' : 'chevron-right'} className="size-3.5" />
+                附件{' '}{attachments.length}
+                {/* 收起后孤儿信号不能丢：徽章常驻表头（在折叠按钮内 → 点它即展开） */}
+                {orphans.length > 0 && (
+                  <span
+                    data-testid="orphan-badge"
+                    title={`${orphans.length} 个孤儿附件未被任何 Markdown 引用（展开附件可处理）`}
+                    className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-amber-600"
+                  >
+                    <Icon name="alert" className="size-3" />
+                    孤儿附件 {orphans.length}
+                  </span>
+                )}
+              </button>
+            </div>
+            <button
+              type="button"
+              aria-label="刷新附件"
+              title="刷新附件"
+              onClick={() => void loadAttachments()}
+              className="grid h-6 w-6 shrink-0 place-items-center rounded text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Icon name="rotate-ccw" className="size-3.5" />
+            </button>
+          </div>
+
+          {/* 收起态只留一行表头：行 / 详情 / 孤儿区块均不渲染 */}
+          {attachOpen && (
+            <div className="px-1.5">
+              {attachError ? (
+                <LoadError onRetry={() => void loadAttachments()} />
+              ) : attachments.length === 0 ? (
+                <Empty text="暂无附件" />
+              ) : null}
+              {/* 每行 = 触发按钮 + 独立「打开文件」<a> + 可选就地详情（详情内引用文档也是按钮） */}
+              {attachments.map((a) => {
+                const cited = a.referenced_by.length > 0
+                const catIcon = a.category === 'images' ? 'image' : a.category === 'videos' ? 'video' : 'file-text'
+                const detailOpen = expandedAttach === a.rel_path
+                return (
+                  <div key={a.rel_path} data-attachment={a.rel_path} className="mb-0.5">
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        data-attachment-row={a.rel_path}
+                        aria-expanded={detailOpen}
+                        onClick={() => toggleAttachmentDetail(a.rel_path)}
+                        title={cited ? `已被 ${a.referenced_by.length} 篇文档引用 · ${a.rel_path}` : `未被引用 · ${a.rel_path}`}
+                        className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded px-1.5 text-left text-[12px] transition-colors hover:bg-accent focus-visible:outline-none"
+                      >
+                        <Icon name={catIcon as 'image'} className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate text-foreground">{a.name}</span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">{fmtSize(a.size)}</span>
+                        <span
+                          className={`shrink-0 rounded-full px-1.5 text-[10px] ${
+                            cited ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {cited ? '已引用' : '未引用'}
+                        </span>
+                      </button>
+                      {/* 原有「打开文件」能力保留：独立 <a>，禁止嵌套在行按钮内 */}
+                      <a
+                        href={attachmentUrl(a.rel_path)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="打开附件"
+                        aria-label={`打开附件 ${a.name}`}
+                        data-attachment-open={a.rel_path}
+                        className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        <Icon name="export" className="size-3.5" />
+                      </a>
+                    </div>
+
+                    {/* 附属情况与附属记录（就地展开，只读展示） */}
+                    {detailOpen && (
+                      <div
+                        data-attachment-detail={a.rel_path}
+                        data-ref-count={a.referenced_by.length}
+                        className="mx-1 mb-1 rounded-[6px] border border-border bg-muted/50 px-2 py-1.5"
+                      >
+                        <div className="text-[11px] font-medium text-foreground">附属情况与附属记录</div>
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px]">
+                          <span className="text-muted-foreground">引用篇数</span>
+                          <span className="text-foreground">{a.referenced_by.length}</span>
+                        </div>
+                        {cited ? (
+                          // 全部引用文档（不是只取 referenced_by[0]），逐条点击 → onOpenArticle 跳转
+                          <ul className="mt-0.5 space-y-0.5">
+                            {a.referenced_by.map((docRel) => (
+                              <li key={docRel}>
+                                <button
+                                  type="button"
+                                  data-ref-doc={docRel}
+                                  onClick={() => onOpenArticle(docRel)}
+                                  title={`打开文档：${docRel}`}
+                                  className="block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-primary hover:bg-accent hover:underline"
+                                >
+                                  <Icon name="file-text" className="mr-1 inline size-3 align-[-2px] text-muted-foreground" />
+                                  {docRel}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
+                            <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">
+                              未被引用
+                            </span>
+                            <span className="text-muted-foreground">未被任何文档引用</span>
+                          </div>
+                        )}
+                        {/* 附件自身详情（未被引用时的主要信息；已引用时同样保留全路径） */}
+                        <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px]">
+                          <span className="text-muted-foreground">路径</span>
+                          <span className="break-all font-mono text-foreground">{a.rel_path}</span>
+                          <span className="text-muted-foreground">大小</span>
+                          <span className="text-foreground">{fmtSize(a.size)}</span>
+                          <span className="text-muted-foreground">修改时间</span>
+                          <span className="text-foreground">{fmtTime(a.mtime)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {attachments.length > 0 && (
+                <p className="px-1.5 pb-0.5 pt-0.5 text-[11px] text-muted-foreground">
+                  孤儿附件仅支持手动删除，不随笔记回滚。
+                </p>
+              )}
+
+              {/* 孤儿附件（仅手动删除、绝不自动）——随展开态；收缩后信号由表头琥珀徽章承载 */}
+              {orphans.length > 0 && (
+                <div data-testid="orphans-block" className="mx-1 mb-1 mt-1 rounded border border-amber-100 bg-amber-50/50 p-2">
+                  <div className="mb-1 text-[11px] font-medium text-amber-600">孤儿附件（{orphans.length}）</div>
+                  <p className="mb-2 text-[10px] leading-4 text-muted-foreground">
+                    未被任何 Markdown 引用。仅手动删除，绝不自动；被引用附件后端会拒绝删除。
+                  </p>
+                  {orphans.map((o) => (
+                    <div key={o.path} className="mb-1 flex items-start justify-between gap-1">
+                      <div className="truncate font-mono text-[10px] text-foreground" title={o.path}>
+                        {o.name}
+                        <span className="ml-1.5 text-[10px] text-muted-foreground">{fmtSize(o.size)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={deletingAttach === o.path}
+                        onClick={() => void handleDeleteOrphan(o)}
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {deletingAttach === o.path ? '删除中…' : '删除'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </Section>
+        </div>
         </>
         )}
       </div>

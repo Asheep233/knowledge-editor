@@ -44,7 +44,7 @@ SNAPSHOT_PATHS = [
     "/api/tags/{tag_name}",
     "/api/trash",
     "/api/trash/restore",
-    "/api/trash/{entry_id}",
+    "/api/trash/{id}",
     "/api/tree",
     "/api/workspace/close",
     "/api/workspace/create",

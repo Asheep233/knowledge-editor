@@ -17,11 +17,12 @@
       └─ Articles/另一篇.md
 ```
 
-- **entry 名**：`YYYYMMDD-HHMMSS-<4位随机hex>`（同秒多次删除不冲突）
+- **entry 名**：`YYYYMMDD-HHMMSS-<4~16位小写hex>`（常规 4 位随机；**碰撞时自动扩展**，
+  由 `mkdir(exist_ok=False)` 独占创建 + 计数兜底保证绝不覆盖既有 entry）
 - **entry 内含原 rel 的完整路径** → 恢复 = 把 `<entry>/<rel>` 移回 `<ws>/<rel>`，**原路径无需额外元数据**
 - **删除时间**：取自 entry 名（不额外存元数据文件）
 - **不引入 sidecar/DB 表**：清单完全从目录结构派生 → 符合「Markdown 单源、不把 SQLite 当虚拟文件系统」（`fs.py:3-11`）
-- **目录惰性创建**：首次删除时创建；老工作区无需预建
+- **目录惰性创建**：首次删除时创建；`GET /api/trash` **不创建**目录（老工作区无需预建）
 
 ## 2. 硬约束（实现必须满足）
 
@@ -32,7 +33,10 @@
 | C3 | 删除用**原子 rename**（`os.replace` 优先），不用 copy+delete | 避免半完成文件 |
 | C4 | **`Trash/` 不参与索引/watcher/搜索/tree** | 它们硬编码只枚举 `Articles/Modules/Attachments` → **无需改动**；本约束是**不变量**，不是待办 |
 | C5 | 删除既有 `Drafts/backup` 快照行为**保持不变** | 双份保留（历史 + 回收站）是**有意**的；`MAX_VERSIONS=30` 不动 |
-| C6 | 恢复**不得静默覆盖** | 目标存在 → 自动改名 + 返回 `renamed: true` |
+| C6 | 恢复**不得静默覆盖** | 目标存在 → 自动改名 + 返回 `renamed: true`；去重上限（1000）耗尽 → **409**（不得冒泡 500）|
+| C7 | **符号链接一律拒绝** | `Trash/` 根或 entry 本身是符号链接时，`restore`/`purge` 均拒绝（`shutil.rmtree` 遇链接会 OSError→500；且可被用来搬运工作区外文件）。`_entry_files` 还会拒绝**经由链接越出 entry** 的路径 |
+| C8 | **恢复目标必须过文档白名单** | 复用删除端点同款 `markdown_io.is_doc_rel`（`Articles/` 或 `Modules/` 下的 `.md`/`.markdown`）→ 手工构造的 entry 无法把文件写进 `Attachments/`/`Drafts/`/`.knowledgeeditor`/工作区根 |
+| C9 | **entry id 碰撞不得丢数据** | 独占创建 + 扩展后缀；时间与随机源被固定的极端情况下也只换名字、绝不覆盖 |
 
 ## 3. API 契约
 

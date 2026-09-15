@@ -27,15 +27,16 @@ from pathlib import Path
 from .. import config
 from . import markdown_io
 
-#: entry 名：YYYYMMDD-HHMMSS-<4位小写hex>
-_ENTRY_RE = re.compile(r"^(\d{8})-(\d{6})-([0-9a-f]{4})$")
+#: entry 名：YYYYMMDD-HHMMSS-<4~16位小写hex>。
+#: 常规为 4 位随机 hex；**碰撞时自动扩展**（见 `move_to_trash` 的计数兜底），
+#: 保证「同一秒 + 随机源被固定/耗尽」的极端情况下也绝不覆盖既有 entry。
+_ENTRY_RE = re.compile(r"^(\d{8})-(\d{6})-([0-9a-f]{4,16})$")
 
 #: 恢复冲突时的去重后缀上限（与附件去重约定一致）
 _DEDUP_MAX = 1000
 
-#: 受保护顶层：恢复目标**不得**落在这些目录下（纵深防御；与 fs.py 的 _FORBIDDEN_ROOT 同口径）
-_PROTECTED_TOP = {config.DIR_INTERNAL, config.DIR_DRAFTS, config.DIR_TRASH}
-_PROTECTED_TOP_LOWER = {d.lower() for d in _PROTECTED_TOP}
+#: entry id 碰撞时的重试次数（独占创建，见 move_to_trash）
+_ENTRY_RETRY = 16
 
 
 def trash_root(root: Path) -> Path:
@@ -68,25 +69,89 @@ def deleted_at_from_entry(entry_id: str) -> str:
 
 
 def _entry_files(entry: Path) -> list[Path]:
-    """entry 内的普通文件（跳过符号链接；P1-17 同款口径）。"""
-    if not entry.is_dir():
+    """entry 内的普通文件（跳过符号链接；P1-17 同款口径）。
+
+    额外拒绝**经由符号链接越出 entry** 的路径：`rglob` 可能穿过链接目录，
+    若不校验会把工作区外的文件当成条目内容（purge/restore 都可能被利用）。
+    """
+    if entry.is_symlink() or not entry.is_dir():
         return []
-    return sorted(
-        p for p in entry.rglob("*") if p.is_file() and not p.is_symlink()
-    )
+    out: list[Path] = []
+    for p in entry.rglob("*"):
+        if p.is_symlink() or not p.is_file():
+            continue
+        try:
+            if entry not in p.resolve().parents:
+                continue  # 解析后越出 entry（符号链接逃逸）
+        except OSError:
+            continue
+        out.append(p)
+    return sorted(out)
+
+
+def _checked_entry(root: Path, entry_id: str) -> Path:
+    """校验并返回 entry 路径。
+
+    - `entry_id` 经严格白名单（天然阻断 `../` / 绝对路径 / 空串等）
+    - **拒绝符号链接**：`Trash` 根或 entry 本身是符号链接时一律拒绝 ——
+      `shutil.rmtree` 遇到符号链接会抛 OSError（→500），且 restore 可能被用来
+      搬运工作区外的文件。
+    """
+    if not is_entry_id(entry_id):
+        raise ValueError("非法条目 id")
+    base = trash_root(root)
+    if base.is_symlink():
+        raise ValueError("回收站目录为符号链接")
+    entry = base / entry_id
+    if entry.is_symlink():
+        raise ValueError("条目为符号链接")
+    return entry
 
 
 def move_to_trash(root: Path, rel: str, *, src: Path | None = None) -> str:
     """把 ``root/rel`` 原子移入回收站，返回 entry id。
 
     只做 ``os.replace``（同盘原子）；**不读取也不改写文件内容**（C2）。
+
+    entry 目录以 ``mkdir(exist_ok=False)`` **独占创建**，碰撞则换 id 重试 ——
+    避免「同秒同随机后缀」时两次删除落进同一 entry 而互相覆盖（数据丢失）。
+    若随机源被固定/耗尽导致重试全碰撞，则退到**计数扩展 id**（仍匹配白名单），
+    保证这种情况下也只是换名字、绝不覆盖。
     """
     source = src if src is not None else root / rel
-    entry_id = _new_entry_id()
-    dest = trash_root(root) / entry_id / rel
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(source, dest)
-    return entry_id
+    base = trash_root(root)
+    last = ""
+    for _ in range(_ENTRY_RETRY):
+        entry_id = _new_entry_id()
+        last = entry_id
+        if _claim_entry(base, entry_id) is None:
+            continue
+        dest = base / entry_id / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(source, dest)
+        return entry_id
+    # 兜底：随机源被固定 → 用确定性的计数扩展 id（4→16 位 hex 段内递增）
+    for n in range(1, 0x1000000):
+        entry_id = f"{last}{n:x}"
+        if not _ENTRY_RE.match(entry_id):
+            break
+        if _claim_entry(base, entry_id) is None:
+            continue
+        dest = base / entry_id / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(source, dest)
+        return entry_id
+    raise RuntimeError("回收站条目创建失败（id 空间耗尽）")
+
+
+def _claim_entry(base: Path, entry_id: str) -> Path | None:
+    """独占创建 entry 目录；已被占用时返回 None（调用方换 id 重试）。"""
+    entry = base / entry_id
+    try:
+        entry.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        return None
+    return entry
 
 
 def list_items(root: Path) -> list[dict]:
@@ -97,7 +162,7 @@ def list_items(root: Path) -> list[dict]:
     items: list[dict] = []
     for entry in base.iterdir():
         entry_id = _entry_id_from_name(entry.name)
-        if entry_id is None:
+        if entry_id is None or entry.is_symlink():
             continue
         files = _entry_files(entry)
         if not files:
@@ -136,10 +201,11 @@ def restore(root: Path, entry_id: str) -> tuple[str, bool]:
 
     - 原路径被占用 → **自动改名**（``-1``/``-2``…），**绝不静默覆盖**（契约 C6）
     - 原路径的父目录由 ``mkdir(parents=True)`` 自动重建
+    - 恢复目标必须通过**与删除端点同款的白名单** ``markdown_io.is_doc_rel``
+      （`Articles/` 或 `Modules/` 下的 `.md`/`.markdown`）—— 防止手工构造的 entry
+      把文件写进 `Attachments/`/`Drafts/`/`.knowledgeeditor`/工作区根
     """
-    if not is_entry_id(entry_id):
-        raise ValueError("非法条目 id")
-    entry = trash_root(root) / entry_id
+    entry = _checked_entry(root, entry_id)
     if not entry.is_dir():
         raise FileNotFoundError("条目不存在")
     files = _entry_files(entry)
@@ -147,14 +213,11 @@ def restore(root: Path, entry_id: str) -> tuple[str, bool]:
         raise FileNotFoundError("条目为空")
     src = files[0]
     rel = src.relative_to(entry).as_posix()
+    if not markdown_io.is_doc_rel(rel):
+        raise ValueError("条目内容不在文档白名单内")
     target = markdown_io.safe_rel_path(root, rel)
     if target is None:
         raise ValueError("条目内容越出工作区")
-    # 纵深防御：即使 entry 内容被手工构造，也不允许恢复进受保护目录
-    # （.knowledgeeditor / Drafts / Trash）——恢复目标必须是业务数据区。
-    first_seg = rel.split("/", 1)[0]
-    if first_seg in _PROTECTED_TOP or first_seg.lower() in _PROTECTED_TOP_LOWER:
-        raise ValueError("条目内容指向受保护目录")
     renamed = False
     if target.exists():
         target = _dedupe_target(target)
@@ -168,10 +231,8 @@ def restore(root: Path, entry_id: str) -> tuple[str, bool]:
 
 
 def purge(root: Path, entry_id: str) -> None:
-    """彻底删除单个条目（不可恢复）。"""
-    if not is_entry_id(entry_id):
-        raise ValueError("非法条目 id")
-    entry = trash_root(root) / entry_id
+    """彻底删除单个条目（不可恢复）。符号链接 entry 一律拒绝（见 `_checked_entry`）。"""
+    entry = _checked_entry(root, entry_id)
     if not entry.exists():
         raise FileNotFoundError("条目不存在")
     shutil.rmtree(entry)

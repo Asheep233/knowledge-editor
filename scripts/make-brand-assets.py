@@ -63,19 +63,18 @@ def fit_into(im: Image.Image, w: int, h: int, margin: float = 0.0) -> Image.Imag
     return out
 
 
-def resize_width(im: Image.Image, w: int) -> Image.Image:
-    """等比缩放到指定宽度（高度由比例决定）。"""
-    h = max(1, round(im.height * w / im.width))
-    return im.resize((w, h), Image.LANCZOS)
+def dims_of(path: Path) -> tuple[int, int] | None:
+    """读取既有产物的尺寸（必须在覆盖写之前调用）。"""
+    if not path.is_file():
+        return None
+    with Image.open(path) as im:
+        return (im.width, im.height)
 
 
-def report(name: str, im: Image.Image, prev: Path | None) -> None:
+def report(name: str, im: Image.Image, prev: tuple[int, int] | None) -> None:
     bb = im.getchannel("A").getbbox()
     fill = (bb[2] - bb[0]) * (bb[3] - bb[1]) / (im.width * im.height) * 100
-    old = ""
-    if prev and prev.exists():
-        p = Image.open(prev).convert("RGBA")
-        old = f"  (旧 {p.width}x{p.height})"
+    old = f"  (旧 {prev[0]}x{prev[1]})" if prev else "  (新建)"
     print(f"  ✓ {name:<44} {im.width}x{im.height}  内容占比 {fill:5.1f}%{old}")
 
 
@@ -102,15 +101,16 @@ def main() -> int:
             return sys.exit(f"缺少源文件：{sp}")
         im = load_cropped(sp)
         dst = ASSETS / dst_name
-        prev = dst if dst.exists() else None
+        prev = dims_of(dst)
         if kind == "icon":
             # 256×256 画布内等比居中（内容宽高比 1.34 ≠ 1，绝不能拉伸）
             out = fit_into(im, 256, 256)
             if dst_name.endswith("light-256.png"):
                 icon_src = im
         else:
-            # 横幅：等比缩放到宽 800（文件名里的 800x200 为近似标签，实际高度随比例）
-            out = resize_width(im, 800)
+            # 横幅：等比放入 800×200 画布（**不拉伸**，留透明边）——保证「文件名里的尺寸 = 真实尺寸」
+            # 不要改成 resize_width(800)：那样高度随源比例浮动（实测 202），文件名即谎报尺寸。
+            out = fit_into(im, 800, 200)
         out.save(dst)
         report(dst_name, out, prev)
 
@@ -119,8 +119,9 @@ def main() -> int:
         return sys.exit("未能取得 icon 源")
     sq = fit_into(icon_src, 1024, 1024, margin=0.08)
     sq_path = out_dir / "astra-icon-1024.png"
+    prev_sq = dims_of(sq_path)
     sq.save(sq_path)
-    report(f"(tauri icon 源) {sq_path.name}", sq, None)
+    report(f"(tauri icon 源) {sq_path.name}", sq, prev_sq)
     print(f"\n下一步（Windows 侧，从 desktop/ 运行）：")
     print(f'  node node_modules\\@tauri-apps\\cli\\tauri.js icon "{sq_path}"')
     return 0

@@ -173,3 +173,30 @@ export interface RebuildPayload {
   stats: { document: number; module: number; attachment: number }
 }
 
+// ---------- 回收站 MVP（契约 docs/design-trash-mvp.md §3） ----------
+
+export interface TrashItem {
+  /** entry 名，如 "20260915-143012-a1b2" */
+  id: string
+  /** 原相对路径，如 "Articles/子目录/文档.md" */
+  rel_path: string
+  /** 文件名（展示用） */
+  name: string
+  /** ISO8601（由 entry 名解析） */
+  deleted_at: string
+  /** 字节 */
+  size: number
+}
+
+export interface TrashListPayload {
+  count: number
+  items: TrashItem[]
+}
+
+export interface TrashRestoreResult {
+  id: string
+  restored_to: string
+  /** 目标路径已存在 → 后端自动改名（<stem>-1<ext>），前端据此提示 */
+  renamed: boolean
+}
+

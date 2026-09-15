@@ -104,6 +104,8 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0)
   // P3-8：恢复检测失败标记（允许重试）
   const recoveryLastFailedRef = useRef(false)
+  /** 回收站：记录「删除前的当前文档」id——该文档被恢复时自动重开（契约 §9.4） */
+  const lastDeletedIdRef = useRef<string | null>(null)
   // P1-7：loading 计数（多请求并发时不误清空 spinner）
   const loadingCountRef = useRef(0)
   // P2-7：启动时读取的设置快照（供 restoreLastState / autoOpenRecentWorkspace 接线）
@@ -399,6 +401,7 @@ export default function App() {
     setTreeRefresh((n) => n + 1)
     eventCursor.current = 0
     lastSavedAt.current.clear()
+    lastDeletedIdRef.current = null
     setFirstRun(false)
   }, [])
 
@@ -528,6 +531,7 @@ export default function App() {
       setTreeRefresh((n) => n + 1)
       if (!article) return
       if (m.type === 'delete' && m.from === article.id) {
+        lastDeletedIdRef.current = m.from
         setArticle(null)
         setSaveState('idle')
         window.alert('当前文档已被删除')
@@ -553,6 +557,21 @@ export default function App() {
     }
     return true
   }, [])
+
+  // ---------- 回收站恢复（契约 §9.4） ----------
+  // 恢复成功后刷新文件树（复用既有 setTreeRefresh 模式）；若恢复的正是「删除前的当前文档」
+  // （期间未打开其它文档）或它仍处于打开状态，则复用 requestOpenArticle 重新载入，
+  // 避免用户停在空白编辑器或停留在已失效路径上。
+  const handleTrashRestored = useCallback(
+    async (restoredTo: string) => {
+      setTreeRefresh((n) => n + 1)
+      const cur = articleIdRef.current
+      const reopen = cur === restoredTo || (cur === null && lastDeletedIdRef.current === restoredTo)
+      lastDeletedIdRef.current = null
+      if (reopen) await requestOpenArticle(restoredTo)
+    },
+    [requestOpenArticle],
+  )
 
   // ---------- P3-8：「恢复检查…」再入口（稍后处理后可手动重新检测） ----------
   const runRecoveryCheck = useCallback(async () => {
@@ -728,6 +747,7 @@ export default function App() {
           onBeforeFsMutation={handleBeforeFsMutation}
           onOpenSettings={() => setSettingsOpen(true)}
           workspaceRoot={workspace?.root ?? null}
+          onTrashRestored={handleTrashRestored}
         />
 
       }

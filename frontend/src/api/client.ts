@@ -14,6 +14,8 @@ import type {
   SearchPayload,
   TagFilesPayload,
   TagListPayload,
+  TrashListPayload,
+  TrashRestoreResult,
   TreePayload,
   WorkspaceState,
 } from '../types'
@@ -411,5 +413,30 @@ export function restoreRecovery(docPath: string): Promise<ArticleMeta> {
     method: 'POST',
     body: JSON.stringify({ doc_path: docPath }),
   })
+}
+
+// ---------- 回收站 MVP（接口契约 docs/design-trash-mvp.md §3） ----------
+
+/** 回收站列表（清单由后端从 <ws>/Trash 目录结构派生） */
+export function listTrash(): Promise<TrashListPayload> {
+  return request<TrashListPayload>('/api/trash')
+}
+
+/** 恢复 entry 到原路径；目标已存在时后端自动改名，响应 renamed: true */
+export function restoreTrash(id: string): Promise<TrashRestoreResult> {
+  return request<TrashRestoreResult>('/api/trash/restore', {
+    method: 'POST',
+    body: JSON.stringify({ id }),
+  })
+}
+
+/** 彻底删除单个 entry（不可恢复，需调用方先确认） */
+export function purgeTrash(id: string): Promise<void> {
+  return request<void>(`/api/trash/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** 清空回收站（幂等，需调用方先确认） */
+export function clearTrash(): Promise<void> {
+  return request<void>('/api/trash', { method: 'DELETE' })
 }
 

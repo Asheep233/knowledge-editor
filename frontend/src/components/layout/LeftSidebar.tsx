@@ -1,8 +1,9 @@
 /** 左侧栏（Phase 4 重构）：
  * - 最近文档（4.8）：软件配置存储，点击快速重新打开
  * - 标签（4.5）：标签列表 + 点击筛选
- * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（二次确认）、移动
+ * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（文档=单次确认+可在回收站恢复；文件夹=二次确认）、移动
  * - 模块 / 附件：点击打开
+ * - 回收站（MVP）：启用导航项，恢复 / 彻底删除 / 清空（契约 docs/design-trash-mvp.md）
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
@@ -32,6 +33,7 @@ import type {
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
 import { Icon } from '../icons'
+import TrashPanel from '../trash/TrashPanel'
 import { askPrompt } from '../common/PromptDialog'
 import iconLogoLight from '../../assets/astranota/astranota-icon-light-256.png'
 import iconLogoDark from '../../assets/astranota/astranota-icon-dark-256.png'
@@ -48,6 +50,8 @@ interface Props {
   onOpenSettings?: () => void
   /** workspace 根路径（Footer mono 展示） */
   workspaceRoot?: string | null
+  /** 回收站恢复成功（App 侧刷新文件树；恢复的是删除前的当前文档时重新打开） */
+  onTrashRestored?: (restoredTo: string) => void
 }
 
 interface CtxMenu {
@@ -109,6 +113,7 @@ export default function LeftSidebar({
   onBeforeFsMutation,
   onOpenSettings,
   workspaceRoot,
+  onTrashRestored,
 }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
   // P2-8：文件树加载失败不再是「空」，而是明确错误提示
@@ -261,7 +266,13 @@ export default function LeftSidebar({
     [refreshAll, onFsMutation],
   )
 
-  const confirmDelete = useCallback((name: string): boolean => {
+  // 契约 §7：文档删除改为软删（进回收站）→ 单次确认且文案含「可在回收站恢复」；
+  // 文件夹删除仍为硬删（MVP 范围仅文档）→ 保留原「无法恢复」双重确认文案。
+  const confirmDeleteDoc = useCallback((name: string): boolean => {
+    return window.confirm(`确认删除「${name}」？删除后可在回收站恢复。`)
+  }, [])
+
+  const confirmDeleteHard = useCallback((name: string): boolean => {
     if (!window.confirm(`确认删除「${name}」？`)) return false
     return window.confirm(`再次确认：删除「${name}」后无法恢复，是否继续？`)
   }, [])
@@ -315,7 +326,8 @@ export default function LeftSidebar({
 
   const handleDelete = useCallback(
     async (node: TreeNode) => {
-      if (!confirmDelete(node.name)) return
+      const confirmed = node.type === 'folder' ? confirmDeleteHard(node.name) : confirmDeleteDoc(node.name)
+      if (!confirmed) return
       // R1-B：删除前 flush 未决保存（避免删除后的迟到保存 404 假警报/孤儿恢复点）
       if (onBeforeFsMutation && !(await onBeforeFsMutation(node))) return
       try {
@@ -329,7 +341,7 @@ export default function LeftSidebar({
         window.alert(String(e))
       }
     },
-    [confirmDelete, notify, onBeforeFsMutation],
+    [confirmDeleteDoc, confirmDeleteHard, notify, onBeforeFsMutation],
   )
 
   const handleMove = useCallback(
@@ -550,7 +562,7 @@ export default function LeftSidebar({
           ) : searchResults !== null && searchResults.length === 0 ? (
             <Empty text="无匹配结果" />
           ) : null}
-          {/* QuickNav（handoff §3.2：全部文档[默认激活] / 最近更新 / 标签 / 回收站[占位]） */}
+          {/* QuickNav（handoff §3.2：全部文档[默认激活] / 最近更新 / 标签 / 回收站） */}
           <nav aria-label="快捷访问" className="pt-2">
             <div className="flex flex-col gap-[6px]">
               <NavItem
@@ -575,8 +587,8 @@ export default function LeftSidebar({
                 active={nav === 'trash'}
                 icon={<Icon name="trash" className="size-4" />}
                 label="回收站"
-                disabled
-                title="回收站：本版本暂缓实现"
+                title="回收站：删除的文档可在此恢复"
+                onClick={() => setNav('trash')}
               />
             </div>
           </nav>
@@ -611,7 +623,7 @@ export default function LeftSidebar({
           ) : null}
         </div>
 
-        {/* QuickNav 联动：recent = 最近文档区；tags = 标签列表区；all = 模块 + 文档树 */}
+        {/* QuickNav 联动：recent = 最近文档区；tags = 标签列表区；trash = 回收站；all = 模块 + 文档树 */}
         {nav === 'recent' ? (
           <Section title="最近" action={
             recent.length > 0 ? (
@@ -680,6 +692,13 @@ export default function LeftSidebar({
               </Section>
             )}
           </>
+        ) : nav === 'trash' ? (
+          /* 回收站（MVP）：恢复成功后经 App 的 setTreeRefresh 刷新文件树 */
+          <TrashPanel
+            activeId={activeId}
+            refreshKey={refreshKey}
+            onRestored={(restoredTo) => onTrashRestored?.(restoredTo)}
+          />
         ) : (
         <>
         {/* 模块（Phase 5：文件夹分类 + 文件树管理，双击/单击在编辑器打开） */}

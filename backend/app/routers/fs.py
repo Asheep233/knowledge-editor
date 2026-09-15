@@ -292,17 +292,25 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
 @router.post("/move")
 def move_path(request: Request, body: MoveBody) -> dict:
     root = _require_ws(request)
-    src_rel, dst_rel = body.src.strip("/"), body.dst.strip("/")
-    src = _guard_rel(root, src_rel)
-    dst = _guard_rel(root, dst_rel)
+    src = _guard_rel(root, body.src.strip("/"))
+    dst = _guard_rel(root, body.dst.strip("/"))
+    # ★ F8 修复（2026-09-15，实测可复现的安全缺陷）：一律使用**归一化后**的相对路径
+    # 做顶层判定与后续同步。原实现用请求体里的**原始字符串**做 `_top_of`，而
+    # `_guard_rel` 内部已由 `safe_rel_path` 把 `..` 解析掉 —— **校验看 A、落盘看 B**：
+    #   {"src":"Articles/a.md","dst":"Articles/../Modules/a.md"}
+    #     → 原始顶层都是 Articles → 通过「同顶层」校验 → 文件真的落到 Modules/（**跨区绕过**）
+    #   {"dst":"Articles/../a.md"} → 落到**工作区根**且从 /api/tree 消失（用户再也看不到）
+    # 该路径经已上线的右键「移动到…」裸 prompt 即可触发（用户打一个 `Articles/..`）。
+    src_rel = src.relative_to(root).as_posix()
+    dst_rel = dst.relative_to(root).as_posix()
+
     if src.is_dir():
         # P0-3：目录形态同样禁止顶层目录或其路径归一化伪装
         _require_business_top(root, src)
         # P2-15：目录内附件被引用时不可移出（外部引用路径由身份相对性决定，
         # 移动目录会让全部引用失效——与删除保护一致，命中引用返回 409）
-        src_rel_c = src.relative_to(root).as_posix()
-        if src_rel_c.startswith(config.DIR_ATTACHMENTS + "/"):
-            refs = referencing_docs(root, prefix=src_rel_c)
+        if src_rel.startswith(config.DIR_ATTACHMENTS + "/"):
+            refs = referencing_docs(root, prefix=src_rel)
             if refs:
                 total = sum(len(v) for v in refs.values())
                 raise HTTPException(
@@ -322,11 +330,28 @@ def move_path(request: Request, body: MoveBody) -> dict:
                 )
     else:
         raise HTTPException(status_code=404, detail="源路径不存在")
+
+    # ★ 目标同样必须落在业务目录内 —— 原实现只校验了 src，
+    #   dst 可被 `..` 提到工作区根（文件从此不在任何树里）
+    _require_business_top(root, dst)
     if _top_of(src_rel) != _top_of(dst_rel):
         raise HTTPException(status_code=400, detail="仅允许在同一顶层目录内移动")
     if dst.exists():
         raise HTTPException(status_code=409, detail=f"目标已存在: {dst_rel}")
-    src.rename(dst)
+    # 目录不得移入自身子树（否则 rename 抛 OSError → 500，且会造成不可达路径）
+    if src.is_dir() and (dst == src or src in dst.parents):
+        raise HTTPException(status_code=400, detail="不能把文件夹移动到自身或其子目录内")
+    # ★ F9：目标父目录不存在 / 名称含非法字符时，原实现让 OSError 冒泡成 500。
+    #   这里给出明确 4xx（UI 的错误提示才有意义）。
+    if not dst.parent.is_dir():
+        raise HTTPException(
+            status_code=400,
+            detail=f"目标文件夹不存在: {dst.parent.relative_to(root).as_posix()}",
+        )
+    try:
+        src.rename(dst)
+    except OSError as e:
+        raise HTTPException(status_code=400, detail=f"移动失败：{e.strerror or e}")
     _sync_after_move(request, src_rel, dst_rel)
     return {"from": src_rel, "to": dst_rel}
 

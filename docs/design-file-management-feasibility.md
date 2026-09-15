@@ -196,8 +196,8 @@ MVP = 方案 A + 三条删除端点改道 + 列表/恢复/永久删 + 手动清�
 
 | ID | 缺陷 | 复现结果 |
 |---|---|---|
-| **F8** 🔴 | **跨区/越界校验可被绕过** —— `fs.py:322` 用**未归一化**的原始字符串做同顶层校验 `_top_of(dst_rel)`，而 `:294 _guard_rel` 已经过 `safe_rel_path`（`markdown_io.py:437-449`）把 `..` 解析掉，两者判的不是同一个字符串 | 对照 `dst="Modules/a.md"` → **400 拒绝** ✅；<br>`dst="Articles/../Modules/b.md"` → **200**，文件**真的落到 `Modules/b.md`**（跨区绕过）<br>`dst="Articles/../a.md"` → **200**，文件落到**工作区根**，且 **`/api/tree` 中不存在** → **文件还在但用户再也看不到** |
-| **F9** | 目标父目录不存在 / 含 Windows 非法字符 / **自嵌套** → `rename` 抛 `OSError`，**无兜底** | 实测：`Articles/nope/b.md` → `FileNotFoundError` 冒泡；`Articles/ill:egal/d.md` → 同上；`Articles/A → Articles/A/B/A` → `OSError [Errno 22]`。真实 uvicorn 下均 **500**。裸 prompt 打错字即触发 |
+| **F8** ✅ | **跨区/越界校验可被绕过** —— `fs.py:322` 用**未归一化**的原始字符串做同顶层校验 `_top_of(dst_rel)`，而 `:294 _guard_rel` 已经过 `safe_rel_path`（`markdown_io.py:437-449`）把 `..` 解析掉，两者判的不是同一个字符串 | 对照 `dst="Modules/a.md"` → **400 拒绝** ✅；<br>`dst="Articles/../Modules/b.md"` → **200**，文件**真的落到 `Modules/b.md`**（跨区绕过）<br>`dst="Articles/../a.md"` → **200**，文件落到**工作区根**，且 **`/api/tree` 中不存在** → **文件还在但用户再也看不到**<br>**→ 已于 2026-09-15 修复**：判定改用**归一化路径** + `dst` 补业务顶层校验 + `OSError`→400。回归测试 `backend/tests/test_hardening_f8_f4.py`，并做**变异验证**（还原旧逻辑即复现 200 与跨区落盘）|
+| **F9** ✅ | 目标父目录不存在 / 含 Windows 非法字符 / **自嵌套** → `rename` 抛 `OSError`，**无兜底**（已于 2026-09-15 修复为明确 4xx）| 实测：`Articles/nope/b.md` → `FileNotFoundError` 冒泡；`Articles/ill:egal/d.md` → 同上；`Articles/A → Articles/A/B/A` → `OSError [Errno 22]`。真实 uvicorn 下均 **500**。裸 prompt 打错字即触发 |
 | **F9b** | `dst` 指向**已存在目录** → 返回 **409「目标已存在」**（误导性错误码）| 实测 | 用户看不懂失败原因 |
 | **F9c** | **move 路径完全不走 `sanitize_filename`** —— `move_path` 只做 `strip("/")` + `_guard_rel`，`dst` 的每段文件名**均未过 v1.1.8 统一命名清洗** | `fs.py:292` vs `markdown_io.py:94-115`；对照前端 `filenameFromTitle`（`utils/slug.ts:37-48`）| 非法字符直接落到 `rename` → 500（F9）|
 | **F9d** | `fs.py:130` docstring 写「**os.replace 原子 rename**」，实现是 `fs.py:326` `Path.rename` | 全后端 `os.replace` 只在 `import_export.py:401`/`app_config.py:89`/`markdown_io.py:424`，**move 路径没有** | 注释与实现不符，误导后续维护 |
@@ -303,9 +303,9 @@ DB 现状：`store/db.py:32-44` 的 `files` 表**没有 refs 表/列**，但 `co
 
 | ID | 缺陷 | 证据 | 影响 |
 |---|---|---|---|
-| **F8** 🔴 | **move 越界/跨区校验可绕过**（`fs.py:322` 用未归一化字符串校验）| **Lead 亲自复现**：`dst="Articles/../Modules/b.md"` → 200 落到 Modules/；`dst="Articles/../a.md"` → 200 落到工作区根且**从 `/api/tree` 消失** | **数据可用性缺陷**，破坏区隔离；**当前经右键菜单即可触发** |
+| **F8** ✅ | **move 越界/跨区校验可绕过**（`fs.py:322` 用未归一化字符串校验）| **Lead 亲自复现**：`dst="Articles/../Modules/b.md"` → 200 落到 Modules/；`dst="Articles/../a.md"` → 200 落到工作区根且**从 `/api/tree` 消失** | **已于 2026-09-15 修复**（归一化路径判定 + dst 业务顶层校验 + OSError→4xx），回归测试 `test_hardening_f8_f4.py`（含变异验证）|
 | **F9** | move 目标父目录不存在/非法字符 → 未捕获异常（真实服务 500）| Lead 亲自复现 | 裸 prompt 打错字即触发 |
-| **F4** 🔴 | **引用提取不扫 `Drafts/` → 可删掉在用附件**（见 §4.2c）| `references.py:14-25` vs `RightPanel.tsx:364-379` 删除按钮 + `attachments.py:290` 保护不查草稿 | **数据丢失路径**（用户可操作触发）|
+| **F4** ✅ | **引用提取不扫草稿 → 可删掉在用附件**（见 §4.2c）| `references.py` vs `RightPanel.tsx` 删除按钮 + `attachments.py` 保护不查草稿 | **已于 2026-09-15 修复**：扫描范围增加 `Drafts/recovery`（**刻意不含 `Drafts/backup`**，否则孤儿清理永久失效）；回归测试 `test_hardening_f8_f4.py`（含变异验证）|
 | **F10** | 移动模块文档不校验 `ke-module` source 引用 → 悬空 | 实测 200（对照：被引用附件移动 409）| 模块引用断裂，且无提示 |
 | **F11** | 移动后 `最近更新` 不同步 → 旧路径 404 | 实测 | 用户点最近记录打不开 |
 | **F12** | 移动后 `Drafts/recovery` 草稿变孤儿（hash 取完整路径，且不随 move 迁移）| 实测 hash 不等；`_migrate_history` 只迁 backup | 未保存内容丢失风险 |

@@ -12,16 +12,30 @@ from . import markdown_io
 
 
 def _doc_paths(root: Path) -> list[Path]:
-    """Articles / Modules / **Trash** 下的全部 Markdown 文件（跳过符号链接，P1-17）。
+    """Articles / Modules / **Trash** / **Drafts/recovery** 下的全部 Markdown 文件
+    （跳过符号链接，P1-17）。
 
-    2026-09-15（回收站立项，契约 §6 数据安全）：**必须包含 `Trash/`**。
-    否则文档进回收站后即从引用索引消失 → 其引用的附件被判「孤儿」→
-    前端提供删除按钮且 `DELETE /api/attachments` 只校验孤儿
-    → 用户「清理孤儿」会毁掉**可恢复文档**的引用链。
-    代价：`referenced_by` 可能包含 `Trash/...` 路径（属预期，前端展示原路径即可）。
+    这两个附加来源都是**数据安全**要求，各自解决一条「用户可操作触发的数据丢失路径」：
+
+    - `Trash/`（2026-09-15 回收站立项，契约 §6）：文档进回收站后若从引用索引消失，
+      其引用的附件会被判「孤儿」→ 前端提供删除按钮且 DELETE 只校验孤儿 →
+      用户「清理孤儿」会毁掉**可恢复文档**的引用链。
+    - `Drafts/recovery/`（2026-09-15，F4）：草稿持有**未保存内容**，其中引用的附件
+      同样是「在用」的；不扫则「清理孤儿」会删掉恢复草稿后仍需的附件。
+
+    **刻意不含 `Drafts/backup/`**：那是历史快照（每文档最多 `MAX_VERSIONS=30` 份），
+    纳入会让几乎任何附件都被「历史引用」永久保护，**孤儿清理将彻底失去意义**。
+
+    代价：`referenced_by` 可能包含 `Trash/...` / `Drafts/recovery/...` 路径（属预期）。
     """
     out: list[Path] = []
-    for top in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_TRASH):
+    tops = (
+        config.DIR_ARTICLES,
+        config.DIR_MODULES,
+        config.DIR_TRASH,
+        config.DIR_DRAFT_RECOVERY,
+    )
+    for top in tops:
         base = root / top
         if not base.exists():
             continue

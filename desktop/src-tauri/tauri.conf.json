@@ -42,7 +42,11 @@
     ],
     "windows": {
       "nsis": {
-        "installerHooks": "nsis/legacy-migration.nsh"
+        "installerHooks": "nsis/legacy-migration.nsh",
+        "languages": [
+          "SimpChinese",
+          "English"
+        ]
       }
     }
   }

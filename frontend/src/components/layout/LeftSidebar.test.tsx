@@ -11,6 +11,21 @@ import LeftSidebar from './LeftSidebar'
 import * as api from '../../api/client'
 import type { TreePayload } from '../../types'
 
+// 2026-09-15：确认机制由原生 window.confirm（Tauri 下被替换为 async → 恒 truthy、静默绕过）
+// 改为自绘 askConfirm。此处 mock 该模块以断言「调用点传对了文案、并遵守用户选择」；
+// 对话框自身的渲染/交互由 components/common/PromptDialog.test.tsx 覆盖。
+const promptMocks = vi.hoisted(() => ({
+  askConfirm: vi.fn(async (_msg: string, _opts?: unknown) => true as boolean),
+  askPrompt: vi.fn(async (_title?: string, _defaultValue?: string) => null as string | null),
+}))
+vi.mock('../common/PromptDialog', () => ({
+  askConfirm: promptMocks.askConfirm,
+  askPrompt: promptMocks.askPrompt,
+  usePrompt: () => promptMocks.askPrompt,
+  PromptHost: () => null,
+  PromptRoot: ({ children }: { children: unknown }) => children,
+}))
+
 vi.mock('../../api/client', () => ({
   attachmentUrl: (rel: string) => `/api/attachments/${rel}`,
   clearRecentDocuments: vi.fn(),
@@ -44,16 +59,16 @@ let root: Root | null = null
 let container: HTMLDivElement
 /** happy-dom v20 未实现 window.alert/confirm（typeof === 'undefined'），直接挂 spy */
 let alertSpy: ReturnType<typeof vi.fn>
-let confirmSpy: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // clearAllMocks 不清实现 → 显式重置，避免上一用例的 mockResolvedValue(false) 泄漏
+  promptMocks.askConfirm.mockResolvedValue(true)
+  promptMocks.askPrompt.mockResolvedValue(null)
   container = document.createElement('div')
   document.body.appendChild(container)
   alertSpy = vi.fn()
-  confirmSpy = vi.fn(() => true)
   ;(window as unknown as { alert: unknown }).alert = alertSpy
-  ;(window as unknown as { confirm: unknown }).confirm = confirmSpy
   vi.mocked(api.getTree).mockResolvedValue(tree([]))
   vi.mocked(api.getRecentDocuments).mockResolvedValue({ documents: [] })
   vi.mocked(api.getTags).mockResolvedValue({ tags: [] })
@@ -174,8 +189,8 @@ describe('LeftSidebar — 删除确认文案（契约 §7）', () => {
     expect(node).toBeTruthy()
     await deleteVia(node)
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1)
-    const msg = String(confirmSpy.mock.calls[0][0])
+    expect(promptMocks.askConfirm).toHaveBeenCalledTimes(1)
+    const msg = String(promptMocks.askConfirm.mock.calls[0][0])
     expect(msg).toContain('确认删除「文档A.md」')
     expect(msg).toContain('可在回收站恢复')
     expect(msg).not.toContain('无法恢复')
@@ -184,12 +199,12 @@ describe('LeftSidebar — 删除确认文案（契约 §7）', () => {
 
   it('文档删除：取消确认则不发起删除请求', async () => {
     vi.mocked(api.getTree).mockResolvedValue(tree(['Articles/文档A.md']))
-    confirmSpy.mockReturnValue(false)
+    promptMocks.askConfirm.mockResolvedValue(false)
     await render()
 
     await deleteVia(container.querySelector<HTMLElement>('[title="Articles/文档A.md"]')!)
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1)
+    expect(promptMocks.askConfirm).toHaveBeenCalledTimes(1)
     expect(vi.mocked(api.deleteArticle)).not.toHaveBeenCalled()
   })
 
@@ -201,9 +216,9 @@ describe('LeftSidebar — 删除确认文案（契约 §7）', () => {
     expect(folderRow.textContent).toContain('子目录')
     await deleteVia(folderRow)
 
-    expect(confirmSpy).toHaveBeenCalledTimes(2)
-    const first = String(confirmSpy.mock.calls[0][0])
-    const second = String(confirmSpy.mock.calls[1][0])
+    expect(promptMocks.askConfirm).toHaveBeenCalledTimes(2)
+    const first = String(promptMocks.askConfirm.mock.calls[0][0])
+    const second = String(promptMocks.askConfirm.mock.calls[1][0])
     expect(first).toContain('确认删除「子目录」')
     expect(first).not.toContain('可在回收站恢复')
     expect(second).toContain('无法恢复')

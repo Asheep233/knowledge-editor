@@ -29,6 +29,7 @@ import MathEditorModal from '../editor/MathEditorModal'
 import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathNodeView'
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
+import { askConfirm } from '../common/PromptDialog'
 
 interface Props {
   article: ArticleMeta | null
@@ -161,7 +162,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       // PUT 404 被吞、editor 被陈旧 article.content 快照重置，输入静默抹掉）。
       // 与 requestOpenArticle 同款 3s 超时兜底：超时则让用户显式确认。
       if (!(await flushWithTimeout(docId))) {
-        if (!window.confirm('当前有未保存修改且保存超时，继续改名将丢弃这些修改，是否继续？')) return
+        if (!(await askConfirm('当前有未保存修改且保存超时，继续改名将丢弃这些修改，是否继续？'))) return
       }
       // 1) frontmatter/meta title（展示与列表立即同步）
       await updateArticleMeta(docId, { title: next })
@@ -524,9 +525,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       if (!article || !editor) return
       // 边界处理（规格 6.3.4）：存在未保存修改时先提醒
       if (saveState === 'dirty' || saveState === 'saving' || saveState === 'error') {
-        if (!window.confirm('当前有未保存修改，恢复历史版本将丢失这些修改，是否继续？')) return
+        if (!(await askConfirm('当前有未保存修改，恢复历史版本将丢失这些修改，是否继续？'))) return
       }
-      if (!window.confirm('恢复此版本将替换当前文档内容，是否继续？')) return
+      if (!(await askConfirm('恢复此版本将替换当前文档内容，是否继续？'))) return
       try {
         setSaveState('saving')
         const doc = await restoreHistory(article.id, v.id)

@@ -24,6 +24,7 @@ import { Icon } from '../icons'
 import { APP_VERSION } from '../../version'
 import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-light-800x200.png'
 import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
+import { askConfirm } from '../common/PromptDialog'
 
 interface Props {
   open: boolean
@@ -131,7 +132,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
   }
 
   const handleRebuildIndex = async () => {
-    if (!window.confirm('重建全文索引？重建期间搜索功能暂不可用。')) return
+    if (!(await askConfirm('重建全文索引？重建期间搜索功能暂不可用。'))) return
     setIndexBusy(true)
     setIndexResult(null)
     try {

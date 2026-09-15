@@ -10,6 +10,21 @@ import TrashPanel, { baseName, formatBytes, formatDeletedAt } from './TrashPanel
 import * as api from '../../api/client'
 import type { TrashItem } from '../../types'
 
+// 2026-09-15：确认机制由原生 window.confirm（Tauri 下被替换为 async → 恒 truthy、静默绕过）
+// 改为自绘 askConfirm。此处 mock 该模块以断言「调用点传对了文案、并遵守用户选择」；
+// 对话框自身的渲染/交互由 components/common/PromptDialog.test.tsx 覆盖。
+const promptMocks = vi.hoisted(() => ({
+  askConfirm: vi.fn(async (_msg: string, _opts?: unknown) => true as boolean),
+  askPrompt: vi.fn(async (_title?: string, _defaultValue?: string) => null as string | null),
+}))
+vi.mock('../common/PromptDialog', () => ({
+  askConfirm: promptMocks.askConfirm,
+  askPrompt: promptMocks.askPrompt,
+  usePrompt: () => promptMocks.askPrompt,
+  PromptHost: () => null,
+  PromptRoot: ({ children }: { children: unknown }) => children,
+}))
+
 vi.mock('../../api/client', () => ({
   listTrash: vi.fn(),
   restoreTrash: vi.fn(),
@@ -40,16 +55,16 @@ let root: Root | null = null
 let container: HTMLDivElement
 /** happy-dom v20 未实现 window.alert/confirm（typeof === 'undefined'），直接挂 spy */
 let alertSpy: ReturnType<typeof vi.fn>
-let confirmSpy: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // clearAllMocks 不清实现 → 显式重置，避免上一用例的 mockResolvedValue(false) 泄漏
+  promptMocks.askConfirm.mockResolvedValue(true)
+  promptMocks.askPrompt.mockResolvedValue(null)
   container = document.createElement('div')
   document.body.appendChild(container)
   alertSpy = vi.fn()
-  confirmSpy = vi.fn(() => true)
   ;(window as unknown as { alert: unknown }).alert = alertSpy
-  ;(window as unknown as { confirm: unknown }).confirm = confirmSpy
 })
 
 afterEach(async () => {
@@ -218,13 +233,13 @@ describe('TrashPanel — 恢复', () => {
 describe('TrashPanel — 彻底删除 / 清空', () => {
   it('彻底删除：取消确认则不调用 purgeTrash', async () => {
     vi.mocked(api.listTrash).mockResolvedValue({ count: 1, items: [ITEMS[0]] })
-    confirmSpy.mockReturnValue(false)
+    promptMocks.askConfirm.mockResolvedValue(false)
     await render()
 
     await click(findButton('彻底删除')!)
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1)
-    expect(String(confirmSpy.mock.calls[0][0])).toContain('无法恢复')
+    expect(promptMocks.askConfirm).toHaveBeenCalledTimes(1)
+    expect(String(promptMocks.askConfirm.mock.calls[0][0])).toContain('无法恢复')
     expect(vi.mocked(api.purgeTrash)).not.toHaveBeenCalled()
   })
 
@@ -241,13 +256,13 @@ describe('TrashPanel — 彻底删除 / 清空', () => {
 
   it('清空：取消确认则不调用 clearTrash', async () => {
     vi.mocked(api.listTrash).mockResolvedValue({ count: ITEMS.length, items: ITEMS })
-    confirmSpy.mockReturnValue(false)
+    promptMocks.askConfirm.mockResolvedValue(false)
     await render()
 
     await click(findButton('清空')!)
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1)
-    expect(String(confirmSpy.mock.calls[0][0])).toContain('清空后无法恢复')
+    expect(promptMocks.askConfirm).toHaveBeenCalledTimes(1)
+    expect(String(promptMocks.askConfirm.mock.calls[0][0])).toContain('清空后无法恢复')
     expect(vi.mocked(api.clearTrash)).not.toHaveBeenCalled()
   })
 

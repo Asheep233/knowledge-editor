@@ -36,7 +36,7 @@ import { shouldBlockUnload } from './state/closeGuard'
 import { bootMark, BOOT_PHASE, type BootPhase } from './bootTimings'
 import horizontalLogoLight from './assets/astranota/astranota-horizontal-light-800x200.png'
 import horizontalLogoDark from './assets/astranota/astranota-horizontal-dark-800x200.png'
-import { askPrompt, PromptRoot } from './components/common/PromptDialog'
+import { PromptRoot, askConfirm, askPrompt } from './components/common/PromptDialog'
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
 import { recoveryCheckShouldRun } from './state/recovery'
@@ -306,7 +306,7 @@ export default function App() {
     async (id: string) => {
       if (hasUnsaved && articleIdRef.current) {
         const flushed = await flushWithTimeout(articleIdRef.current)
-        if (!flushed && !window.confirm('当前有未保存修改，切换将放弃这些修改，是否继续？')) {
+        if (!flushed && !(await askConfirm('当前有未保存修改，切换将放弃这些修改，是否继续？'))) {
           return
         }
       }
@@ -379,7 +379,7 @@ export default function App() {
     const rel = extModal?.rel
     setExtModal(null)
     if (!rel) return
-    if (hasUnsaved && !window.confirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？')) {
+    if (hasUnsaved && !(await askConfirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？'))) {
       return
     }
     abortPending(rel)
@@ -412,7 +412,7 @@ export default function App() {
     async (path: string, mode: 'open' | 'create') => {
       if (hasUnsaved && articleIdRef.current) {
         const flushed = await flushWithTimeout(articleIdRef.current)
-        if (!flushed && !window.confirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？')) {
+        if (!flushed && !(await askConfirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？'))) {
           return
         }
       }
@@ -474,7 +474,7 @@ export default function App() {
     if (hasUnsaved && articleIdRef.current) {
       // F02：关闭前先 flush 未决保存（与 switchWorkspace 同款），防跨工作区串写
       const flushed = await flushWithTimeout(articleIdRef.current)
-      if (!flushed && !window.confirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？')) {
+      if (!flushed && !(await askConfirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？'))) {
         return
       }
     }
@@ -486,7 +486,7 @@ export default function App() {
     // P0-2：新建会替换当前文档，先处理未保存修改（flush + confirm 兜底）
     if (hasUnsaved && articleIdRef.current) {
       const flushed = await flushWithTimeout(articleIdRef.current)
-      if (!flushed && !window.confirm('当前有未保存修改，新建将放弃这些修改，是否继续？')) return
+      if (!flushed && !(await askConfirm('当前有未保存修改，新建将放弃这些修改，是否继续？'))) return
     }
     const title = await askPrompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
     if (!title) return
@@ -506,7 +506,7 @@ export default function App() {
   const handleImportFile = useCallback(
     async (file: File) => {
       if (hasUnsaved) {
-        const ok = window.confirm('当前内容未保存，导入将覆盖，是否继续？')
+        const ok = (await askConfirm('当前内容未保存，导入将覆盖，是否继续？'))
         if (!ok) return
       }
       try {
@@ -553,7 +553,7 @@ export default function App() {
     if (!affected) return true
     const flushed = await flushWithTimeout(curId)
     if (!flushed) {
-      return window.confirm('当前文档有未保存修改，此操作将放弃这些修改，是否继续？')
+      return (await askConfirm('当前文档有未保存修改，此操作将放弃这些修改，是否继续？'))
     }
     return true
   }, [])

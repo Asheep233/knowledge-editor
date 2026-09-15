@@ -9,6 +9,7 @@
  * update-during-render 崩溃影响。
  */
 import { useCallback, useEffect, useState } from 'react'
+import { askConfirm } from '../common/PromptDialog'
 import { clearTrash, listTrash, purgeTrash, restoreTrash } from '../../api/client'
 import type { TrashItem } from '../../types'
 import { Icon } from '../icons'
@@ -97,7 +98,8 @@ export default function TrashPanel({ activeId, onRestored, refreshKey = 0 }: Pro
 
   const handlePurge = useCallback(
     async (item: TrashItem) => {
-      if (!window.confirm(`彻底删除「${item.name}」？删除后无法恢复。`)) return
+      // Tauri 把 window.confirm 换成 async（恒 truthy）→ 必须用自绘确认（见 PromptDialog 注释）
+      if (!(await askConfirm(`彻底删除「${item.name}」？\n删除后无法恢复。`, { confirmText: '永久删除', danger: true }))) return
       setBusyId(item.id)
       try {
         await purgeTrash(item.id)
@@ -113,7 +115,7 @@ export default function TrashPanel({ activeId, onRestored, refreshKey = 0 }: Pro
 
   const handleClear = useCallback(async () => {
     const count = items?.length ?? 0
-    if (!window.confirm(`确认清空回收站？共 ${count} 项，清空后无法恢复。`)) return
+    if (!(await askConfirm(`确认清空回收站？共 ${count} 项，清空后无法恢复。`, { confirmText: '清空', danger: true }))) return
     setClearing(true)
     try {
       await clearTrash()

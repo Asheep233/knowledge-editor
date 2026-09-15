@@ -13,6 +13,7 @@ import {
 import { extractOutline, type OutlineItem } from '../../state/outline'
 import type { ArticleMeta, AttachmentItem, OrphanItem } from '../../types'
 import { Icon } from '../icons'
+import { askConfirm } from '../common/PromptDialog'
 
 interface Props {
   article: ArticleMeta | null
@@ -136,7 +137,7 @@ export default function RightPanel({ article, onMetaUpdate, onOpenArticle, onCol
   // v0.6.1 约束升级：孤儿附件仅手动删除、绝不自动。
   // 显式确认后调用 DELETE（后端会二次校验孤儿身份，被引用附件返回 409）。
   const handleDeleteOrphan = async (o: OrphanItem) => {
-    if (!window.confirm(`确定删除孤儿附件「${o.name}」吗？\n删除后不可恢复。`)) return
+    if (!(await askConfirm(`确定删除孤儿附件「${o.name}」吗？\n删除后不可恢复。`))) return
     setDeletingPath(o.path)
     try {
       await deleteAttachment(o.path)

@@ -34,7 +34,7 @@ import type {
 import { buildFileTree, type TreeNode } from '../../utils/tree'
 import { Icon } from '../icons'
 import TrashPanel from '../trash/TrashPanel'
-import { askPrompt } from '../common/PromptDialog'
+import { askConfirm, askPrompt } from '../common/PromptDialog'
 import iconLogoLight from '../../assets/astranota/astranota-icon-light-256.png'
 import iconLogoDark from '../../assets/astranota/astranota-icon-dark-256.png'
 
@@ -268,13 +268,21 @@ export default function LeftSidebar({
 
   // 契约 §7：文档删除改为软删（进回收站）→ 单次确认且文案含「可在回收站恢复」；
   // 文件夹删除仍为硬删（MVP 范围仅文档）→ 保留原「无法恢复」双重确认文案。
-  const confirmDeleteDoc = useCallback((name: string): boolean => {
-    return window.confirm(`确认删除「${name}」？删除后可在回收站恢复。`)
+  // ⚠️ 2026-09-15：原用 `window.confirm` —— Tauri 把它替换成 async（恒返回 Promise=truthy），
+  // 导致 `if (!window.confirm(...))` 永为假、**确认被静默绕过**。改用自绘 askConfirm（必须 await）。
+  const confirmDeleteDoc = useCallback(async (name: string): Promise<boolean> => {
+    return askConfirm(`确认删除「${name}」？\n删除后可在回收站恢复。`, {
+      confirmText: '删除',
+      danger: true,
+    })
   }, [])
 
-  const confirmDeleteHard = useCallback((name: string): boolean => {
-    if (!window.confirm(`确认删除「${name}」？`)) return false
-    return window.confirm(`再次确认：删除「${name}」后无法恢复，是否继续？`)
+  const confirmDeleteHard = useCallback(async (name: string): Promise<boolean> => {
+    if (!(await askConfirm(`确认删除「${name}」？`, { confirmText: '删除', danger: true }))) return false
+    return askConfirm(`再次确认：删除「${name}」后**无法恢复**，是否继续？`, {
+      confirmText: '永久删除',
+      danger: true,
+    })
   }, [])
 
   const handleNewDoc = useCallback(
@@ -326,7 +334,8 @@ export default function LeftSidebar({
 
   const handleDelete = useCallback(
     async (node: TreeNode) => {
-      const confirmed = node.type === 'folder' ? confirmDeleteHard(node.name) : confirmDeleteDoc(node.name)
+      const confirmed =
+        node.type === 'folder' ? await confirmDeleteHard(node.name) : await confirmDeleteDoc(node.name)
       if (!confirmed) return
       // R1-B：删除前 flush 未决保存（避免删除后的迟到保存 404 假警报/孤儿恢复点）
       if (onBeforeFsMutation && !(await onBeforeFsMutation(node))) return

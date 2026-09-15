@@ -11,10 +11,20 @@
   深色icon透明底0908.png   → astranota-icon-dark-256.png        （深色主题）
   浅色横版透明底0908.png   → astranota-horizontal-light-800x200.png
   深色横版透明底0908.png   → astranota-horizontal-dark-800x200.png
-  浅色icon透明底0908.png   → <out>/astra-icon-1024.png          （供 `tauri icon` 生成桌面图标集）
+  浅色icon透明底0908.png   → <out>/astra-icon-1024.png          （**仅应用内/备用**；透明，不适合 OS 图标）
+  浅色icon透明底0908.png   → <out>/astra-icon-plated-1024.png   （`--plated-icon` 时额外产出，白底圆角）
+
+⚠ OS 图标集（`desktop/src-tauri/icons/**`）**当前刻意使用白底版**
+（主理人 2026-09-15 指令：「应用的对外 icon 要用旧版有白底的」）。
+理由：透明深字标在**深色任务栏**下几乎不可见（实测不透明像素仅 13%、不透明区平均 RGB (3,6,12)），
+而 v1.1.8 的白底圆角图标（不透明像素 ≈96%）在两种任务栏主题下都清晰。
+当前白底图标集由既有源 `Logo/unified/astra-icon-v3-1024-rounded.png` 经 `tauri icon` 生成，
+并已用 `git checkout <v1.1.8 tag> -- desktop/src-tauri/icons` 固定；本脚本**不覆盖**它们。
+若将来要换成「新标 + 白底」：`--plated-icon` 产出 `astra-icon-plated-1024.png` 后再跑
+`tauri icon <该文件>`（几何：1024 画布、圆角半径 0.208×边长、标记宽占 0.85、居中 —— 与旧白底版一致）。
 
 用法：
-  python3 scripts/make-brand-assets.py [源目录] [--out 桌面图标源目录]
+  python3 scripts/make-brand-assets.py [源目录] [--out 桌面图标源目录] [--plated-icon]
 默认源目录：<repo>/../AN Logo
 """
 from __future__ import annotations
@@ -24,7 +34,7 @@ import sys
 from pathlib import Path
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageDraw
 except ImportError:  # pragma: no cover
     sys.exit("需要 Pillow：pip install Pillow（WSL 侧已装 12.3.0）")
 
@@ -47,6 +57,24 @@ def load_cropped(path: Path) -> Image.Image:
     if box is None:
         raise SystemExit(f"{path.name}: 全透明，无内容")
     return im.crop(box)
+
+
+def rounded_plate(mark: Image.Image, size: int = 1024, radius_ratio: float = 0.208,
+                 mark_w_ratio: float = 0.85, bg=(255, 255, 255, 255)) -> Image.Image:
+    """把标记放到「白底圆角方形」画布上（与 v1.1.8 白底 OS 图标同构）。
+
+    几何取自旧白底版实测：圆角半径 ≈0.208×边长、标记宽占 0.85、水平垂直居中。
+    """
+    plate = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    radius = round(size * radius_ratio)
+    mask = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(mask)
+    d.rounded_rectangle((0, 0, size - 1, size - 1), radius=radius, fill=255)
+    plate.paste(Image.new("RGBA", (size, size), bg), (0, 0), mask)
+    scale = (size * mark_w_ratio) / mark.width
+    nw, nh = max(1, round(mark.width * scale)), max(1, round(mark.height * scale))
+    plate.paste(mark.resize((nw, nh), Image.LANCZOS), ((size - nw) // 2, (size - nh) // 2), mark.resize((nw, nh), Image.LANCZOS))
+    return plate
 
 
 def fit_into(im: Image.Image, w: int, h: int, margin: float = 0.0) -> Image.Image:
@@ -82,6 +110,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("src", nargs="?", default=str(REPO.parent / "AN Logo"))
     ap.add_argument("--out", default=str(REPO.parent / "Logo/unified"), help="tauri icon 方形源输出目录")
+    ap.add_argument("--plated-icon", action="store_true",
+                    help="额外产出白底圆角图标源 astra-icon-plated-1024.png（「新标 + 白底」选项，不覆盖 OS 图标集）")
     args = ap.parse_args()
 
     src_dir = Path(args.src)
@@ -121,9 +151,20 @@ def main() -> int:
     sq_path = out_dir / "astra-icon-1024.png"
     prev_sq = dims_of(sq_path)
     sq.save(sq_path)
-    report(f"(tauri icon 源) {sq_path.name}", sq, prev_sq)
-    print(f"\n下一步（Windows 侧，从 desktop/ 运行）：")
-    print(f'  node node_modules\\@tauri-apps\\cli\\tauri.js icon "{sq_path}"')
+    report(f"(备用 / 应用内) {sq_path.name}", sq, prev_sq)
+
+    if args.plated_icon:
+        plated_path = out_dir / "astra-icon-plated-1024.png"
+        prev_plated = dims_of(plated_path)
+        plated = rounded_plate(icon_src)
+        plated.save(plated_path)
+        report(f"(白底圆角) {plated_path.name}", plated, prev_plated)
+    print("\nOS 图标集当前刻意使用白底版（见文件头 ⚠ 段）：")
+    print("  已固定 = git checkout <v1.1.8 tag> -- desktop/src-tauri/icons")
+    print("  若改用「新标 + 白底」（需主理人裁决）：")
+    print(f'    python3 scripts/make-brand-assets.py --plated-icon')
+    print(f'    然后在 desktop/ 下运行（Windows 侧）：')
+    print(f'      node node_modules\\@tauri-apps\\cli\\tauri.js icon "{out_dir / 'astra-icon-plated-1024.png'}"')
     return 0
 
 

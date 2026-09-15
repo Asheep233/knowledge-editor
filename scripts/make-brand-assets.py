@@ -21,7 +21,7 @@
 当前白底图标集由既有源 `Logo/unified/astra-icon-v3-1024-rounded.png` 经 `tauri icon` 生成，
 并已用 `git checkout <v1.1.8 tag> -- desktop/src-tauri/icons` 固定；本脚本**不覆盖**它们。
 若将来要换成「新标 + 白底」：`--plated-icon` 产出 `astra-icon-plated-1024.png` 后再跑
-`tauri icon <该文件>`（几何：1024 画布、圆角半径 0.208×边长、标记宽占 0.85、居中 —— 与旧白底版一致）。
+`tauri icon <该文件>`（几何：1024 画布、PIL 圆角半径 0.198×边长→首行内缩 ≈188px、标记宽占 0.85、居中 —— 与旧白底版一致）。
 
 用法：
   python3 scripts/make-brand-assets.py [源目录] [--out 桌面图标源目录] [--plated-icon]
@@ -59,11 +59,14 @@ def load_cropped(path: Path) -> Image.Image:
     return im.crop(box)
 
 
-def rounded_plate(mark: Image.Image, size: int = 1024, radius_ratio: float = 0.208,
+def rounded_plate(mark: Image.Image, size: int = 1024, radius_ratio: float = 0.198,
                  mark_w_ratio: float = 0.85, bg=(255, 255, 255, 255)) -> Image.Image:
     """把标记放到「白底圆角方形」画布上（与 v1.1.8 白底 OS 图标同构）。
 
-    几何取自旧白底版实测：圆角半径 ≈0.208×边长、标记宽占 0.85、水平垂直居中。
+    几何取自旧白底版实测：圆角半径 ≈0.198×边长、标记宽占 0.85、水平垂直居中。
+    注：这里用 **PIL 参数口径**（0.198×1024 ≈ 203）而非「首行内缩口径」——
+    PIL `rounded_rectangle(radius=r)` 的首行可测内缩 ≈ r-√(r-0.25)，
+    取 r=203 时内缩 ≈188px，与旧白底源 `astra-icon-v3-1024-rounded.png` 的 188px 一致。
     """
     plate = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     radius = round(size * radius_ratio)

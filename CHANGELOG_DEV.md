@@ -20,6 +20,24 @@ Tag：`v1.1.8` · commit `1bd3983` · https://github.com/Asheep233/knowledge-edi
 
 **附件**：`AstraNota_1.1.8_x64-setup.exe`（48.5MB）/ 侧车 exe / `manifest.sha256`（84 项）/ `versions.json`
 
+**发布后同日修正（主理人问「为什么安装器语言变成英文了」）**：
+根因 **不是本次发布引入** —— 提交 `dccb8f9`（添加 NSIS 品牌迁移钩子时）**整块替换**了
+`bundle.windows.nsis`，把 `languages: ["SimpChinese","English"]` 与 `installMode` 一起丢失
+→ **自 v1.1.5 起所有安装包只剩英文**（v1.1.4 是最后一个中文包）。
+
+实测证据：修复前 `release/nsis/x64/installer.nsi:464` 仅 `MUI_LANGUAGE "English"`；
+修复后 `:464-465` 含 `SimpChinese` + `English` 且生成 `SimpChinese.nsh`；
+安装包 sha256 `95b989ac…` → `37d009da…`。
+`installMode` 经查生成脚本实际值为 `currentUser`（= Tauri 默认）→ 丢失无行为影响，故只恢复 `languages`。
+
+处置（主理人选定「覆盖 v1.1.8」）：修复提交 `4b9ffc1` → tag `v1.1.8` 强移至该提交 →
+`gh release upload --clobber` 替换安装包 → 三方一致（`remote master = remote tag = 4b9ffc1`）。
+
+另记两个本机发布坑（均已在 §6/§8 之外单独踩到）：
+- `gh.exe` 是 Windows 程序 → 附件与 `--notes-file` 必须传 **Windows 路径**（`/mnt/f/…` 会解析失败）
+- NSIS 重建的 `beforeBuildCommand` no-op 绕行已封装为 `C:\ke-tmp\rebuild-nsis.sh`，
+  用 `trap` 保证**无论成败都还原**并逐字节比对
+
 ## 2026-09-15（回收站 MVP 交付 + 原生确认框静默失效根治）
 
 类型：Feature（回收站，主理人立项）+ 安全性既有缺陷修复

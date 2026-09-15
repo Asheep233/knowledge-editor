@@ -2,7 +2,23 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（回收站 MVP 立项交付 + 原生确认框静默失效根治）
+> 最后更新：2026-09-15（**v1.1.8 正式版发布**）
+
+## 2026-09-15（★ v1.1.8 正式版发布）
+
+类型：Release
+状态：Completed（已发布）
+Tag：`v1.1.8` · commit `1bd3983` · https://github.com/Asheep233/knowledge-editor/releases/tag/v1.1.8
+
+**发布前门禁（全绿）**：pytest 462+2skip · vitest 33 files/411+1skip · tsc 0 · cargo 13 ·
+前端产物内嵌版本串仅 `1.1.8` · 侧车 `/api/health` = 1.1.8 · 运行时无「版本不一致」横幅。
+
+**发布流程要点（照 §6，含两处本机特有的坑）**：
+- 侧车重建必须在 Windows 侧（PyInstaller 仅 Windows 可用；WSL 只能构建 Linux 二进制）
+- `gh.exe` 是 Windows 程序 → 附件与 `--notes-file` 必须传 **Windows 路径**（`/mnt/f/...` 它会解析失败）
+- NSIS 构建期间 `beforeBuildCommand` 临时改 no-op（坑 5），**构建后已逐字节恢复并比对确认**
+
+**附件**：`AstraNota_1.1.8_x64-setup.exe`（48.5MB）/ 侧车 exe / `manifest.sha256`（84 项）/ `versions.json`
 
 ## 2026-09-15（回收站 MVP 交付 + 原生确认框静默失效根治）
 

@@ -1,7 +1,7 @@
 # Agent 交接文档 · Knowledge Editor / AstraNota
 
 > 交接时间：2026-09-08 · 交出方：上一任主 Agent · 接收方：下一任 Agent
-> 当前版本：**v1.1.8-pre.1**（文件名保留原标题预发布）· 分支 master
+> 当前版本：**v1.1.8 正式版（已发布 2026-09-15）** · 分支 master
 > **重要背景**：主理人即将把工作区迁移到其他盘——本文 §9 是迁移后必须核对的清单。
 
 ---
@@ -25,7 +25,7 @@
 |---|---|
 | 远程 | `https://github.com/Asheep233/knowledge-editor.git`（gh CLI 已认证，账号 Asheep233）|
 | 主分支 | `master`（所有工作直接提交 master，无 PR 流程）|
-| 标签 | `v1.0.0` … `v1.1.7`、`v1.1.8-pre.1`（预发布）|
+| 标签 | `v1.0.0` … `v1.1.7`、`v1.1.8-pre.1`（预发布）、**`v1.1.8`（正式版，2026-09-15）**|
 | 推送方式 | `git push https://asheep233:$(gh auth token)@github.com/Asheep233/knowledge-editor.git master <tag>` |
 | 旧检出 | `D:\Agent\KnowledgeEditor`（v1.0.0 时代，同一仓库，调查结论：可删，回收 12GB）|
 

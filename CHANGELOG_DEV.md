@@ -63,6 +63,18 @@ backlog 写「外部文档粘贴会降级为纯文本」；实测是**破坏性�
 GFM 脚注文档打开并保存后输出为 ke 方言；此时在 GitHub/Typora 上脚注标记会被当 HTML 注释忽略
 （与其它 `ke-*` 节点一致）。需保持外部可读时用「导出普通 Markdown」——`plain-export` 会还原为 GFM。
 
+### 已知边界（主理人 2026-09-15 拍板：写入规范，本轮不修）
+
+GUI 验收观察到脚注条目内的 `**粗体**` 显示为字面星号。核验确认**非 S-2 回归**：
+`footnotes` 节点的 `items[].text` 是**纯字符串**（`FootnotesExtension.ts:27` `text: string`；
+`FootnotesNodeView.tsx:72` 直接作为文本节点渲染，不走 Markdown 解析）；ke 原生脚注
+（`insertFootnote(text)`）行为一致，修复前后不变。同理「GFM 8 空格 = 脚注内代码块」
+在本模型下只能是普通段落。
+
+**决策：写入 `document-format.md` §2.3.2**，显式声明「不解析行内格式」是当前契约的一部分，
+避免被当作缺陷反复上报。消除该边界需把条目正文升级为块级内容——属 D 层格式变更（红线），
+须独立批次 + 旧文档迁移，本轮不做。
+
 ## 2026-09-14（v1.1.8 候选 S-1 + S-3 落地 · 首次 Agent Team 并行）
 
 类型：Feature（两项 backlog 候选）

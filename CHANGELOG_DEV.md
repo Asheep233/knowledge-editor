@@ -2,7 +2,40 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（**附件归位左栏 + 对外图标白底复原**；上一条 logo/附件区记录为历史过程）
+> 最后更新：2026-09-15（**移动路径 4 项修复 F9b/F9c/F11/F12**）
+
+## 2026-09-15（发布后 · 移动路径 4 项修复：F9b / F9c / F11 / F12）
+
+类型：Fix（含新引入的语义收敛，见 WARN）
+状态：Completed（源码已提交并推送 master；未发版）
+来源：`docs/design-file-management-feasibility.md` 的实测登记（F9b/F9c/F11/F12）→ 修复与验证留痕 `docs/verification-move-fixes.md`
+
+**触发**：主理人问「那几个 Fxx 现在能修吗」→ 后端 4 项（F9b/F9c/F11/F12）当日修完；F10 待裁决；F-S1-2 单独排期。
+
+**F9c（最重，含两个可用性缺陷）** —— `move_path` 目标末段完全不走统一净化：
+- 尾空格 `Articles/文档.md ` → 旧实现 `suffix = Path("文档.md ").suffix` 得 `".md "`（含空格）≠ `".md"` → 重复补后缀 → 落盘 `文档.md.md ` → **名字不再以 .md 结尾，文档从树/索引消失**
+- 纯点名 `....md` / `.md` / `..md` / `.. .md` → 落盘 `md` / `md` / `md` / `.md.md`（**隐藏文件**），同类后果
+- NUL 字符 → `_guard_rel → Path.resolve()` 抛 `ValueError: embedded null character`（真实 uvicorn 下 **500**）
+- 修复：扩展名 oracle 改为「先 `strip().rstrip('. ')` 再取最后一个点后有内容的部分」，主名过 `sanitize_filename`、扩展名单独拼回并**收敛到源文件类型**（文档恒 `.md/.markdown`，附件随源扩展名）；净化后重新校验顶层与业务目录；NUL 在 `_guard_rel` 之前 400，`safe_rel_path` 异常兜底 400（fs 全端点受益）；非 NUL 控制字符仍走净化（`控制\x01字符\x07.md` → `控制 字符.md`）
+
+**F9b** —— dst 是已存在**目录**时只报「目标已存在」，用户读不懂；且检查顺序若在 F9c 之后，`Articles/子目录` 会被补成 `子目录.md` 而绕过提示。
+→ 明确「目标是已存在的文件夹：…，请在目标路径里带上文件名」，并把该检查固定在顶层/同区校验之后、F9c 收口之前。
+
+**F11** —— `_sync_after_move` 只做 indexer + history，移动后「最近更新」仍留旧路径（点开 404）。
+→ `app_config.rename_recent_document()`（原位替换 rel_path，保 title/顺序/去重/上限 20，未命中不写盘）+ 目录移动按前缀逐条平移。
+
+**F12（数据安全）** —— 草稿名 = `{stem}-{hash8(完整相对路径)}.draft.md`，`_migrate_history` 只迁 `Drafts/backup`，移动后 recovery 草稿成孤儿 → **未保存内容失联**。
+→ 草稿文件改名（**内容逐字节不变**）+ `store.move_recovery()` 迁移 DB 记录（保留 id/saved_at/session_id，不新增表/不改 schema）+ 目录移动遍历迁移；目标草稿名已占用时**不覆盖**（保留原文件与原记录）；无草稿 no-op。三类同步失败均只记日志、不阻断 200（沿用 `_sync_after_move` 契约）。
+
+**独立验证（verifier，非开发者自测）**：`backend/tests/test_move_fixes_verify.py` **93 例**（含「失败请求前后快照必须相等」「inode 不变证原子 rename」「草稿逐字节不变 + SQLite 行级核验」「移动失败时最近列表逐字节不变」「DB 丢失时目录扫描兜底」「目录移动内草稿也迁移」）。
+- 冻结前该套件对**未冻结实现**先报 **7 红**（尾空格双扩展名 / 纯点名丢扩展名 / `.. .md` 隐藏 / NUL 未捕获）→ 全部修复后 93/93 绿
+- 修复前基线已在 `3f97f1a` 上留证（非法字符 dst → 200 落原名、recents 仍旧路径、recovery 仍旧 doc_path）
+
+**门禁**：`pytest` **597 passed + 2 skipped**（基线 462+2 + 开发者 42 + 独立验证 93，只增不减）；`test_openapi_snapshot.py` 3 passed（无新端点）；前端未涉及；`markdown_io.py` 未改。
+
+**⚠ 本轮新引入语义（如实保留，非缺陷）**：
+- **W1** API 调用者显式写 `报告.PDF` / `新名.txt` → 静默收敛为 `.md`。UI **不可达**（`LeftSidebar.handleMove` 用 `` `${target}/${node.name}` ``，只换目录、保留源名），响应 `to` 即权威路径。
+- **W2** 附件 `photo.jpeg` → `photo.jpg` 会收敛回 `.jpeg`（同目录同主名 → 409）→ **用 move 改附件扩展名不再可行**（修复前允许；无数据丢失、UI 不可达）。
 
 ## 2026-09-15（发布后 · 附件归位左栏 + 对外图标白底复原）
 

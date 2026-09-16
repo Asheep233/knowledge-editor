@@ -461,6 +461,39 @@ class IndexStore:
         return self._row_to_dict(row) if row else None
 
     @_locked
+    def move_recovery(
+        self, old_doc_path: str, new_doc_path: str, draft_path: str | None = None
+    ) -> bool:
+        """F12：文档移动/重命名时把恢复记录迁移到新路径。
+
+        - 保留原记录的 `id` / `saved_at` / `session_id`（GET /recovery 字段与移动前一致）；
+        - `draft_path=None` 表示沿用原记录的 draft_path（未发生草稿改名时）；
+        - 目标路径已有记录时一并清理，避免同一文档在旧/新位置各留一行；
+        - 未命中 old_doc_path → 返回 False（no-op）。
+        不新增表、不改 schema：只读写既有 recovery 表。
+        """
+        assert self.conn is not None
+        row = self.conn.execute(
+            "SELECT * FROM recovery WHERE doc_path = ?", (old_doc_path,)
+        ).fetchone()
+        if row is None:
+            return False
+        rec = dict(row)
+        target_draft = rec["draft_path"] if draft_path is None else draft_path
+        self.conn.execute(
+            "DELETE FROM recovery WHERE doc_path IN (?, ?)",
+            (old_doc_path, new_doc_path),
+        )
+        # 连主键 id 一起保留：GET /recovery 的响应字段与移动前完全一致
+        self.conn.execute(
+            "INSERT INTO recovery(id, doc_path, draft_path, saved_at, session_id) "
+            "VALUES(?, ?, ?, ?, ?)",
+            (rec["id"], new_doc_path, target_draft, rec["saved_at"], rec["session_id"]),
+        )
+        self.conn.commit()
+        return True
+
+    @_locked
     def list_recovery(self) -> list[dict[str, Any]]:
         assert self.conn is not None
         rows = self.conn.execute(

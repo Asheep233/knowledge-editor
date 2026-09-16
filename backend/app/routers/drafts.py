@@ -16,9 +16,10 @@ doc_path（遍历现存文档计算哈希比对），索引丢失仍可恢复。
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -27,6 +28,8 @@ from .. import config
 from ..services import markdown_io
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
+
+logger = logging.getLogger(__name__)
 
 
 class RecoveryCreate(BaseModel):
@@ -145,6 +148,63 @@ def _find_draft_or_404(store, root: Path, doc_path: str) -> dict:
             "session_id": "",
         }
     return {}
+
+
+def _migrate_one_draft(root: Path, store: Any, old_doc: str, new_doc: str) -> None:
+    """F12：单篇文档的草稿迁移 —— ①草稿文件改名（内容逐字节不变）②DB 记录改指。
+
+    - 目标草稿名已被占用时**绝不覆盖**（数据安全优先），保留原文件；
+      DB 记录也随之继续指向原草稿文件，恢复仍可用。
+    """
+    old_draft_rel = _draft_rel(old_doc)
+    new_draft_rel = _draft_rel(new_doc)
+    old_full = markdown_io.safe_rel_path(root, old_draft_rel)
+    new_full = markdown_io.safe_rel_path(root, new_draft_rel)
+    renamed_draft_rel: str | None = None
+    if old_full is not None and old_full.is_file():
+        if new_full is None:
+            renamed_draft_rel = None
+        elif new_full.exists():
+            logger.warning(
+                "恢复草稿目标名已存在，保留原文件避免覆盖: %s（文档 %s -> %s）",
+                new_draft_rel, old_doc, new_doc,
+            )
+            renamed_draft_rel = old_draft_rel
+        else:
+            new_full.parent.mkdir(parents=True, exist_ok=True)
+            old_full.rename(new_full)
+            renamed_draft_rel = new_draft_rel
+    if store is None:
+        return
+    # DB 记录迁移：saved_at/session_id 原样保留（db.move_recovery）；无记录时 no-op
+    store.move_recovery(old_doc, new_doc, renamed_draft_rel)
+
+
+def migrate_recovery(request: Request, old_rel: str, new_rel: str) -> None:
+    """F12：移动/重命名后迁移崩溃恢复草稿（文件改名 + DB 记录改指）。
+
+    - 文档移动：迁移该文档的草稿；
+    - 目录移动：遍历移动后的目录，逐篇迁移（目录内文档路径整体平移）；
+    - 无草稿且无 DB 记录 → 正常 no-op；
+    - 不吞异常：由调用方 `fs._migrate_recovery` 兜底记日志（辅助数据同步
+      失败不得阻断已完成的 FS 变更）。
+    """
+    root = request.app.state.workspace_root
+    if root is None:
+        return
+    store = getattr(request.app.state, "store", None)
+    moved = markdown_io.safe_rel_path(root, new_rel)
+    pairs: list[tuple[str, str]] = []
+    if moved is not None and moved.is_dir():
+        for p in markdown_io.walk_files(moved):
+            if p.suffix.lower() not in (".md", ".markdown"):
+                continue
+            rel_new = p.relative_to(root).as_posix()
+            pairs.append((f"{old_rel}/{rel_new[len(new_rel) + 1:]}", rel_new))
+    else:
+        pairs.append((old_rel, new_rel))
+    for old_doc, new_doc in pairs:
+        _migrate_one_draft(root, store, old_doc, new_doc)
 
 
 @router.get("/recovery")

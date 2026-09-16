@@ -41,6 +41,26 @@
 | S-2 | 明确 GFM 脚注 `[^1]` 是否纳入支持（当前仅 ke 自有格式，外部文档粘贴会降级为纯文本）| 兼容性 | 同上 | ✅ 已落地（2026-09-14，方案 A/A2；见 `design-s2-gfm-footnote.md`）|
 | S-3 | 附件上传保留原始文件名（当前时间戳重命名，用户难以对应）| 可发现性 | 同上 | ✅ 已落地（2026-09-14）|
 
+## 移动路径 4 项已修（2026-09-15，F9b/F9c/F11/F12）
+
+来源：`docs/design-file-management-feasibility.md` 的实测登记；验证留痕 `docs/verification-move-fixes.md`。
+
+| ID | 修复 | 证据 |
+|---|---|---|
+| **F9c** | 移动目标末段走 v1.1.8 统一净化（复用 `markdown_io.sanitize_filename`，扩展名单独拼回），**扩展名收敛到源文件类型**（文档恒 `.md/.markdown`，附件随源）；净化后**重新**校验顶层/业务目录；NUL 在 `_guard_rel` 之前拦成 400（原先 `Path.resolve()` 抛 ValueError → 500） | 尾空格 `Articles/文档.md ` 旧 `文档.md.md ` → 新 `文档.md`；`....md/.md/..md/.. .md` 旧 `md`/`.md.md`（隐藏）→ 新 `untitled.md`/`md.md`；NUL 旧 `ValueError` → 新 `400 非法路径：含 NUL 字符` |
+| **F9b** | dst 是**已存在目录**时给可操作提示（「请在目标路径里带上文件名」），与「已存在文件 → 409」区分；检查顺序固定在**顶层/同区校验之后、F9c 收口之前**（否则 `Articles/子目录` 会被补成 `子目录.md` 而绕过提示） | `dst='Articles/子目录'` → 409 文件夹提示，且硬断言 `Articles/子目录.md` **不存在**；`dst='Articles/.'` 仍 400（F8 语义） |
+| **F11** | `app_config.rename_recent_document()`（原位替换，保 title/顺序/去重/上限 20）+ `_sync_after_move` 调用；目录移动按前缀逐条平移 | 移动后 `/api/workspace/recent-documents` 同步新路径；移动失败（4xx）时列表逐字节不变 |
+| **F12** | 草稿文件改名 + `store.move_recovery()` 迁移 DB 记录（保留 id/saved_at/session_id，不新增表/不改 schema）；目录移动遍历迁移；目标草稿名已占用时**不覆盖**；无草稿 no-op | 新路径可恢复、旧路径不残留、草稿**逐字节不变**（SQLite 行级 + 文件字节双核验） |
+
+**门禁**：`pytest` **597 passed + 2 skipped**（既有基线 462+2 + 开发者 42 + 独立验证 93，只增不减）；openapi 快照 3 passed（无新端点）；
+`markdown_io.py` 未改；F8 归一化 400 与 P2-15 引用保护 409 均未回归。
+
+**两条如实保留的 WARN（本轮新引入语义，非缺陷）**：
+- **W1**：API 调用者显式写 `报告.PDF` / `新名.txt` 会**静默收敛**为 `报告.md` / `新名.md`。前端 `LeftSidebar.handleMove` 用 `` `${target}/${node.name}` `` 构造 dst（只换目录、保留源名）→ **UI 路径不可达**；响应 `to` 即权威实际路径。
+- **W2**：附件 `photo.jpeg` → 目标 `photo.jpg` 会收敛回 `photo.jpeg`（同目录同主名 → 409），即**用 move 改附件扩展名不再可行**（修复前允许）。无数据丢失、UI 不可达。
+
+**仍未做**：**F10**（移动模块文档不校验 `ke-module source` → 悬空引用）——方案已定「仅检测」，但「检测到之后拦截(409) 还是放行+警告」待主理人裁决。
+
 ## 本轮（2026-09-14）发现的独立遗留项
 
 | ID | 项 | 事实 | 影响 | 建议 |

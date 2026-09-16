@@ -149,6 +149,28 @@ class AppConfig:
         self.data["recent_documents"] = items[:MAX_RECENT_DOCUMENTS]
         self.save()
 
+    def rename_recent_document(self, old_rel: str, new_rel: str) -> bool:
+        """F11：文档移动/重命名后同步「最近更新」条目（old_rel → new_rel）。
+
+        - 命中项**原位**替换 rel_path：保留 title / opened_at 与列表顺序；
+        - 去重：new_rel 若已在列表中，只保留首次出现的一条（不产生重复项）；
+        - 上限 MAX_RECENT_DOCUMENTS 不变；未命中 old_rel 时 no-op（返回 False，不写盘）。
+        """
+        items = self.list_recent_documents()
+        if not any(i["rel_path"] == old_rel for i in items):
+            return False
+        out: list[dict] = []
+        seen: set[str] = set()
+        for it in items:
+            rel = new_rel if it["rel_path"] == old_rel else it["rel_path"]
+            if rel in seen:
+                continue
+            seen.add(rel)
+            out.append({**it, "rel_path": rel})
+        self.data["recent_documents"] = out[:MAX_RECENT_DOCUMENTS]
+        self.save()
+        return True
+
     def clear_recent_documents(self) -> None:
         self.data["recent_documents"] = []
         self.save()

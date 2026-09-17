@@ -2,13 +2,14 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-17（**v1.1.9 正式版构建完成**：bump/侧车/NSIS/manifest/冒烟全部就绪，资产待发布）
+> 最后更新：2026-09-17（**v1.1.9 正式版已发布**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.1.9）
 
-## 2026-09-17（★ v1.1.9 正式版构建完成）
+## 2026-09-17（★ v1.1.9 正式版发布）
 
-类型：Release（构建与冒烟完成；Release 资产待上传）
-状态：Built（资产已就绪并留 hash；发布动作待主理人确认）
+类型：Release
+状态：Completed（已发布为 Latest；四附件齐全）
 Tag：`v1.1.9` · commit `9bcdeb8`（bump）→ 内容提交 `ca9ff1f` 等
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.1.9（published 2026-09-17T03:59:37Z）
 
 **本版内容（发布后一周增量批次）**
 1. 品牌：0908 新 logo 应用内素材 + 派生脚本；**对外图标恢复白底版**（透明深字标在深色任务栏不可见 → 整目录回退 v1.1.8 白底圆角图标集，逐字节一致；保留 `--plated-icon` 以便切「新标+白底」）
@@ -31,7 +32,15 @@ Tag：`v1.1.9` · commit `9bcdeb8`（bump）→ 内容提交 `ca9ff1f` 等
 - 关窗 `CloseMainWindow()` → **2.7s 退出、0 孤儿进程、9333 端口释放**
 - 图标/横幅素材为新版（`astranota-*` 新 hash）；设置页显示 v1.1.9
 
-**资产 hash（待上传）**：安装包 `8b4cd210…` / 侧车 `5b047baf…` / manifest `2609fda6…` / versions `367dcc42…`
+**四附件（已上传，`gh release` 校验 size/state 全部 uploaded）**
+| 附件 | 大小 | sha256 |
+|---|---|---|
+| `AstraNota_1.1.9_x64-setup.exe` | 50,781,068 B | `8b4cd210…` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe` | 46,202,789 B | `5b047baf…` |
+| `manifest.sha256` | 10,917 B | `2609fda6…` |
+| `versions.json` | 19,344 B | `367dcc42…` |
+
+**过程留痕**：`gh release create` 首次因上传 ~97MB 超时（命令被 SIGTERM）→ 实际产生了 **draft** 且只带上两个小附件；用 `gh release upload <tag> --clobber` 补传两个大附件后再 `gh release edit --draft=false --latest` 发布。**教训**：大附件发布应后台执行，或先 `--draft` 再 upload 再 edit（本次即按此收尾）。
 
 ## 2026-09-15（发布后 · 附件区默认收起 + K3-I2 方案 A 启动自愈）
 

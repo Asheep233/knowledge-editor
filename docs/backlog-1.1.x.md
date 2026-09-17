@@ -80,6 +80,12 @@
 | K3-T1 | ✅ 已修（F13：applyTheme 监听器模块级单例）|
 | K3-I2 | ✅ 已修（2026-09-15，方案 A 启动自愈；task-21/23）|
 
+## 测试稳定性观察（2026-09-17）
+
+| 观察 | 证据 | 处置 |
+|---|---|---|
+| 全量 vitest 出现**一次性** 1 failed / 547 passed | 2026-09-17 11:38 的 `npx vitest run`（当时与后端 pytest 并发执行）。**失败用例名未捕获**（当时的命令管道只留尾部 4 行）→ 无法定位 | **未能复现**：随后 5 次全量运行（含 1 次 6 路 CPU 负载下单独跑 perf-bench）全部 `548 passed + 1 skipped`。登记为观察项；**若再次出现，先捕获完整日志与用例名**再判是否修复。不排除与并发负载相关的时序敏感用例（如 perf-bench 的 1.5s 门槛） |
+
 ## K3-I2 状态更新（2026-09-15，方案 A）
 
 **原始描述**：rename/move 非原子、无 fsync，崩溃窗口内文件名与索引不一致（`docs/reports/knowledge-editor-v1.1.0-pre.1-审查总汇报.md:51`）。现状核对：正文保存有 `atomic_write`（temp + fsync + `os.replace`），而 `fs.py::move_path` 仍只有 `src.rename(dst)`（无 fsync、无回滚）→ 描述**今天仍成立**。

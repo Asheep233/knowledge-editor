@@ -65,9 +65,10 @@
 
 | ID | 项 | 事实 | 影响 | 建议 |
 |---|---|---|---|---|
-| **F-S1-2** | `EditorArea` 的 F14 内容快照分支恒假（自 `53803ca` 起）| 切档 effect 中 `articleRef.current?.id === prevId` 因 ref 同步 effect 声明更早而恒为 false → `contentSnapshotRef` 从未赋值 → `flushPending(A)` 的 saveFn 因 `snap === undefined` 直接 return | 潜伏：绕过 App 前置 flush 直接切档时，A 最后 <3s 的编辑**既不落盘也不登记**。生产路径被 `App.requestOpenArticle` 的 `flushWithTimeout` 挡住（T5b 实测正常）| 另立任务修复（涉及共享保存路径的历史敏感区，需独立验证周期）|
+| **F-S1-2** | `EditorArea` 的 F14 内容快照分支恒假（自 `53803ca` 起）| 切档 effect 中 `articleRef.current?.id === prevId` 因 ref 同步 effect 声明更早而恒为 false → `contentSnapshotRef` 从未赋值 → `flushPending(A)` 的 saveFn 因 `snap === undefined` 直接 return | 潜伏：绕过 App 前置 flush 直接切档时，A 最后 <3s 的编辑**既不落盘也不登记**。生产路径被 `App.requestOpenArticle` 的 `flushWithTimeout` 挡住（T5b 实测正常）| 🔧 **主理人 2026-09-15 裁决：一起修**（task-17/18，含独立验证周期）|
 | **F-S1-3** | 中止分支 `cancel()` 语义过宽 | `draftRegRef` 为单例、与文档无关；中止非当前文档的保存会误清当前文档的未决登记 | 当前不可达（`abortPending` 唯一入口受全屏遮罩约束）| ✅ 本轮已修（`efdf5cc`，verifier T8 复测转绿）|
-| W-S3-1/2/3 | 符号链接同名碰撞走 400（fail-closed）；`.. evil.pdf` 前导点残留；`trailing.pdf.` 400 | 行为观察，非安全缺陷 | 无 | 记录备查；W-S3-2 若要清除中间点串需改 `sanitize_filename`（共享），须主理人批准 |
+| W-S3-1/2/3 | 符号链接同名碰撞走 400（fail-closed）；`.. evil.pdf` 前导点残留；`trailing.pdf.` 400 | 行为观察，非安全缺陷 | 无 | **主理人 2026-09-15 裁决：W-S3-2 暂不修**（要动共享 `sanitize_filename`，收益低）；三条全部保留为观察项，仅记录备查 |
+| **F10** | 移动模块文档不校验 `ke-module source` → 引用方 `source` 悬空 | 规范 §3.2：v1 为「插入后复制内容」语义，`source` 仅记录、**不参与任何运行时解析**；后端 grep 零消费者；`ModuleNodeView` 为 `display:none` 隐藏占位 | 移动后**无运行时影响**（引用方正文照旧、无报错、无索引坏引用）；遗留三笔滞后账：①悬空元数据随复制/导出传播 ②将来做动态模块同步/引用体检时集中暴露 ③用户可能误以为引用会跟着更新 | ✅ **主理人 2026-09-15 裁决：方案 C「只登记」** —— 规范 `markdown-extension-spec.md` §3.2 已注记「悬空属预期」；不拦截、不提示；待动态模块同步需求落地时一并处理（可用必填 `id` 做兜底匹配）|
 
 ## 状态更新（2026-09-08）
 

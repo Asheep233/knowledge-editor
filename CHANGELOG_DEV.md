@@ -2,7 +2,29 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（**移动路径 4 项修复 F9b/F9c/F11/F12**）
+> 最后更新：2026-09-15（**主理人裁决：F10 方案 C 只登记 / W-S3-2 不修 / F-S1-2 一起修**）
+
+## 2026-09-15（发布后 · 主理人对三项遗留的裁决）
+
+类型：Decision（+ F-S1-2 修复开工）
+状态：F10 / W-S3-2 已落文档；F-S1-2 由 task-17/18 实施与独立验证中
+
+**F10（移动模块文档 → `ke-module.source` 悬空）→ 方案 C「只登记」**
+Lead 沿数据流复核的证据链：
+1. 规范 §3.2（`docs/markdown-extension-spec.md`）明示 v1.1.0 拍板「**插入后复制内容**，不做动态引用/嵌套解析」，`source` 字段说明为「Phase 5 记录，**不参与动态同步**」；
+2. 插入实现 `EditorToolbar.insertModule`：`getModule(path)` 取正文 → `stripModuleTitle` → 拼 `<!-- ke-module: {"source": path} -->` → 插入 → **内容当场复制**；
+3. `ModuleNodeView` 仅渲染 `display:none` 的隐藏占位（`data-ke-module-source`），不渲染卡片、不请求后端；
+4. **后端零消费者**（`backend/app` grep 无任何读取 `ke-module.source` 的代码；`referencing_docs` 只认 `Attachments/`）。
+→ 结论：移动（200）**无运行时影响**（引用方正文照旧、无报错、无索引坏引用）；遗留三笔滞后账：①悬空元数据随复制/导出传播 ②将来做动态模块同步/引用体检时集中暴露 ③用户可能误以为引用会跟着更新。
+→ 处置：规范 §3.2 补注「悬空属预期」，backlog F10 行标注「设计已知、待动态同步需求」；**不拦截、不提示**（拦截 A 会挡住正常改名/移动而当前收益为 0）。
+→ 对照保留：**附件**的 409 保护不变（`ke-attach.src` 是动态使用，必须保护）。
+
+**W-S3-2（`../../evil.pdf` → `.. evil.pdf` 前导点残留）→ 暂不修，仅记录**
+无安全影响（穿越已被挡、文件仍在 `Attachments/<分类>/` 内），修它要动**共享** `sanitize_filename`（文档命名 + 附件命名共用），收益低 → 保留为观察项（W-S3-1/2/3 一并记录备查）。
+
+**F-S1-2（切档内容快照分支恒假）→ 一起修**
+根因（Lead 复核含行号）：`EditorArea.tsx:110-112` 的 articleRef 同步 effect **声明更早**，切档 effect `:368` 的 `articleRef.current?.id === prevId` 恒假 → `contentSnapshotRef` 从未写入 → `:376 flushPending(旧文档)` 的 saveFn（`:258-267`）取不到快照直接 `return` → 旧文档最后 <3s 编辑**既不落盘也不登记恢复点**（生产路径被 `App.requestOpenArticle` 的 `flushWithTimeout` 挡住，属潜伏缺口）。
+处置：task-17（抽 `state/docSwitch.ts` 可测缝 + 修守卫语义为「编辑器此刻是否仍载着 prevId」+ 顺序不变量）+ task-18（独立对抗验证，含**判别性证明**：旧恒假判据必须产生「保存被放弃」而新实现产生「用 A 的内容保存」，两者不可区分即判 FAIL）。
 
 ## 2026-09-15（发布后 · 移动路径 4 项修复：F9b / F9c / F11 / F12）
 

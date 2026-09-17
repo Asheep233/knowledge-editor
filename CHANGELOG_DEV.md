@@ -2,7 +2,35 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（**主理人裁决：F10 方案 C 只登记 / W-S3-2 不修 / F-S1-2 一起修**）
+> 最后更新：2026-09-15（**F-S1-2 修复完成并独立验证 PASS；验证顺带发现 F-S1-4（已登记并开修）**）
+
+## 2026-09-15（发布后 · F-S1-2 修复 + 验证发现的 F-S1-4）
+
+类型：Fix（+ 新发现的既有缺陷）
+状态：F-S1-2 Completed（源码 + 独立验证 PASS，未发版）；F-S1-4 由 task-19/20 修复与验证中
+任务：task-17（dev-attach-ui）· task-18（verifier）
+
+**F-S1-2 根因**（Lead 复核，含行号）：`EditorArea.tsx:110-112` 的 `articleRef` 同步 effect 声明更早 →
+切档 effect `:368` 的 `articleRef.current?.id === prevId` **恒为假** → `contentSnapshotRef` 从未写入 →
+`:376 flushPending(旧文档)` 的 saveFn（`:258-267`）取不到快照直接 `return` → 旧文档最后 <3s 编辑
+**既不落盘也不登记恢复点**（生产路径被 `App.requestOpenArticle` 的 `flushWithTimeout` 挡住，属潜伏缺口）。
+
+**修复**（3 文件）：
+- 新增可测缝 `frontend/src/state/docSwitch.ts`：`onDocumentSwitch()`（顺序固定 **拍快照 → flushPending → cancelDraftTimer**）
+  与 `resolveSaveContent()`（`docId === currentDocId` 才可用实时内容，否则只用该 docId 快照，**无快照 → null = 放弃保存**，承载 F14「绝不把当前编辑器内容写进旧文档路径」红线）；快照表 LRU 上限 16
+- `EditorArea.tsx`：新增 `editorDocIdRef`（编辑器此刻载着谁），更新点覆盖常规切档、>200KB 的 80ms 延迟分支（在 `setKeContent` 之后）、reloadToken 外部重载、F15 保存后对齐；守卫改为「编辑器此刻是否仍载着 prevId」
+- `state/docSwitch.test.ts`（新，21 例）
+
+**独立验证（verifier，18 例 + 树外组件轨 7 例）**：冻结 sha 跑前/跑后逐字一致；判别性证明（旧判据 → null、新语义 → A 内容，两边不可区分即 FAIL）；
+接线四点逐点行号与顺序证据（常规 `411→413`、延迟分支 `418→420` 均在 setTimeout 内、reloadToken 同 effect、F15 `302→305`）；
+**「放弃保存」新分支的生产可达性**：正常路径不可达（切档必先拍快照再 flush，drain 同步消费；LRU 驱逐需单次 PUT 往返内切档 ≥17 次）→ 不判 FAIL
+**门禁**：tsc 0；全量 **38 files / 512 passed + 1 skipped**（473+21+18，skip 仍 1）；`App.tsx` / `draftDebounce.ts` 未改
+
+**⚠ 验证顺带发现的既有缺陷 → 登记为 F-S1-4（已开修）**：
+- ① 大文档（>200KB）80ms 延迟载入的**过期 timeout 仍会 `setKeContent` 覆盖编辑器**（切档过快时）——`[DS6]` 实测：C 载入后 80ms 变 `B-BODY`
+- ② `flushDraftRecovery`（`EditorArea.tsx:239-244`）用 `articleRef.current` + 编辑器实时内容，**缺 `editorDocIdRef` 守卫**（与 save 路径不同源）→ 破坏态下 `[DS7]` **以 C 的名义登记了含 B 正文的恢复点**
+- 后果：崩溃后「恢复」会把 B 的内容写回 C 的路径（**跨文档内容污染**，数据完整性）；save 路径无串写（dev 声明成立）
+- 处置：task-19（①代次令牌/清理过期 timeout ②`flushDraftRecovery` 补同源守卫，缝内可测）+ task-20（独立验证）
 
 ## 2026-09-15（发布后 · 主理人对三项遗留的裁决）
 

@@ -22,6 +22,7 @@ import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
+import { onDocumentSwitch, resolveSaveContent } from '../../state/docSwitch'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
@@ -97,6 +98,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // F14：文档内容快照（docId → 序列化 Markdown）。切换文档瞬间为「离开的文档」
   // 拍下最终内容，供其在途/后续保存使用（避免经 editorRef 重读新文档内容串写）。
   const contentSnapshotRef = useRef(new Map<string, string>())
+  // F-S1-2：编辑器**此刻实际载入**的文档 id（实时内容的可信域）。切档快照的守卫必须用它，
+  // 而不是 articleRef —— 后者的同步 effect 声明更早，切档 effect 跑到时它已指向新文档，
+  // 导致 `articleRef.current?.id === prevId` 恒假、快照从未写入（旧文档最后 <3s 编辑静默丢弃）。
+  // 更新点覆盖每一处把内容载入编辑器的地方：首载 / 常规 setKeContent / 大文档 80ms 延迟分支 /
+  // reloadToken 外部重载。
+  const editorDocIdRef = useRef<string | null>(null)
   // S-1：编辑期恢复点登记（「有界年龄」调度）。
   // saveQueue.enqueueSave 是纯尾沿防抖且无 maxWait——连续输入时计时器被反复重置、
   // 永不触发，于是既不自动保存也不登记恢复点，硬崩溃的丢失窗口**无界**（不是「一个
@@ -257,17 +264,20 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         const ed = editorRef.current
         const seq = docSeq(docId)
         const isCurrent = articleRef.current?.id === docId
-        // F14：保存内容来源——当前文档用编辑器实时序列化；已切走的文档用
-        // 切换瞬间的内容快照（原实现经 editorRef 执行时重读，会把新文档内容
-        // 写入旧路径造成跨文档串写）。
-        let md: string
-        if (ed && isCurrent) {
-          md = withFrontmatter(ed.getMarkdown(), KE_VERSION)
-        } else {
-          const snap = contentSnapshotRef.current.get(docId)
-          if (snap === undefined) return
-          md = snap
-        }
+        // F14 / F-S1-2：保存内容来源按「**编辑器此刻载着谁**」裁决（editorDocId），
+        // 而不是 articleRef —— 后者在切档窗口里已指向新文档，会把新文档内容写进旧路径。
+        // 只有编辑器仍载着 docId 时才允许实时序列化；否则必须用切档快照；
+        // 无快照 → resolveSaveContent 返回 null → 放弃本次保存（不 save、不登记恢复点）。
+        const editorDocId = editorDocIdRef.current
+        const editorMarkdown =
+          ed && editorDocId === docId ? withFrontmatter(ed.getMarkdown(), KE_VERSION) : null
+        const md = resolveSaveContent({
+          docId,
+          currentDocId: editorDocId,
+          editorMarkdown,
+          snapshots: contentSnapshotRef.current,
+        })
+        if (md === null) return
         try {
           if (isCurrent) setSaveState('saving')
           await registerRecoveryPoint(docId, md)
@@ -290,6 +300,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             const savedBody = stripFrontmatter(saved.content).content
             if (stripFrontmatter(md).content !== savedBody) {
               setKeContent(ed, savedBody)
+              // F-S1-2：此处把 docId 的内容载入了编辑器 → 同步「编辑器载着谁」，
+              // 否则后续保存会误判内容来源（可能再经实时分支串写）。
+              editorDocIdRef.current = docId
             }
           }
         } catch (e) {
@@ -363,20 +376,27 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     const newId = article?.id ?? null
     const prevId = prevArticleIdRef.current
     if (prevId && prevId !== newId) {
-      // F14：先为离开的文档拍下内容快照（含其最新编辑），
-      // 再触发其未决保存（在途第二棒可能晚于 setKeContent 执行）
-      if (editor && articleRef.current?.id === prevId) {
-        contentSnapshotRef.current.set(prevId, withFrontmatter(editor.getMarkdown(), KE_VERSION))
-        if (contentSnapshotRef.current.size > 16) {
-          const oldest = contentSnapshotRef.current.keys().next().value
-          if (oldest !== undefined) contentSnapshotRef.current.delete(oldest)
-        }
-      }
-      // 切换离开旧文档：立即触发其未决保存，避免防抖窗口内输入静默丢失
-      void flushPending(prevId)
-      // S-1：旧文档的恢复点已由上面的保存路径登记；必须放弃本调度器的未决计时器，
-      // 否则它到点时会用**新文档**的编辑器内容（且以新文档 id）登记，造成串档。
-      draftRegRef.current?.cancel()
+      // F14 / F-S1-2：先为离开的文档拍下内容快照（含其最新编辑），再触发其未决保存
+      // （在途第二棒可能晚于 setKeContent 执行）。守卫语义 =「编辑器此刻仍载着 prevId」，
+      // 由 docSwitch 模块承载（旧实现用 articleRef 判据 → 恒假 → 快照从未写入）。
+      onDocumentSwitch({
+        editorDocId: editorDocIdRef.current,
+        prevId,
+        newId,
+        editorMarkdown:
+          editor && editorDocIdRef.current === prevId
+            ? withFrontmatter(editor.getMarkdown(), KE_VERSION)
+            : null,
+        snapshots: contentSnapshotRef.current,
+        // 切换离开旧文档：立即触发其未决保存，避免防抖窗口内输入静默丢失
+        flushPending: (id) => {
+          void flushPending(id)
+        },
+        // S-1：旧文档的恢复点已由上面的保存路径登记；必须放弃本调度器的未决计时器，
+        // 否则它到点时会用**新文档**的编辑器内容（且以新文档 id）登记，造成串档。
+        // 注意：该回调在 flush **之后**被调用（顺序由 docSwitch 保证）。
+        cancelDraftTimer: () => draftRegRef.current?.cancel(),
+      })
     }
     prevArticleIdRef.current = newId
     setSaveState('idle')
@@ -389,11 +409,15 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         // 80ms：给 React commit + 浏览器一次 paint 的时间，占位帧先可见再阻塞解析
         window.setTimeout(() => {
           setKeContent(editor, body)
+          // 内容此刻才真正载入编辑器 → 同步「编辑器载着谁」（延迟分支也必须覆盖）
+          editorDocIdRef.current = article.id
           setParsingLarge(false)
         }, 80)
       } else {
         setParsingLarge(false)
         setKeContent(editor, body)
+        // 常规分支：内容已同步载入
+        editorDocIdRef.current = article.id
       }
     } else {
       setParsingLarge(false)

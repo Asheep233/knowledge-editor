@@ -3,7 +3,7 @@
  * - 标签（4.5）：标签列表 + 点击筛选
  * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（文档=单次确认+可在回收站恢复；文件夹=二次确认）、移动
  * - 模块：点击打开
- * - 附件（task-12 迁入，附件能力的家）：可折叠小节（默认展开）——行点击就地展开「附属情况与附属记录」
+ * - 附件（task-12 迁入，task-22 默认收起）：可折叠小节（默认收起，收起态只留表头）——行点击就地展开「附属情况与附属记录」
  *   （全部 referenced_by 逐条可跳转；未引用显示自身详情）+ 行右侧「打开文件」独立 <a> + 孤儿附件手动删除。
  *   数据源 = listAttachments() / listOrphans()（不再依赖 tree.attachments）。
  * - 回收站（MVP）：启用导航项，恢复 / 彻底删除 / 清空（契约 docs/design-trash-mvp.md）
@@ -142,7 +142,8 @@ export default function LeftSidebar({
   const [recent, setRecent] = useState<RecentDocument[]>([])
   const [tags, setTags] = useState<TagInfo[]>([])
   // 附件区（task-12：附件能力的家）——数据源为 listAttachments()/listOrphans()，不依赖 tree.attachments
-  const [attachOpen, setAttachOpen] = useState(true) // 默认展开（保持左栏现有观感）
+  // task-22 裁决：默认收起（承接「可收起、别占太多空间」；收起态只留表头一行）
+  const [attachOpen, setAttachOpen] = useState(false)
   const [attachments, setAttachments] = useState<AttachmentItem[]>([])
   const [orphans, setOrphans] = useState<OrphanItem[]>([])
   const [attachError, setAttachError] = useState(false)
@@ -825,7 +826,7 @@ export default function LeftSidebar({
           )}
         </Section>
 
-        {/* 附件（task-12：附件能力的家）—— 可折叠小节（默认展开）；行点击看「附属情况与附属记录」；
+        {/* 附件（task-12：附件能力的家；task-22：默认收起）—— 可折叠小节；行点击看「附属情况与附属记录」；
             行右侧独立「打开文件」<a>（不嵌套在行按钮内）；孤儿附件仅手动删除 */}
         <div className="border-b border-border py-2">
           <div className="mb-1 flex items-center justify-between gap-1 px-3">

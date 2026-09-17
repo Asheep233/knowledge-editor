@@ -2,7 +2,27 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（**F-S1-2 + F-S1-4 修复完成并独立验证 PASS；全量 vitest 540 passed + 1 skipped**）
+> 最后更新：2026-09-15（**附件区默认收起 + K3-I2 方案 A 启动自愈；两项均独立验证 PASS**）
+
+## 2026-09-15（发布后 · 附件区默认收起 + K3-I2 方案 A 启动自愈）
+
+类型：UX 调整 + 韧性加固
+状态：Completed（源码 + 独立验证 PASS；未发版）；主理人已定版本 **v1.1.9**
+任务：task-22/24（附件默认收起）· task-21/23（启动自愈）
+
+**1. 左栏「附件」区改为默认收起**（主理人裁决，承接「别占太多空间」的原始诉求）
+- `LeftSidebar.tsx`：`attachOpen` 初值 `true → false`；收起态只剩一行表头（chevron + 「附件 N」+ 有孤儿时琥珀徽章 + 刷新），行/详情/孤儿区块/底部说明一律不渲染
+- 行为边界：默认收起**照发数据请求**（计数与徽章依赖数据）；展开态行为与之前完全一致
+- 独立验证（verifier-attach，`LeftSidebar.verify.test.tsx` 25 → 33 例）：判据只改「默认态」一族，4 条被强化（刷新仍重新拉取 / 0 附件收起态不显示空态 / 收起态先断言零写 / refreshKey 计数随数据变化）+ 净新增 8 条（不省首次请求、计数徽章源自真实数据、徽章在折叠按钮内且点它即展开、`aria-expanded` 往返、收起后零残留、卸载重挂仍默认收起等）
+- 门禁：tsc 0；全量 vitest **38 files / 548 passed + 1 skipped**（skip 恒 1）
+
+**2. K3-I2 方案 A：启动自愈**（主理人裁决「开 A」；把「极端崩溃」降级为「重启即收敛」）
+- 背景：正文保存有 `atomic_write`（temp+fsync+os.replace），而 `fs.py::move_path` 只有 `src.rename(dst)`（无 fsync、无回滚）→ 崩在 rename 与同步之间的窗口里，草稿会带**旧路径 hash** 而文档已在新路径（UI 里显示「找不到原文档」）
+- 新增 `app/services/self_heal.py`：`heal_recovery_drafts`（hash 命中不动；**stem 唯一匹配** → 改名到规范名 + `store.move_recovery` 迁记录，**内容逐字节不变**；0 或多个候选 → **一律不动 + WARNING**）、`reconcile_recovery_records`（仅记录侧兜底）、`count_backup_orphans`（`Drafts/backup` 孤儿**只统计不删除**）
+- `app/main.py`：启动调用 + **调用点 try/except**（自愈失败不阻断启动）+ `install_workspace_hook()` 包装工作区激活入口（启动 / `/api/workspace/open|create` / 测试直接调用全覆盖；幂等、无草稿不扫文档）
+- 独立验证（verifier，19 例 + dev 14 例）：**崩溃窗口真复现**（不调自愈函数，直接造崩溃态 → 真实 lifespan）→ 草稿改名 `report-7a4bb084 → report-254a7df3`、`doc_path → Articles/归档/report.md`、id/saved_at/session_id 保留、草稿 sha256 逐字节不变；歧义 fail-safe；幂等（两次启动四重零变化）；**全工作区不变量**证明无任何用户内容被删/改写；E1b 由「观察项」升格为**硬契约**（入口整体抛异常时启动仍存活）
+- 门禁：全量 pytest **630 passed + 2 skipped**（597 + 19 + 14）；openapi 快照 3 passed（无新端点）
+- **设计取舍**：换名（stem 变化）的崩溃窗口**不可自愈**（fail-safe 不动，草稿仍在磁盘）；自愈随每次工作区激活跑（幂等 + early-return）；**未做** fsync 加固（方案 B）与引用计数（方案 C）
 
 ## 2026-09-15（发布后 · F-S1-4 修复：过期 timeout 覆盖编辑器 + 恢复点 id/内容错配）
 

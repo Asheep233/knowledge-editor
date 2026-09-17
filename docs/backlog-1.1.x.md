@@ -6,7 +6,7 @@
 | ID | 问题 | 根因 | 影响 | 优先级 | 备注 |
 |---|---|---|---|---|---|
 | K3-I1 | indexer 增量更新不刷新扫描签名，reconcile 退化为永久全量重建 | `_SIGNATURE_KEY` 仅 `rebuild()` 写入，`update_file` 不更新 | 启动性能退化（每次启动全量扫描） | P1 | 已拍板接受进 1.1.x；hash 入签名 |
-| K3-I2 | rename/move 非原子、无 fsync，崩溃窗口内文件名与索引不一致 | 写路径一致性只在正文保存落实 | 极端崩溃下标题改名半完成 | P2 | 建议引用计数 + 原子 rename 先行 |
+| K3-I2 | rename/move 非原子、无 fsync，崩溃窗口内文件名与索引不一致 | 写路径一致性只在正文保存落实 | 极端崩溃下标题改名半完成 | P2 | ✅ **方案 A 已落地（2026-09-15）**：启动自愈（草稿按唯一 stem 重挂 + 历史孤儿只统计），详见下方「K3-I2 状态更新」 |
 | K3-T1 | applyTheme 每次调用累积注册 matchMedia change 监听器 | 函数体内 addEventListener 无去重 | 内存泄漏累积、系统切换重复执行 | P2 | 改为单例注册 + unlisten |
 | B1 | reconcile 签名判据（size+mtime_ns）在「等长+同 tick」时漏更索引 + flaky 测试 | `indexer.py:141-152` 判据粒度不足 | 搜索结果过期、测试偶发失败 | P1 | 可先修 flaky 测试再改判据；hash 入签名 |
 
@@ -78,4 +78,22 @@
 | B1 | ✅ 已修（签名判据加入内容 hash，v1.1.2 批次）|
 | K3-I1 | ✅ 已修（update_file/move/delete 增量同步签名）|
 | K3-T1 | ✅ 已修（F13：applyTheme 监听器模块级单例）|
-| K3-I2 | ⏳ 未修（rename/move 原子性；极端崩溃窗口，P2）|
+| K3-I2 | ✅ 已修（2026-09-15，方案 A 启动自愈；task-21/23）|
+
+## K3-I2 状态更新（2026-09-15，方案 A）
+
+**原始描述**：rename/move 非原子、无 fsync，崩溃窗口内文件名与索引不一致（`docs/reports/knowledge-editor-v1.1.0-pre.1-审查总汇报.md:51`）。现状核对：正文保存有 `atomic_write`（temp + fsync + `os.replace`），而 `fs.py::move_path` 仍只有 `src.rename(dst)`（无 fsync、无回滚）→ 描述**今天仍成立**。
+
+**主理人 2026-09-15 裁决：开 A（最小自愈）**，把「极端崩溃」降级为「重启即收敛」。落地内容：
+- 新增 `app/services/self_heal.py`：
+  - `heal_recovery_drafts()` —— 扫 `Drafts/recovery/*.draft.md`，hash8 命中现存文档 → 不动；未命中且 **stem 唯一匹配** → 改名到规范名 + `store.move_recovery()` 迁移记录（**草稿内容逐字节不变**）；**0 或多个候选 → 一律不动 + WARNING**（fail-safe，绝不猜）
+  - `reconcile_recovery_records()` —— 兜底：草稿文件已改名但记录未迁（崩在文件改名与记录迁移之间）→ 只迁记录，文件零变动
+  - `count_backup_orphans()` —— `Drafts/backup` 孤儿**只统计不删除**（非破坏性）
+- `app/main.py`：启动 lifespan 调用（**调用点 try/except 纵深防御**，自愈失败不阻断启动）+ `install_workspace_hook()` 包装工作区激活入口，使启动 / `/api/workspace/open|create` / 测试直接调用都覆盖；幂等 + 无草稿时不扫文档。
+
+**独立验证（verifier，19 例 + dev 14 例）**：崩溃窗口**真复现**（不调自愈函数，直接造「新路径文档 + 旧 hash 草稿 + SQLite 记录指旧路径」→ 走真实 lifespan）；歧义 fail-safe；幂等（两次启动 sha+mtime_ns+DB+GET 四重零变化）；**全工作区不变量**（启动前后增删恰好 = 新/旧草稿，其余文件逐字节不变 → 未发现任何用户内容被删/改写）；E1b 升格为硬契约（入口整体抛异常时启动仍存活）。全量 pytest **630 passed + 2 skipped**（597 + 19 + 14），openapi 快照 3 passed。
+
+**设计取舍（如实记录）**：
+1. **换名（stem 变化）的崩溃窗口不可自愈** —— 唯一 stem 匹配的前提不成立 → fail-safe 不动（草稿保留在磁盘，内容不丢，可手工找回）。这是「绝不猜」的直接代价。
+2. 自愈随**每次工作区激活**跑（非严格「进程一次」），以覆盖启动与运行期切库；靠幂等 + early-return 控制开销。
+3. **未做**：rename/move 的 fsync 加固（方案 B，Windows/NTFS 收益有限）与引用计数索引（方案 C，性能向、非正确性必需）。

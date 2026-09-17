@@ -5,11 +5,14 @@
 2. 确保 workspace 目录结构存在（含按类型分类的 Attachments/）
 3. 打开 SQLite 集中索引 + 全量重建（Markdown 为唯一事实源，索引可重建）
 4. 启动文件监听线程（Phase 4.3：外部修改检测，自身写入自动抑制）
+5. K3-I2 方案 A 自愈：每次工作区激活（启动 / 打开 / 切换）后——恢复草稿按
+   唯一 stem 重挂 + 历史快照孤儿只统计（幂等；失败不阻断启动/打开）
 
 由 Tauri 桌面壳以 sidecar 方式拉起，本机 HTTP 通信（决策点 1）。
 """
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -35,9 +38,18 @@ from .routers import (
     trash,
     workspace,
 )
-from .routers.workspace import activate_workspace
+from .routers.workspace import activate_workspace as _activate_workspace_impl
+from .services import self_heal
 from .services.app_config import AppConfig
 from .services.fs_watch import FsWatcher
+
+logger = logging.getLogger(__name__)
+
+# K3-I2 方案 A：自愈入口在工作区激活之后执行。`workspace.py` 不在本任务写入
+# 边界内，故在 main 侧包装其入口并替换模块属性——运行期
+# /api/workspace/open|create 与测试直接调用 activate_workspace 都会触发自愈；
+# lifespan 启动路径在下方显式调用入口，并加**调用点纵深防御**（失败不阻断启动）。
+self_heal.install_workspace_hook(workspace)
 
 
 @asynccontextmanager
@@ -59,10 +71,21 @@ async def lifespan(app: FastAPI):
     app.state.history = None
 
     try:
-        activate_workspace(app, config.WORKSPACE_ROOT)
+        _activate_workspace_impl(app, config.WORKSPACE_ROOT)
     except OSError:
         # 默认工作区不可用时保持「未打开」状态，由前端引导创建/打开
         pass
+
+    # K3-I2 方案 A：启动自愈（恢复草稿重挂 + 历史快照孤儿只统计）。
+    # 调用点纵深防御：即使入口整体被替换成抛异常函数（或将来重构出 try 之外
+    # 的异常），也绝不阻断启动。
+    try:
+        self_heal.run_startup_self_heal(
+            getattr(app.state, "workspace_root", None),
+            getattr(app.state, "store", None),
+        )
+    except Exception:  # noqa: BLE001 自愈失败不影响启动
+        logger.exception("启动自愈失败（不影响启动）")
 
     yield
 

@@ -4,9 +4,11 @@
  *  - 文档删除 = 单次确认且文案含「可在回收站恢复」
  *  - 文件夹删除 = 保留原「无法恢复」双重确认
  *  - 恢复成功经 onTrashRestored 上报（App 侧 setTreeRefresh）
- * B. 附件区（task-12：附件能力的家迁到左栏）—— 可折叠（默认展开）、行点击看「附属情况与附属记录」
- *  （全部 referenced_by 逐条可跳转）、未引用显示自身详情、「打开文件」<a> 保留、孤儿手动删除、
- *  数据源 listAttachments()/listOrphans()（不依赖 tree.attachments）、refreshKey 驱动刷新。
+ * B. 附件区（task-12：附件能力的家迁到左栏；task-22：**默认收起**）—— 可折叠、行点击看
+ *  「附属情况与附属记录」（全部 referenced_by 逐条可跳转）、未引用显示自身详情、
+ *  「打开文件」<a> 保留、孤儿手动删除、数据源 listAttachments()/listOrphans()
+ *  （不依赖 tree.attachments）、refreshKey 驱动刷新。
+ *  注：默认收起后，凡涉及行/详情/孤儿区块/错误的用例都先用 `expandAttachments()` 展开。
  */
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -310,13 +312,27 @@ function attachLink(rel: string): HTMLAnchorElement | null {
   return container.querySelector<HTMLAnchorElement>(`[data-attachment-open="${rel}"]`)
 }
 
-describe('LeftSidebar 附件区（task-12 迁入）— 折叠两态与行信息', () => {
-  it('默认展开：表头显示「附件 N」，行含图标 / 去前缀名称 / 大小 / 已引用-未引用徽章', async () => {
+/** task-22：附件小节默认收起 —— 所有涉及行/详情/孤儿区块/错误的用例都需先点表头展开 */
+async function expandAttachments(): Promise<void> {
+  await click(attachToggle())
+}
+
+describe('LeftSidebar 附件区（task-12 迁入；task-22 默认收起）— 折叠两态与行信息', () => {
+  it('默认收起：表头显示「附件 N」+ 刷新按钮，不渲染行/详情/孤儿区块；点表头展开后行信息齐全', async () => {
     await setAttachments([SHARED_ITEM, LONE_ITEM])
     await render()
 
-    expect(attachToggle().getAttribute('aria-expanded')).toBe('true')
+    // —— 默认收起：只留一行表头 ——
+    expect(attachToggle().getAttribute('aria-expanded')).toBe('false')
     expect(container.textContent).toContain('附件 2')
+    expect(container.querySelector('button[aria-label="刷新附件"]')).toBeTruthy()
+    expect(container.querySelectorAll('[data-attachment]')).toHaveLength(0)
+    expect(attachDetail(SHARED)).toBeNull()
+    expect(container.querySelector('[data-testid="orphans-block"]')).toBeNull()
+
+    // —— 点表头展开后行信息齐全 ——
+    await expandAttachments()
+    expect(attachToggle().getAttribute('aria-expanded')).toBe('true')
 
     const sharedRow = attachRow(SHARED)
     expect(sharedRow.querySelector('svg')).toBeTruthy()
@@ -331,10 +347,13 @@ describe('LeftSidebar 附件区（task-12 迁入）— 折叠两态与行信息'
     expect(loneRow.textContent).toContain('未引用')
   })
 
-  it('点表头收起：只剩表头（无行 / 无详情 / 无孤儿区块 / 无底部说明），再点恢复', async () => {
+  it('展开后再点表头收起：只剩表头（无行 / 无详情 / 无孤儿区块 / 无底部说明），再点恢复', async () => {
     await setAttachments([SHARED_ITEM])
     await setOrphans([ORPHAN_ITEM])
     await render()
+
+    await expandAttachments()
+    expect(attachRow(SHARED)).toBeTruthy()
 
     await click(attachToggle())
     expect(attachToggle().getAttribute('aria-expanded')).toBe('false')
@@ -347,23 +366,26 @@ describe('LeftSidebar 附件区（task-12 迁入）— 折叠两态与行信息'
     expect(attachRow(SHARED)).toBeTruthy()
   })
 
-  it('有孤儿 + 收起态：表头琥珀徽章可见（信号不丢），且徽章在折叠按钮内', async () => {
+  it('有孤儿 + 默认收起态：表头琥珀徽章可见（信号不丢）且在折叠按钮内；孤儿区块不渲染', async () => {
     await setAttachments([SHARED_ITEM])
     await setOrphans([ORPHAN_ITEM])
     await render()
 
-    await click(attachToggle())
     const badge = container.querySelector<HTMLElement>('[data-testid="orphan-badge"]')
     expect(badge).toBeTruthy()
     expect(badge!.textContent).toContain('孤儿附件 1')
     expect(badge!.className).toContain('amber')
     expect(attachToggle().contains(badge)).toBe(true)
+    // 收起态零孤儿 DOM：区块与删除入口都不得渲染
+    expect(container.querySelector('[data-testid="orphans-block"]')).toBeNull()
+    expect(findButton('删除')).toBeUndefined()
   })
 
   it('有孤儿 + 展开态：孤儿区块 / 删除按钮 / 列表行 / 底部说明齐全', async () => {
     await setAttachments([SHARED_ITEM])
     await setOrphans([ORPHAN_ITEM])
     await render()
+    await expandAttachments()
 
     expect(container.querySelector('[data-testid="orphans-block"]')).toBeTruthy()
     expect(findButton('删除')).toBeTruthy()
@@ -372,17 +394,18 @@ describe('LeftSidebar 附件区（task-12 迁入）— 折叠两态与行信息'
     expect(container.textContent).toContain('孤儿附件仅支持手动删除，不随笔记回滚。')
   })
 
-  it('0 附件：显示「暂无附件」，表头计数为 0；收起后空态文案一并消失', async () => {
+  it('0 附件：表头计数为 0 且默认收起不渲染空态文案；展开后显示「暂无附件」', async () => {
     await render()
 
     expect(container.textContent).toContain('附件 0')
-    expect(container.textContent).toContain('暂无附件')
+    expect(container.textContent, '默认收起不得渲染空态文案').not.toContain('暂无附件')
     expect(container.querySelectorAll('[data-attachment]')).toHaveLength(0)
+
+    await expandAttachments()
+    expect(container.textContent).toContain('暂无附件')
 
     await click(attachToggle())
     expect(container.textContent, '收起后空态文案应一并收起').not.toContain('暂无附件')
-    await click(attachToggle())
-    expect(container.textContent).toContain('暂无附件')
   })
 
   it('无孤儿时表头不出现琥珀徽章（无孤儿噪声）', async () => {
@@ -390,14 +413,16 @@ describe('LeftSidebar 附件区（task-12 迁入）— 折叠两态与行信息'
     await setOrphans([])
     await render()
 
+    expect(attachToggle().getAttribute('aria-expanded')).toBe('false')
     expect(container.querySelector('[data-testid="orphan-badge"]')).toBeNull()
   })
 })
 
-describe('LeftSidebar 附件区（task-12 迁入）— 点击行看「附属情况与附属记录」', () => {
+describe('LeftSidebar 附件区（task-12 迁入 / task-22 默认收起）— 点击行看「附属情况与附属记录」', () => {
   it('已引用行 → 列出全部 3 篇 referenced_by（不是只取 [0]）', async () => {
     await setAttachments([SHARED_ITEM])
     await render()
+    await expandAttachments()
     await click(attachRow(SHARED))
 
     const detail = attachDetail(SHARED)!
@@ -417,6 +442,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 点击行看「附属情�
     await setAttachments([SHARED_ITEM])
     const onOpenArticle = vi.fn()
     await render({ onOpenArticle })
+    await expandAttachments()
 
     await click(attachRow(SHARED))
     expect(onOpenArticle, '点击行只应就地展开，不应跳转').not.toHaveBeenCalled()
@@ -435,6 +461,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 点击行看「附属情�
     await setAttachments([LONE_ITEM])
     const onOpenArticle = vi.fn()
     await render({ onOpenArticle })
+    await expandAttachments()
     await click(attachRow(LONE))
 
     const detail = attachDetail(LONE)!
@@ -450,6 +477,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 点击行看「附属情�
   it('同行两击 = 展开再收起（行仍在、列表不塌）', async () => {
     await setAttachments([SHARED_ITEM, LONE_ITEM])
     await render()
+    await expandAttachments()
 
     await click(attachRow(SHARED))
     expect(attachDetail(SHARED)).toBeTruthy()
@@ -461,6 +489,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 点击行看「附属情�
   it('点另一行 = 切换详情（同时只展开一行，上一行不残留）', async () => {
     await setAttachments([SHARED_ITEM, LONE_ITEM])
     await render()
+    await expandAttachments()
 
     await click(attachRow(SHARED))
     expect(attachDetail(SHARED)).toBeTruthy()
@@ -471,10 +500,11 @@ describe('LeftSidebar 附件区（task-12 迁入）— 点击行看「附属情�
   })
 })
 
-describe('LeftSidebar 附件区（task-12 迁入）— 打开文件 / 孤儿删除 / 加载边界', () => {
+describe('LeftSidebar 附件区（task-12 迁入 / task-22 默认收起）— 打开文件 / 孤儿删除 / 加载边界', () => {
   it('「打开文件」<a> 保留：href = attachmentUrl(rel_path)、target=_blank，且不嵌套在行按钮内', async () => {
     await setAttachments([SHARED_ITEM])
     await render()
+    await expandAttachments()
 
     const link = attachLink(SHARED)!
     expect(link).toBeTruthy()
@@ -490,6 +520,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 打开文件 / 孤儿删�
     await setAttachments([SHARED_ITEM, LONE_ITEM])
     await setOrphans([ORPHAN_ITEM])
     await render()
+    await expandAttachments()
     await click(attachRow(SHARED))
     await click(attachRow(LONE))
 
@@ -502,6 +533,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 打开文件 / 孤儿删�
     await setAttachments([SHARED_ITEM])
     await setOrphans([ORPHAN_ITEM])
     await render()
+    await expandAttachments()
     const before = vi.mocked(api.listAttachments).mock.calls.length
 
     await click(findButton('删除')!)
@@ -517,6 +549,7 @@ describe('LeftSidebar 附件区（task-12 迁入）— 打开文件 / 孤儿删�
     await setOrphans([ORPHAN_ITEM])
     promptMocks.askConfirm.mockResolvedValue(false)
     await render()
+    await expandAttachments()
 
     await click(findButton('删除')!)
 
@@ -524,9 +557,10 @@ describe('LeftSidebar 附件区（task-12 迁入）— 打开文件 / 孤儿删�
     expect(vi.mocked(api.deleteAttachment)).not.toHaveBeenCalled()
   })
 
-  it('加载失败：显示可见错误；重试后恢复列表', async () => {
+  it('加载失败：展开后显示可见错误；重试后恢复列表', async () => {
     vi.mocked(api.listAttachments).mockRejectedValueOnce(new Error('boom'))
     await render()
+    await expandAttachments()
     expect(container.textContent).toContain('加载失败，请重试')
 
     await setAttachments([SHARED_ITEM])

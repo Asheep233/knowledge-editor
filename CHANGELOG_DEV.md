@@ -2,7 +2,36 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（**附件区默认收起 + K3-I2 方案 A 启动自愈；两项均独立验证 PASS**）
+> 最后更新：2026-09-17（**v1.1.9 正式版构建完成**：bump/侧车/NSIS/manifest/冒烟全部就绪，资产待发布）
+
+## 2026-09-17（★ v1.1.9 正式版构建完成）
+
+类型：Release（构建与冒烟完成；Release 资产待上传）
+状态：Built（资产已就绪并留 hash；发布动作待主理人确认）
+Tag：`v1.1.9` · commit `9bcdeb8`（bump）→ 内容提交 `ca9ff1f` 等
+
+**本版内容（发布后一周增量批次）**
+1. 品牌：0908 新 logo 应用内素材 + 派生脚本；**对外图标恢复白底版**（透明深字标在深色任务栏不可见 → 整目录回退 v1.1.8 白底圆角图标集，逐字节一致；保留 `--plated-icon` 以便切「新标+白底」）
+2. 附件：能力归位**左栏**「附件」区（右栏回归纯文档属性）；点击看「附属情况与附属记录」（全部引用文档逐条可跳转）；**默认收起**（表头 = 附件 N + 孤儿徽章 + 刷新）
+3. 移动路径 4 项修复：F9b（目标文件夹误导 409）/ F9c（未走统一净化 → 尾空格双扩展名、纯点名丢扩展名、NUL 500）/ F11（最近更新不同步）/ F12（recovery 草稿孤儿）
+4. 保存切档 2 项修复：F-S1-2（内容快照分支恒假 → 旧文档最后 <3s 编辑静默丢弃）/ F-S1-4（>200KB 过期 timeout 覆盖编辑器 + 恢复点 id/内容错配 → 跨文档内容污染）
+5. 韧性：K3-I2 方案 A **启动自愈**（恢复草稿按唯一 stem 重挂、历史孤儿只统计不删除、失败不阻断启动）
+
+**bump 后回归**：pytest **630 passed + 2 skipped**；tsc 0；vitest **38 files / 548 passed + 1 skipped**；前端产物内嵌版本串仅 `1.1.9`。
+
+**构建链（照 handover §6）**
+- `node scripts/bump-version.mjs 1.1.9` → 9 处版本源一致（lock 中 1.1.9 仅顶层 + `packages[""]` 两处，无第三方污染）
+- `npm run build` → dist-build 内嵌 1.1.9
+- Windows 侧 PyInstaller 重建侧车（46,202,789 B）→ 拷入 `desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`
+- `tauri build --bundles nsis`（beforeBuildCommand no-op 绕行 + trap 还原逐字节一致）→ `AstraNota_1.1.9_x64-setup.exe`（50,781,068 B）
+- `tools/gen-manifest.py`（C:\ke-tmp 副本，F: 根）→ `versions.json` / `manifest.sha256`（**85 项**）
+
+**冒烟（真实 exe，非安装包）**
+- 版本横幅 `AstraNota v1.1.9` + 状态栏 `后端 v1.1.9` **一致**，无「版本不一致」横幅
+- 关窗 `CloseMainWindow()` → **2.7s 退出、0 孤儿进程、9333 端口释放**
+- 图标/横幅素材为新版（`astranota-*` 新 hash）；设置页显示 v1.1.9
+
+**资产 hash（待上传）**：安装包 `8b4cd210…` / 侧车 `5b047baf…` / manifest `2609fda6…` / versions `367dcc42…`
 
 ## 2026-09-15（发布后 · 附件区默认收起 + K3-I2 方案 A 启动自愈）
 

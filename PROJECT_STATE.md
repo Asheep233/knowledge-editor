@@ -1,14 +1,15 @@
 # PROJECT_STATE.md
 
 > 项目状态唯一快速参考。每次阶段变更或影响架构的修改后更新。
-> 最后更新：2026-09-07（v1.1.4 正式发布 · 更名 AstraNota） | 维护依据：docs/phase6u-report.md、docs/phase7-prep-freeze-check.md、README.md、代码版本常量
+> 最后更新：2026-09-17（**v1.1.9 正式版构建完成**） | 维护依据：`CHANGELOG_DEV.md`（权威流水）、`docs/backlog-1.1.x.md`、`docs/agent-handover-v1.1.8.md`、代码版本常量
 
 ## 当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 当前开发阶段 | Phase 6U（真实环境测试迭代）已完成；冻结与稳定性检查通过（2026-08-10）；Phase 7 全部完成；v1.1.0（UI/UX 重构）正式发布（2026-09-05）；**v1.1.1 正式发布（2026-09-06）：发布前全面审查三阻断项 + 数据完整性项全部修复后转正；v1.1.2 正式发布（2026-09-06）：迭代修复（索引签名 hash 化+增量刷新 / rename 同步自愈 / 附件提取平衡 / 慢保存并发 / 在途 abort / 设置契约四件）；v1.1.3 正式发布（2026-09-06）：迭代修复（抑制窗收敛 / rename 409 自愈+前导点 slug / 404 门控+色板去抖+失败反馈 / 序号按文档隔离 / openSeq 覆盖 / 大文档解析提示 / spec 对齐）；实机安装验收已执行（A 部分 7 步，见 docs/release-acceptance-checklist.md 记录）；**v1.1.4（2026-09-07）：更名 AstraNota + 全新品牌（应用图标圆角化 / 侧栏品牌块 / 设置页横版横幅深浅双版）——仅显示名与品牌层**）** |
-| 当前版本号 | **v1.1.4**（唯一来源 `backend/app/__init__.py`；`frontend/src/version.ts`、`frontend/package.json`、`desktop/package.json` + `desktop/package-lock.json`、`desktop/src-tauri/Cargo.toml` + `Cargo.lock`、`tauri.conf.json` 七处同步；v1.0.0 及以后版本算入 Alpha 测试） |
+| 当前开发阶段 | Phase 6U/7 已完成；**v1.1.0 → v1.1.9 均已发布**（本行此前停在 v1.1.4，2026-09-17 补齐）：v1.1.5 细节优化 · v1.1.6 体验优化+恶性修复 · v1.1.7 公式编辑体验 · v1.1.8 回收站 MVP + S-1 草稿恢复点防抖 + S-2 GFM 脚注 + S-3 附件保留原名 · **v1.1.9（2026-09-17）**：品牌换新收尾 + 对外图标白底 + 附件能力归位左栏（默认收起）+ 移动路径 4 项修复（F9b/F9c/F11/F12）+ 保存切档 2 项修复（F-S1-2/F-S1-4）+ K3-I2 方案 A 启动自愈 |
+| 当前版本号 | **v1.1.9**（9 处版本源同步：`backend/app/__init__.py`、`frontend/src/version.ts`、`frontend/package.json` + lock、`desktop/package.json` + lock、`Cargo.toml` + `Cargo.lock`（仅 knowledgeeditor 块）、`tauri.conf.json`；统一入口 `node scripts/bump-version.mjs <ver>`，**勿用全局正则改 lock**） |
+| 质量基线（v1.1.9） | pytest **630 passed + 2 skipped** · tsc 0 · vitest **38 files / 548 passed + 1 skipped** · 每个改动均有独立对抗验证报告 `docs/verification-*.md` |
 | 启动方式 | `.\scripts\start.ps1`（前后端一键启动）/ `.\scripts\stop.ps1`（一键停止，含无 runtime.json 的端口+特征兜底） |
 | 前端地址 | http://localhost:5173 |
 | 后端地址 | http://127.0.0.1:8000 |

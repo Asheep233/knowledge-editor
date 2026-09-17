@@ -1,5 +1,6 @@
 /**
- * F-S1-2 / F14：文档切换的内容快照与「保存内容来源」裁决（纯模块，无 React 依赖，便于对抗验证）。
+ * F-S1-2 / F14 / F-S1-4：文档切换的内容快照、保存内容来源裁决、延迟载入代次守卫与
+ * 恢复点配对（纯模块，无 React 依赖，便于对抗验证）。
  *
  * 背景（F-S1-2 实测缺口）：
  *  - 切档时旧文档最后 <3s 的编辑仍只在编辑器内存里；其未决防抖保存会在
@@ -15,6 +16,13 @@
  *    跑到时它**已经指向新文档** → 该判据恒假 → 快照从未写入 → 后续保存分支拿不到快照，
  *    只能静默 return（旧文档最后一段编辑既不落盘、也不登记恢复点）。这就是本模块要堵的洞。
  *  - 判据必须表达「编辑器此刻仍载着 prevId」这一**实际状态**（见 `editorDocId`）。
+ *
+ * 背景（F-S1-4，由独立验证构造证实，后果 = 跨文档内容污染）：
+ *  - ① `>200KB` 文档的 80ms 延迟载入没有代次守卫：切档后过期 timeout 仍会 `setKeContent`
+ *    把上一篇内容灌进编辑器 → 由 {@link createDeferredLoader} 的「清理 + 代次」双守卫拦截。
+ *  - ② 恢复点登记曾用 `articleRef.id`（已指向新文档）+ `editorRef.getMarkdown()`（可能仍是
+ *    旧文档）→ id 与内容不同源，崩溃恢复会把 B 的正文写回 C 的路径 → 由
+ *    {@link resolveRecoveryTarget} 保证「谁的内容配谁的 id」。
  */
 
 /** 内容快照表容积上限（超出驱逐最旧；按写入/刷新顺序 LRU） */
@@ -121,4 +129,109 @@ export function resolveSaveContent({
   if (docId === currentDocId && typeof editorMarkdown === 'string') return editorMarkdown
   const snap = snapshots.get(docId)
   return snap === undefined ? null : snap
+}
+
+// ---------------------------------------------------------------------------
+// F-S1-4① 延迟载入的代次守卫（>200KB 文档的 80ms「解析中」占位帧）
+// ---------------------------------------------------------------------------
+
+/** 大文档延迟载入时长（给 React commit + 浏览器一次 paint 的机会） */
+export const DEFERRED_LOAD_MS = 80
+
+/** 定时器注入点（单测可用假计时器或手工队列） */
+export interface DeferredLoaderTimers {
+  setTimeout: (fn: () => void, ms: number) => number
+  clearTimeout: (id: number) => void
+}
+
+export interface DeferredLoader {
+  /** 调度一代延迟载入；此前未决的延迟立即失效（清理 + 代次双守卫） */
+  schedule: (apply: () => void) => void
+  /** 放弃未决延迟并让其代次过期（卸载 / 关档 / 立即载入分支） */
+  cancel: () => void
+  /** 当前代次（诊断/测试） */
+  generation: () => number
+}
+
+/**
+ * 延迟载入调度器（F-S1-4①）：
+ *  - `schedule(apply)` 自增代次并调度一次延迟执行，同时清掉此前未决的定时器；
+ *  - 到点时**再比对代次**：其间若又发生切档/重载（代次已变），回调直接返回 ——
+ *    绝不改编辑器内容、绝不改 UI 状态（即使 clearTimeout 未生效、回调已在队列里，
+ *    代次守卫仍然拦住它）；
+ *  - `cancel()` 用于卸载 / 关闭文档 / 走立即载入分支，语义同上。
+ *
+ * 为什么需要两层：`clearTimeout` 只能取消**尚未入队**的定时器；事件循环里已就绪的
+ * 回调仍会执行。代次比对是最后一道闸，保证「切档后旧 timeout 绝不能再改编辑器或 UI」。
+ */
+export function createDeferredLoader(
+  { delayMs = DEFERRED_LOAD_MS, timers }: { delayMs?: number; timers?: DeferredLoaderTimers } = {},
+): DeferredLoader {
+  const host: DeferredLoaderTimers = timers ?? {
+    setTimeout: (fn, ms) => window.setTimeout(fn, ms),
+    clearTimeout: (id) => window.clearTimeout(id),
+  }
+  let gen = 0
+  let pending: number | null = null
+  return {
+    schedule(apply: () => void): void {
+      const myGen = ++gen
+      if (pending !== null) {
+        host.clearTimeout(pending)
+        pending = null
+      }
+      pending = host.setTimeout(() => {
+        pending = null
+        if (myGen !== gen) return // 过期代次：切档已发生 → 不动编辑器、不动 UI
+        apply()
+      }, delayMs)
+    },
+    cancel(): void {
+      gen += 1
+      if (pending !== null) {
+        host.clearTimeout(pending)
+        pending = null
+      }
+    },
+    generation(): number {
+      return gen
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// F-S1-4② 恢复点登记的「id 与内容同源」裁决
+// ---------------------------------------------------------------------------
+
+export interface RecoveryTargetParams {
+  /** 编辑器此刻**实际载入**的文档 id —— 配对依据（内容属于它） */
+  editorDocId: string | null
+  /** 应用层当前文档 id（`articleRef.current?.id`）；仅供一致性诊断，**不参与配对** */
+  articleDocId: string | null
+  /** 编辑器当前 Markdown（与 `editorDocId` 同源） */
+  editorMarkdown: string | null
+}
+
+export interface RecoveryTarget {
+  docId: string
+  md: string
+}
+
+/**
+ * 恢复点登记目标（F-S1-4②）：`{ docId, md }`，或 `null` = 放弃登记。
+ *
+ * 不变量：**id 与内容必须来自同一个载入快照** —— 两者都以「编辑器此刻载着谁」
+ * （`editorDocId`）为准。旧实现用 `articleRef.current.id`（更早的 effect 已把它更新为
+ * 新文档）配 `editorRef.getMarkdown()`（可能仍是旧文档）→ 一旦错配，恢复点会以新文档的
+ * 名字保存旧文档正文，崩溃恢复即跨文档污染。
+ *
+ * - `editorDocId === null`（编辑器未载入任何文档）→ null（放弃）；
+ * - `editorMarkdown` 不可用 → null（放弃）；
+ * - `editorDocId !== articleDocId`（切档窗口）：仍按 **editorDocId** 登记 —— 内容真实
+ *   属于编辑器里那篇文档，绝不挂到 `articleDocId` 名下。
+ */
+export function resolveRecoveryTarget(params: RecoveryTargetParams): RecoveryTarget | null {
+  const { editorDocId, editorMarkdown } = params
+  if (editorDocId === null || typeof editorMarkdown !== 'string') return null
+  return { docId: editorDocId, md: editorMarkdown }
 }

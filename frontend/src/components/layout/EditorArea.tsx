@@ -22,7 +22,7 @@ import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
-import { onDocumentSwitch, resolveSaveContent } from '../../state/docSwitch'
+import { createDeferredLoader, onDocumentSwitch, resolveRecoveryTarget, resolveSaveContent, type DeferredLoader } from '../../state/docSwitch'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
@@ -104,6 +104,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 更新点覆盖每一处把内容载入编辑器的地方：首载 / 常规 setKeContent / 大文档 80ms 延迟分支 /
   // reloadToken 外部重载。
   const editorDocIdRef = useRef<string | null>(null)
+  // F-S1-4①：大文档（>200KB）延迟载入的代次守卫 —— 切档后旧 timeout 绝不能再改编辑器/UI。
+  // 惰性初始化（只建一次；不依赖 window 之外的副作用）。
+  const deferredLoadRef = useRef<DeferredLoader | null>(null)
+  if (deferredLoadRef.current === null) deferredLoadRef.current = createDeferredLoader()
   // S-1：编辑期恢复点登记（「有界年龄」调度）。
   // saveQueue.enqueueSave 是纯尾沿防抖且无 maxWait——连续输入时计时器被反复重置、
   // 永不触发，于是既不自动保存也不登记恢复点，硬崩溃的丢失窗口**无界**（不是「一个
@@ -236,11 +240,19 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   }, [])
 
   // S-1：登记回调。序列化**只在该时机执行一次**（不在每次击键），因此不引入输入卡顿。
+  // F-S1-4②：id 与内容必须同源 —— 旧实现取 `articleRef.current.id`（更早的 effect 已把它
+  // 更新为新文档）+ `editorRef.getMarkdown()`（编辑器里可能还是旧文档）→ 错配登记会把
+  // 旧文档正文挂到新文档名下（崩溃恢复即跨文档污染）。配对规则抽到 resolveRecoveryTarget，
+  // 统一以 editorDocIdRef（编辑器此刻载着谁）同时决定 id 与内容。
   const flushDraftRecovery = useCallback(() => {
     const ed = editorRef.current
-    const doc = articleRef.current
-    if (!ed || !doc) return
-    void registerRecoveryPoint(doc.id, withFrontmatter(ed.getMarkdown(), KE_VERSION))
+    const target = resolveRecoveryTarget({
+      editorDocId: editorDocIdRef.current,
+      articleDocId: articleRef.current?.id ?? null,
+      editorMarkdown: ed ? withFrontmatter(ed.getMarkdown(), KE_VERSION) : null,
+    })
+    if (!target) return
+    void registerRecoveryPoint(target.docId, target.md)
   }, [registerRecoveryPoint])
 
   const ensureDraftReg = useCallback((): DraftDebounce => {
@@ -252,6 +264,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
 
   // S-1：卸载时清理登记计时器。
   useEffect(() => () => { draftRegRef.current?.dispose() }, [])
+
+  // F-S1-4①：卸载时放弃未决的大文档延迟载入（代次过期 → 回调绝不再 setKeContent/setState）。
+  useEffect(() => () => { deferredLoadRef.current?.cancel() }, [])
 
   // 保存函数构造：读取当前编辑器正文、登记/清除恢复点、更新 saveState 与 onSaved。
   // 经 saveQueue 串行化（P1-6：同一 doc 至多一个在途保存，latest-wins），
@@ -406,20 +421,25 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       if (large) {
         // 先让一帧「解析中」占位绘制（同步解析会阻塞渲染，抢占一个渲染帧）
         setParsingLarge(true)
-        // 80ms：给 React commit + 浏览器一次 paint 的时间，占位帧先可见再阻塞解析
-        window.setTimeout(() => {
+        // 80ms：给 React commit + 浏览器一次 paint 的时间，占位帧先可见再阻塞解析。
+        // F-S1-4①：经代次守卫调度 —— 期间又切档/重载时，该回调到点即被丢弃，
+        // 绝不再 setKeContent（旧实现会把上一篇内容灌进编辑器）或 setParsingLarge。
+        deferredLoadRef.current?.schedule(() => {
           setKeContent(editor, body)
           // 内容此刻才真正载入编辑器 → 同步「编辑器载着谁」（延迟分支也必须覆盖）
           editorDocIdRef.current = article.id
           setParsingLarge(false)
-        }, 80)
+        })
       } else {
+        // 立即载入分支：先让此前未决的延迟载入失效（含上一篇大文档的 80ms 回调）
+        deferredLoadRef.current?.cancel()
         setParsingLarge(false)
         setKeContent(editor, body)
         // 常规分支：内容已同步载入
         editorDocIdRef.current = article.id
       }
     } else {
+      deferredLoadRef.current?.cancel()
       setParsingLarge(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

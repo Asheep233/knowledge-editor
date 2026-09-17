@@ -2,7 +2,31 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-15（**F-S1-2 修复完成并独立验证 PASS；验证顺带发现 F-S1-4（已登记并开修）**）
+> 最后更新：2026-09-15（**F-S1-2 + F-S1-4 修复完成并独立验证 PASS；全量 vitest 540 passed + 1 skipped**）
+
+## 2026-09-15（发布后 · F-S1-4 修复：过期 timeout 覆盖编辑器 + 恢复点 id/内容错配）
+
+类型：Fix（数据完整性）
+状态：Completed（源码 + 独立验证 PASS；未发版）
+任务：task-19（dev-attach-ui）· task-20（verifier）
+来源：验证 F-S1-2 时由 verifier 独立构造证实（`[DS6]`/`[DS7]`），见上一条记录
+
+**根因两处**
+1. 大文档（>200KB）载入走 `window.setTimeout(..., 80)`，**未保存 timeout id、无代次守卫** → 切档过快时旧 timeout 仍执行 `setKeContent`，把上一篇内容灌进编辑器（`[DS6]` 实测：C 载入后 80ms 变 `B-BODY`）
+2. `flushDraftRecovery`（`EditorArea.tsx:239-244`）用 `articleRef.current`（声明更早的 effect 已更新为新文档）+ 编辑器实时内容 → **id 与内容不同源**；破坏态下以 C 的名义登记含 B 正文的恢复点（`[DS7]`），崩溃后「恢复」即把 B 写回 C（**跨文档内容污染**）
+
+**修复**
+- `state/docSwitch.ts` 新增 `createDeferredLoader({ delayMs?, timers? })`（`schedule`/`cancel`/`generation`）：schedule 自增代次并清未决定时器，**回调到点再比对代次**（clearTimeout 失效也能拦）；立即载入 / 关档 / 卸载均 `cancel()`
+- 新增导出 `resolveRecoveryTarget({ editorDocId, articleDocId, editorMarkdown }) => { docId, md } | null`：**配对以 `editorDocId` 为准**（`articleDocId` 仅诊断），未载入/无内容 → null = 放弃登记；`flushDraftRecovery` 改走该函数，旧「articleRef id + 编辑器内容」组合消失
+- 顺序（拍照 → flushPending → cancelDraftTimer）与 S-1 登记口径未变；正常编辑路径登记次数不减少
+
+**独立验证（verifier，34 例；含 J 组 7 例 `createDeferredLoader` 语义 + I 组缝级矩阵）**
+- **gate 前后对照**：false → 21 passed/6 skipped（全量 527+7skip）；true（终态）→ **34 passed/0 skipped**，全量 **540 passed + 1 skipped**（gate 已确认留在 true，不会 false 入库）
+- **修复前基线对照**（/tmp 轨 7 例）：DS6 `80ms 后 md = B-BODY` → 冻结版 `80ms 后 md = # C-disk`（覆盖消失）；DS7 错配登记消失；DS1–DS5（切档快照/无串写/零 PUT）无回归
+- **缝级接口**：J1（**注入 timers 让 clearTimeout 故意失效** → 仅最新一代执行）、J2 cancel 后回调到点不执行、J3 连续 schedule 只最新生效、J5 卸载清理、J6 cancel 后可重 schedule、J7 新旧两次载入只保留最后一次；I1 18 组矩阵防空转、I2 判别性、I3 错配窗口仍同源登记（反锁「不得静默不登记」）
+- 范围：`App.tsx`/`draftDebounce.ts`/`saveQueue.ts` 未改；dev 临时自检 harness 无残留
+
+**门禁（Lead 复核）**：tsc 0；全量 **38 files / 540 passed + 1 skipped**（skip 仍 1）
 
 ## 2026-09-15（发布后 · F-S1-2 修复 + 验证发现的 F-S1-4）
 

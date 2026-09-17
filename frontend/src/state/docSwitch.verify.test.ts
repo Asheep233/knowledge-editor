@@ -16,11 +16,265 @@
  * ⚠️ 源码就绪前（`state/docSwitch.ts` 不存在）整组 `skipIf` 跳过：
  * 这样不会让他人的 `npx vitest run` 因缺少模块而收集失败，也不会产生假红。
  * 源码落地后无需改动本文件即可自动转为真实执行。
+ *
+ * task-20 追加（G/H 组）：把 task-18 证实 F-S1-4 的 `[DS6]/[DS7]` 构造固化为**组件级回归**
+ * （真实 EditorArea + 真实 docSwitch/saveQueue/draftDebounce，仅 mock 编辑器门面/重组件/settings/fetch；
+ * 本文件是 `.ts`，故用 `React.createElement` 而非 JSX）。
+ * - G 组（3 例）在 task-19 冻结前由 `F_S1_4_LANDED=false` gate 为 skip：既不阻塞他人全量 vitest、
+ *   也不写「恒真」空断言；冻结后由验证员翻 true（届时全量 skip 数回落到 1）。
+ * - H 组（3 例）为常态回归（F-S1-2/登记不减少/无副作用边界），始终执行。
  */
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import * as React from 'react'
+import { act } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import EditorArea from '../components/layout/EditorArea'
+import type { ArticleMeta } from '../types'
+import { cancelPending, flushPendingAll } from './saveQueue'
+
+// ===========================================================================
+// F-S1-4 组件级轨（task-20）：把 task-18 的 out-of-tree 构造（[DS6]/[DS7]）
+// 固化进仓库，长期随全量 vitest 运行。
+// 真实 EditorArea + 真实 docSwitch/saveQueue/draftDebounce；
+// 仅 mock 编辑器门面、三个重组件、settings 与全局 fetch。
+// ===========================================================================
+const CS = vi.hoisted(() => ({
+  requests: [] as Array<{ method: string; url: string; body: unknown }>,
+  md: '',
+  onUpdate: null as null | (() => void),
+  autosaveMs: 60000,
+}))
+
+vi.mock('@tiptap/react', () => ({
+  EditorContext: { Provider: (props: { children?: unknown }) => props.children },
+  EditorContent: () => null,
+}))
+vi.mock('../editor', () => ({
+  useKeEditor: (opts: { onUpdate?: () => void }) => {
+    CS.onUpdate = opts.onUpdate ?? null
+    return {
+      getMarkdown: () => CS.md,
+      setEditable: () => undefined,
+      isEditable: true,
+      isFocused: false,
+      commands: { focus: () => undefined, setContent: () => undefined, command: () => undefined },
+    }
+  },
+  setKeContent: (_ed: unknown, md: string) => { CS.md = md },
+}))
+vi.mock('../settings', () => ({ getAutosaveIntervalMs: () => CS.autosaveMs }))
+vi.mock('../components/editor/EditorToolbar', () => ({ default: () => null }))
+vi.mock('../components/editor/TableBubbleMenu', () => ({ default: () => null }))
+vi.mock('../components/editor/MathEditorModal', () => ({ default: () => null }))
+vi.mock('../components/editor/nodeviews/MathNodeView', () => ({ MATH_EDIT_EVENT: 'ke:math-edit' }))
+
+/** 组件级轨是否已可断言「修复后行为」：task-19 冻结后由验证员在第二段翻为 true。 */
+const F_S1_4_LANDED = true // task-19 冻结（EditorArea 6e71d969 / docSwitch bb7bf912）→ G/I 组转实跑
+
+let csRoot: Root | null = null
+let csContainer: HTMLDivElement | null = null
+
+function csArticle(id: string, content: string): ArticleMeta {
+  return { id, path: id, title: id, content, tags: [], word_count: 1, updated_at: '2026-01-01T00:00:00Z' }
+}
+
+function csJsonResponse(data: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: String(status),
+    json: async () => data,
+    text: async () => JSON.stringify(data),
+  } as unknown as Response
+}
+
+function csInstallFetch() {
+  const stub = async (input: unknown, init?: RequestInit) => {
+    const url = String(input)
+    const method = (init?.method ?? 'GET').toUpperCase()
+    let body: unknown
+    try { body = init?.body ? JSON.parse(String(init.body)) : undefined } catch { body = undefined }
+    CS.requests.push({ method, url, body })
+    if (method === 'DELETE') return csJsonResponse(undefined, 204)
+    return csJsonResponse({ id: 'x', path: 'x', title: 'x', content: (body as { content?: string })?.content ?? '', tags: [], meta: {}, word_count: 0, updated_at: '' })
+  }
+  ;(globalThis as { fetch: unknown }).fetch = vi.fn(stub)
+}
+
+async function csRender(article: ArticleMeta, reloadToken = 0) {
+  await act(async () => {
+    csRoot!.render(React.createElement(EditorArea, {
+      article, loading: false, reloadToken, onNewArticle: () => undefined,
+    }))
+  })
+}
+async function csType(md: string) {
+  CS.md = md
+  await act(async () => { CS.onUpdate?.() })
+}
+async function csAdvance(ms: number) {
+  await act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+}
+const csPuts = () => CS.requests.filter((r) => r.method === 'PUT' && r.url.includes('/api/articles/'))
+const csRecovery = () => CS.requests.filter(
+  (r) => r.method === 'POST' && r.url.includes('/api/drafts/recovery'),
+) as Array<{ method: string; url: string; body: { doc_path?: string; content?: string } }>
+
+beforeEach(() => {
+  CS.requests = []
+  CS.md = ''
+  CS.onUpdate = null
+  CS.autosaveMs = 60000 // 隔离自动保存：组件轨只观察「切档/登记」时序
+  csInstallFetch()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  vi.setSystemTime(0)
+  ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+  csContainer = document.createElement('div')
+  document.body.appendChild(csContainer)
+  csRoot = createRoot(csContainer)
+})
+
+afterEach(async () => {
+  try { vi.useRealTimers() } catch { /* ignore */ }
+  await act(async () => { csRoot?.unmount() })
+  await Promise.race([flushPendingAll().catch(() => undefined), new Promise((r) => setTimeout(r, 300))])
+  cancelPending('Articles/a.md')
+  cancelPending('Articles/b.md')
+  cancelPending('Articles/c.md')
+  csContainer?.remove()
+  csRoot = null
+  csContainer = null
+})
+
+/** 恢复点登记的配对不变量：每条登记的 doc_path 必须与其内容同源。 */
+function csAssertPairing() {
+  const markers: Record<string, string> = {
+    'Articles/a.md': 'A-BODY',
+    'Articles/b.md': 'B-BODY',
+    'Articles/c.md': 'C-BODY',
+  }
+  for (const req of csRecovery()) {
+    const doc = String(req.body?.doc_path ?? '')
+    const content = String(req.body?.content ?? '')
+    const foreign = Object.entries(markers)
+      .filter(([id]) => id !== doc)
+      .filter(([, mk]) => content.includes(mk))
+      .map(([id]) => id)
+    expect(foreign, `登记 ${doc} 的内容混入了 ${foreign.join(',')} 的正文（跨文档污染）`).toEqual([])
+  }
+}
+
+// ===========================================================================
+// G. F-S1-4 回归（过期 timeout / 恢复点配对）—— task-19 冻结前保持 skip
+// ===========================================================================
+describe.skipIf(!F_S1_4_LANDED)('G F-S1-4 回归：过期 timeout 不再改动编辑器/UI', () => {
+  it('G1 [DS6 回归] A→B(>200KB 载入中)→C：80ms 到点后编辑器仍是 C，且 C 最终正常载入', async () => {
+    const bigB = 'B-BODY-' + 'x'.repeat(200_100)
+    await csRender(csArticle('Articles/a.md', '# A-disk'))
+    await csRender(csArticle('Articles/b.md', bigB))   // 大文档 → 80ms 延迟分支
+    await csAdvance(10)                                // 未到 80ms
+    await csRender(csArticle('Articles/c.md', '# C-disk'))
+    expect(CS.md, '切到 C 后编辑器应为 C 的内容').toBe('# C-disk')
+    await csAdvance(200)                               // 过期 timeout 本应在此触发
+    expect(CS.md, '过期 timeout 不得再把编辑器换成 B 的正文').toBe('# C-disk')
+    expect(CS.md.startsWith('B-BODY-'), '编辑器被旧 timeout 覆盖（既有缺陷复现）').toBe(false)
+    // UI 状态：不得停在「正在解析大文档…」占位（parsingLarge 未被旧 timeout 改动/未漏清）
+    expect(document.body.textContent ?? '').not.toContain('正在解析大文档')
+  })
+
+  it('G2 [DS7 回归] 同序列 + 编辑 + 计时推进：不得出现「C 的名义 + B 的正文」登记', async () => {
+    const bigB = 'B-BODY-' + 'x'.repeat(200_100)
+    await csRender(csArticle('Articles/a.md', '# A-disk'))
+    await csRender(csArticle('Articles/b.md', bigB))
+    await csAdvance(10)
+    await csRender(csArticle('Articles/c.md', '# C-disk'))
+    await csAdvance(200)
+    CS.requests = []
+    await csType('# C-BODY-用户输入')       // 当前文档 C、编辑器载 C
+    await csAdvance(3000)                    // S-1 有界年龄到点 → 应登记 C
+    await csAdvance(70000)                   // 越过 autosave 防抖
+    csAssertPairing()
+    const cRec = csRecovery().filter((r) => r.body?.doc_path === 'Articles/c.md')
+    expect(cRec.length, '破坏态下 C 的登记不得带 B 的内容；本序列修复后应登记 C 且内容同源').toBeGreaterThan(0)
+    expect(String(cRec[0].body?.content ?? '')).toContain('C-BODY-用户输入')
+    expect(String(cRec[0].body?.content ?? '')).not.toContain('B-BODY-')
+  })
+
+  it('G4 配对不变量矩阵（组件观测级）：多场景下每条登记 id 与内容同源', async () => {
+    // 场景 1：正常编辑 → 3s 登记
+    await csRender(csArticle('Articles/a.md', '# A-disk'))
+    await csType('# A-BODY-1')
+    await csAdvance(3000)
+    csAssertPairing()
+    // 场景 2：编辑 A → 切 B → 3s（切档完成，编辑器载 B）
+    await csType('# A-BODY-2')
+    await csRender(csArticle('Articles/b.md', '# B-disk'))
+    await csType('# B-BODY-1')
+    await csAdvance(3000)
+    csAssertPairing()
+    // 场景 3：编辑 B → 切 C(大文档，载入中)→ 3s（既有错配窗口）
+    await csType('# B-BODY-2')
+    await csRender(csArticle('Articles/c.md', 'C-BODY-' + 'y'.repeat(200_100)))
+    await csAdvance(3000)
+    csAssertPairing()
+    // 场景 4：同档 reloadToken + 编辑 → 3s
+    await csRender(csArticle('Articles/c.md', 'C-BODY-' + 'y'.repeat(200_100)), 1)
+    await csType('# C-BODY-2')
+    await csAdvance(3000)
+    csAssertPairing()
+    // 正常态反向断言：至少登记过 A/B/C 各一次（不得为安全而静默不登记）
+    const docs = new Set(csRecovery().map((r) => String(r.body?.doc_path ?? '')))
+    expect(docs.has('Articles/a.md'), '正常态 A 必须被登记（S-1 语义不得回退）').toBe(true)
+    expect(docs.has('Articles/b.md'), '正常态 B 必须被登记').toBe(true)
+    expect(docs.has('Articles/c.md'), '正常态 C 必须被登记').toBe(true)
+  })
+})
+
+describe('H 组件级常态回归（当前实现即应通过；F-S1-4 修复后必须仍通过）', () => {
+  it('H1 正常登记不减少：连续编辑 + 有界年龄 → 每个 3s 窗口登记一次且 payload 属当前文档', async () => {
+    await csRender(csArticle('Articles/a.md', '# A-disk'))
+    await csType('# A-BODY-1')
+    await csAdvance(2999)
+    expect(csRecovery().length, '未到 3s 不得登记').toBe(0)
+    await csAdvance(1)
+    expect(csRecovery().length, '3s 到点必须登记一次（S-1 有界年龄）').toBe(1)
+    expect(csRecovery()[0].body?.doc_path).toBe('Articles/a.md')
+    expect(String(csRecovery()[0].body?.content ?? '')).toContain('A-BODY-1')
+    await csType('# A-BODY-2')
+    await csAdvance(3000)
+    expect(csRecovery().length, '第二窗口继续登记（不因实现变更而减少）').toBe(2)
+    expect(String(csRecovery()[1].body?.content ?? '')).toContain('A-BODY-2')
+    csAssertPairing()
+  })
+
+  it('H2 切档 F-S1-2 语义不回归：A 编辑 → 切 B，A 的编辑落到 A 的路径', async () => {
+    await csRender(csArticle('Articles/a.md', '# A-disk'))
+    await csType('# A-BODY-切档前')
+    await csRender(csArticle('Articles/b.md', '# B-disk'))
+    await csAdvance(5000)
+    const aPuts = csPuts().filter((r) => decodeURIComponent(r.url).includes('Articles/a.md'))
+    expect(aPuts.length, 'A 的未决编辑必须落盘（F-S1-2）').toBeGreaterThan(0)
+    const payload = String((aPuts[0].body as { content?: string })?.content ?? '')
+    expect(payload).toContain('A-BODY-切档前')
+    expect(payload).not.toContain('B-BODY')
+  })
+
+  it('H3 无副作用边界：首挂载 / 同档 reloadToken / 无编辑切档 → 零 PUT', async () => {
+    await csRender(csArticle('Articles/a.md', '# A-disk'))
+    await csAdvance(1000)
+    expect(csPuts().length, '首挂载不应产生 PUT').toBe(0)
+    await csRender(csArticle('Articles/a.md', '# A-disk'), 1)
+    await csAdvance(1000)
+    expect(csPuts().length, '同档 reloadToken 不应产生 PUT').toBe(0)
+    await csRender(csArticle('Articles/b.md', '# B-disk'))
+    await csAdvance(5000)
+    expect(csPuts().length, '无未决编辑的切档不应产生 PUT').toBe(0)
+    csAssertPairing()
+  })
+})
 
 // 变量化 specifier：避免源码就绪前 TS2307 / Vite 静态解析失败
 const MODULE_SPECIFIER = './docSwitch'
@@ -467,5 +721,212 @@ describe.skipIf(!MODULE_READY)('F 接口自检', () => {
     const rec = recorder(snapshots)
     onDocumentSwitch({ editorDocId: null, prevId: null, newId: null, editorMarkdown: '', snapshots, flushPending: rec.args.flushPending, cancelDraftTimer: rec.args.cancelDraftTimer })
     expect(rec.events).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// I. F-S1-4 缝级配对矩阵（task-19 §要求 3 的 `resolveRecoveryTarget`）
+//    与 G4 的组件观测级矩阵互为交叉验证；冻结前与 G 组一同 gate。
+// ---------------------------------------------------------------------------
+interface RecoveryParams {
+  editorDocId: string | null
+  articleDocId: string | null
+  editorMarkdown: string | null
+}
+interface RecoveryTarget {
+  docId: string
+  md: string
+}
+
+async function recoverySeam(): Promise<(p: RecoveryParams) => RecoveryTarget | null> {
+  const mod = (await import(MODULE_SPECIFIER)) as Record<string, unknown>
+  const fn = mod.resolveRecoveryTarget
+  expect(typeof fn, 'docSwitch.resolveRecoveryTarget 必须是函数（F-S1-4 缝契约）').toBe('function')
+  return fn as (p: RecoveryParams) => RecoveryTarget | null
+}
+
+describe.skipIf(!MODULE_READY || !F_S1_4_LANDED)('I F-S1-4 缝级配对矩阵：id 与内容永远同源', () => {
+  it('I1 矩阵：editorDocId × articleDocId × 有/无内容（18 组）→ 永不产出「articleDocId + 编辑器内容」', async () => {
+    const resolve = await recoverySeam()
+    const ids: Array<string | null> = [null, 'Articles/A.md', 'Articles/B.md']
+    const contents: Array<string | null> = [null, 'MD-EDITOR']
+    let checked = 0
+    for (const editorDocId of ids) {
+      for (const articleDocId of ids) {
+        for (const md of contents) {
+          const got = resolve({ editorDocId, articleDocId, editorMarkdown: md })
+          checked++
+          const label = `editor=${editorDocId} article=${articleDocId} md=${md}`
+          if (editorDocId === null || md === null) {
+            expect(got, `${label} 应放弃登记（null）`).toBeNull()
+            continue
+          }
+          expect(got, label).toEqual({ docId: editorDocId, md })
+          if (editorDocId !== articleDocId) {
+            // 错配窗口：绝不把内容挂到 articleDocId 名下
+            expect(got!.docId, `${label} 登记到了 articleDocId（错配）`).not.toBe(articleDocId)
+          }
+        }
+      }
+    }
+    expect(checked, '矩阵完整性（3×3×2）').toBe(18)
+  })
+
+  it('I2 判别性：修复前组合（articleDocId + 编辑器内容）与新实现可区分（非空测试）', async () => {
+    const resolve = await recoverySeam()
+    const editorDocId = 'Articles/B.md'   // 编辑器此刻仍载 B
+    const articleDocId = 'Articles/C.md'  // articleRef 已指向 C（既有错配窗口）
+    const md = 'B-BODY'
+    const legacy = { docId: articleDocId, md } // 修复前：articleRef 的 id + 编辑器内容
+    const neu = resolve({ editorDocId, articleDocId, editorMarkdown: md })
+    expect(neu).toEqual({ docId: 'Articles/B.md', md: 'B-BODY' })
+    expect(neu!.docId === legacy.docId, '旧/新组合不可区分 → 测试是空的（FAIL）').toBe(false)
+  })
+
+  it('I3 错配窗口仍登记（同源）；未载入才放弃 —— 不得为安全而静默不登记', async () => {
+    const resolve = await recoverySeam()
+    expect(resolve({ editorDocId: 'Articles/A.md', articleDocId: 'Articles/B.md', editorMarkdown: 'A-EDIT' }),
+      '切档中：按编辑器实际载入的 A 登记（内容同源）').toEqual({ docId: 'Articles/A.md', md: 'A-EDIT' })
+    expect(resolve({ editorDocId: 'Articles/A.md', articleDocId: 'Articles/A.md', editorMarkdown: 'A-EDIT' }),
+      '正常态：照旧登记').toEqual({ docId: 'Articles/A.md', md: 'A-EDIT' })
+    expect(resolve({ editorDocId: null, articleDocId: 'Articles/A.md', editorMarkdown: null }),
+      '编辑器未载入任何文档 → 放弃').toBeNull()
+    expect(resolve({ editorDocId: 'Articles/A.md', articleDocId: 'Articles/A.md', editorMarkdown: null }),
+      '内容不可用 → 放弃').toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// J. F-S1-4① 缝级：createDeferredLoader 的代次/定时器语义（lead 指定四类）
+// ---------------------------------------------------------------------------
+interface DeferredTimersLike {
+  setTimeout: (fn: () => void, ms: number) => number
+  clearTimeout: (id: number) => void
+}
+interface DeferredLoaderLike {
+  schedule: (apply: () => void) => void
+  cancel: () => void
+  generation: () => number
+}
+
+/** 手工定时器队列：可精确控制「回调是否真的被清掉 / 是否仍会到点」。 */
+function manualTimers(opts: { reallyClear?: boolean } = {}) {
+  const queue = new Map<number, () => void>()
+  const cleared: number[] = []
+  const delays: number[] = []
+  let nextId = 1
+  const timers: DeferredTimersLike = {
+    setTimeout(fn, ms) {
+      const id = nextId++
+      delays.push(ms)
+      queue.set(id, fn)
+      return id
+    },
+    clearTimeout(id) {
+      cleared.push(id)
+      if (opts.reallyClear !== false) queue.delete(id)
+    },
+  }
+  /** 执行全部**仍留在队列**的回调（模拟「已入队 → 到点」）。 */
+  const fireAll = () => { for (const fn of [...queue.values()]) fn() }
+  return { timers, queue, cleared, delays, fireAll }
+}
+
+async function deferredSeam() {
+  const mod = (await import(MODULE_SPECIFIER)) as Record<string, unknown>
+  const create = mod.createDeferredLoader
+  expect(typeof create, 'docSwitch.createDeferredLoader 必须是函数（F-S1-4 缝契约）').toBe('function')
+  return {
+    create: create as (o?: { delayMs?: number; timers?: DeferredTimersLike }) => DeferredLoaderLike,
+    defaultDelayMs: mod.DEFERRED_LOAD_MS as number,
+  }
+}
+
+describe.skipIf(!MODULE_READY)('J F-S1-4① createDeferredLoader 代次语义', () => {
+  it('J1 clearTimeout 失效（注入不真清）→ 过期回调靠代次被拦下，绝不动编辑器', async () => {
+    const { create } = await deferredSeam()
+    const t = manualTimers({ reallyClear: false }) // 故意不真清：回调仍会到点
+    const loader = create({ delayMs: 80, timers: t.timers })
+    const applied: string[] = []
+    loader.schedule(() => applied.push('A'))
+    loader.schedule(() => applied.push('B'))
+    t.fireAll() // 两个回调都到点（A 本应被 clearTimeout 清掉）
+    expect(applied, '只有最新一代可执行（旧代次被守卫拦下）').toEqual(['B'])
+  })
+
+  it('J2 cancel 后回调仍到点 → 不得执行（卸载/关档/立即载入分支安全）', async () => {
+    const { create } = await deferredSeam()
+    const t = manualTimers({ reallyClear: false })
+    const loader = create({ delayMs: 80, timers: t.timers })
+    const applied: string[] = []
+    const genBefore = loader.generation()
+    loader.schedule(() => applied.push('X'))
+    loader.cancel()
+    t.fireAll()
+    expect(applied, 'cancel 之后到点的回调必须无效').toEqual([])
+    expect(loader.generation(), 'cancel 必须推进代次').toBeGreaterThan(genBefore + 1)
+  })
+
+  it('J3 连续 schedule 只有最新生效（恰好一次）', async () => {
+    const { create } = await deferredSeam()
+    const t = manualTimers({ reallyClear: false })
+    const loader = create({ delayMs: 80, timers: t.timers })
+    const applied: string[] = []
+    loader.schedule(() => applied.push('1'))
+    loader.schedule(() => applied.push('2'))
+    loader.schedule(() => applied.push('3'))
+    t.fireAll()
+    expect(applied).toEqual(['3'])
+  })
+
+  it('J4 正常路径：delayMs 传给宿主定时器、到点执行一次、代次自增', async () => {
+    const { create, defaultDelayMs } = await deferredSeam()
+    const t = manualTimers()
+    const loader = create({ delayMs: 123, timers: t.timers })
+    const genBefore = loader.generation()
+    const applied: string[] = []
+    loader.schedule(() => applied.push('ok'))
+    expect(t.delays, '自定义 delayMs 应传给宿主').toEqual([123])
+    t.fireAll()
+    expect(applied).toEqual(['ok'])
+    expect(loader.generation()).toBe(genBefore + 1)
+
+    const t2 = manualTimers()
+    const loader2 = create({ timers: t2.timers })
+    loader2.schedule(() => undefined)
+    expect(t2.delays, `默认延迟应为 DEFERRED_LOAD_MS=${defaultDelayMs}`).toEqual([defaultDelayMs])
+  })
+
+  it('J5 卸载清理：cancel 对未决定时器发出 clearTimeout 且队列清空', async () => {
+    const { create } = await deferredSeam()
+    const t = manualTimers()
+    const loader = create({ delayMs: 80, timers: t.timers })
+    loader.schedule(() => undefined)
+    expect(t.queue.size).toBe(1)
+    loader.cancel() // 等价于组件卸载 effect 的清理
+    expect(t.cleared.length, '必须调用 clearTimeout').toBeGreaterThan(0)
+    expect(t.queue.size, '未决定时器应被清掉').toBe(0)
+  })
+
+  it('J6 cancel 之后仍可重新 schedule（不永久禁用），且新代次正常执行', async () => {
+    const { create } = await deferredSeam()
+    const t = manualTimers()
+    const loader = create({ delayMs: 80, timers: t.timers })
+    const applied: string[] = []
+    loader.cancel()
+    loader.schedule(() => applied.push('after-cancel'))
+    t.fireAll()
+    expect(applied).toEqual(['after-cancel'])
+  })
+
+  it('J7 schedule 覆盖前一代时，前一代回调即使到点也不执行（防「上一篇覆盖编辑器」）', async () => {
+    const { create } = await deferredSeam()
+    const t = manualTimers({ reallyClear: false })
+    const loader = create({ delayMs: 80, timers: t.timers })
+    const editorState: string[] = []
+    loader.schedule(() => editorState.push('B-BODY')) // 上一篇
+    loader.schedule(() => editorState.push('C-BODY')) // 切到 C 后的新载入
+    t.fireAll()
+    expect(editorState, '编辑器最终内容只能是最后一次调度的结果').toEqual(['C-BODY'])
   })
 })

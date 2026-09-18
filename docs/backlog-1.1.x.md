@@ -49,7 +49,10 @@
 | **D-2** | 标准标签嵌套未知标签（`<em><span>x</span></em>` → `*x*`）内层标签丢失 | 既有缺口（不在 41 矩阵内） | 记录为已知偏差（§2.6 D-2）；修法需在标准标签 tokenizer 内递归处理未知标签 |
 | **D-3** | 裸 `&` → `&amp;`、`[X]` → `[x]`、`<br>`/`<a>` 走标准转换 | 语义等价、字节变化 | 契约内（§2.6 表） |
 | **DEP-1** | `frontend/src/editor/index.ts` 新增 `@tiptap/extension-list` import，但 `package.json` 未声明 | 靠 starter-kit 传递提升可用；换 node-linker / 依赖树变动会构建失败 | ✅ 已补：`package.json` + lock 显式声明 `^3.29.2`（lock resolved 3.31.3） |
-| **ADP-1** | 自定义快捷键的动作执行暂走 **DOM 过渡适配层**（点工具栏按钮 title / 合成既有键位） | 功能可用且有真机实测；但属过渡实现 | 待 App/EditorArea 解冻后收口：注册真实闭包 handler、删除 DOM 适配（记入 task-35） |
+| **ADP-1** | 自定义快捷键的动作执行曾走 **DOM 过渡适配层**（点工具栏按钮 title / 合成既有键位） | 过渡实现 | ✅ **已收口（task-35 A/B）**：删除 `runActionViaDom`/`DomEnv`/合成按键；`runAction(actionId)` 只走 handler（未注册 → `via:'none'` 安全降级）；真实闭包注册点：EditorArea 22 个 `editor.*` + `doc.save` + `app.history.open`；App 的 `doc.new`/`app.settings.open`/`app.workspace.open`/`app.panel.right.toggle`/`doc.next\|prev\|close`；LeftSidebar 的 `app.search.focus`/`app.trash.open`；新增「动作表每个 id 都有注册点」完整性守卫 |
+| **DEL-1** | 「放弃修改」后仍可能出现第二次落盘 | 用户确认「放弃」后，被放弃的内容仍被写入磁盘 | ✅ **已修（task-35 C）**：共享 `discardPending(docId)`（`cancelPending` + `abortPending`）接入 `requestOpenArticle` 与 `closeTabById` **两条**放弃分支。**根因更正（重要）**：先前记录的「`flushWithTimeout` 超时后 `latest` 仍在 → 切档 flush 发新 PUT」**不成立** —— 独立验证白盒证明 `drain` 在**首个 `await` 之前**已取走并清空 `latest`（`enqueueSave` 返回时 `slowFn` 已同步被调用）→ 超时后切档 `flushPending` 只 `return e.running`，**不产生新写入**。**真实可达路径**：flush 开始后、确认框弹出期间用户继续输入（`enqueueSave` 重新 armed `latest`）→ 确认放弃 → 切档 `flushPending` 会 drain 这份新内容。独立验证给出**对照证据**：不调 `discardPending` 时同序列必然发生第 2 次写入（`saved.length 2`），调用后为 1 → **修复必要性成立**。未验证项：确认框期间能否继续输入编辑器属 GUI 焦点行为，未做真机验证 |
+| **EXP-1** | KE 导出（单文件 + **文档包 .zip**）只写 `ke_version`，源 frontmatter 的 `title`/`tags`/自定义键被丢弃 → 整文件 diff≠0，与「导出 vs 磁盘源文档 diff=0」验收口径冲突 | 既有行为（基线 `adc733a` 同） | 单文件路径 ✅ 已修并独立复验 PASS（取原文 frontmatter 区块拼回、只更新 `ke_version`；K1–K7 含未知键/注释/嵌套映射逐字节一致）；**文档包路径**修复中（task-35，一并做） |
+| **EDGE-1** | 空 frontmatter 区块 `---\n---\n\n正文` 不被 `stripFrontmatter` 识别（正则要求块内至少一个换行）→ 整块被当正文载入 | 既有边界（导出产物本身正常） | documented-edge（独立验证已按此处理，不计 FAIL）；如需修需放宽正则并补 round-trip 用例 |
 
 ## 移动路径 4 项已修（2026-09-15，F9b/F9c/F11/F12）
 

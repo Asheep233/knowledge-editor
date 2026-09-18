@@ -34,6 +34,19 @@ export function stripFrontmatter(md: string): { version: number; content: string
   }
 }
 
+/**
+ * 取出原文的 frontmatter 区块（**含定界符与尾随空行**，逐字节保留），无则返回 null。
+ *
+ * 用途：导出时「源 frontmatter 其余键（title/tags/自定义键）不得被丢弃」——
+ * 把该区块拼回正文前再走 `withFrontmatter`（它只更新 ke_version、保留其余键）。
+ * 与 `stripFrontmatter` 一样容忍 BOM。
+ */
+export function frontmatterBlockOf(raw: string): string | null {
+  const src = raw.startsWith(BOM) ? raw.slice(BOM.length) : raw
+  const m = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n)+/.exec(src)
+  return m ? m[0] : null
+}
+
 /** 文档级文件特征（F-4/F-5）：BOM 与换行风格。加载时捕获，保存时还原。 */
 export interface DocTraits {
   /** 原文是否以 UTF-8 BOM 开头 */

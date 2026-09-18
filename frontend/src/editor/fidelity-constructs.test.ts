@@ -294,6 +294,22 @@ describe('F-4/F-5 导出：KE 导出按磁盘原文还原 BOM/换行（发布验
     expect(out.startsWith('\ufeff')).toBe(false)
   })
 
+  it('源 frontmatter 的其余键（title/tags）随 KE 导出保留', async () => {
+    // 源用**过期版本号**，以验证「其余键保留 + ke_version 被更新」
+    const raw = '---\r\nke_version: 3\r\ntitle: 标题\r\ntags: [a, b]\r\n---\r\n\r\n正文\r\n'
+    const out = await exportText(raw)
+    expect(out).toContain('title: 标题')
+    expect(out).toContain('tags: [a, b]')
+    expect(out).toContain(`ke_version: ${KE_VERSION}`)
+    expect(out).not.toContain('ke_version: 3')
+  })
+
+  it('无 frontmatter 的源：导出不新增多余键', async () => {
+    const out = await exportText('正文段落\n')
+    expect(out).toContain(`ke_version: ${KE_VERSION}`)
+    expect(out).not.toContain('title:')
+  })
+
   it('调用方已接线的源码级守卫（EditorArea 传 article.content）', () => {
     const src = readFileSync(join(__dirname, '..', 'components', 'layout', 'EditorArea.tsx'), 'utf8')
     expect(src).toMatch(/keExportPayload\(editor, article\.title, article\.content\)/)

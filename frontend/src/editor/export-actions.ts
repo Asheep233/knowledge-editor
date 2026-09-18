@@ -10,7 +10,7 @@ import type { Editor } from '@tiptap/core'
 import type { ArticleMeta } from '../types'
 import { exportPackage } from '../api/client'
 import { extractAttachmentRefs, slugForDownload } from './import-export'
-import { applyDocTraits, captureDocTraits, KE_VERSION, withFrontmatter } from './ke'
+import { applyDocTraits, captureDocTraits, frontmatterBlockOf, KE_VERSION, withFrontmatter } from './ke'
 import { metaFromArticle, plainMarkdown } from './plain-export'
 import { saveOrDownload } from './import-export'
 
@@ -23,8 +23,11 @@ export interface ExportTarget {
 export function keExportPayload(editor: Editor, title: string, sourceRaw?: string): ExportTarget {
   // F-4/F-5（2026-09-18）：KE 格式导出以「源码 → 磁盘同名文件」为对照口径（发布验收清单
   // 要求 diff=0）。传入磁盘原文（sourceRaw）时按原文还原 BOM 与换行风格，否则保持 LF/无 BOM。
+  // 源 frontmatter 的其余键（title / tags / 自定义键）必须随导出保留：
+  // 把原文 frontmatter 区块拼回正文前，再让 withFrontmatter 只更新 ke_version。
+  const fmBlock = sourceRaw === undefined ? null : frontmatterBlockOf(sourceRaw)
   const md = applyDocTraits(
-    withFrontmatter(editor.getMarkdown(), KE_VERSION),
+    withFrontmatter(fmBlock ? fmBlock + editor.getMarkdown() : editor.getMarkdown(), KE_VERSION),
     sourceRaw === undefined ? { bom: false, eol: '\n' } : captureDocTraits(sourceRaw),
   )
   return { blob: new Blob([md], { type: 'text/markdown' }), filename: `${slugForDownload(title)}.md` }

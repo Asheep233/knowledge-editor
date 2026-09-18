@@ -225,6 +225,16 @@ NodeView 直接作为文本节点渲染，不走 Markdown 解析）。因此：
 | **换行风格** | **按文档保留**：CRLF 文档保存后仍为 CRLF，LF 文档不得被改成 CRLF；混排按主导风格处理。编辑器内部一律用 LF，还原发生在写入前 | F-5 |
 | **唯一事实源不变** | 上述还原只作用于「写入字节」，不改变 `ke-*` 标记语义、不新增节点类型、不写入任何编辑器状态到文档 | — |
 
+**已知偏差（记录在案，非缺陷；如需逐字节再来一次另立任务）**
+
+| # | 现象 | 影响 | 原因 |
+|---|---|---|---|
+| **D-1** | 混合列表 `- [x] a\n- b\n- [ ] c` 输出为**松散列表**（每项之间插入空行） | 结构/字节变化、渲染间距略增；**复选框状态与文本不变** | F-1 注册 `TaskList` 后，任务项与普通项属不同节点类型 → 被拆成两个列表块。要逐字节保持需自定义列表序列化（未做） |
+| **D-2** | 标准标签**嵌套**未知标签（`<em><span>x</span></em>`）→ `*x*`（内层 `<span>` 丢失） | 内层未知标签丢失 | 标准标签由 marked 整体消费，未知标签 tokenizer 看不到其内部；属**既有**缺口（不在 41 构造矩阵内） |
+| **D-3** | 裸 `&` 规范化为 `&amp;`、`[X]` 归一为 `[x]`、`<br>`/`<a>` 走标准转换 | 字节变化、语义等价 | 契约内的「语义保留、字节变化」一类（见上表 F-3/行内 HTML 条款） |
+
+**依赖声明**：本条款实现依赖 `@tiptap/extension-list`，该包已在 `frontend/package.json` **显式声明**（`^3.29.2`；lock 解析为 3.31.3，与其余 9 个 @tiptap 包同范围写法）——勿依赖 starter-kit 的传递提升，否则换 node-linker 会构建失败。
+
 **实现落点**：任务列表 = 注册 `@tiptap/extension-list` 的 `TaskList`/`TaskItem`；
 行内 HTML 与实体 = `editor/tokenizers.ts` 的 `html_passthrough_inline`；
 BOM 与换行 = `editor/ke.ts` 的 `stripFrontmatter`/`withFrontmatter` + `captureDocTraits`/`applyDocTraits`（加载时捕获、保存时还原）。

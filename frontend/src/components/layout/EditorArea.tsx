@@ -18,7 +18,8 @@ import {
 } from '../../api/client'
 import { setKeContent, useKeEditor } from '../../editor'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
-import { KE_VERSION, stripFrontmatter, withFrontmatter } from '../../editor/ke'
+import { applyDocTraits, captureDocTraits, KE_VERSION, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
+import { applyMathDeleteCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
@@ -31,6 +32,20 @@ import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathN
 import EditorToolbar from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
 import { askConfirm } from '../common/PromptDialog'
+
+/** 文件特征缺省值：UTF-8 无 BOM + LF（磁盘原文未捕获到时使用，等价于既有行为） */
+const DEFAULT_DOC_TRAITS: DocTraits = { bom: false, eol: '\n' }
+
+/**
+ * F-5 接线：保存后「对齐比较」前的归一化 —— 去 BOM、CRLF→LF（规范 document-format.md §2.6）。
+ *
+ * 编辑器侧正文恒为 LF（`editor.getMarkdown()`），而服务端回包是**磁盘原样**（可能带 BOM/CRLF）。
+ * 不归一化 → 每次保存都判「不一致」→ 反复 `setKeContent` 重载编辑器（F15 分支被误触发）。
+ * 导出供 `docTraits-wiring.test.ts` 直接断言。
+ */
+export function normalizeForCompare(md: string): string {
+  return applyDocTraits(md, DEFAULT_DOC_TRAITS)
+}
 
 interface Props {
   article: ArticleMeta | null
@@ -98,6 +113,19 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // F14：文档内容快照（docId → 序列化 Markdown）。切换文档瞬间为「离开的文档」
   // 拍下最终内容，供其在途/后续保存使用（避免经 editorRef 重读新文档内容串写）。
   const contentSnapshotRef = useRef(new Map<string, string>())
+  // F-4/F-5（规范 §2.6）：文档级文件特征（BOM / 换行风格）按 docId 记录 —— 载入**磁盘原文**时
+  // 捕获（article.content / saved.content / 历史恢复回包），保存写入前还原，确保 CRLF 文档
+  // 保存后仍 CRLF、带 BOM 文档保存后仍带 BOM、无 BOM 文档不新增 BOM。
+  const docTraitsRef = useRef(new Map<string, DocTraits>())
+  const captureTraits = useCallback((docId: string | null | undefined, raw: string | null | undefined) => {
+    if (!docId || typeof raw !== 'string') return
+    docTraitsRef.current.set(docId, captureDocTraits(raw))
+  }, [])
+  /** 该文档的保存特征；从未捕获（新建文档等）→ 缺省 LF/无 BOM */
+  const traitsFor = useCallback(
+    (docId: string): DocTraits => docTraitsRef.current.get(docId) ?? DEFAULT_DOC_TRAITS,
+    [],
+  )
   // F-S1-2：编辑器**此刻实际载入**的文档 id（实时内容的可信域）。切档快照的守卫必须用它，
   // 而不是 articleRef —— 后者的同步 effect 声明更早，切档 effect 跑到时它已指向新文档，
   // 导致 `articleRef.current?.id === prevId` 恒假、快照从未写入（旧文档最后 <3s 编辑静默丢弃）。
@@ -295,8 +323,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         if (md === null) return
         try {
           if (isCurrent) setSaveState('saving')
+          // 草稿/恢复点：内部数据，恒 LF、无 BOM —— 不套 traits（规范 §2.6 只约束文档写入）
           await registerRecoveryPoint(docId, md)
-          const saved = await saveArticle(docId, md, signal)
+          // F-4/F-5：文档写入前还原该文档的 BOM/换行特征（编辑器内部一律 LF）
+          const saved = await saveArticle(docId, applyDocTraits(md, traitsFor(docId)), signal)
           const latest = docSeq(docId) === seq
           if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
           onSaved?.(docId, saved)
@@ -312,9 +342,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           // F15：A→B→A 回退竞态——GET 先于在途 PUT 返回旧内容时，保存完成后
           // 若正文与编辑器不一致（且期间无新编辑），用保存结果对齐编辑器。
           if (isCurrent && latest && ed) {
+            // F-4/F-5：服务端回包 = 磁盘原样（可能带 BOM/CRLF）→ 捕获为该文档当前特征
+            captureTraits(docId, saved.content)
             const savedBody = stripFrontmatter(saved.content).content
-            if (stripFrontmatter(md).content !== savedBody) {
-              setKeContent(ed, savedBody)
+            // F-5 陷阱：编辑器侧恒 LF，回包可能 CRLF/BOM —— 比较前两侧归一化，
+            // 否则每次保存都判「不一致」而反复重载编辑器。重载内容同样归一到 LF 后载入。
+            const savedNorm = normalizeForCompare(savedBody)
+            if (normalizeForCompare(stripFrontmatter(md).content) !== savedNorm) {
+              setKeContent(ed, savedNorm)
               // F-S1-2：此处把 docId 的内容载入了编辑器 → 同步「编辑器载着谁」，
               // 否则后续保存会误判内容来源（可能再经实时分支串写）。
               editorDocIdRef.current = docId
@@ -345,7 +380,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         }
       }
     },
-    [onSaved, registerRecoveryPoint, clearRecoveryPoint, docSeq],
+    [onSaved, registerRecoveryPoint, clearRecoveryPoint, docSeq, captureTraits, traitsFor],
   )
 
   const handleUpdate = useCallback(() => {
@@ -415,6 +450,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
     prevArticleIdRef.current = newId
     setSaveState('idle')
+    // F-4/F-5：载入磁盘原文前先捕获该文档的文件特征（必须先于下面的 setKeContent）
+    if (article) captureTraits(article.id, article.content)
     const body = article ? stripFrontmatter(article.content).content : ''
     const large = body.length > 200_000
     if (editor && article) {
@@ -480,7 +517,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 导出 Markdown 单文件（内容来自 Markdown Serializer，不修改原文件）
   const handleExportMarkdown = useCallback(() => {
     if (!editor || !article) return
-    void runExport(keExportPayload(editor, article.title))
+    // F-4/F-5：KE 导出按磁盘原文还原 BOM/换行（与「导出 vs 源文档 diff=0」口径一致）
+    void runExport(keExportPayload(editor, article.title, article.content))
   }, [editor, article])
 
   // 导出「普通 Markdown」（朴素降级版）：KE 方言 → 标准 Markdown，
@@ -496,7 +534,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     setExporting(true)
     setExportOpen(false)
     try {
-      const md = withFrontmatter(editor.getMarkdown(), KE_VERSION)
+      const md = applyDocTraits(
+        withFrontmatter(editor.getMarkdown(), KE_VERSION),
+        captureDocTraits(article.content),
+      )
       await packageExportAndSave(article.title, md)
     } catch (e) {
       window.alert(`导出失败：${e instanceof Error ? e.message : String(e)}`)
@@ -575,8 +616,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       try {
         setSaveState('saving')
         const doc = await restoreHistory(article.id, v.id)
-        // 刷新编辑器内容（Document Model）
-        setKeContent(editor, stripFrontmatter(doc.content).content)
+        // F-4/F-5：服务端已把历史版本写回磁盘 → 文件特征随快照变化，捕获回包原文。
+        // （只读预览路径不捕获：预览不写盘，若用旧快照特征覆盖会让下一次保存改写现有换行）
+        captureTraits(article.id, doc.content)
+        // 刷新编辑器内容（Document Model）；编辑器内部一律 LF
+        setKeContent(editor, normalizeForCompare(stripFrontmatter(doc.content).content))
         setSaveState('saved')
         onSaved?.(article.id)
         onArticleRestored?.(doc)
@@ -788,46 +832,29 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 isBlock={mathEdit.isBlock}
                 onSave={(v) => {
                   const ed = editorRef.current
-                  if (ed && mathEdit) {
-                    ed.commands.command(({ tr }) => {
-                      // 主定位 = 节点 id（mount 期 getPos 可能过期）；备选 = pos
-                      let target = -1
-                      tr.doc.descendants((node, pos) => {
-                        if (target >= 0) return false
-                        if ((node.type.name === 'math' || node.type.name === 'mathBlock') && node.attrs.id && node.attrs.id === mathEdit.id) {
-                          target = pos
-                          return false
-                        }
-                        return true
-                      })
-                      if (target < 0) target = mathEdit.pos
-                      const node = tr.doc.nodeAt(target)
-                      if (!node) return false
-                      tr.setNodeMarkup(target, undefined, { ...(node.attrs as Record<string, unknown>), latex: v })
-                      return true
-                    })
+                  // 只读闸门：实测 isEditable=false 时 PM 命令仍会改文档，必须显式拦截（规范 §3.2）
+                  if (ed && ed.isEditable && mathEdit) {
+                    const target = locateMathById(ed.state.doc, mathEdit.id, mathEdit.pos)
+                    // 目标失效（公式已被删除/文档已改写）→ 不进 chain：tiptap 在无命令可执行时
+                    // 仍会派发一个空事务（chain/focus plumbing），这里保持严格 0 事务
+                    if (isMathNode(ed.state.doc.nodeAt(target))) {
+                      // 保存事务在编辑器根（本组件）发起：模态已卸载、NodeView 是独立 React 根（#300）
+                      // 同一事务内完成「改 latex + 块级必要时新起一行 + 落光标」→ 一次撤销即回编辑前
+                      ed.chain()
+                        .command(({ tr }) => applyMathSaveCursor(tr, target, mathEdit.isBlock, v))
+                        .focus() // 焦点交还编辑器（光标落点由事务内 setSelection 决定）
+                        .run()
+                    }
                   }
                   setMathEdit(null)
                 }}
                 onDeleteEmpty={() => {
                   const ed = editorRef.current
-                  if (ed && mathEdit) {
-                    ed.commands.command(({ tr }) => {
-                      let target = -1
-                      tr.doc.descendants((node, pos) => {
-                        if (target >= 0) return false
-                        if ((node.type.name === 'math' || node.type.name === 'mathBlock') && node.attrs.id && node.attrs.id === mathEdit.id) {
-                          target = pos
-                          return false
-                        }
-                        return true
-                      })
-                      if (target < 0) target = mathEdit.pos
-                      const node = tr.doc.nodeAt(target)
-                      if (!node) return false
-                      tr.delete(target, target + node.nodeSize)
-                      return true
-                    })
+                  if (ed && ed.isEditable && mathEdit) {
+                    const target = locateMathById(ed.state.doc, mathEdit.id, mathEdit.pos)
+                    if (isMathNode(ed.state.doc.nodeAt(target))) {
+                      ed.chain().command(({ tr }) => applyMathDeleteCursor(tr, target)).focus().run()
+                    }
                   }
                   setMathEdit(null)
                 }}

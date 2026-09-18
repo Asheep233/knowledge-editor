@@ -40,6 +40,7 @@ import {
   withFrontmatter,
 } from './ke'
 import { setKeContent } from './index'
+import { keExportPayload } from './export-actions'
 
 const EXTENSIONS = [
   HtmlPassthroughExtension,
@@ -107,7 +108,7 @@ describe('生产接线守卫：修复不得只存在于测试夹具里', () => {
 
   it('行内 HTML/实体 tokenizer 已启用（非仅注释）', () => {
     const src = readFileSync(join(__dirname, 'tokenizers.ts'), 'utf8')
-    expect(src).toMatch(/INLINE_TAG_RE/)
+    expect(src).toMatch(/matchHtmlTag/)
     expect(src).toMatch(/HTML_ENTITY_RE/)
     expect(src).toMatch(/MARKDOWN_HANDLED_INLINE_TAGS/)
   })
@@ -166,6 +167,35 @@ describe('F-2 行内 HTML：标签原样保留（不得只留文本）', () => {
 
   it('幂等', () => {
     const once = roundTripBody('正文 <span style="color:red">红</span> 结尾\n')
+    expect(roundTripBody(once)).toBe(once)
+  })
+})
+
+describe('F-2 属性含 `>`：引号感知（verifier 独立构造的最小复现）', () => {
+  it('双引号属性内 `>` 不得截断标签、不得把闭合 `>` 转义', () => {
+    const out = roundTripBody('前 <span title="a>b">x</span> 后\n')
+    expect(out).toContain('<span title="a>b">')
+    expect(out).not.toContain('&gt;')
+  })
+
+  it('单引号属性与多属性同样成立', () => {
+    const out = roundTripBody("前 <span title='a>b' id='z'>x</span> 后\n")
+    expect(out).toContain("<span title='a>b' id='z'>")
+    expect(out).not.toContain('&gt;')
+
+    const out2 = roundTripBody('前 <span title="x>y" id="z">w</span> 后\n')
+    expect(out2).toContain('title="x>y"')
+    expect(out2).not.toContain('&gt;')
+  })
+
+  it('块级 HTML 属性含 `>` 同样不被截断', () => {
+    const out = roundTripBody('<div data-x="a>b">block</div>\n')
+    expect(out).toContain('<div data-x="a>b">')
+    expect(out).not.toContain('&gt;')
+  })
+
+  it('幂等', () => {
+    const once = roundTripBody('前 <span title="a>b">x</span> 后\n')
     expect(roundTripBody(once)).toBe(once)
   })
 })
@@ -238,6 +268,36 @@ describe('F-4 BOM + frontmatter：容忍 BOM，不得把 frontmatter 当正文',
     const { version, content } = stripFrontmatter('\ufeff# 标题\n\n正文\n')
     expect(version).toBe(0)
     expect(content.startsWith('# 标题')).toBe(true)
+  })
+})
+
+describe('F-4/F-5 导出：KE 导出按磁盘原文还原 BOM/换行（发布验收「导出 vs 源文档 diff=0」）', () => {
+  async function exportText(raw: string): Promise<string> {
+    const ed = makeEditor()
+    setKeContent(ed, stripFrontmatter(raw).content)
+    const target = keExportPayload(ed, '导出用例', raw)
+    const text = await target.blob.text()
+    ed.destroy()
+    return text
+  }
+
+  it('CRLF + BOM 文档：导出保持 BOM 与 CRLF', async () => {
+    const raw = '\ufeff---\r\nke_version: 1\r\n---\r\n\r\n# 标题\r\n\r\n正文\r\n'
+    const out = await exportText(raw)
+    expect(out.startsWith('\ufeff')).toBe(true)
+    expect(out).not.toMatch(/(?<!\r)\n/)
+  })
+
+  it('LF 文档：导出不引入 CR/BOM', async () => {
+    const out = await exportText('---\nke_version: 1\n---\n\n# 标题\n\n正文\n')
+    expect(out).not.toContain('\r')
+    expect(out.startsWith('\ufeff')).toBe(false)
+  })
+
+  it('调用方已接线的源码级守卫（EditorArea 传 article.content）', () => {
+    const src = readFileSync(join(__dirname, '..', 'components', 'layout', 'EditorArea.tsx'), 'utf8')
+    expect(src).toMatch(/keExportPayload\(editor, article\.title, article\.content\)/)
+    expect(src).toMatch(/applyDocTraits\(\s*withFrontmatter\(editor\.getMarkdown\(\), KE_VERSION\),\s*captureDocTraits\(article\.content\)/)
   })
 })
 

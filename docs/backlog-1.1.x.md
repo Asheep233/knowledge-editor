@@ -41,6 +41,16 @@
 | S-2 | 明确 GFM 脚注 `[^1]` 是否纳入支持（当前仅 ke 自有格式，外部文档粘贴会降级为纯文本）| 兼容性 | 同上 | ✅ 已落地（2026-09-14，方案 A/A2；见 `design-s2-gfm-footnote.md`）|
 | S-3 | 附件上传保留原始文件名（当前时间戳重命名，用户难以对应）| 可发现性 | 同上 | ✅ 已落地（2026-09-14）|
 
+## v1.2.0-pre.1 保真修复的遗留（2026-09-18）
+
+| ID | 项 | 现状 | 处置 |
+|---|---|---|---|
+| **D-1** | 混合任务/普通列表被拆成两个列表 → tight 变 loose（项间多空行） | F-1 注册 `TaskList` 的副作用；复选框状态与文本不变，字节/结构变化 | 记录为已知偏差（`document-format.md` §2.6 D-1）；若要逐字节保持需自定义列表序列化 → 另立任务 |
+| **D-2** | 标准标签嵌套未知标签（`<em><span>x</span></em>` → `*x*`）内层标签丢失 | 既有缺口（不在 41 矩阵内） | 记录为已知偏差（§2.6 D-2）；修法需在标准标签 tokenizer 内递归处理未知标签 |
+| **D-3** | 裸 `&` → `&amp;`、`[X]` → `[x]`、`<br>`/`<a>` 走标准转换 | 语义等价、字节变化 | 契约内（§2.6 表） |
+| **DEP-1** | `frontend/src/editor/index.ts` 新增 `@tiptap/extension-list` import，但 `package.json` 未声明 | 靠 starter-kit 传递提升可用；换 node-linker / 依赖树变动会构建失败 | ✅ 已补：`package.json` + lock 显式声明 `^3.29.2`（lock resolved 3.31.3） |
+| **ADP-1** | 自定义快捷键的动作执行暂走 **DOM 过渡适配层**（点工具栏按钮 title / 合成既有键位） | 功能可用且有真机实测；但属过渡实现 | 待 App/EditorArea 解冻后收口：注册真实闭包 handler、删除 DOM 适配（记入 task-35） |
+
 ## 移动路径 4 项已修（2026-09-15，F9b/F9c/F11/F12）
 
 来源：`docs/design-file-management-feasibility.md` 的实测登记；验证留痕 `docs/verification-move-fixes.md`。

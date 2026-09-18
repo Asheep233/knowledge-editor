@@ -480,7 +480,9 @@ export const htmlPassthroughBlockTokenizer = {
       if (!m) return undefined
       return { type: 'html_passthrough', raw: m[0].replace(/\s*$/, '') }
     }
-    const open = /^<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>/.exec(src)
+    const openRaw = matchHtmlTag(src)
+    if (!openRaw) return undefined
+    const open = /^<([a-zA-Z][a-zA-Z0-9-]*)/.exec(openRaw)
     if (!open) return undefined
     const tag = open[1].toLowerCase()
     if (HTML_INLINE_TAGS.has(tag)) return undefined
@@ -522,8 +524,33 @@ const MARKDOWN_HANDLED_INLINE_TAGS = new Set([
   'em', 'strong', 'b', 'i', 'a', 'code', 'del', 'ins', 's', 'br',
 ])
 
-/** 行内标签（开/闭/自闭合），限制属性长度避免把整段文本吞进来 */
-const INLINE_TAG_RE = /^<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]{0,400}?)?\/?>/
+/**
+ * 引号感知的标签扫描（F-2 修正，2026-09-18）：
+ * 找结束 `>` 时**跳过** `"…"` / `'…'` 内部 —— 否则 `<span title="a>b">` 会在属性里
+ * 提前截断，把剩下的 `b">` 当文本转义成 `&gt;`（实测把标签写成非法 HTML）。
+ * 返回完整标签原文；不合法/超长 → null（交回 marked 的常规处理）。
+ */
+const MAX_TAG_LEN = 500
+function matchHtmlTag(src: string): string | null {
+  const m = /^<(\/?)([a-zA-Z][a-zA-Z0-9-]*)/.exec(src)
+  if (!m) return null
+  let i = m[0].length
+  let quote: string | null = null
+  for (; i < src.length && i <= MAX_TAG_LEN; i++) {
+    const c = src[i]
+    if (quote) {
+      if (c === quote) quote = null
+      continue
+    }
+    if (c === '"' || c === "'") {
+      quote = c
+      continue
+    }
+    if (c === '>') return src.slice(0, i + 1)
+    if (c === '<') return null
+  }
+  return null
+}
 /** HTML 实体：命名 / 十进制 / 十六进制 */
 const HTML_ENTITY_RE = /^&(?:#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,31});/
 
@@ -547,11 +574,11 @@ export const htmlPassthroughInlineTokenizer = {
       if (!m) return undefined
       return { type: 'html_passthrough_inline', raw: m[0] }
     }
-    const tag = INLINE_TAG_RE.exec(src)
+    const tag = matchHtmlTag(src)
     if (tag) {
-      const name = /^<\/?([a-zA-Z][a-zA-Z0-9-]*)/.exec(tag[0])?.[1]?.toLowerCase() ?? ''
+      const name = /^<\/?([a-zA-Z][a-zA-Z0-9-]*)/.exec(tag)?.[1]?.toLowerCase() ?? ''
       if (MARKDOWN_HANDLED_INLINE_TAGS.has(name)) return undefined
-      return { type: 'html_passthrough_inline', raw: tag[0] }
+      return { type: 'html_passthrough_inline', raw: tag }
     }
     const entity = HTML_ENTITY_RE.exec(src)
     if (entity) return { type: 'html_passthrough_inline', raw: entity[0] }

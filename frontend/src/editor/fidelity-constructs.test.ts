@@ -170,6 +170,34 @@ describe('F-2 行内 HTML：标签原样保留（不得只留文本）', () => {
   })
 })
 
+describe('F-2/F-3 安全边界：代码与数学语境不得被误当 HTML/实体', () => {
+  it('行内代码内标签保持字面（不被当 HTML 原子）', () => {
+    const out = roundTripBody('示例：`<span>x</span>` 结束\n')
+    expect(out).toContain('`<span>x</span>`')
+  })
+
+  it('围栏代码块内标签保持字面', () => {
+    const out = roundTripBody('```html\n<span>y</span>\n```\n')
+    expect(out).toContain('<span>y</span>')
+    expect(out).toContain('```')
+  })
+
+  it('小于号非标签：`a < b` 与 `1 <3` 不被误判为标签（`<` 转义属既有规范化，允许 &lt;）', () => {
+    const out = roundTripBody('价格 a < b 且 1 <3 与 2<3\n')
+    // 关键断言：三处比较关系都还在（未被吞进 HTML 原子），`<` 是否转义成 `&lt;` 不作要求
+    // —— 后者是序列化器的既有行为（属矩阵里「语义保留、字节变化」一类），非本次修复范围。
+    expect(out).toMatch(/a (&lt;|<) b/)
+    expect(out).toMatch(/1 (&lt;|<)3/)
+    expect(out).toMatch(/2(&lt;|<)3/)
+    expect(out).toContain('价格')
+  })
+
+  it('行内代码内实体保持字面', () => {
+    const out = roundTripBody('实体示例：`&copy;` 结束\n')
+    expect(out).toContain('`&copy;`')
+  })
+})
+
 describe('F-3 HTML 实体：不得二次转义', () => {
   it('&copy; 保持为 &copy;（不得变成 &amp;copy;）', () => {
     const out = roundTripBody('&copy; 2026 AstraNota\n')

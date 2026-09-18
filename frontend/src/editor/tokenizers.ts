@@ -498,15 +498,63 @@ export const htmlPassthroughBlockTokenizer = {
   },
 }
 
-/** 行内 HTML：段落中出现的普通 HTML 注释（非 ke-*）原样保留。 */
+/**
+ * 行内 HTML / 实体候选起点（F-2/F-3）：`<` 与 `&` 的最早出现位置。
+ *
+ * 性能：这里**只用 indexOf**（两次线性扫描，常数极小）。不能用 `String.search` 跑完整
+ * 正则 —— 该函数会被 marked 在每次行内 tokenize 尝试时调用，正则全量扫描会让大文档
+ * （2000 脚注级）变成 O(n²)（实测性能门用例可复现）。精确匹配交给 `tokenize` 的 `^` 锚定正则。
+ */
+function indexOfInlineHtmlCandidate(src: string): number {
+  const lt = src.indexOf('<')
+  const amp = src.indexOf('&')
+  if (lt < 0) return amp
+  if (amp < 0) return lt
+  return Math.min(lt, amp)
+}
+
+/**
+ * 由 marked / 既有扩展**正常转换**的行内标签：这些**不做** raw 保真
+ * （否则会抢走 `*斜体*` / `[链接](url)` / 硬换行 等既有行为，破坏 `fidelity-regression` 的 P1-2 契约）。
+ * 其余标签（`span`/`mark`/`kbd`/`img`/自定义标签…）marked 会丢弃 → 必须原样保留。
+ */
+const MARKDOWN_HANDLED_INLINE_TAGS = new Set([
+  'em', 'strong', 'b', 'i', 'a', 'code', 'del', 'ins', 's', 'br',
+])
+
+/** 行内标签（开/闭/自闭合），限制属性长度避免把整段文本吞进来 */
+const INLINE_TAG_RE = /^<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s[^<>]{0,400}?)?\/?>/
+/** HTML 实体：命名 / 十进制 / 十六进制 */
+const HTML_ENTITY_RE = /^&(?:#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,31});/
+
+/**
+ * 行内 HTML 保真（P1-2 扩展，F-2/F-3）：段落中的普通 HTML **标签**与 **HTML 实体**原样保留
+ * （作为原子行内节点，序列化时逐字节输出 raw）。
+ *
+ * 为什么必须做：此前只覆盖注释 —— `<span style="…">红</span>` 的标签被 DOMParser 丢弃
+ * （只剩文本）、`&copy;` 被序列化器二次转义成 `&amp;copy;`（实测矩阵 F-2/F-3）。
+ * 标签与实体拆成独立原子（而非整段吞成一块）是为了**保持中间文本可编辑**。
+ *
+ * 安全边界：只匹配 `<` 紧跟字母（`a < b` 不受影响）与合法实体形状（`?a=1&b=2` 不误匹配）。
+ */
 export const htmlPassthroughInlineTokenizer = {
   name: 'html_passthrough_inline',
   level: 'inline' as const,
-  start: (src: string) => src.indexOf('<!--'),
+  start: (src: string) => indexOfInlineHtmlCandidate(src),
   tokenize(src: string): MarkdownToken | undefined {
-    if (!isPlainHtmlComment(src)) return undefined
-    const m = /^<!--[\s\S]*?-->/.exec(src)
-    if (!m) return undefined
-    return { type: 'html_passthrough_inline', raw: m[0] }
+    if (isPlainHtmlComment(src)) {
+      const m = /^<!--[\s\S]*?-->/.exec(src)
+      if (!m) return undefined
+      return { type: 'html_passthrough_inline', raw: m[0] }
+    }
+    const tag = INLINE_TAG_RE.exec(src)
+    if (tag) {
+      const name = /^<\/?([a-zA-Z][a-zA-Z0-9-]*)/.exec(tag[0])?.[1]?.toLowerCase() ?? ''
+      if (MARKDOWN_HANDLED_INLINE_TAGS.has(name)) return undefined
+      return { type: 'html_passthrough_inline', raw: tag[0] }
+    }
+    const entity = HTML_ENTITY_RE.exec(src)
+    if (entity) return { type: 'html_passthrough_inline', raw: entity[0] }
+    return undefined
   },
 }

@@ -12,19 +12,54 @@ export const KE_VERSION = 1
 /** YAML frontmatter 中的版本键名 */
 export const KE_FRONTMATTER_KEY = 'ke_version'
 
+/** UTF-8 BOM（U+FEFF）。文件级标记：解析前剥离，保存时按原文特征还原（见 DocTraits）。 */
+const BOM = '\ufeff'
+
 /**
  * 解析文档 frontmatter。返回剥离后的正文与版本号。
  * 版本信息只存储于 Markdown 文件本身（frontmatter），
  * 因此文档被移动/复制后版本仍然存在。
+ *
+ * F-4（2026-09-18）：**容忍 BOM**。此前正则锚定 `^---`，带 BOM 的文件 frontmatter
+ * 整块被当正文（渲染成 `## ---`），保存时还会再套一层新 frontmatter。
  */
 export function stripFrontmatter(md: string): { version: number; content: string } {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
-  if (!m) return { version: 0, content: md }
+  const src = md.startsWith(BOM) ? md.slice(BOM.length) : md
+  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(src)
+  if (!m) return { version: 0, content: src }
   const versionMatch = new RegExp(`^\\s*${KE_FRONTMATTER_KEY}\\s*:\\s*(\\d+)`, 'm').exec(m[1])
   return {
     version: versionMatch ? Number(versionMatch[1]) || 0 : 0,
-    content: md.slice(m[0].length),
+    content: src.slice(m[0].length),
   }
+}
+
+/** 文档级文件特征（F-4/F-5）：BOM 与换行风格。加载时捕获，保存时还原。 */
+export interface DocTraits {
+  /** 原文是否以 UTF-8 BOM 开头 */
+  bom: boolean
+  /** 原文主导换行符（CRLF 多于 LF 时视为 CRLF） */
+  eol: '\n' | '\r\n'
+}
+
+/** 从**原始文件内容**捕获文件级特征（不改变内容语义）。 */
+export function captureDocTraits(raw: string): DocTraits {
+  const bom = raw.startsWith(BOM)
+  const body = bom ? raw.slice(BOM.length) : raw
+  const crlf = (body.match(/\r\n/g) ?? []).length
+  const lf = (body.match(/\n/g) ?? []).length - crlf
+  return { bom, eol: crlf > lf ? '\r\n' : '\n' }
+}
+
+/**
+ * 把文件级特征还原到待写入内容上（F-4/F-5）。
+ * 只做「换行风格 + BOM」两件事，**不改动任何其它字节**；幂等。
+ */
+export function applyDocTraits(md: string, traits: DocTraits): string {
+  let out = traits.eol === '\r\n' ? md.replace(/\r?\n/g, '\r\n') : md.replace(/\r\n/g, '\n')
+  if (traits.bom) out = out.startsWith(BOM) ? out : BOM + out
+  else if (out.startsWith(BOM)) out = out.slice(BOM.length)
+  return out
 }
 
 /**
@@ -39,6 +74,9 @@ export function withFrontmatter(md: string, version = KE_VERSION): string {
   // P3-16：脚注上标后为光标锚点注入的零宽空格 U+200B 不写入文件
   // （仅编辑时用于 caret 锚定，保存/导出时剥除，避免文件里残留隐形字符）。
   md = md.replace(/\u200b/g, '')
+  // F-4：容忍 BOM —— 先剥离再匹配，避免把已有 frontmatter 当成正文再套一层；
+  // BOM 的还原由 savePath 的 applyDocTraits(captureDocTraits(raw)) 负责。
+  if (md.startsWith(BOM)) md = md.slice(BOM.length)
   const fm = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
   if (!fm) {
     // 无 frontmatter：生成新版本头（原样追加正文）

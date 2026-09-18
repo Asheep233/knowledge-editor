@@ -17,6 +17,9 @@ import { history } from '@tiptap/pm/history'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
 import { OrderedListParenExtension, KeListItem } from './extensions/ListExtension'
+// F-1（v1.2.0-pre.1）：任务列表 `- [x]` / `- [ ]` 往返保真。Tiptap v3 自带
+// parseMarkdown/renderMarkdown（`- [x] ` 前缀），此前未注册 → 复选框状态被吞成 `- 完成`。
+import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { MathExtension } from './extensions/MathExtension'
 import { MathBlockExtension } from './extensions/MathBlockExtension'
 import { NoteExtension } from './extensions/NoteExtension'
@@ -165,6 +168,9 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       OrderedListParenExtension,
       // v1.1.5 ⑥ 补：空列表项 Enter = 继续列表（Obsidian 式），第二次回车退出
       KeListItem,
+      // F-1：任务列表（`- [x] 完成` → taskItem(checked) → 原样输出 `- [x] 完成`）
+      TaskList,
+      TaskItem,
       // v1.1.6 三5：Ctrl+N / Ctrl+M 插入公式
       MathShortcuts,
       // 标准 Markdown 图片：![alt](src)

@@ -210,6 +210,25 @@ NodeView 直接作为文本节点渲染，不走 Markdown 解析）。因此：
 - 块级节点之间由编辑器序列化器统一输出单个空行（见第 4 节空行规范）
 - `ke-footnotes` 区域的 kind 前缀与 `footnote` 相邻，由专用 tokenizer 解析，fallback 负向前瞻不干扰
 
+### 2.6 文件级与保真条款（v1.2.0-pre.1 新增）
+
+> 背景：`docs/analysis-1.1.10/source-mode.md` §4.1 用 41 个构造实测出「经编辑器一次往返后逐字节一致 0/41」，
+> 其中 5 项属**不可逆内容损坏**（下称 F-1…F-5）。本节把这些行为写成**显式契约**，
+> 避免「未声明 → 每轮往返都悄悄改写用户文件」。
+
+| 契约 | 规定 | 对应缺陷 |
+|---|---|---|
+| **任务列表** | `- [x] 任务` / `- [ ] 任务`（`+`/`*` 同样）属受支持内容：复选框状态必须**往返保留**；`[X]` 归一为小写 `x`（语义等价）；与普通列表混排各自保持 | F-1 |
+| **行内 HTML** | 由 marked 正常转换的标签（`em`/`strong`/`b`/`i`/`a`/`code`/`del`/`ins`/`s`/`br`）仍走标准 Markdown 转换（**不**做 raw 保真，避免抢走既有行为）；**其余**标签（`span`/`mark`/`kbd`/`img`/`figure`/自定义标签等）**原样保留**，不得只留文本 | F-2 |
+| **HTML 实体** | 命名实体（`&copy;`）、十进制（`&#169;`）、十六进制（`&#xA9;`）**原样保留**，不得二次转义为 `&amp;copy;`；裸 `&` 可规范化为 `&amp;`（等价） | F-3 |
+| **BOM** | UTF-8 BOM 属**文件级标记**：解析前剥离（不得进入正文、不得使 frontmatter 失效），保存时按原文**原样写回**（原文无 BOM 则不得新增；重复 BOM 归一为单个） | F-4 |
+| **换行风格** | **按文档保留**：CRLF 文档保存后仍为 CRLF，LF 文档不得被改成 CRLF；混排按主导风格处理。编辑器内部一律用 LF，还原发生在写入前 | F-5 |
+| **唯一事实源不变** | 上述还原只作用于「写入字节」，不改变 `ke-*` 标记语义、不新增节点类型、不写入任何编辑器状态到文档 | — |
+
+**实现落点**：任务列表 = 注册 `@tiptap/extension-list` 的 `TaskList`/`TaskItem`；
+行内 HTML 与实体 = `editor/tokenizers.ts` 的 `html_passthrough_inline`；
+BOM 与换行 = `editor/ke.ts` 的 `stripFrontmatter`/`withFrontmatter` + `captureDocTraits`/`applyDocTraits`（加载时捕获、保存时还原）。
+
 ## 3. Markdown 示例
 
 完整文档示例（与 `phase3-roundtrip.test.ts` 的零漂移用例一致，可复制验证）：

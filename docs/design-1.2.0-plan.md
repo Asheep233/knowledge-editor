@@ -46,3 +46,23 @@
 | task-31 | F-1…F-5 保真修复 + G-1/G-2/G-3 小修 | Lead |
 | task-32 | 独立验证：② + F-1…F-5 | verifier-s2 |
 | task-33 | 独立验证：① + Tab 栏 | verifier-attach |
+
+## 5. pre.1 执行状态（2026-09-18 快照）
+
+| 任务 | 内容 | 状态 |
+|---|---|---|
+| task-28/34 | 项② 公式光标（含 F-4/F-5 接线） | ✅ 完成 / **独立验证 38/38 PASS**（`docs/verification-math-fidelity.md`） |
+| task-31 | F-1…F-5 保真修复 + 规范 §2.6 | ✅ 完成（F-1 任务列表 / F-2 行内 HTML 与实体 / F-3 实体 / F-4 BOM / F-5 换行）；**独立验证 68/68 PASS** |
+| task-29 | 项① 自定义快捷键（设置三处同步 + capture 分发器） | ✅ 完成（含真机重启实测）；独立验证套件已按新架构重写 **42/42**，等最终合并 sha 出报告 |
+| task-30 | Tab 栏 + G-2/G-3 | ✅ 完成；**独立验证 30/30 PASS**（含左优先口径、非激活关闭零请求、脏标记） |
+| task-35 | ADP-1 收口（真实 handler）+ `doc.close` def + DEL-1 放弃修改残留 + EXP-1 zip 导出 | 🔄 收尾中（C 段与 zip 修复已落地并通过相关断言；待真机实测 + 冻结） |
+| task-36 | 增量复验 KE 导出 frontmatter | 🔄 单文件 PASS；文档包（zip）修复后待复跑 K10/K11 |
+
+**已修正的三处（记录在案）**
+1. **DEL-1 根因更正**：原「`flushWithTimeout` 超时后 `latest` 仍在 → 切档 flush 补写」**不成立**（独立验证白盒：`drain` 在首个 `await` 前清空 `latest`）；真实路径 = 确认框期间继续输入 re-arm → 放弃 → 切档 drain 落盘。修复 = 共享 `discardPending`（cancel + abort）接两条放弃分支；对照实验证明修复必要。
+2. **EXP-1**：KE 导出丢源 frontmatter 键（既有）→ 单文件已修并复验 PASS，文档包路径修复中。
+3. **流程失误（Lead）**：给 `shortcuts.ts` 冻结 sha 的同一时间派出了会改同一文件的 task-35 → 验证方 S 组红、旧结论作废。教训：**冻结 sha 不得发给「同时有在飞写任务」的文件**；此后按「写任务全部落地 → 一次冻结 → 一次验证」执行。
+
+**已知偏差（`document-format.md` §2.6 D-1/D-2/D-3 + backlog EDGE-1）**：混合列表 tight→loose（D-1，可选修，需自定义列表序列化）、标准标签嵌套未知标签（D-2）、语义等价字节变化（D-3）、空 frontmatter 区块不被识别（EDGE-1）。**均待主理人决定是否排期**。
+
+**打包前置（等主理人发话，当前刻意不做）**：`bump-version.mjs 1.2.0-pre.1` → 前端构建 → 侧车重建（版本串必须同步）→ NSIS → manifest → tag/预发布。

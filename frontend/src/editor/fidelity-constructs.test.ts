@@ -310,10 +310,14 @@ describe('F-4/F-5 导出：KE 导出按磁盘原文还原 BOM/换行（发布验
     expect(out).not.toContain('title:')
   })
 
-  it('调用方已接线的源码级守卫（EditorArea 传 article.content）', () => {
+  it('调用方已接线的源码级守卫（单文件与文档包两条路径都保留源 frontmatter）', () => {
     const src = readFileSync(join(__dirname, '..', 'components', 'layout', 'EditorArea.tsx'), 'utf8')
+    // 单文件：把源原文一并交给 keExportPayload
     expect(src).toMatch(/keExportPayload\(editor, article\.title, article\.content\)/)
-    expect(src).toMatch(/applyDocTraits\(\s*withFrontmatter\(editor\.getMarkdown\(\), KE_VERSION\),\s*captureDocTraits\(article\.content\)/)
+    // 文档包：同样先把源 frontmatter 区块拼回，再更新 ke_version，并按原文还原 BOM/换行
+    expect(src).toMatch(/frontmatterBlockOf\(article\.content\)/)
+    expect(src).toMatch(/withFrontmatter\(fmBlock \? fmBlock \+ editor\.getMarkdown\(\) : editor\.getMarkdown\(\), KE_VERSION\)/)
+    expect(src).toMatch(/captureDocTraits\(article\.content\)/)
   })
 })
 

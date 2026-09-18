@@ -40,6 +40,7 @@ import type {
   TreePayload,
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
+import { registerActionHandlers } from '../../state/shortcuts'
 import { Icon } from '../icons'
 import TrashPanel from '../trash/TrashPanel'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
@@ -179,6 +180,16 @@ export default function LeftSidebar({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // task-35（ADP-1 收口）：自定义快捷键 —— 本组件内部的两个动作注册为**真实闭包**
+  // （搜索框 ref 与 nav 状态都封在本组件内，App 层拿不到；不改任何 UI/既有行为）。
+  // `app.search.focus` 与上面的 Ctrl+K 走同一行代码；`app.trash.open` 即切到回收站视图。
+  useEffect(() => {
+    return registerActionHandlers({
+      'app.search.focus': () => searchRef.current?.focus(),
+      'app.trash.open': () => setNav('trash'),
+    })
   }, [])
   const searchTimer = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)

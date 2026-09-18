@@ -4,6 +4,7 @@ import {
   DEFAULT_DEBOUNCE_MS,
   abortPending,
   cancelPending,
+  discardPending,
   enqueueSave,
   flushPending,
   flushPendingAll,
@@ -265,5 +266,138 @@ describe('saveQueue — R2 cancelPending（重新加载外部版本前取消未�
 
   it('flushWithTimeout：无未决保存时立即返回 true', async () => {
     await expect(flushWithTimeout('no-such-doc')).resolves.toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// task-35 C 段：「放弃修改」= 取消未决 + 中止在途（被放弃的内容不得再落盘）
+// ---------------------------------------------------------------------------
+describe('saveQueue — task-35 C：discardPending（放弃修改）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('C① 确认期间重新入队 → discardPending → 切档 flush 不再落盘被放弃的内容', async () => {
+    const saved: string[] = []
+    let releaseFirst!: () => void
+    const firstGate = new Promise<void>((r) => {
+      releaseFirst = r
+    })
+    void enqueueSave(
+      'doc-A',
+      async () => {
+        saved.push('first')
+        await firstGate
+      },
+      0,
+    ) // 在途（慢）
+    await Promise.resolve()
+
+    const p = flushWithTimeout('doc-A', 3000) // 关闭/切换路径的 flush
+    vi.advanceTimersByTime(3000)
+    await expect(p).resolves.toBe(false) // 超时 → 弹「放弃修改」确认
+    expect(saved).toEqual(['first'])
+
+    // 确认框期间用户继续输入 → 重新 armed latest
+    void enqueueSave(
+      'doc-A',
+      async () => {
+        saved.push('second')
+      },
+      DEFAULT_DEBOUNCE_MS,
+    )
+
+    // 用户点「放弃」
+    discardPending('doc-A')
+    // 切档 effect 的 flushPending(prevId)：只能等既有在途链，不得补写
+    const after = flushPending('doc-A')
+    releaseFirst!()
+    await after
+
+    expect(saved, '被放弃的新入队内容不得落盘').toEqual(['first'])
+    expect(hasPending('doc-A')).toBe(false)
+  })
+
+  it('C① 反例（证明断言非空）：同样时序但不调用 discardPending → 第二次内容会被落盘', async () => {
+    const saved: string[] = []
+    let releaseFirst!: () => void
+    const firstGate = new Promise<void>((r) => {
+      releaseFirst = r
+    })
+    void enqueueSave(
+      'doc-A',
+      async () => {
+        saved.push('first')
+        await firstGate
+      },
+      0,
+    )
+    await Promise.resolve()
+    const p = flushWithTimeout('doc-A', 3000)
+    vi.advanceTimersByTime(3000)
+    await expect(p).resolves.toBe(false)
+
+    void enqueueSave(
+      'doc-A',
+      async () => {
+        saved.push('second')
+      },
+      DEFAULT_DEBOUNCE_MS,
+    )
+    const after = flushPending('doc-A') // 未放弃 → 在途链结束后补写 latest
+    releaseFirst!()
+    await after
+
+    expect(saved, '不修则被放弃的内容照写（C① 的守卫价值）').toEqual(['first', 'second'])
+  })
+
+  it('C② discardPending 中止在途 PUT（saveFn 观察到 signal.aborted）', async () => {
+    let aborted: boolean | null = null
+    let release!: () => void
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    const inflight = enqueueSave(
+      'doc-B',
+      async (signal?: AbortSignal) => {
+        await gate
+        aborted = !!signal?.aborted
+      },
+      0,
+    )
+    await Promise.resolve()
+
+    discardPending('doc-B')
+    release!()
+    await inflight
+
+    expect(aborted, '放弃后应在途请求被 abort').toBe(true)
+  })
+
+  it('C③ 正常保存路径无回归：不丢 latest、正常落盘、条目清理（不调用 discardPending）', async () => {
+    const saved: string[] = []
+    void enqueueSave(
+      'doc-C',
+      async () => {
+        saved.push('c1')
+      },
+      DEFAULT_DEBOUNCE_MS,
+    )
+    await flushPending('doc-C')
+    void enqueueSave(
+      'doc-C',
+      async () => {
+        saved.push('c2')
+      },
+      DEFAULT_DEBOUNCE_MS,
+    )
+    await flushPending('doc-C')
+
+    expect(saved).toEqual(['c1', 'c2'])
+    expect(hasPending('doc-C')).toBe(false)
   })
 })

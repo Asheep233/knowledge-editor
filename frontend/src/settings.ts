@@ -5,6 +5,12 @@
  * （get_settings / update_settings）；Web 版（无 Tauri）降级到 localStorage（ke.settings.v1），
  * 浏览器模式可用且不改后端。schema 与 Rust 端 settings.rs / 规划第 7 章一致。
  */
+import {
+  SHORTCUT_RESET,
+  SHORTCUT_UNBOUND,
+  installShortcutDispatcher,
+  parseKeySpec,
+} from './state/shortcuts'
 export interface StartupSettings {
   restoreLastState: boolean
   autoOpenRecentWorkspace: boolean
@@ -19,6 +25,13 @@ export interface EditorSettings {
   quoteBgOpacity?: number
   /** v1.1.7 ②：公式自动补全（VS Code 式 r → Tab 选择；默认开） */
   mathAutocomplete?: boolean
+  /**
+   * task-29（v1.2.0-pre.1 ①）：自定义快捷键 —— actionId → 键位规范串。
+   *  - 缺省/`''` = 未自定义（沿用内置默认键位，行为零变化）；
+   *  - `'none'` = 显式解绑（墓碑值：Rust `merge_value` 深合并删不掉键，必须用墓碑表达「解绑」）；
+   *  - 其它 = 自定义绑定（规范串，如 `Ctrl+Shift+K` / `Mod+B`）。
+   */
+  shortcuts?: Record<string, string>
   display: Record<string, unknown>
 }
 
@@ -60,7 +73,7 @@ export type SettingsPatch = {
 export const DEFAULT_SETTINGS: AppSettings = {
   schemaVersion: 1,
   startup: { restoreLastState: true, autoOpenRecentWorkspace: true },
-  editor: { autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, mathAutocomplete: true, display: {} },
+  editor: { autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, mathAutocomplete: true, shortcuts: {}, display: {} },
   ui: { theme: 'system', displayPreference: {} },
   maintenance: {},
 }
@@ -99,6 +112,9 @@ export function mergeSettings(base: AppSettings, patch: SettingsPatch): AppSetti
       ...base.editor,
       ...patch.editor,
       display: deepMergeRecord(base.editor.display, patch.editor?.display),
+      // task-29：快捷键映射按**键级合并**（与 Rust merge_value 的深合并语义对齐）。
+      // 若整体替换，IPC 往返会把其它动作的绑定丢掉（F08 类双端语义分裂的教训，见上方注释）。
+      shortcuts: { ...(base.editor.shortcuts ?? {}), ...(patch.editor?.shortcuts ?? {}) },
     },
     ui: {
       ...base.ui,
@@ -139,6 +155,30 @@ function isPlainRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
+/**
+ * task-29：快捷键映射净化（前端防线，与 Rust `sanitize` 的类型级净化对齐）。
+ *  - 只保留 string→string；
+ *  - `''`（回退默认）与 `'none'`（解绑墓碑）原样保留；
+ *  - 合法键位归一化为规范串（`ctrl+shift+k` → `Ctrl+Shift+K`）；
+ *  - **非法键位值丢弃**（该动作回退内置默认，不影响其它动作）；
+ *  - **未知 action id 保留**（便于版本降级时不丢配置；分派时会被忽略，见 shortcuts.resolveBindings）。
+ */
+export function sanitizeShortcutsMap(raw: unknown): Record<string, string> {
+  if (!isPlainRecord(raw)) return {}
+  const out: Record<string, string> = {}
+  for (const [actionId, value] of Object.entries(raw)) {
+    if (!actionId) continue
+    if (typeof value !== 'string') continue
+    if (value === SHORTCUT_RESET || value === SHORTCUT_UNBOUND) {
+      out[actionId] = value
+      continue
+    }
+    const parsed = parseKeySpec(value)
+    if (parsed.ok && parsed.canonical) out[actionId] = parsed.canonical
+  }
+  return out
+}
+
 /** 校验并归一化未知输入为完整 AppSettings（F09：缺键补默认、非法 theme 回退，
  * 双重防线——桌面端 Rust sanitize 之后的前端兜底，Web 降级路径的主防线）。 */
 export function normalizeSettings(raw: unknown): AppSettings {
@@ -177,6 +217,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
       ...(typeof editor.quoteBgOpacity === 'number'
         ? { quoteBgOpacity: Math.min(100, Math.max(0, editor.quoteBgOpacity)) } : {}),
       ...(typeof editor.mathAutocomplete === 'boolean' ? { mathAutocomplete: editor.mathAutocomplete } : {}),
+      shortcuts: sanitizeShortcutsMap(editor.shortcuts),
       display: isPlainRecord(editor.display) ? editor.display : {},
     },
     ui: {
@@ -272,3 +313,16 @@ export function applyTheme(theme: UiSettings['theme'], accent?: UiSettings['acce
     })
   }
 }
+
+// ---------------------------------------------------------------------------
+// task-29（v1.2.0-pre.1 ①）：全局快捷键分发器（capture 阶段）
+// ---------------------------------------------------------------------------
+// 必须在应用启动时即安装、且早于编辑器创建：本模块由 App **静态导入**
+// （`import { applyTheme, loadSettings } from './settings'`），先于 EditorArea 挂载，
+// 在此安装即可（`installShortcutDispatcher` 幂等）。
+//  · 绑定值**每次按键时**从设置缓存读取 → 设置页改键**即改即生效**（与 getAutosaveIntervalMs 同范式）；
+//  · **无自定义绑定时分发器对事件零副作用**：既有 Tiptap 键位 / Ctrl+S / Ctrl+K / 原生菜单加速键
+//    行为完全不变（主理人拍板「已有快捷键不变动」，见 state/shortcuts.ts 头注释）。
+//  · 真实动作闭包（EditorArea / App 侧注册）解冻后经 registerActionHandler 注入；
+//    当前由 state/shortcuts.ts 的 DOM 适配层直达既有入口。
+installShortcutDispatcher({ getBindings: () => getCachedSettings().editor.shortcuts ?? {} })

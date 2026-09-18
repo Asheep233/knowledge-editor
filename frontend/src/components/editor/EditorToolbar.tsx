@@ -4,7 +4,7 @@ import { TextSelection } from '@tiptap/pm/state'
  * 编辑器工具栏（对齐参考稿 editor.html：单行 h-10 纯图标）。
  * 从左到右：标签（由 TabBar 提供）→ 字号▾ → 分隔线 → B/I/U/S → 分隔线 →
  * 无序/有序/引用/代码/链接/图片/公式 → 模块▾ → 「更多」▾（代码块/注释/信息块/表格/撤销/重做）→
- * 右侧：保存状态 + 历史快照 + 附件 + 导出主按钮（--primary 底白字）。
+ * 右侧：保存状态 + 历史快照 + 导出主按钮（--primary 底白字）。
  * 图标控件直接映射 Tiptap 命令；激活态（B/I/U）随光标状态实时更新。
  */
 import { useCurrentEditor, useEditorState } from '@tiptap/react'
@@ -16,6 +16,7 @@ import { newId } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
 import { Icon } from '../icons'
 import { askPrompt } from '../common/PromptDialog'
+import { TabBarSlot } from '../layout/TabBar'
 
 /** 工具栏图标按钮（方形 32px，hover --muted 底；激活 --primary 色） */
 function ToolIcon({
@@ -297,8 +298,6 @@ export interface EditorToolbarProps {
   saveLabel?: ReactNode
   /** 历史快照按钮 */
   onOpenHistory?: () => void
-  /** 附件面板按钮（上方右侧附件图标） */
-  onOpenAttachments?: () => void
   /** 导出主按钮（--primary 底白字） */
   exportButton?: ReactNode
   /** 立即保存（显式「保存」图标按钮） */
@@ -309,7 +308,6 @@ export default function EditorToolbar({
   tabBar,
   saveLabel,
   onOpenHistory,
-  onOpenAttachments,
   exportButton,
   onSave,
 }: EditorToolbarProps = {}) {
@@ -433,8 +431,8 @@ export default function EditorToolbar({
 
   return (
     <div className="flex h-10 shrink-0 items-center gap-0.5 border-b border-border bg-card px-2">
-      {/* TabBar 段（文档标签 + 新标签按钮，参考稿同一行） */}
-      {tabBar}
+      {/* TabBar 段（文档标签，参考稿同一行）；显式 tabBar prop 优先，否则读 App 注入的 TabsContext */}
+      {tabBar ?? <TabBarSlot />}
 
       {/* 样式下拉：正文 / 标题1~6（参考稿「正文 ▾」第一段；单行纯图标 → 文字下拉） */}
       <Dropdown
@@ -638,11 +636,6 @@ export default function EditorToolbar({
         {onOpenHistory ? (
           <ToolIcon title="历史快照" onClick={onOpenHistory}>
             <Icon name="history" className="size-4" />
-          </ToolIcon>
-        ) : null}
-        {onOpenAttachments ? (
-          <ToolIcon title="附件" onClick={onOpenAttachments}>
-            <Icon name="paperclip" className="size-4" />
           </ToolIcon>
         ) : null}
         {exportButton}

@@ -4,34 +4,41 @@
  * 保存链路（约束 p2f）：3s 防抖自动保存 + Ctrl+S 立即保存 + 原子写入（后端）。
  */
 import { EditorContent, EditorContext, type Editor } from '@tiptap/react'
+import { type MarkdownExtensionStorage } from '@tiptap/markdown'
+import { TextSelection } from '@tiptap/pm/state'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   discardRecovery,
   getArticle,
+  getModule,
   listHistory,
+  listModules,
   previewHistory,
   registerRecovery,
   renameDoc,
   restoreHistory,
   saveArticle,
   updateArticleMeta,
+  uploadAttachment,
 } from '../../api/client'
-import { setKeContent, useKeEditor } from '../../editor'
+import { openMathEditorById, setKeContent, useKeEditor } from '../../editor'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
-import { applyDocTraits, captureDocTraits, KE_VERSION, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
+import { applyDocTraits, captureDocTraits, frontmatterBlockOf, KE_VERSION, newId, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
+import { attachmentNode } from '../../editor/upload'
 import { applyMathDeleteCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
 import { createDeferredLoader, onDocumentSwitch, resolveRecoveryTarget, resolveSaveContent, type DeferredLoader } from '../../state/docSwitch'
+import { registerActionHandlers } from '../../state/shortcuts'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
 import MathEditorModal from '../editor/MathEditorModal'
 import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathNodeView'
-import EditorToolbar from '../editor/EditorToolbar'
+import EditorToolbar, { stripModuleTitle } from '../editor/EditorToolbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
-import { askConfirm } from '../common/PromptDialog'
+import { askConfirm, askPrompt } from '../common/PromptDialog'
 
 /** 文件特征缺省值：UTF-8 无 BOM + LF（磁盘原文未捕获到时使用，等价于既有行为） */
 const DEFAULT_DOC_TRAITS: DocTraits = { bom: false, eol: '\n' }
@@ -529,13 +536,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   }, [editor, article])
 
   // 导出文档包 .zip（序列化 + 收集附件引用 → 后端打包）
+  // K10/K11（2026-09-18 独立验证）：zip 载荷必须与单文件路径（keExportPayload）**同口径**保留
+  // 源 frontmatter 的其余键（title / tags / 自定义键）——把原文 frontmatter 区块拼回正文前，
+  // 再让 withFrontmatter 只更新 ke_version，并按磁盘原文还原 BOM/换行风格。
+  // 修前这里只产出 `ke_version: 1`，源键全部丢失。
   const handleExportPackage = useCallback(async () => {
     if (!editor || !article || exporting) return
     setExporting(true)
     setExportOpen(false)
     try {
+      const fmBlock = frontmatterBlockOf(article.content)
       const md = applyDocTraits(
-        withFrontmatter(editor.getMarkdown(), KE_VERSION),
+        withFrontmatter(fmBlock ? fmBlock + editor.getMarkdown() : editor.getMarkdown(), KE_VERSION),
         captureDocTraits(article.content),
       )
       await packageExportAndSave(article.title, md)
@@ -577,6 +589,132 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     window.addEventListener('ke:open-history', onOpen)
     return () => window.removeEventListener('ke:open-history', onOpen)
   }, [handleOpenHistory])
+
+  // ---------------------------------------------------------------------------
+  // task-35（ADP-1 收口）：自定义快捷键 → **真实 handler 闭包**（不再走 DOM 过渡适配层）
+  // ---------------------------------------------------------------------------
+  // 编辑器类动作直接调用 `editor.chain()...`；`doc.save` / `app.history.open` 复用本组件既有回调。
+  // 注册表按 action id 覆盖，卸载或依赖变化时统一注销（闭包不会过期）。
+  // 应用级动作（新建 / 设置 / 右栏 / 工作区 / doc.next|prev|close）在 App.tsx 注册。
+  useEffect(() => {
+    if (!editor) return
+
+    /** 插入行内/块级公式：有选区时折叠到末尾（不吞文本），随后按 id 打开全屏公式编辑 */
+    const insertMath = (kind: 'math' | 'mathBlock') => {
+      const id = newId()
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
+          return true
+        })
+        .insertContent({ type: kind, attrs: { id, latex: '' } })
+        .run()
+      openMathEditorById(editor, id)
+    }
+
+    /** 插入链接：与工具栏同款（askPrompt 输入地址；空串 = 取消链接） */
+    const insertLink = async () => {
+      const prev = editor.getAttributes('link').href as string | undefined
+      const url = await askPrompt('链接地址：', prev ?? 'https://')
+      if (url === null) return
+      if (url === '') editor.chain().focus().extendMarkRange('link').unsetLink().run()
+      else editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    }
+
+    /** 插入图片/附件：与工具栏同款（uploadAttachment + attachmentNode，含视频/文件节点） */
+    const insertAttachment = () => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'image/*,video/*,.pdf,.zip,.txt,.csv,.xlsx,.docx,.pptx,.epub,.json'
+      input.style.display = 'none'
+      document.body.appendChild(input)
+      const cleanup = () => input.remove()
+      input.onchange = () => {
+        const file = input.files?.[0]
+        cleanup()
+        if (!file) return
+        void (async () => {
+          try {
+            const res = await uploadAttachment(file)
+            const node = attachmentNode(editor.schema, res, file.name)
+            editor.chain().focus().insertContent(node).run()
+          } catch (err) {
+            window.alert(`附件上传失败：${String(err)}`)
+          }
+        })()
+      }
+      input.click()
+    }
+
+    /**
+     * 插入模块（键盘路径）：先拉模块列表；唯一模块直接插入，多模块用 askPrompt 选择序号/路径。
+     * 插入文本与工具栏按钮完全一致（ke-module 来源标记 + stripModuleTitle），避免两处漂移。
+     */
+    const insertModule = async () => {
+      try {
+        const { modules } = await listModules()
+        if (modules.length === 0) {
+          window.alert('暂无模块（在左侧 Modules 目录创建后重试）')
+          return
+        }
+        let target = modules[0]
+        if (modules.length > 1) {
+          const list = modules.map((m, i) => `${i + 1}) ${m.path}`).join('\n')
+          const answer = await askPrompt(`插入模块（输入序号或路径）：\n${list}`, '1')
+          if (answer === null) return
+          const trimmed = answer.trim()
+          const idx = Number(trimmed)
+          const byIndex =
+            Number.isInteger(idx) && idx >= 1 && idx <= modules.length ? modules[idx - 1] : undefined
+          const byPath = modules.find((m) => m.path === trimmed)
+          const picked = byIndex ?? byPath
+          if (!picked) {
+            window.alert(`未找到模块：${trimmed}`)
+            return
+          }
+          target = picked
+        }
+        const mod = await getModule(target.path)
+        const body = stripModuleTitle(mod.content)
+        const marker = `<!-- ke-module: ${JSON.stringify({ source: target.path })} -->`
+        const manager = (editor.storage.markdown as MarkdownExtensionStorage).manager
+        editor.chain().focus().insertContent(manager.parse(`${marker}\n\n${body}`)).run()
+      } catch (e) {
+        window.alert(`插入模块失败：${e instanceof Error ? e.message : String(e)}`)
+      }
+    }
+
+    const off = registerActionHandlers({
+      'editor.bold': () => { editor.chain().focus().toggleBold().run() },
+      'editor.italic': () => { editor.chain().focus().toggleItalic().run() },
+      'editor.underline': () => { editor.chain().focus().toggleUnderline().run() },
+      'editor.strike': () => { editor.chain().focus().toggleStrike().run() },
+      'editor.heading.1': () => { editor.chain().focus().toggleHeading({ level: 1 }).run() },
+      'editor.heading.2': () => { editor.chain().focus().toggleHeading({ level: 2 }).run() },
+      'editor.heading.3': () => { editor.chain().focus().toggleHeading({ level: 3 }).run() },
+      'editor.list.bullet': () => { editor.chain().focus().toggleBulletList().run() },
+      'editor.list.ordered': () => { editor.chain().focus().toggleOrderedList().run() },
+      'editor.blockquote': () => { editor.chain().focus().toggleBlockquote().run() },
+      'editor.code.inline': () => { editor.chain().focus().toggleCode().run() },
+      'editor.codeBlock': () => { editor.chain().focus().toggleCodeBlock().run() },
+      'editor.link.insert': () => { void insertLink() },
+      'editor.image.insert': () => insertAttachment(),
+      'editor.math.inline': () => insertMath('math'),
+      'editor.math.block': () => insertMath('mathBlock'),
+      'editor.module.insert': () => { void insertModule() },
+      'editor.footnote.insert': () => { editor.chain().focus().insertFootnote('').run() },
+      'editor.note.insert': () => { editor.chain().focus().insertNote('', 'blue').run() },
+      // 快捷键路径没有网格选择器 → 默认插入 3×3 带表头表格（工具栏按钮仍保留 1–8 网格选择）
+      'editor.table.insert': () => { editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+      'editor.undo': () => { editor.chain().focus().undo().run() },
+      'editor.redo': () => { editor.chain().focus().redo().run() },
+      'doc.save': () => { void saveNow() },
+      'app.history.open': () => handleOpenHistory(),
+    })
+    return off
+  }, [editor, saveNow, handleOpenHistory])
 
   const handlePreviewCurrent = useCallback(() => {
     if (!article || !editor) return

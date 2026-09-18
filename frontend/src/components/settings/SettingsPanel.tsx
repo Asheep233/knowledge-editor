@@ -25,6 +25,7 @@ import { APP_VERSION } from '../../version'
 import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-light-800x200.png'
 import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
 import { askConfirm } from '../common/PromptDialog'
+import ShortcutsSection from './ShortcutsSection'
 
 interface Props {
   open: boolean
@@ -45,8 +46,8 @@ export default function SettingsPanel({ open, onClose }: Props) {
   const [ready, setReady] = useState(false)
   const [indexBusy, setIndexBusy] = useState(false)
   const [indexResult, setIndexResult] = useState<string | null>(null)
-  // 分组导航（参考稿 §3.6：常规 / 外观 / 维护；左栏点击 = 右侧锚点跳转）
-  const [group, setGroup] = useState<'general' | 'appearance' | 'maintenance'>('general')
+  // 分组导航（参考稿 §3.6：常规 / 外观 / 快捷键 / 维护；左栏点击 = 右侧锚点跳转）
+  const [group, setGroup] = useState<'general' | 'appearance' | 'shortcuts' | 'maintenance'>('general')
   const contentRef = useRef<HTMLDivElement | null>(null)
 
   // 右侧滚动监听：更新左栏激活态（IntersectionObserver，组进入视口顶部即激活）
@@ -54,7 +55,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
     if (!open) return
     const root = contentRef.current
     if (!root) return
-    const targets = ['general', 'appearance', 'maintenance']
+    const targets = ['general', 'appearance', 'shortcuts', 'maintenance']
       .map((g) => document.getElementById(`settings-group-${g}`))
       .filter(Boolean) as HTMLElement[]
     if (targets.length === 0) return
@@ -122,6 +123,16 @@ export default function SettingsPanel({ open, onClose }: Props) {
     await setNumber('editor', 'historyRetentionCount', v)
   }
 
+  /**
+   * task-29：保存单个动作的快捷键。
+   * 值语义：`''` = 恢复内置默认；`'none'` = 解绑墓碑；其它 = 自定义规范键位。
+   * 走 `{ editor: { shortcuts: { <actionId>: spec } } }` 补丁 → 后端 merge_value 键级深合并
+   * （其它动作的绑定不受影响）。保存后分发器下次按键即用新值（即改即生效，无需重启）。
+   */
+  const handleShortcutBind = async (actionId: string, spec: string) => {
+    await patchAndSave({ editor: { shortcuts: { [actionId]: spec } } })
+  }
+
   const handleOpenDir = async (cmd: 'open_log_dir' | 'open_data_dir') => {
     try {
       const { invoke } = await import('@tauri-apps/api/core')
@@ -177,6 +188,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
             {([
               ['general', '常规'],
               ['appearance', '外观'],
+              ['shortcuts', '快捷键'],
               ['maintenance', '维护'],
             ] as const).map(([g, label]) => (
               <button
@@ -356,6 +368,22 @@ export default function SettingsPanel({ open, onClose }: Props) {
                         />
                       </SettingRow>
                     </div>
+                  </div>
+                </section>
+              </div>
+
+              {/* 快捷键：自定义动作键位（锚点 shortcuts；task-29） */}
+              <div id="settings-group-shortcuts" data-group="shortcuts" className="scroll-mt-4">
+                <section aria-labelledby="section-shortcuts">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <h2 id="section-shortcuts" className="text-[14px] font-semibold whitespace-nowrap text-foreground">快捷键</h2>
+                    <p className="text-[12px] text-muted-foreground">为动作绑定自定义键位（默认沿用内置键位）</p>
+                  </div>
+                  <div className="mt-3">
+                    <ShortcutsSection
+                      bindings={settings.editor.shortcuts ?? {}}
+                      onBind={(actionId, spec) => handleShortcutBind(actionId, spec)}
+                    />
                   </div>
                 </section>
               </div>

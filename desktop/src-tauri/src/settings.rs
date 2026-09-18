@@ -52,6 +52,12 @@ pub struct EditorSettings {
     pub quote_bg_opacity: Option<u32>,
     /// v1.1.7 ②：公式自动补全开关
     pub math_autocomplete: Option<bool>,
+    /// task-29（v1.2.0-pre.1 ①）：自定义快捷键 —— actionId → 键位规范串。
+    ///  - 缺省/`""` = 未自定义（沿用内置默认键位）；
+    ///  - `"none"` = 显式解绑（墓碑值：merge_value 深合并删不掉键）；
+    ///  - 其它 = 自定义绑定（语法校验/归一化在前端 `state/shortcuts.ts`）。
+    /// 与 `display` 同款用 `serde_json::Value` 承载，避免未知键/非字符串值导致反序列化失败。
+    pub shortcuts: serde_json::Value,
     pub display: serde_json::Value,
 }
 
@@ -63,6 +69,7 @@ impl Default for EditorSettings {
             note_bg_opacity: None,
             quote_bg_opacity: None,
             math_autocomplete: None,
+            shortcuts: serde_json::Value::Object(Default::default()),
             display: serde_json::Value::Object(Default::default()),
         }
     }
@@ -182,6 +189,10 @@ fn from_value_lenient(raw: &serde_json::Value) -> AppSettings {
         if let Some(b) = eo.get("mathAutocomplete").and_then(|v| v.as_bool()) {
             s.editor.math_autocomplete = Some(b);
         }
+        // task-29：自定义快捷键（漏掉本白名单 = IPC 返回 null、设置静默失效 —— handover 坑 12）
+        if let Some(sc) = eo.get("shortcuts") {
+            s.editor.shortcuts = sc.clone();
+        }
         if let Some(d) = eo.get("display") {
             s.editor.display = d.clone();
         }
@@ -281,7 +292,24 @@ fn sanitize(mut settings: AppSettings) -> AppSettings {
             *accent = AccentColor { light, dark };
         }
     }
+    // task-29：自定义快捷键只做**类型级**净化（string→string）。
+    // 键位语法/保留键/冲突校验的语义来源在前端 `state/shortcuts.ts`（避免双端各维护一份动作清单）。
+    settings.editor.shortcuts = sanitize_shortcuts(&settings.editor.shortcuts);
     settings
+}
+
+/// task-29：快捷键映射净化 —— 只保留 string→string 条目（非对象输入 → `{}`，非字符串值丢弃）。
+/// 未知 action id 保留（降级不丢配置）；`""`（回退默认）与 `"none"`（解绑墓碑）原样保留。
+fn sanitize_shortcuts(raw: &serde_json::Value) -> serde_json::Value {
+    let mut out = serde_json::Map::new();
+    if let Some(obj) = raw.as_object() {
+        for (k, v) in obj {
+            if let Some(s) = v.as_str() {
+                out.insert(k.clone(), serde_json::Value::String(s.to_string()));
+            }
+        }
+    }
+    serde_json::Value::Object(out)
 }
 
 /// 校验十六进制颜色：#RGB / #RRGGBB（大小写均可，容忍首字符 # 与前后空白）
@@ -566,5 +594,132 @@ mod tests {
         assert_eq!(loaded.ui.theme, "dark");
         assert_eq!(loaded.editor.autosave_interval_ms, 8000);
         std::fs::remove_file(&path).ok();
+    }
+
+    // -----------------------------------------------------------------------
+    // task-29（v1.2.0-pre.1 ①）：自定义快捷键 —— 三处同步守门
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn shortcuts_default_is_empty_object() {
+        // 默认空映射 = 全部沿用内置键位（不得改动既有绑定）
+        let s = AppSettings::default();
+        assert!(s.editor.shortcuts.is_object());
+        assert_eq!(s.editor.shortcuts.as_object().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn shortcuts_roundtrip_save_load() {
+        let path = tmp_settings_file();
+        let mut s = AppSettings::default();
+        s.editor.shortcuts = serde_json::json!({
+            "editor.bold": "Ctrl+Shift+B",
+            "editor.italic": "none",
+            "doc.save": ""
+        });
+        save_to(&path, &s).unwrap();
+        let loaded = load_from(&path);
+        assert_eq!(loaded.editor.shortcuts["editor.bold"], "Ctrl+Shift+B");
+        assert_eq!(loaded.editor.shortcuts["editor.italic"], "none"); // 解绑墓碑
+        assert_eq!(loaded.editor.shortcuts["doc.save"], ""); // 回退默认
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn lenient_accepts_shortcuts_field() {
+        // 「漏 from_value_lenient 白名单 = 设置静默失效」（handover 坑 12）的定向守卫
+        let raw = serde_json::json!({
+            "editor": { "shortcuts": { "editor.bold": "Ctrl+Shift+B" } }
+        });
+        let out = from_value_lenient(&raw);
+        assert_eq!(out.editor.shortcuts["editor.bold"], "Ctrl+Shift+B");
+    }
+
+    #[test]
+    fn sanitize_shortcuts_drops_non_string_values() {
+        let mut s = AppSettings::default();
+        s.editor.shortcuts = serde_json::json!({
+            "editor.bold": "Ctrl+Shift+B",
+            "editor.italic": 42,
+            "unknown.action": "Ctrl+9",
+            "nested": { "x": 1 }
+        });
+        let out = sanitize(s);
+        let map = out.editor.shortcuts.as_object().unwrap();
+        assert_eq!(map.len(), 2);
+        assert_eq!(map["editor.bold"], "Ctrl+Shift+B");
+        // 未知 action id 保留（降级不丢配置），分派侧忽略
+        assert_eq!(map["unknown.action"], "Ctrl+9");
+        assert!(!map.contains_key("editor.italic"));
+        assert!(!map.contains_key("nested"));
+    }
+
+    #[test]
+    fn sanitize_shortcuts_replaces_non_object_with_empty() {
+        let mut s = AppSettings::default();
+        s.editor.shortcuts = serde_json::json!("oops");
+        let out = sanitize(s);
+        assert_eq!(out.editor.shortcuts.as_object().unwrap().len(), 0);
+    }
+
+    /// 三处同步守门（①）：前端 `DEFAULT_SETTINGS` 会写出/读回的每个字段，
+    /// `from_value_lenient` 都必须接受（否则 IPC 返回 null、字段静默失效）。
+    /// 新增前端字段而漏加白名单时，本测试会红。
+    #[test]
+    fn lenient_accepts_every_field_frontend_persists() {
+        let raw = serde_json::json!({
+            "schemaVersion": 1,
+            "startup": { "restoreLastState": false, "autoOpenRecentWorkspace": false },
+            "editor": {
+                "autosaveIntervalMs": 7777,
+                "historyRetentionCount": 42,
+                "noteBgOpacity": 55,
+                "quoteBgOpacity": 66,
+                "mathAutocomplete": false,
+                "shortcuts": { "editor.bold": "Ctrl+Shift+B" },
+                "display": { "zoom": 1.25 }
+            },
+            "ui": {
+                "theme": "dark",
+                "displayPreference": { "density": "compact" },
+                "accentColor": { "light": "#112233", "dark": "#445566" }
+            },
+            "maintenance": { "lastIndexAt": "2026-09-18" }
+        });
+        let out = from_value_lenient(&raw);
+        assert_eq!(out.schema_version, 1);
+        assert!(!out.startup.restore_last_state);
+        assert!(!out.startup.auto_open_recent_workspace);
+        assert_eq!(out.editor.autosave_interval_ms, 7777);
+        assert_eq!(out.editor.history_retention_count, 42);
+        assert_eq!(out.editor.note_bg_opacity, Some(55));
+        assert_eq!(out.editor.quote_bg_opacity, Some(66));
+        assert_eq!(out.editor.math_autocomplete, Some(false));
+        assert_eq!(out.editor.shortcuts["editor.bold"], "Ctrl+Shift+B");
+        assert_eq!(out.editor.display["zoom"], 1.25);
+        assert_eq!(out.ui.theme, "dark");
+        assert_eq!(out.ui.display_preference["density"], "compact");
+        assert_eq!(out.ui.accent_color.as_ref().unwrap().light.as_deref(), Some("#112233"));
+        assert_eq!(out.ui.accent_color.as_ref().unwrap().dark.as_deref(), Some("#445566"));
+        assert_eq!(out.maintenance["lastIndexAt"], "2026-09-18");
+    }
+
+    #[test]
+    fn merge_shortcuts_keeps_other_actions_and_tombstone() {
+        // 深合并语义：解绑必须用墓碑值（前端 patch `{ "editor.italic": "none" }`）。
+        // 若前端试图「删键」表达解绑，Rust 深合并会把旧绑定合并回来 —— 故本测试固定该契约。
+        let base = AppSettings::default();
+        let mut merged = serde_json::to_value(&base).unwrap();
+        merge_value(
+            &mut merged,
+            &serde_json::json!({ "editor": { "shortcuts": { "editor.bold": "Ctrl+Shift+B" } } }),
+        );
+        merge_value(
+            &mut merged,
+            &serde_json::json!({ "editor": { "shortcuts": { "editor.italic": "none" } } }),
+        );
+        let out: AppSettings = serde_json::from_value(merged).unwrap();
+        assert_eq!(out.editor.shortcuts["editor.bold"], "Ctrl+Shift+B"); // 未被第二次补丁清掉
+        assert_eq!(out.editor.shortcuts["editor.italic"], "none"); // 墓碑落盘
     }
 }

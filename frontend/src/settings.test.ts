@@ -1,6 +1,17 @@
-/** 应用设置纯函数单测（Phase 7 M3）：mergeSettings / sanitizeTheme。 */
+/** 应用设置纯函数单测（Phase 7 M3）：mergeSettings / sanitizeTheme；task-29 追加自定义快捷键与「三处同步」守门。 */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { applyTheme, DEFAULT_SETTINGS, mergeSettings, normalizeSettings, sanitizeHexColor, sanitizeTheme } from './settings'
+import {
+  applyTheme,
+  DEFAULT_SETTINGS,
+  mergeSettings,
+  normalizeSettings,
+  sanitizeHexColor,
+  sanitizeShortcutsMap,
+  sanitizeTheme,
+} from './settings'
+import { SHORTCUT_UNBOUND } from './state/shortcuts'
 
 describe('sanitizeTheme', () => {
   it('接受 system/light/dark', () => {
@@ -21,7 +32,7 @@ describe('mergeSettings', () => {
   it('默认值与规划 schema v1 一致', () => {
     expect(DEFAULT_SETTINGS.schemaVersion).toBe(1)
     expect(DEFAULT_SETTINGS.startup).toEqual({ restoreLastState: true, autoOpenRecentWorkspace: true })
-    expect(DEFAULT_SETTINGS.editor).toEqual({ autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, mathAutocomplete: true, display: {} })
+    expect(DEFAULT_SETTINGS.editor).toEqual({ autosaveIntervalMs: 3000, historyRetentionCount: 30, noteBgOpacity: 100, quoteBgOpacity: 100, mathAutocomplete: true, shortcuts: {}, display: {} })
     expect(DEFAULT_SETTINGS.ui.theme).toBe('system')
     expect(DEFAULT_SETTINGS.maintenance).toEqual({})
   })
@@ -164,5 +175,126 @@ describe('sanitizeHexColor', () => {
     expect(sanitizeHexColor('#1234567')).toBeUndefined()
     expect(sanitizeHexColor(42)).toBeUndefined()
     expect(sanitizeHexColor(undefined)).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// task-29（v1.2.0-pre.1 ①）：自定义快捷键 —— 字段净化 / 键级合并 / 「三处同步」守门
+// ---------------------------------------------------------------------------
+
+describe('task-29 sanitizeShortcutsMap — 非法值降级', () => {
+  it('只保留 string→string；非法键位丢弃、非字符串丢弃、非对象输入 → {}', () => {
+    expect(sanitizeShortcutsMap(undefined)).toEqual({})
+    expect(sanitizeShortcutsMap('oops')).toEqual({})
+    expect(sanitizeShortcutsMap({ a: 1, b: null, c: {} })).toEqual({})
+    const out = sanitizeShortcutsMap({
+      'editor.bold': 'ctrl+shift+b', // 归一化
+      'editor.italic': 'Ctrl+', // 非法键位 → 丢弃（回退内置默认）
+      'editor.undo': 42, // 非字符串 → 丢弃
+      'unknown.action': 'Ctrl+Alt+9', // 未知 action 保留（降级不丢配置）
+      'doc.save': SHORTCUT_UNBOUND, // 墓碑保留
+      'doc.new': '', // 回退默认保留
+    })
+    expect(out).toEqual({
+      'editor.bold': 'Ctrl+Shift+B',
+      'unknown.action': 'Ctrl+Alt+9',
+      'doc.save': 'none',
+      'doc.new': '',
+    })
+  })
+
+  it('normalizeSettings 对未知键/非法值的降级有断言，且不影响其它字段', () => {
+    const s = normalizeSettings({
+      editor: {
+        autosaveIntervalMs: 5000,
+        shortcuts: { 'editor.bold': 'Ctrl+Shift+B', 'editor.x': 'nope', 'editor.y': { bad: true } },
+      },
+    })
+    expect(s.editor.autosaveIntervalMs).toBe(5000)
+    expect(s.editor.shortcuts).toEqual({ 'editor.bold': 'Ctrl+Shift+B' })
+    // 缺省 → 空映射（= 全部沿用内置键位，行为零变化）
+    expect(normalizeSettings({}).editor.shortcuts).toEqual({})
+    expect(normalizeSettings({ editor: { shortcuts: 'oops' } }).editor.shortcuts).toEqual({})
+  })
+})
+
+describe('task-29 mergeSettings — 快捷键键级合并（对齐 Rust merge_value 深合并）', () => {
+  it('补丁只影响目标动作，其它动作绑定保留（不得整体替换）', () => {
+    const base = {
+      ...DEFAULT_SETTINGS,
+      editor: { ...DEFAULT_SETTINGS.editor, shortcuts: { 'editor.bold': 'Ctrl+Shift+B' } },
+    }
+    const next = mergeSettings(base, { editor: { shortcuts: { 'doc.save': 'Ctrl+Alt+S' } } })
+    expect(next.editor.shortcuts).toEqual({ 'editor.bold': 'Ctrl+Shift+B', 'doc.save': 'Ctrl+Alt+S' })
+  })
+
+  it('墓碑解绑：写入 none 覆盖同动作旧绑定（深合并下「删键」无效，必须用墓碑）', () => {
+    const base = {
+      ...DEFAULT_SETTINGS,
+      editor: { ...DEFAULT_SETTINGS.editor, shortcuts: { 'editor.italic': 'Ctrl+Alt+I' } },
+    }
+    const next = mergeSettings(base, { editor: { shortcuts: { 'editor.italic': SHORTCUT_UNBOUND } } })
+    expect(next.editor.shortcuts?.['editor.italic']).toBe('none')
+  })
+
+  it('未提供 shortcuts 的补丁不清空既有绑定', () => {
+    const base = {
+      ...DEFAULT_SETTINGS,
+      editor: { ...DEFAULT_SETTINGS.editor, shortcuts: { 'editor.bold': 'Ctrl+Shift+B' } },
+    }
+    const next = mergeSettings(base, { editor: { autosaveIntervalMs: 1000 } })
+    expect(next.editor.shortcuts).toEqual({ 'editor.bold': 'Ctrl+Shift+B' })
+  })
+})
+
+describe('task-29 守门① — 前端 DEFAULT 的每个字段都必须被 Rust from_value_lenient 接受', () => {
+  // 背景：handover §3.3 坑 12「新增设置字段必须同步三处；漏 from_value_lenient = IPC 返回 null、设置静默失效」。
+  // 本测直接读 Rust 源码，断言前端会持久化的每个键都出现在白名单函数体内 —— 漏加即红。
+  function rustSettingsSource(): string {
+    const candidates = [
+      resolve(process.cwd(), '../desktop/src-tauri/src/settings.rs'),
+      resolve(process.cwd(), 'desktop/src-tauri/src/settings.rs'),
+    ]
+    for (const p of candidates) {
+      try {
+        return readFileSync(p, 'utf8')
+      } catch {
+        /* 试下一个候选路径 */
+      }
+    }
+    throw new Error('未找到 desktop/src-tauri/src/settings.rs（守门测试需要源码）')
+  }
+
+  function collectDefaultKeys(obj: unknown, out: Set<string> = new Set()): Set<string> {
+    if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return out
+    for (const [k, v] of Object.entries(obj)) {
+      out.add(k)
+      collectDefaultKeys(v, out)
+    }
+    return out
+  }
+
+  it('DEFAULT_SETTINGS 的每个键（含 shortcuts）都在 from_value_lenient 白名单里', () => {
+    const src = rustSettingsSource()
+    const start = src.indexOf('fn from_value_lenient')
+    expect(start, 'settings.rs 缺少 from_value_lenient').toBeGreaterThan(0)
+    const nextFn = src.indexOf('\nfn ', start + 10)
+    const body = src.slice(start, nextFn > 0 ? nextFn : undefined)
+
+    // 默认值里缺省、但前端会写入的字段（accentColor 不在 DEFAULT 中）
+    const optional = ['accentColor', 'light', 'dark']
+    const keys = [...collectDefaultKeys(DEFAULT_SETTINGS), ...optional]
+    const missing = keys.filter((k) => !body.includes(`"${k}"`))
+    expect(missing, `以下设置字段漏了 Rust from_value_lenient 白名单：${missing.join(', ')}`).toEqual([])
+    expect(keys).toContain('shortcuts')
+  })
+
+  it('Rust 结构体同样声明 shortcuts（三处同步的第二处）', () => {
+    const src = rustSettingsSource()
+    const structStart = src.indexOf('pub struct EditorSettings')
+    expect(structStart).toBeGreaterThan(0)
+    const structEnd = src.indexOf('\n}', structStart)
+    const body = src.slice(structStart, structEnd)
+    expect(body).toContain('pub shortcuts:')
   })
 })

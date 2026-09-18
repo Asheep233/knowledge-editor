@@ -27,6 +27,16 @@ import LeftSidebar from './components/layout/LeftSidebar'
 import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
+import {
+  TabsContext,
+  adjacentTabId,
+  closeTab as closeTabState,
+  openTab,
+  replaceTab,
+  setTabTitle,
+  type TabItem,
+} from './components/layout/TabBar'
+import { registerActionHandler, registerActionHandlers } from './state/shortcuts'
 import { AppShell } from './components/shell/AppShell'
 import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
@@ -40,7 +50,7 @@ import { PromptRoot, askConfirm, askPrompt } from './components/common/PromptDia
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
 import { recoveryCheckShouldRun } from './state/recovery'
-import { abortPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
+import { abortPending, discardPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
 import { planStartup } from './state/settingsGates'
 import { APP_VERSION } from './version'
 import type { ArticleMeta, FsEvent, HealthInfo, RecoveryItem, WorkspaceState } from './types'
@@ -80,6 +90,11 @@ export default function App() {
   const [article, setArticle] = useState<ArticleMeta | null>(null)
   const [loading, setLoading] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  /**
+   * v1.2.0-pre.1 项②前置（task-30）：打开的文档集合（Tab 栏）。
+   * **会话状态**：不持久化、不写入 .md / ke-* / 设置；激活项 = `article.id`。
+   */
+  const [tabs, setTabs] = useState<TabItem[]>([])
   const [treeRefresh, setTreeRefresh] = useState(0)
   const [extModal, setExtModal] = useState<FsEvent | null>(null)
   // 原生菜单 refresh-recent 事件：历史遗留 → 保留状态以防 future 重新接线（当前无 UI 消费）。
@@ -98,6 +113,11 @@ export default function App() {
   useEffect(() => {
     articleIdRef.current = article?.id ?? null
   }, [article?.id])
+  // Tab 栏：供异步回调 / 快捷键 handler 读最新标签集合（规避 stale closure）
+  const tabsRef = useRef<TabItem[]>([])
+  useEffect(() => {
+    tabsRef.current = tabs
+  }, [tabs])
   // P1-7：打开请求序号，防止旧响应覆盖后发起的请求
   const openSeqRef = useRef(createRequestSeq())
   // R2：外部版本重载令牌（同 id 下强制编辑器重载磁盘内容）
@@ -112,6 +132,8 @@ export default function App() {
   const settingsRef = useRef<AppSettings | null>(null)
 
   const hasUnsaved = saveState === 'dirty' || saveState === 'saving' || saveState === 'error'
+  /** Tab 栏脏标记：与 `saveState` 同源（不另建第二套 dirty 状态），只标记激活标签 */
+  const dirtyTabId = hasUnsaved ? (article?.id ?? null) : null
   const saveStateLabel =
     saveState === 'dirty'
       ? '未保存'
@@ -281,6 +303,8 @@ export default function App() {
         seq: openSeqRef.current,
         apply: (doc) => {
           setArticle(doc)
+          // task-30：打开即入标签（已有同 id 只激活，不新增重复标签）
+          setTabs((prev) => openTab(prev, { id: doc.id, title: doc.title }))
           // P2-7：记住上次打开的文档，供 restoreLastState 启动恢复
           try {
             localStorage.setItem('ke.lastArticleId', doc.id)
@@ -305,14 +329,66 @@ export default function App() {
   const requestOpenArticle = useCallback(
     async (id: string) => {
       if (hasUnsaved && articleIdRef.current) {
-        const flushed = await flushWithTimeout(articleIdRef.current)
-        if (!flushed && !(await askConfirm('当前有未保存修改，切换将放弃这些修改，是否继续？'))) {
-          return
+        const docId = articleIdRef.current
+        const flushed = await flushWithTimeout(docId)
+        if (!flushed) {
+          if (!(await askConfirm('当前有未保存修改，切换将放弃这些修改，是否继续？'))) return
+          // task-35 C：用户明确放弃 → 取消未决条目 + 中止在途写入。
+          // 不做的话：确认期间重新入队的 latest 会被切档 effect 的 flushPending 落盘。
+          discardPending(docId)
         }
       }
       await openArticle(id)
     },
     [hasUnsaved, openArticle],
+  )
+
+  // ---------- Tab 栏（task-30）：激活 / 关闭 / 相邻 ----------
+  /** 点击标签切换：复用既有替换入口（flushWithTimeout → 确认 → docSwitch 缝），不另起一套 */
+  const activateTab = useCallback(
+    (id: string) => {
+      if (id === articleIdRef.current) return
+      void requestOpenArticle(id)
+    },
+    [requestOpenArticle],
+  )
+
+  /**
+   * 关闭标签：
+   * - 非激活标签：仅出栈（不产生任何文档请求）；
+   * - 激活标签：先按既有语义 flush 未决保存（失败给确认，用户取消则中止关闭），
+   *   再激活相邻标签（**左优先**），无相邻 → 回空态。
+   */
+  const closeTabById = useCallback(
+    async (id: string) => {
+      const isActive = articleIdRef.current === id
+      if (isActive && hasUnsaved) {
+        const flushed = await flushWithTimeout(id)
+        if (!flushed) {
+          if (!(await askConfirm('当前有未保存修改，关闭标签将放弃这些修改，是否继续？'))) return
+          // task-35 C：与 requestOpenArticle 同一放弃语义（共享 discardPending，避免两条入口漂移）
+          discardPending(id)
+        }
+      }
+      const after = closeTabState(tabsRef.current, articleIdRef.current, id)
+      setTabs(after.tabs)
+      if (!isActive) return
+      if (after.activeId) await openArticle(after.activeId)
+      else {
+        setArticle(null)
+        setSaveState('idle')
+      }
+    },
+    [hasUnsaved, openArticle],
+  )
+
+  /** `doc.next` / `doc.prev`：按**标签顺序**环绕（只有一个标签时不切换、不抛错） */
+  const cycleTab = useCallback(
+    (delta: 1 | -1) => {
+      const next = adjacentTabId(tabsRef.current, articleIdRef.current, delta)
+      if (next && next !== articleIdRef.current) void requestOpenArticle(next)
+    },
+    [requestOpenArticle],
   )
 
   // ---------- 异常恢复动作（Phase 6.2） ----------
@@ -356,7 +432,11 @@ export default function App() {
   // P1-7：仅当保存的 doc.id 仍等于「当前打开文档」时才 setArticle（经 ref 读最新 id）
   const handleSaved = useCallback((id: string, doc?: ArticleMeta) => {
     lastSavedAt.current.set(id, Date.now())
-    if (doc && shouldAcceptSave(id, articleIdRef)) setArticle(doc)
+    if (doc) {
+      // task-30：标签标题与文档标题同步（含后台保存）
+      setTabs((prev) => setTabTitle(prev, id, doc.title))
+      if (shouldAcceptSave(id, articleIdRef)) setArticle(doc)
+    }
   }, [])
 
   // 右侧面板折叠/展开（持久化到 localStorage，刷新后保持）
@@ -532,14 +612,23 @@ export default function App() {
       if (!article) return
       if (m.type === 'delete' && m.from === article.id) {
         lastDeletedIdRef.current = m.from
+        // task-30：激活标签被删除 → 标签移除 + 激活相邻（左优先；无邻则回空态）
+        const after = closeTabState(tabsRef.current, article.id, m.from)
+        setTabs(after.tabs)
         setArticle(null)
         setSaveState('idle')
         window.alert('当前文档已被删除')
-      } else if ((m.type === 'rename' || m.type === 'move') && m.from === article.id && m.to) {
-        await requestOpenArticle(m.to)
+        if (after.activeId) await openArticle(after.activeId)
+      } else if (m.type === 'delete' && m.from) {
+        // 非激活文档被删除：仅移除对应标签，激活项不变（关闭标签不产生删除请求，反向亦然）
+        setTabs(closeTabState(tabsRef.current, articleIdRef.current, m.from).tabs)
+      } else if ((m.type === 'rename' || m.type === 'move') && m.from && m.to) {
+        // 重命名/移动：标签 id 原位替换（激活项同步走 requestOpenArticle）
+        setTabs((prev) => replaceTab(prev, m.from!, m.to!))
+        if (m.from === article.id) await requestOpenArticle(m.to)
       }
     },
-    [article, requestOpenArticle],
+    [article, openArticle, requestOpenArticle],
   )
 
   // R1-B：文件树重命名/移动/删除当前文档（或其所在目录）前，先 flush 未决保存。
@@ -677,6 +766,42 @@ export default function App() {
     }
   }, [handleNewArticle, handleOpenWorkspaceMenu, handleCreateWorkspaceMenu, handleCloseWorkspace, runRecoveryCheck, switchWorkspace])
 
+  // ---------------------------------------------------------------------------
+  // task-35（ADP-1 收口）：应用级动作 → App 既有回调的**真实 handler**
+  // ---------------------------------------------------------------------------
+  // 编辑器类动作与 doc.save / app.history.open 由 EditorArea 注册（它持有 editor 与 saveNow）。
+  // 无标签时**不注册** doc.next/prev/close → 未打开文档时空按键不被吞（与 S-6 一致），
+  // 且 `runAction` 对未注册动作安全降级（不抛错、仅 warnOnce）。
+  useEffect(() => {
+    const offs: Array<() => void> = [
+      registerActionHandlers({
+        'doc.new': () => void handleNewArticle(),
+        'app.settings.open': () => setSettingsOpen(true),
+        'app.workspace.open': () => void handleOpenWorkspaceMenu(),
+        'app.panel.right.toggle': () => toggleRight(!rightOpen),
+      }),
+    ]
+    // 无标签时不注册 doc.*（未打开文档时空按键不被吞，与 S-6 一致）
+    if (tabs.length === 0) return () => offs.forEach((off) => off())
+    offs.push(registerActionHandler('doc.next', () => cycleTab(1)))
+    offs.push(registerActionHandler('doc.prev', () => cycleTab(-1)))
+    offs.push(
+      registerActionHandler('doc.close', () => {
+        const cur = articleIdRef.current
+        if (cur) void closeTabById(cur)
+      }),
+    )
+    return () => offs.forEach((off) => off())
+  }, [
+    tabs.length,
+    cycleTab,
+    closeTabById,
+    handleNewArticle,
+    handleOpenWorkspaceMenu,
+    rightOpen,
+    toggleRight,
+  ])
+
   // ---------- 渲染 ----------
   if (workspaceChecked && (!workspace?.open || firstRun)) {
     return (
@@ -722,6 +847,16 @@ export default function App() {
         </div>
       ) : null}
     <PromptRoot>
+    {/* Tab 栏状态注入：EditorToolbar 的 tabBar 槽位经 TabBarSlot 读取（不改 EditorArea） */}
+    <TabsContext.Provider
+      value={{
+        tabs,
+        activeId: article?.id ?? null,
+        dirtyId: dirtyTabId,
+        onActivate: activateTab,
+        onClose: (id) => void closeTabById(id),
+      }}
+    >
     <AppShell
       header={
         <>
@@ -761,8 +896,9 @@ export default function App() {
           onSaved={handleSaved}
           onArticleRestored={setArticle}
           onRenamed={(from, to, newTitle) => {
-            // 页眉标题重命名成功：刷新树 + 更新当前文章（路径/标题已变）
+            // 页眉标题重命名成功：刷新树 + 更新当前文章（路径/标题已变）+ 标签同步
             setArticle((prev) => (prev && prev.id === from ? { ...prev, id: to, path: to, title: newTitle } : prev))
+            setTabs((prev) => replaceTab(prev, from, to, newTitle))
             setTreeRefresh((n) => n + 1)
           }}
         />
@@ -781,7 +917,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => toggleRight(true)}
-            title="展开右侧面板（大纲 / 属性 / 附件）"
+            title="展开右侧面板（大纲 / 属性）"
             className="flex w-6 shrink-0 items-center justify-center self-stretch border-l border-gray-200 bg-white text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >
             <Icon name="chevron-left" className="size-4" />
@@ -812,6 +948,7 @@ export default function App() {
         </StatusBar>
       }
     />
+    </TabsContext.Provider>
 
       {/* 设置面板（Phase 7 M3） */}
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />

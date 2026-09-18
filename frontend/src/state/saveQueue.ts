@@ -155,6 +155,24 @@ export function abortPending(docId: string): void {
 }
 
 /**
+ * 「用户明确放弃修改」的统一入口（task-35 C 段）。
+ *
+ * 放弃 = **取消未决条目 + 中止在途写入**：
+ *  - 取消未决（`cancelPending` 语义）：清防抖计时器与 `latest`。否则「flush 超时 → 弹确认」期间
+ *    用户又敲了键（`handleUpdate → enqueueSave` 重新 armed `latest`），确认放弃后 EditorArea
+ *    切档 effect 的 `flushPending(prevId)` 会把这个 `latest` drain 出去 —— 被放弃的内容照样落盘。
+ *  - 中止在途（`abortPending` 语义）：用户已经说了「放弃」，正在飞的 PUT 不该留在磁盘上；
+ *    `AbortSignal.abort()` 后 EditorArea 走 `signal?.aborted` 分支（清恢复点 + 回 idle + cancel 草稿）。
+ *
+ * ⚠️ 仅用于**放弃**分支（`requestOpenArticle` / `closeTabById` 的「确认放弃」之后）。
+ * 正常保存路径绝不能调用，否则会把该落盘的内容丢掉。
+ */
+export function discardPending(docId: string): void {
+  cancelPending(docId)
+  abortPending(docId)
+}
+
+/**
  * 带超时兜底的「取消并触发保存」（R1/F02 通用前置：改名、移动、切换工作区等
  * 一切路径变更前先落盘未决内容）。
  * @returns true = 未决保存已清空（已落盘或本无未决）；false = 超时（保存未完成）。

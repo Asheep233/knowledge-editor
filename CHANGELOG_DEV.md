@@ -2,7 +2,27 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-17（**v1.1.9 正式版已发布**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.1.9）
+> 最后更新：2026-09-19（**v1.2.0-pre.1 预发布**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.1）
+
+## 2026-09-19（★ v1.2.0-pre.1 预发布）
+
+类型：Pre-release（三步走第 1 步）
+状态：Published（Pre-release；四附件齐全；Latest 仍为 v1.1.9）
+Tag：`v1.2.0-pre.1` · commit `15269a0`（bump）→ 内容 `6703f5d`/`054a046` 等
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.1（published 2026-09-19T15:35:13Z）
+
+**内容**
+1. **自定义快捷键**（设置 → 快捷键，42 个动作）：录制/解绑/恢复默认、即改即生效；**既有键位零改动**（空映射零副作用，独立验证 15 组键位 battery + 生产接线双层）；保留键（原生菜单 `Ctrl+N/O/,/Q/R`、`F12`）拒绝绑定；`Ctrl+N` 冲突按主理人裁决保留并提示。含 **ADP-1 收口**：删除 DOM 过渡适配层，改为真实 handler 闭包注册；补 `doc.close` 定义
+2. **Tab 栏**：打开入标签 / 重复打开只激活 / 关闭激活**左邻**（无左邻取右）/ 脏标记与 `saveState` 同源 / 中键关闭 / 横向滚动；切换复用既有 flush+确认链，非激活关闭**零文档请求**，无标签不注册 `doc.next/prev`；顺手清掉工具栏死「附件」按钮（G-2）与右栏 title 残留（G-3）
+3. **公式光标/换行**：行内 → 公式后一位；块级 → 既有段落行首（无则新起一行）；只读态零事务；一次保存=1 事务；撤销一次回到编辑前
+4. **F-1…F-5 保真修复**：任务列表 / 行内 HTML（含属性含 `>` 的引号感知）/ HTML 实体 / BOM 容忍+回写 / 按文档保留换行风格；**导出侧**（单文件 + .zip）保留源 frontmatter 键与 BOM/换行；`@tiptap/extension-list` 显式声明依赖
+5. **DEL-1 数据安全修复**（既有缺陷）：确认框期间继续输入后选择「放弃」→ 此前仍会落盘；现 `discardPending`（cancel + abort）接两条放弃分支，独立验证给出「不修则必然二次写入」的对照证据
+
+**门禁**：pytest **630 passed + 2 skipped** · tsc 0 · vitest **48 files / 894 passed + 1 skipped** · cargo **20** ·
+独立对抗验证：② 38 例、F 组 80 例、① 42 例、Tab 30 例（报告 `docs/verification-math-fidelity.md`、`docs/verification-shortcuts-tabs.md`）。
+**打包冒烟**：版本横幅 `v1.2.0-pre.1` + 后端 `v1.2.0-pre.1` 一致、无版本不一致提示；标签/附件/设置页快捷键组/附件默认收起均目视通过。
+
+**已知问题（正式版前处理）**：设置页左栏高亮失效（滚动或点击后恒停在「维护」，不影响绑定与持久化）→ task-37；混合列表 tight→loose（D-1）；标准标签嵌套未知标签丢失（D-2）；空 frontmatter 区块不被识别（EDGE-1）。
 
 ## 2026-09-17（★ v1.1.9 正式版发布）
 

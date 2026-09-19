@@ -212,147 +212,16 @@ NodeView 直接作为文本节点渲染，不走 Markdown 解析）。因此：
 
 ### 2.6 文件级与保真条款（v1.2.0-pre.1 新增）
 
-> 背景：`docs/analysis-1.1.10/source-mode.md` §4.1 用 41 个构造实测出「经编辑器一次往返后逐字节一致 0/41」，
-> 其中 5 项属**不可逆内容损坏**（下称 F-1…F-5）。本节把这些行为写成**显式契约**，
-> 避免「未声明 → 每轮往返都悄悄改写用户文件」。
-
-| 契约 | 规定 | 对应缺陷 |
-|---|---|---|
-| **任务列表** | `- [x] 任务` / `- [ ] 任务`（`+`/`*` 同样）属受支持内容：复选框状态必须**往返保留**；`[X]` 归一为小写 `x`（语义等价）；与普通列表混排各自保持 | F-1 |
-| **行内 HTML** | 由 marked 正常转换的标签（`em`/`strong`/`b`/`i`/`a`/`code`/`del`/`ins`/`s`/`br`）仍走标准 Markdown 转换（**不**做 raw 保真，避免抢走既有行为）；**其余**标签（`span`/`mark`/`kbd`/`img`/`figure`/自定义标签等）**原样保留**，不得只留文本 | F-2 |
-| **HTML 实体** | 命名实体（`&copy;`）、十进制（`&#169;`）、十六进制（`&#xA9;`）**原样保留**，不得二次转义为 `&amp;copy;`；裸 `&` 可规范化为 `&amp;`（等价） | F-3 |
-| **BOM** | UTF-8 BOM 属**文件级标记**：解析前剥离（不得进入正文、不得使 frontmatter 失效），保存时按原文**原样写回**（原文无 BOM 则不得新增；重复 BOM 归一为单个） | F-4 |
-| **换行风格** | **按文档保留**：CRLF 文档保存后仍为 CRLF，LF 文档不得被改成 CRLF；混排按主导风格处理。编辑器内部一律用 LF，还原发生在写入前 | F-5 |
-| **唯一事实源不变** | 上述还原只作用于「写入字节」，不改变 `ke-*` 标记语义、不新增节点类型、不写入任何编辑器状态到文档 | — |
-
-**已知偏差（记录在案，非缺陷；如需逐字节再来一次另立任务）**
-
-| # | 现象 | 影响 | 原因 |
-|---|---|---|---|
-| **D-1** | 混合列表 `- [x] a\n- b\n- [ ] c` 输出为**松散列表**（每项之间插入空行） | 结构/字节变化、渲染间距略增；**复选框状态与文本不变** | F-1 注册 `TaskList` 后，任务项与普通项属不同节点类型 → 被拆成两个列表块。要逐字节保持需自定义列表序列化（未做） |
-| **D-2** | 标准标签**嵌套**未知标签（`<em><span>x</span></em>`）→ `*x*`（内层 `<span>` 丢失） | 内层未知标签丢失 | 标准标签由 marked 整体消费，未知标签 tokenizer 看不到其内部；属**既有**缺口（不在 41 构造矩阵内） |
-| **D-5** | D-2 修复后的**嵌套顺序**与原文镜像不同：`<em><span>x</span></em>` → `<span>*x*</span>`（本实现）而非 `*<span>x</span>*` | 渲染语义等价（span 内为斜体文本）；**集合保全**：标准转换在场 + 内层未知标签逐字节在场 + 幂等 | 主理人 2026-09-19 裁决：**契约只要求集合保全与幂等，不要求嵌套顺序镜像**。理由：`@tiptap/markdown` 序列化器不给非文本节点补 mark 定界符，要拿镜像形态必须把未知标签连内容整体原子化并自行补 mark → `<em>a<span>x</span>b</em>` 这类混合形态有产出 `*a**<span>x</span>**b*` 双星号（更糟的损坏）；故按现状声明为已知偏差。参照形态：`<span><em>x</em></span>` → `<span>*x*</span>` |
-| **D-3** | 裸 `&` 规范化为 `&amp;`、`[X]` 归一为 `[x]`、`<br>`/`<a>` 走标准转换 | 字节变化、语义等价 | 契约内的「语义保留、字节变化」一类（见上表 F-3/行内 HTML 条款） |
-
-**依赖声明**：本条款实现依赖 `@tiptap/extension-list`，该包已在 `frontend/package.json` **显式声明**（`^3.29.2`；lock 解析为 3.31.3，与其余 9 个 @tiptap 包同范围写法）——勿依赖 starter-kit 的传递提升，否则换 node-linker 会构建失败。
-
-**实现落点**：任务列表 = 注册 `@tiptap/extension-list` 的 `TaskList`/`TaskItem`；
-行内 HTML 与实体 = `editor/tokenizers.ts` 的 `html_passthrough_inline`；
-BOM 与换行 = `editor/ke.ts` 的 `stripFrontmatter`/`withFrontmatter` + `captureDocTraits`/`applyDocTraits`（加载时捕获、保存时还原）。
-
-## 3. Markdown 示例
-
-完整文档示例（与 `phase3-roundtrip.test.ts` 的零漂移用例一致，可复制验证）：
-
-````markdown
----
-ke_version: 1
----
-
-# 一级标题
-
-## 二级标题
-
-这是**粗体**、*斜体*、~~删除线~~ 与 [链接](https://example.com)。
-
-- 无序项一
-- 无序项二
-
-1. 有序项一
-2. 有序项二
-
-> 引用内容
-
-行内公式 $E=mc^2$，块级公式：
-
-$$
-\int_0^1 x \, dx
-$$
-
-| 列A | 列B |
-| --- | --- |
-| 值1 | 值2 |
-
-![图片说明](Attachments/images/img.png)
-
-<!-- ke-attach: {"kind":"attach","id":"a1","type":"file","src":"Attachments/files/doc.pdf","title":"文档"} -->
-
-<!-- ke-video: {"kind":"video","id":"v1","src":"Attachments/videos/demo.mp4","title":"演示"} -->
-
-<!-- ke-module: {"kind":"module","id":"m1","name":"步骤","params":{"a":1}} -->
-
-脚注引用<!-- ke-footnote: {"kind":"footnote","id":"f1","n":1} -->在此。
-
-<!-- ke-note: {"kind":"note","id":"n1","title":"要点","color":"yellow"} -->
-**重要内容**（块级：段落/列表均可）
-<!-- /ke-note -->
-
-```ts
-const a = 1
-```
-
-<!-- ke-futureblock: {"future":true} -->
-
-<!-- ke-footnotes:start -->
-<!-- ke-footnote-item: {"id":"f1","n":1,"text":"脚注内容"} -->
-<!-- ke-footnotes:end -->
-````
-
-## 4. 兼容策略
-
-| 场景 | 行为 |
-| --- | --- |
-| 合法 JSON + 已知 kind | 解析为对应节点，编辑器内可编辑 |
-| 合法 JSON + 未知 kind（块级 / 行内） | GenericFallback 原样保留 `raw`，不报错、不删除 |
-| 非法 JSON / 截断 / 大小写不符 | 原样保留，视为普通 HTML 注释 |
-| 非 `ke-` 前缀的普通注释 | 一律原样保留 |
-| 旧文档 `ke-note` 的 `text` 字段 | 解析时迁移为 `content`，保存后统一输出 `content`（v0 一次性迁移） |
-| GFM 脚注 `[^label]` / `[^label]: 内容` | 按 §2.3.1 等价解析为 `footnote` / `footnotes` 节点；保存后输出 ke 方言 |
-| GFM 脚注重复定义 | 首个生效，其余**保留为普通文本**（不静默丢行）|
-| frontmatter | 编辑器内剥离，不进入 Document Model；保存时重新写入 |
-
-序列化规则：
-
-- 各节点按 `KE_FIELD_ORDER` 稳定输出字段顺序，空值字段剔除，`kind` 恒为第一键
-- **未注册字段不保证保留**：序列化只输出 `KE_FIELD_ORDER` 列出的字段；新字段需在扩展 `addAttributes` 中显式注册（与 spec v1.0 第 6 节「未知属性不得丢弃」存在差异，以本文档为准）
-
-空行规范（Phase 3 零漂移约束）：
-
-- 块级节点的 `renderMarkdown` 不得自带首尾换行，块间距由 doc 级 `\n\n` 分隔符统一输出
-- 手写文档中块级节点之间 2 个以上空行，首次保存被规范为 1 个空行；之后任意次往返输出一致
-- 该行为与标准 Markdown 的空白折叠一致，属预期行为
-
-## 5. 升级注意事项
-
-### 5.1 新增节点类型
-
-按顺序完成以下改动，缺一不可：
-
-1. `ke.ts`：`KE_KINDS` 增加 kind，`KE_FIELD_ORDER` 增加字段顺序
-2. `tokenizers.ts`：`KE_KNOWN_KINDS` 负向前瞻增加新 kind（否则新节点会被 fallback 以纯文本保留，安全降级但不结构化）
-3. 新建扩展（节点定义 + parseMarkdown + renderMarkdown + markdownTokenName）
-4. `editor/index.ts` 扩展数组注册（fallback 系列必须保持最先）
-5. `phase3-roundtrip.test.ts` 增加往返与零漂移用例
-
-### 5.2 字段变更
-
-- 新增可选字段：直接加入 `KE_FIELD_ORDER` 与扩展 `addAttributes`，旧文档无需迁移
-- 重命名字段：仿照 `text` → `content` 模式，`parseMarkdown` 同时读取新旧字段名，序列化统一输出新字段，实现一次性迁移
-
-### 5.3 ke_version 提升
-
-提升 `KE_VERSION` 前必须满足：旧版本编辑器打开新版本文档时，未知标记或字段能被 GenericFallback / 宽容解析安全降级。破坏性变更需同时提供「frontmatter 版本 → 迁移函数」映射（当前仅约定，尚未实现迁移框架）。
-
-### 5.4 依赖升级触发条件
-
-升级 `@tiptap/markdown` 或 `marked` 后，必须重新验证本文档 3 的完整示例可被解析且满足零漂移（`back2 === back1`）。相关机制依赖详见 `dependency-compatibility.md`。
-
-## 6. 编辑通道与视图（v1.2.0 新增）
-
-> 背景：`docs/analysis-1.1.10/source-mode.md` 用 41 个构造实测过「经 ProseMirror 一次往返的逐字节一致率极低」。
-> **注意**：该矩阵测于 v1.2.0 保真修复（§2.6 的 F-1…F-5、BOM/换行还原、D-1/D-2/EDGE-1）**之前**，
-> 具体数字已失真，**待以当前 HEAD 用同一口径重测**；但结论不变 —— PM 仍会做**设计内规范化**
-> （GFM 脚注方言、ke-* 默认字段补齐、表格分隔行/前置空行、引用式链接、setext、围栏风格、松散列表等）。
+> 背景（**实测**，2026-09-19 于 `0d91833` 重测）：41 个构造经「正文通道」一次往返 ——
+> **EXACT=0 / TRAILING=24 / CHANGED=17**（对照修复前的 `0/19/22`，5 条已转为语义等价）。
+> 即：即便保真修复后，**仍有 17/41 会被 ProseMirror 的设计内规范化改写**
+> （合法 `ke-*` 补默认字段、GFM 脚注方言化、表格 separator 重写、围栏风格、`1)`→`1.`、
+> 引用式/角括号链接、Setext→ATX、行尾空格、松散列表、ZWS 等）。
+> **测量口径（引用时须一并注明）**：① 正文级口径 —— `stripFrontmatter → PM → getMarkdown`，
+> **不含** `captureDocTraits/applyDocTraits`，故表中「CRLF 全文」行**不能**读作「落盘会丢换行」
+> （生产保存/导出路径已按 traits 还原 BOM/换行）；② 扩展栈 = 当前生产栈（含 `TaskList/TaskItem`、
+> `KeDocument/KeBlockquote`）；③ HEAD 与时刻见 `docs/verification-fidelity-fixes-120.md` §6。
+> **结论不变**：源码模式必须**字符串直存**，这是该功能的定义而非优化。
 > 因此「直接编辑原始 Markdown」必须是**第二条编辑通道**，而不是让 ProseMirror 变成唯一入口。
 
 ### 6.1 通道定义

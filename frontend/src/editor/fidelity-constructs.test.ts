@@ -35,6 +35,7 @@ import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
 import {
   applyDocTraits,
   captureDocTraits,
+  frontmatterBlockOf,
   KE_VERSION,
   stripFrontmatter,
   withFrontmatter,
@@ -262,6 +263,34 @@ describe('F-4 BOM + frontmatter：容忍 BOM，不得把 frontmatter 当正文',
     expect(out).toContain('正文段落')
     expect(out).not.toContain('## ---')
     expect(out).not.toContain('ke_version: 1\r\n---\r\n\r\n---')
+  })
+
+  it('FAIL-1：开块后有空行的合法 frontmatter 必须识别（不得整篇当正文/双区块）', () => {
+    const raw = '---\n\nke_version: 1\n---\n\n正文\n'
+    const { version, content } = stripFrontmatter(raw)
+    expect(version).toBe(1)
+    expect(content).toBe('正文\n')
+    expect(frontmatterBlockOf(raw)).not.toBeNull()
+    const out = withFrontmatter(content, KE_VERSION)
+    expect(out).toBe('---\nke_version: 1\n---\n\n正文\n')
+  })
+
+  it('FAIL-2：顶层序列型 frontmatter（`- a`）必须识别', () => {
+    const raw = '---\n- a\n- b\n---\n\n正文\n'
+    const { content } = stripFrontmatter(raw)
+    expect(content).toBe('正文\n')
+    expect(frontmatterBlockOf(raw)).not.toBeNull()
+  })
+
+  it('ADD-1b 边界仍成立：`---\n\n正文\n\n---\n` 整篇视为正文（不得剥离）', () => {
+    const raw = '---\n\n正文\n\n---\n'
+    expect(stripFrontmatter(raw).content).toBe(raw)
+    expect(frontmatterBlockOf(raw)).toBeNull()
+  })
+
+  it('ADD-1a 边界仍成立：空块后的正文与后续分隔线完整保留', () => {
+    const raw = '---\n---\n\n正文\n\n---\n\n更多\n'
+    expect(stripFrontmatter(raw).content).toBe('正文\n\n---\n\n更多\n')
   })
 
   it('无 frontmatter 但带 BOM：正文不被前缀污染', () => {

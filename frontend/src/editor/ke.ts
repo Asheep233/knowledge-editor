@@ -52,14 +52,19 @@ function scanFrontmatter(src: string): { blockEnd: number; inner: string } | nul
   if (!open) return null
   const restStart = open[0].length
   const lines = splitLines(src, restStart)
-  const first = lines[0]
+  // FAIL-1/FAIL-2（2026-09-19，独立验证发现的回归）：YAML 允许开块后先有空行，
+  // 也允许顶层序列（`- a`）。因此跳过**前导空行**再判定「首个有效行」——
+  // 否则 `---\n\nke_version: 1\n---` 会被整篇当成正文（写回时出现双 frontmatter 区块）。
+  let firstIdx = 0
+  while (firstIdx < lines.length && /^[ \t]*$/.test(lines[firstIdx].text)) firstIdx++
+  const first = lines[firstIdx]
   if (!first) return null
   const isEmptyBlock = /^---[ \t]*$/.test(first.text)
-  const looksLikeYamlStart = /^[ \t]*(?:#|[^\s#][^\n:]*:)/.test(first.text)
+  const looksLikeYamlStart = /^[ \t]*(?:#|-(?:\s|$)|[^\s#][^\n:]*:)/.test(first.text)
   if (!isEmptyBlock && !looksLikeYamlStart) return null
   const closeIndex = isEmptyBlock
-    ? 0
-    : lines.findIndex((l, i) => i > 0 && /^---[ \t]*$/.test(l.text))
+    ? firstIdx
+    : lines.findIndex((l, i) => i > firstIdx && /^---[ \t]*$/.test(l.text))
   if (closeIndex < 0) return null
   const close = lines[closeIndex]
   let blockEnd = close.end

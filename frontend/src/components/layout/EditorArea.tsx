@@ -372,6 +372,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           await registerRecoveryPoint(docId, md)
           // F-4/F-5：文档写入前还原该文档的 BOM/换行特征（编辑器内部一律 LF）
           const saved = await saveArticle(docId, applyDocTraits(md, traitsFor(docId)), signal)
+          // task-42 FAIL（B1/B1b，独立验证）：WYSIWYG 保存也必须刷新「最近一次落盘原文」。
+          // 否则「编辑 → 直接切到源码」时 enterSourceMode 在 flush 续体里读到的仍是旧盘面
+          // （App 的 article 回写要等 re-render 后的载入 effect 才生效）→ textarea 初值落后，
+          // 下一次源码保存会把刚 flush 的编辑覆盖掉（内容丢失）。
+          lastSavedRawRef.current.set(docId, saved.content)
           const latest = docSeq(docId) === seq
           if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
           onSaved?.(docId, saved)

@@ -37,6 +37,12 @@
     若直接把 `textarea.value` 交给保存，就会把 CRLF 文档静默改成 LF（等于在源码通道里重新引入 F-5）。
     测试请把两件事**分开断言**：① 非换行字节不变；② 换行按 traits 还原（LF 文档不得变 CRLF，CRLF 文档必须回到 CRLF）。
 
+11. **`withFrontmatter` 的光标锚点剥除必须对源码通道关闭**（独立验证方实测）：它当前无条件 `md.replace(/\u200b/g, '')`（正文通道正确），
+    但源码通道复用同一个函数 → **用户真写的 U+200B 会被静默删除**（零编辑保存就发生）。
+    口径：给 `withFrontmatter` 加 `{ stripCaretArtifacts?: boolean }`（默认 true，正文通道行为不变），源码通道传 `false`。
+12. **混合换行（LF+CRLF 混用）属已声明限制 D-4**：`captureDocTraits` 只记文档主导风格 → 混合 EOL 会被统一；
+    纯 CRLF/LF 逐字节保留。逐行保留需按行 diff，成本不匹配（已写入 `document-format.md` §6.2.1）。
+
 ## 4. 不做（明确排除）
 
 - 不做分屏双向同步（分析结论：每次同步都要 serialize/parse，256KB 下 39–138ms / 7–14s，且必经 PM ⇒ 保真必输）

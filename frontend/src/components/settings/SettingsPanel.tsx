@@ -41,38 +41,55 @@ const THEME_OPTIONS: { value: 'system' | 'light' | 'dark'; label: string }[] = [
 /** 强调色默认值（与 index.css 令牌层一致：浅 #4285f4 / 深 #3b82f6） */
 const DEFAULT_ACCENT = { light: '#4285f4', dark: '#3b82f6' }
 
+/** 设置分组（左栏导航 + 右侧锚点；**顺序即文档顺序**，task-37 高亮联动依据） */
+const GROUPS = ['general', 'appearance', 'shortcuts', 'maintenance'] as const
+type Group = (typeof GROUPS)[number]
+
+/** 左栏高亮参考线：滚动容器顶部下方 24px 处，最后一个越过该线的分组即激活 */
+const ACTIVE_LINE_OFFSET = 24
+
 export default function SettingsPanel({ open, onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [ready, setReady] = useState(false)
   const [indexBusy, setIndexBusy] = useState(false)
   const [indexResult, setIndexResult] = useState<string | null>(null)
   // 分组导航（参考稿 §3.6：常规 / 外观 / 快捷键 / 维护；左栏点击 = 右侧锚点跳转）
-  const [group, setGroup] = useState<'general' | 'appearance' | 'shortcuts' | 'maintenance'>('general')
+  const [group, setGroup] = useState<Group>('general')
   const contentRef = useRef<HTMLDivElement | null>(null)
 
-  // 右侧滚动监听：更新左栏激活态（IntersectionObserver，组进入视口顶部即激活）
+  // 右侧滚动监听：更新左栏激活态（scroll + 参考线比较；**不是** IntersectionObserver）。
+  // task-37 修复：旧实现只在 `open` 时用 `document.getElementById` 取一次目标元素并缓存，
+  // 而「加载设置中…」占位会把整棵内容子树卸载重挂 → 缓存节点变成 detached（rect 全 0）→
+  // 每次比较都通过 → 恒高亮最后一组「维护」，且滚回顶部也不回落（主理人 GUI 实测缺陷）。
+  // 现在：① 依赖 `ready`（内容挂载后才注册）；② **每次滚动重新查询**目标元素，绝不缓存。
   useEffect(() => {
-    if (!open) return
+    if (!open || !ready) return
     const root = contentRef.current
     if (!root) return
-    const targets = ['general', 'appearance', 'shortcuts', 'maintenance']
-      .map((g) => document.getElementById(`settings-group-${g}`))
-      .filter(Boolean) as HTMLElement[]
-    if (targets.length === 0) return
-    const onScroll = () => {
-      const top = root.getBoundingClientRect().top
-      let current: typeof group = 'general'
-      for (const g of targets) {
-        const el = g as HTMLElement & { dataset: { group: typeof group } }
-        if (el.getBoundingClientRect().top - top <= 24) current = el.dataset.group
+
+    const syncActiveGroup = () => {
+      const sections = GROUPS.map((g) => root.querySelector<HTMLElement>(`#settings-group-${g}`)).filter(
+        (el): el is HTMLElement => el !== null,
+      )
+      if (sections.length === 0) return
+      const line = root.getBoundingClientRect().top + ACTIVE_LINE_OFFSET
+      // 兜底：一个分组都未越过参考线（顶部品牌区下方）时高亮第一组
+      let current = (sections[0].dataset.group as Group | undefined) ?? 'general'
+      for (const el of sections) {
+        if (el.getBoundingClientRect().top <= line) current = (el.dataset.group as Group | undefined) ?? current
         else break
       }
-      setGroup(current)
+      // 触底例外：最后一组永远到不了参考线（已滚到底）→ 高亮最后一组，
+      // 否则点击「维护」后高亮会停在倒数第二组（点击与高亮打架）。
+      const atBottom = root.scrollTop + root.clientHeight >= root.scrollHeight - 2
+      if (atBottom) current = (sections[sections.length - 1].dataset.group as Group | undefined) ?? current
+      setGroup((prev) => (prev === current ? prev : current))
     }
-    root.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-    return () => root.removeEventListener('scroll', onScroll)
-  }, [open])
+
+    root.addEventListener('scroll', syncActiveGroup, { passive: true })
+    syncActiveGroup()
+    return () => root.removeEventListener('scroll', syncActiveGroup)
+  }, [open, ready])
 
   // 打开时重新加载（面板独立于 App 生命周期，设置可能被外部修改）
   useEffect(() => {
@@ -194,6 +211,9 @@ export default function SettingsPanel({ open, onClose }: Props) {
               <button
                 key={g}
                 type="button"
+                // task-37：激活态补 aria-current（与视觉高亮同源，便于断言/读屏）
+                aria-current={group === g ? 'page' : undefined}
+                data-nav-group={g}
                 onClick={() => {
                   setGroup(g)
                   const el = document.getElementById(`settings-group-${g}`)

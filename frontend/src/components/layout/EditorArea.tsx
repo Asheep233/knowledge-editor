@@ -30,6 +30,18 @@ import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
 import { createDeferredLoader, onDocumentSwitch, resolveRecoveryTarget, resolveSaveContent, type DeferredLoader } from '../../state/docSwitch'
+import {
+  buildSourceDraft,
+  buildSourceSavePayload,
+  getViewMode,
+  hasUnknownKeMarkers,
+  setViewMode as persistViewMode,
+  sourceBodyOf,
+  subscribeViewMode,
+  unknownMarkersChanged,
+  type ViewMode,
+} from '../../state/viewMode'
+import SourceModeView from '../editor/SourceModeView'
 import { registerActionHandlers } from '../../state/shortcuts'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
@@ -133,6 +145,24 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     (docId: string): DocTraits => docTraitsRef.current.get(docId) ?? DEFAULT_DOC_TRAITS,
     [],
   )
+
+  // ---------- task-41 源码模式（规范 document-format.md §6） ----------
+  /** 全局视图通道（不写入文档、不按文档记忆） */
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => getViewMode())
+  useEffect(() => subscribeViewMode(() => setViewModeState(getViewMode())), [])
+  const viewModeRef = useRef<ViewMode>(viewMode)
+  useEffect(() => {
+    viewModeRef.current = viewMode
+  }, [viewMode])
+  /** 源码通道：textarea 值（不含 frontmatter）；raw=进入时的磁盘原文（frontmatter 来源）；initial=diff 基线 */
+  const [sourceValue, setSourceValue] = useState('')
+  const sourceValueRef = useRef('')
+  const sourceBaseRawRef = useRef('')
+  const sourceInitialRef = useRef('')
+  const sourceDirtyRef = useRef(false)
+  const sourceUnknownPromptedRef = useRef(false)
+  /** 最近一次「已保存」的磁盘原文（源码初值取保存后的内容，而非旧盘面） */
+  const lastSavedRawRef = useRef(new Map<string, string>())
   // F-S1-2：编辑器**此刻实际载入**的文档 id（实时内容的可信域）。切档快照的守卫必须用它，
   // 而不是 articleRef —— 后者的同步 effect 声明更早，切档 effect 跑到时它已指向新文档，
   // 导致 `articleRef.current?.id === prevId` 恒假、快照从未写入（旧文档最后 <3s 编辑静默丢弃）。
@@ -280,6 +310,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 旧文档正文挂到新文档名下（崩溃恢复即跨文档污染）。配对规则抽到 resolveRecoveryTarget，
   // 统一以 editorDocIdRef（编辑器此刻载着谁）同时决定 id 与内容。
   const flushDraftRecovery = useCallback(() => {
+    // task-41：源码通道的恢复点内容 = 源码字符串 + frontmatter（绝不取 PM 序列化结果，
+    // 否则崩溃恢复会把正文通道的规范化内容挂到源码编辑之上）
+    if (viewModeRef.current === 'source') {
+      const docId = articleRef.current?.id
+      if (!docId || !sourceDirtyRef.current) return
+      void registerRecoveryPoint(docId, buildSourceDraft(sourceBaseRawRef.current, sourceValueRef.current))
+      return
+    }
     const ed = editorRef.current
     const target = resolveRecoveryTarget({
       editorDocId: editorDocIdRef.current,
@@ -403,6 +441,123 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     ensureDraftReg().touch()
   }, [buildSaveFn, bumpSeq, ensureDraftReg])
 
+  // ---------- task-41：源码通道（字符串直存，绝不经过 ProseMirror） ----------
+
+  /**
+   * 源码通道保存函数：`frontmatterBlockOf(raw) + editedBody` → `withFrontmatter(..., {stripCaretArtifacts:false})`
+   * → `applyDocTraits(captureDocTraits(raw))` → 既有 `saveArticle` 链（saveQueue / 恢复点 / 自写抑制）。
+   */
+  const buildSourceSaveFn = useCallback(
+    (docId: string): SaveFn => {
+      return async (signal?: AbortSignal) => {
+        const raw = sourceBaseRawRef.current
+        const body = sourceValueRef.current
+        const seq = docSeq(docId)
+        const isCurrent = articleRef.current?.id === docId
+        // §6.2-4：未知/损坏 ke-* 被改动 → 首次保存必须显式提示，不得静默覆盖
+        if (!sourceUnknownPromptedRef.current && unknownMarkersChanged(sourceInitialRef.current, body)) {
+          sourceUnknownPromptedRef.current = true
+          const ok = await askConfirm(
+            '你修改了非标准语法（未知/损坏的 ke-* 标记）；保存后将以这段原文为准。是否继续保存？',
+          )
+          if (!ok) return
+        }
+        const md = buildSourceSavePayload(raw, body)
+        try {
+          if (isCurrent) setSaveState('saving')
+          // 恢复点：草稿恒 LF/无 BOM（S-1 口径），内容同样取自源码字符串
+          await registerRecoveryPoint(docId, buildSourceDraft(raw, body))
+          const saved = await saveArticle(docId, md, signal)
+          const latest = docSeq(docId) === seq
+          if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
+          if (latest) {
+            lastSavedRawRef.current.set(docId, saved.content)
+            if (articleRef.current?.id === docId) sourceDirtyRef.current = false
+            void clearRecoveryPoint(docId)
+            if (articleRef.current?.id === docId) draftRegRef.current?.markSaved(true)
+          }
+          onSaved?.(docId, saved)
+        } catch (e) {
+          if (signal?.aborted) {
+            if (isCurrent) setSaveState('idle')
+            void clearRecoveryPoint(docId)
+            return
+          }
+          if (isCurrent) setSaveState('error')
+          if (is404Error(e) && isCurrent) window.alert('保存失败：文档已被删除（404）')
+        }
+      }
+    },
+    [onSaved, registerRecoveryPoint, clearRecoveryPoint, docSeq],
+  )
+
+  /** 源码编辑：沿用既有防抖/恢复点节奏，内容是 textarea 字符串 */
+  const handleSourceChange = useCallback(
+    (next: string) => {
+      const docId = articleRef.current?.id
+      if (!docId) return
+      sourceValueRef.current = next
+      setSourceValue(next)
+      sourceDirtyRef.current = true
+      bumpSeq(docId)
+      setSaveState('dirty')
+      enqueueSave(docId, buildSourceSaveFn(docId), getAutosaveIntervalMs())
+      ensureDraftReg().touch()
+    },
+    [buildSourceSaveFn, bumpSeq, ensureDraftReg],
+  )
+
+  /** 进入源码模式：切视图前先 flush（§6.2-2），失败给确认；初值 = **保存后**的磁盘原文 */
+  const enterSourceMode = useCallback(async () => {
+    const ed = editorRef.current
+    const doc = articleRef.current
+    if (!ed || !doc) return
+    const unsaved = saveState === 'dirty' || saveState === 'saving' || saveState === 'error'
+    if (unsaved) {
+      const flushed = await flushWithTimeout(doc.id)
+      if (!flushed && !(await askConfirm('未保存修改可能丢失，仍要切换到源码模式？'))) return
+    }
+    const raw = lastSavedRawRef.current.get(doc.id) ?? doc.content
+    sourceBaseRawRef.current = raw
+    const body = sourceBodyOf(raw)
+    sourceInitialRef.current = body
+    sourceValueRef.current = body
+    sourceDirtyRef.current = false
+    sourceUnknownPromptedRef.current = false
+    setSourceValue(body)
+    setViewModeState('source')
+    persistViewMode('source')
+    // 单视图排他：源码态正文编辑器不可写
+    ed.setEditable(false, false)
+  }, [saveState])
+
+  /** 切回正文：先保存源码改动，再按已保存原文重新解析（§6.2-5：提示未知语法可能被规范化） */
+  const exitSourceMode = useCallback(async () => {
+    const ed = editorRef.current
+    const doc = articleRef.current
+    if (!ed || !doc) return
+    const body = sourceValueRef.current
+    if (sourceDirtyRef.current) {
+      const flushed = await flushWithTimeout(doc.id)
+      if (!flushed && !(await askConfirm('源码改动尚未保存，仍要切回正文？未知语法可能被规范化。'))) return
+    } else if (hasUnknownKeMarkers(body)) {
+      if (!(await askConfirm('切回正文将重新解析 Markdown：未知语法可能被规范化。是否继续？'))) return
+    }
+    const raw = lastSavedRawRef.current.get(doc.id) ?? sourceBaseRawRef.current
+    setViewModeState('wysiwyg')
+    persistViewMode('wysiwyg')
+    ed.setEditable(true, false)
+    // 重新解析（既有链路）；内容取「保存后」的原文
+    setKeContent(ed, sourceBodyOf(raw))
+    editorDocIdRef.current = doc.id
+    setSaveState('idle')
+  }, [])
+
+  const toggleViewMode = useCallback(() => {
+    if (viewModeRef.current === 'source') void exitSourceMode()
+    else void enterSourceMode()
+  }, [enterSourceMode, exitSourceMode])
+
   // Phase 6.4：content 固定为空，文档内容统一由下方 useEffect 的
   // setKeContent 加载一次，避免初始化与切换时重复解析大文档（Document Model）。
   const editor = useKeEditor({
@@ -458,7 +613,25 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     prevArticleIdRef.current = newId
     setSaveState('idle')
     // F-4/F-5：载入磁盘原文前先捕获该文档的文件特征（必须先于下面的 setKeContent）
-    if (article) captureTraits(article.id, article.content)
+    if (article) {
+      captureTraits(article.id, article.content)
+      lastSavedRawRef.current.set(article.id, article.content)
+    }
+    // task-41：源码态下**不解析进 PM**（单视图排他 + 不触发 PM 规范化），只刷新 textarea 初值
+    if (viewModeRef.current === 'source' && article) {
+      deferredLoadRef.current?.cancel()
+      setParsingLarge(false)
+      const raw = lastSavedRawRef.current.get(article.id) ?? article.content
+      sourceBaseRawRef.current = raw
+      const srcBody = sourceBodyOf(raw)
+      sourceInitialRef.current = srcBody
+      sourceValueRef.current = srcBody
+      sourceDirtyRef.current = false
+      sourceUnknownPromptedRef.current = false
+      setSourceValue(srcBody)
+      editorDocIdRef.current = article.id
+      return
+    }
     const body = article ? stripFrontmatter(article.content).content : ''
     const large = body.length > 200_000
     if (editor && article) {
@@ -497,9 +670,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 又刷回「未保存」。因此仅在状态真正变化时调用，并传 emitUpdate=false 抑制事件。
   useEffect(() => {
     if (!editor) return
-    const next = !!article
+    // task-41 单视图排他：源码态下正文编辑器不可写（唯一可写通道 = textarea）
+    const next = !!article && viewMode !== 'source'
     if (editor.isEditable !== next) editor.setEditable(next, false)
-  }, [editor, article])
+  }, [editor, article, viewMode])
 
   // Ctrl+S / 保存按钮：立即保存（覆盖未决防抖，经 saveQueue 串行化）
   const saveNow = useCallback(async () => {
@@ -507,8 +681,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     if (!editor || !doc) return
     // 手动保存覆盖未决的防抖自动保存：以 debounce=0 立即入队并串行化；
     // 内容已在 in-flight 时则 latest-wins，保存后不会二次提交冗余内容。
-    await enqueueSave(doc.id, buildSaveFn(doc.id), 0)
-  }, [editor, buildSaveFn])
+    // task-41：源码态用字符串直存通道
+    await enqueueSave(doc.id, viewModeRef.current === 'source' ? buildSourceSaveFn(doc.id) : buildSaveFn(doc.id), 0)
+  }, [editor, buildSaveFn, buildSourceSaveFn])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -873,6 +1048,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             onSave={() => void saveNow()}
             onOpenHistory={handleOpenHistory}
             exportButton={exportButton}
+            // task-41：视图通道切换（只读/无文档时禁用并给出原因，规范 §6.2-8）
+            viewMode={viewMode}
+            onToggleViewMode={article ? toggleViewMode : undefined}
+            viewModeDisabledReason={!article ? '打开文档后可切换到源码模式' : undefined}
           />
           <TableBubbleMenu />
           <div
@@ -961,7 +1140,17 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 </div>
               ) : null}
             </article>
-            <EditorContent editor={editor} />
+            {/* task-41：单视图排他 —— 源码态渲染 textarea（唯一可写通道），正文态渲染 ProseMirror */}
+            {viewMode === 'source' && article ? (
+              <SourceModeView
+                value={sourceValue}
+                onChange={handleSourceChange}
+                saveLabel={saveLabel}
+                title={article.title}
+              />
+            ) : (
+              <EditorContent editor={editor} />
+            )}
             {/* v1.1.7 M2：全屏公式模态（编辑器根——PM 事务安全；nodeview 独立 React 根会 #300） */}
             {mathEdit?.open && (
               <MathEditorModal

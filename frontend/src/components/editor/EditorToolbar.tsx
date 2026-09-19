@@ -294,6 +294,12 @@ function moduleLabel(p: string): string {
 export interface EditorToolbarProps {
   /** TabBar 段（文档标签 + 新标签按钮），渲染在行最左（参考稿同一行） */
   tabBar?: ReactNode
+  /** task-41：当前视图通道（源码模式切换按钮的 `aria-pressed` 态） */
+  viewMode?: 'wysiwyg' | 'source'
+  /** task-41：切换视图通道（未传 = 不渲染切换按钮） */
+  onToggleViewMode?: () => void
+  /** task-41：不可切换时的原因（无文档/只读/版本预览）→ 按钮禁用并以此作为提示文案 */
+  viewModeDisabledReason?: string
   /** 右侧保存状态文字（如「已保存」）；为空则不显示 */
   saveLabel?: ReactNode
   /** 历史快照按钮 */
@@ -310,6 +316,9 @@ export default function EditorToolbar({
   onOpenHistory,
   exportButton,
   onSave,
+  viewMode = 'wysiwyg',
+  onToggleViewMode,
+  viewModeDisabledReason,
 }: EditorToolbarProps = {}) {
   const { editor } = useCurrentEditor()
   // 编辑器状态快照（激活态实时更新）
@@ -625,6 +634,32 @@ export default function EditorToolbar({
 
       {/* 右侧：保存 + 保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        {/* task-41：视图通道切换（正文 ⇄ 源码）。只读/版本预览/无文档时禁用并给出原因 */}
+        {onToggleViewMode ? (
+          <button
+            type="button"
+            aria-pressed={viewMode === 'source'}
+            aria-label={viewMode === 'source' ? '切回正文视图' : '切换到源码模式'}
+            title={
+              viewModeDisabledReason ??
+              (viewMode === 'source'
+                ? '切回正文视图（正文将重新解析，未知语法可能被规范化）'
+                : '源码模式：直接编辑 Markdown 原文（不经过排版引擎）')
+            }
+            data-testid="view-mode-toggle"
+            data-view-mode={viewMode}
+            disabled={!!viewModeDisabledReason}
+            onClick={onToggleViewMode}
+            className={[
+              'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
+              viewMode === 'source' ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              'active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
+              viewModeDisabledReason ? 'cursor-not-allowed opacity-40' : '',
+            ].join(' ')}
+          >
+            <Icon name="code" className="size-4" />
+          </button>
+        ) : null}
         {onSave ? (
           <ToolIcon title="保存（Ctrl+S）" onClick={onSave}>
             <Icon name="save" className="size-4" />

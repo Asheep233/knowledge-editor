@@ -16,21 +16,75 @@ export const KE_FRONTMATTER_KEY = 'ke_version'
 const BOM = '\ufeff'
 
 /**
+ * 按行切分（保留行原文与偏移）：`start` = 行首偏移，`end` = 行尾换行之后（含 `\n`）。
+ * 行尾 `\r` 不计入 `text`（CRLF 兼容），但偏移仍覆盖原文。
+ */
+function splitLines(src: string, from: number): Array<{ text: string; start: number; end: number }> {
+  const out: Array<{ text: string; start: number; end: number }> = []
+  let start = from
+  while (start < src.length) {
+    const nl = src.indexOf('\n', start)
+    const rawEnd = nl < 0 ? src.length : nl
+    let text = src.slice(start, rawEnd)
+    if (text.endsWith('\r')) text = text.slice(0, -1)
+    out.push({ text, start, end: nl < 0 ? src.length : nl + 1 })
+    start = nl < 0 ? src.length : nl + 1
+  }
+  return out
+}
+
+/**
+ * 扫描文档开头的 YAML frontmatter 区块（EDGE-1 / ADD-1，2026-09-19 收紧）。
+ *
+ * 规则：
+ *  - 首行必须是 `---`（允许尾随空格）；
+ *  - **开块判定收紧**：紧随其后的那一行要么是 `---`（空块，EDGE-1），要么是 YAML
+ *    键值/注释行（`key:` / `#`）；否则**整篇视为正文**（不剥离）。
+ *    没有这条，`---\n\n正文\n\n---\n` 会把整篇正文当 frontmatter 吞成空串（ADD-1，
+ *    内容丢失）；`---\n---\n\n正文\n\n---\n\n更多` 也会吞掉中间的 `正文`。
+ *  - 闭合定界符必须是**独立的整行 `---`**（`key: "---"` 不算）；
+ *  - 闭合行之后的连续空行计入区块（与旧 `(?:\r?\n)+` 语义一致，正文起点不变）。
+ *
+ * @returns null = 不是 frontmatter（整篇即正文）
+ */
+function scanFrontmatter(src: string): { blockEnd: number; inner: string } | null {
+  const open = /^---[ \t]*\r?\n/.exec(src)
+  if (!open) return null
+  const restStart = open[0].length
+  const lines = splitLines(src, restStart)
+  const first = lines[0]
+  if (!first) return null
+  const isEmptyBlock = /^---[ \t]*$/.test(first.text)
+  const looksLikeYamlStart = /^[ \t]*(?:#|[^\s#][^\n:]*:)/.test(first.text)
+  if (!isEmptyBlock && !looksLikeYamlStart) return null
+  const closeIndex = isEmptyBlock
+    ? 0
+    : lines.findIndex((l, i) => i > 0 && /^---[ \t]*$/.test(l.text))
+  if (closeIndex < 0) return null
+  const close = lines[closeIndex]
+  let blockEnd = close.end
+  for (let i = closeIndex + 1; i < lines.length && /^[ \t]*$/.test(lines[i].text); i++) {
+    blockEnd = lines[i].end
+  }
+  return { blockEnd, inner: src.slice(restStart, close.start) }
+}
+
+/**
  * 解析文档 frontmatter。返回剥离后的正文与版本号。
  * 版本信息只存储于 Markdown 文件本身（frontmatter），
  * 因此文档被移动/复制后版本仍然存在。
  *
- * F-4（2026-09-18）：**容忍 BOM**。此前正则锚定 `^---`，带 BOM 的文件 frontmatter
- * 整块被当正文（渲染成 `## ---`），保存时还会再套一层新 frontmatter。
+ * F-4（2026-09-18）：**容忍 BOM**；EDGE-1/ADD-1（2026-09-19）：识别空块、
+ * 且开块必须像 YAML（见 {@link scanFrontmatter}），不再把正文误吞。
  */
 export function stripFrontmatter(md: string): { version: number; content: string } {
   const src = md.startsWith(BOM) ? md.slice(BOM.length) : md
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(src)
-  if (!m) return { version: 0, content: src }
-  const versionMatch = new RegExp(`^\\s*${KE_FRONTMATTER_KEY}\\s*:\\s*(\\d+)`, 'm').exec(m[1])
+  const fm = scanFrontmatter(src)
+  if (!fm) return { version: 0, content: src }
+  const versionMatch = new RegExp(`^\\s*${KE_FRONTMATTER_KEY}\\s*:\\s*(\\d+)`, 'm').exec(fm.inner)
   return {
     version: versionMatch ? Number(versionMatch[1]) || 0 : 0,
-    content: src.slice(m[0].length),
+    content: src.slice(fm.blockEnd),
   }
 }
 
@@ -39,12 +93,12 @@ export function stripFrontmatter(md: string): { version: number; content: string
  *
  * 用途：导出时「源 frontmatter 其余键（title/tags/自定义键）不得被丢弃」——
  * 把该区块拼回正文前再走 `withFrontmatter`（它只更新 ke_version、保留其余键）。
- * 与 `stripFrontmatter` 一样容忍 BOM。
+ * 与 `stripFrontmatter` 一样容忍 BOM，且共用同一套开块/闭合判定（三函数行为一致）。
  */
 export function frontmatterBlockOf(raw: string): string | null {
   const src = raw.startsWith(BOM) ? raw.slice(BOM.length) : raw
-  const m = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n)+/.exec(src)
-  return m ? m[0] : null
+  const fm = scanFrontmatter(src)
+  return fm ? src.slice(0, fm.blockEnd) : null
 }
 
 /** 文档级文件特征（F-4/F-5）：BOM 与换行风格。加载时捕获，保存时还原。 */
@@ -82,26 +136,38 @@ export function applyDocTraits(md: string, traits: DocTraits): string {
  *
  * 实现为合并语义：若输入不含 frontmatter，生成新的 `--- ke_version ---` 头；
  * 若输入已带 frontmatter，仅替换/新增 `ke_version` 键，其余字段逐字节保留。
+ *
+ * @param opts.stripCaretArtifacts 是否剥除 P3-16 的光标锚点 U+200B（默认 `true`）。
+ *   正文通道（WYSIWYG）必须保持 `true`；**源码模式**（直存用户原文）必须显式传 `false`，
+ *   否则用户真写的 U+200B 会在零编辑路径被静默删除（规范 §6.2.1）。
  */
-export function withFrontmatter(md: string, version = KE_VERSION): string {
+export function withFrontmatter(
+  md: string,
+  version = KE_VERSION,
+  opts: { stripCaretArtifacts?: boolean } = {},
+): string {
+  const { stripCaretArtifacts = true } = opts
   // P3-16：脚注上标后为光标锚点注入的零宽空格 U+200B 不写入文件
   // （仅编辑时用于 caret 锚定，保存/导出时剥除，避免文件里残留隐形字符）。
-  md = md.replace(/\u200b/g, '')
+  if (stripCaretArtifacts) md = md.replace(/\u200b/g, '')
   // F-4：容忍 BOM —— 先剥离再匹配，避免把已有 frontmatter 当成正文再套一层；
   // BOM 的还原由 savePath 的 applyDocTraits(captureDocTraits(raw)) 负责。
   if (md.startsWith(BOM)) md = md.slice(BOM.length)
-  const fm = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
+  const fm = scanFrontmatter(md)
   if (!fm) {
-    // 无 frontmatter：生成新版本头（原样追加正文）
+    // 无（合法）frontmatter：生成新版本头（原样追加正文）
     return `---\n${KE_FRONTMATTER_KEY}: ${version}\n---\n\n${md}`
   }
   // 已有 frontmatter：保留全部字段，仅更新/新增 ke_version 键。
-  const body = fm[1]
+  // `inner` 末尾换行归一到与旧实现一致（不含闭合定界符前那一行换行）。
+  const body = fm.inner.replace(/\r?\n$/, '')
   const versionRe = new RegExp(`^\\s*${KE_FRONTMATTER_KEY}\\s*:\\s*\\d+\\s*$`, 'm')
   const newBody = versionRe.test(body)
     ? body.replace(versionRe, `${KE_FRONTMATTER_KEY}: ${version}`)
-    : `${KE_FRONTMATTER_KEY}: ${version}\n${body}`
-  return `---\n${newBody}\n---\n\n${md.slice(fm[0].length)}`
+    : body.trim() === ''
+      ? `${KE_FRONTMATTER_KEY}: ${version}` // 空块（EDGE-1）：只写 ke_version，不产生双区块
+      : `${KE_FRONTMATTER_KEY}: ${version}\n${body}`
+  return `---\n${newBody}\n---\n\n${md.slice(fm.blockEnd)}`
 }
 
 const KE_KIND_RE = KE_KINDS.join('|')

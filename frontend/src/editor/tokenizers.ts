@@ -525,6 +525,95 @@ const MARKDOWN_HANDLED_INLINE_TAGS = new Set([
 ])
 
 /**
+ * 「未知但标准」的行内标签（D-2）：marked 不转换、schema 无对应节点 → 必须按 `raw` 保真。
+ * 独立出现时由下方行内 tokenizer 直接接管。
+ */
+export const HTML_PASSTHROUGH_INLINE_TAGS = [
+  'span', 'u', 'img', 'mark', 'small', 'sub', 'sup', 'kbd', 'abbr', 'cite', 'q', 'samp', 'var', 'time', 'wbr',
+] as const
+
+/** 标准标签 → marked 原生 token 类型（D-2：仅当其内部含未知标签时由我们整体接管） */
+const STANDARD_WRAPPER_TOKEN: Record<string, string> = {
+  em: 'em',
+  i: 'em',
+  strong: 'strong',
+  b: 'strong',
+  del: 'del',
+  s: 'del',
+  ins: 'del',
+  a: 'link',
+  code: 'codespan',
+}
+
+/** 片段内是否含需要保真的「未知但标准」标签（`<span>`/`<mark>`…，非 markdown 标准标签） */
+function hasUnknownInlineTag(inner: string): boolean {
+  const re = /<([a-zA-Z][a-zA-Z0-9-]*)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(inner)) !== null) {
+    if (!MARKDOWN_HANDLED_INLINE_TAGS.has(m[1].toLowerCase())) return true
+  }
+  return false
+}
+
+/** token 列表中是否存在可承载 mark 的文本内容（递归看嵌套 tokens） */
+function hasRenderableText(tokens: Array<{ type?: string; text?: unknown; tokens?: unknown }>): boolean {
+  return tokens.some((t) => {
+    if (t.type === 'text' || t.type === 'codespan') return String(t.text ?? '').length > 0
+    return Array.isArray(t.tokens)
+      ? hasRenderableText(t.tokens as Array<{ type?: string; text?: unknown; tokens?: unknown }>)
+      : false
+  })
+}
+
+/**
+ * D-2：标准标签内部含未知标签时**整体接管**，返回 marked 原生 token（`em`/`strong`/`del`/`link`/`codespan`），
+ * 其 `tokens` 由 lexer 递归词法化 → 内层未知标签照常走本 tokenizer 保真，外层标准标签仍走标准转换。
+ *
+ * 为什么必须接管：@tiptap/markdown 的 `parseInlineTokens` 遇到 `<em>` 这类 html token 会向后找到
+ * 对应闭合标签，把**中间所有 token 原文拼接**后交给 DOMParser；未知内层标签在 schema 里没有规则
+ * → 被整段丢弃（`<em><span>x</span></em>` → `*x*`）。纯标准标签（内部无未知标签）**不接管**，
+ * 保持既有行为（`<em>x</em>` → `*x*`）。
+ *
+ * @returns token 或 undefined（= 不接管，交回既有路径）
+ */
+function claimStandardWrapper(
+  src: string,
+  openTag: string,
+  name: string,
+  lexer?: MarkdownLexerConfiguration,
+): MarkdownToken | undefined {
+  const tokenType = STANDARD_WRAPPER_TOKEN[name]
+  if (!tokenType) return undefined
+  const rawName = /^<([a-zA-Z][a-zA-Z0-9-]*)/.exec(openTag)?.[1]
+  if (!rawName) return undefined
+  const rest = src.slice(openTag.length)
+  const close = new RegExp(`</${rawName}\\s*>`, 'i').exec(rest)
+  if (!close) return undefined
+  const inner = rest.slice(0, close.index)
+  if (!hasUnknownInlineTag(inner)) return undefined
+  const whole = src.slice(0, openTag.length + close.index + close[0].length)
+  if (tokenType === 'codespan') {
+    // `<code>` 内部按字面文本处理（HTML 语义即如此）
+    return { type: 'codespan', raw: whole, text: inner }
+  }
+  if (!lexer?.inlineTokens) return undefined
+  const tokens = lexer.inlineTokens(inner)
+  // 内部没有可承载 mark 的文本（如 `<em><img …></em>` 纯原子内容）：markdown 序列化不会为
+  // 非文本节点补 mark 定界符 → 外层转换会把内层内容整体吞掉。此时整体按 raw 保真（内容优先）。
+  if (!hasRenderableText(tokens)) return { type: 'html_passthrough_inline', raw: whole }
+  if (tokenType === 'link') {
+    const hrefMatch = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(openTag)
+    return {
+      type: 'link',
+      raw: whole,
+      href: hrefMatch?.[1] ?? hrefMatch?.[2] ?? hrefMatch?.[3] ?? '',
+      tokens,
+    }
+  }
+  return { type: tokenType, raw: whole, tokens }
+}
+
+/**
  * 引号感知的标签扫描（F-2 修正，2026-09-18）：
  * 找结束 `>` 时**跳过** `"…"` / `'…'` 内部 —— 否则 `<span title="a>b">` 会在属性里
  * 提前截断，把剩下的 `b">` 当文本转义成 `&gt;`（实测把标签写成非法 HTML）。
@@ -568,7 +657,11 @@ export const htmlPassthroughInlineTokenizer = {
   name: 'html_passthrough_inline',
   level: 'inline' as const,
   start: (src: string) => indexOfInlineHtmlCandidate(src),
-  tokenize(src: string): MarkdownToken | undefined {
+  tokenize(
+    src: string,
+    _tokens?: TsMarkdownToken[],
+    lexer?: MarkdownLexerConfiguration,
+  ): MarkdownToken | undefined {
     if (isPlainHtmlComment(src)) {
       const m = /^<!--[\s\S]*?-->/.exec(src)
       if (!m) return undefined
@@ -577,7 +670,10 @@ export const htmlPassthroughInlineTokenizer = {
     const tag = matchHtmlTag(src)
     if (tag) {
       const name = /^<\/?([a-zA-Z][a-zA-Z0-9-]*)/.exec(tag)?.[1]?.toLowerCase() ?? ''
-      if (MARKDOWN_HANDLED_INLINE_TAGS.has(name)) return undefined
+      if (MARKDOWN_HANDLED_INLINE_TAGS.has(name)) {
+        // D-2：标准标签内部含未知标签 → 整体接管（否则内层会被 DOMParser 丢弃）
+        return claimStandardWrapper(src, tag, name, lexer)
+      }
       return { type: 'html_passthrough_inline', raw: tag }
     }
     const entity = HTML_ENTITY_RE.exec(src)

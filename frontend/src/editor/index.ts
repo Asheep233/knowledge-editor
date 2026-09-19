@@ -17,6 +17,7 @@ import { history } from '@tiptap/pm/history'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
 import { OrderedListParenExtension, KeListItem } from './extensions/ListExtension'
+import { KeBlockquote, KeDocument } from './extensions/KeBlockJoin'
 // F-1（v1.2.0-pre.1）：任务列表 `- [x]` / `- [ ]` 往返保真。Tiptap v3 自带
 // parseMarkdown/renderMarkdown（`- [x] ` 前缀），此前未注册 → 复选框状态被吞成 `- 完成`。
 import { TaskItem, TaskList } from '@tiptap/extension-list'
@@ -140,6 +141,10 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       StarterKit.configure({
         orderedList: false,
         listItem: false,
+        // D-1/ADD-3：Document / Blockquote 的块间隔需要在「相邻混排列表」处收紧为单换行
+        // （任务项与普通项是不同类型节点）→ 关闭内置实现，改用 KeDocument / KeBlockquote。
+        document: false,
+        blockquote: false,
         link: {
           openOnClick: false,
           autolink: true,
@@ -155,6 +160,9 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
         // 注：StarterKit v3 不含 image 扩展，图片由 ImageMarkdownExtension 提供
         // （补标准 ![]() 的双向转换）。
       }),
+      // D-1（混排列表紧凑）+ ADD-3（引用块内同族）：接管 Document / Blockquote 的块间隔
+      KeDocument,
+      KeBlockquote,
       // 普通 HTML 保真（P1-2）：注释 / HTML 块原样保留。放在最前（最后执行），
       // 且只命中非 ke-* 的注释与块级元素，不会抢占具体 ke-* tokenizer。
       HtmlPassthroughExtension,

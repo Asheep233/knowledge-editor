@@ -13,9 +13,16 @@
  */
 import { OrderedList } from '@tiptap/extension-list'
 import { ListItem } from '@tiptap/extension-list'
-import { wrappingInputRule } from '@tiptap/core'
+import { getExtensionField, wrappingInputRule } from '@tiptap/core'
 
 const LIST_INPUT_RE = /^(\d+)[.)]\s$/
+
+/**
+ * ADD-2（GFM 有序列表任务项）：`1. [x] a` 的文本 `[x] a` 会被通用转义成 `\[x\] a`
+ * （为防误判链接语法），导致复选框状态变成字面反斜杠文本。
+ * 这里只还原**列表标记之后**的复选框标记（行首锚定、含缩进），其余文本转义一律不变。
+ */
+const ORDERED_TASK_MARKER_RE = /^([ \t]*(?:\d+[.)]\s+))\\\[([ xX])\\\](?=\s|$)/gm
 
 export const OrderedListParenExtension = OrderedList.extend({
   addInputRules() {
@@ -31,6 +38,12 @@ export const OrderedListParenExtension = OrderedList.extend({
       joinPredicate,
     })
     return [rule]
+  },
+
+  renderMarkdown(node, helpers, ctx) {
+    const base = getExtensionField<(n: unknown, h: unknown, c: unknown) => string>(OrderedList, 'renderMarkdown')
+    const out = base ? base(node, helpers, ctx) : ''
+    return out.replace(ORDERED_TASK_MARKER_RE, '$1[$2]')
   },
 })
 

@@ -345,3 +345,33 @@ const a = 1
 ### 5.4 依赖升级触发条件
 
 升级 `@tiptap/markdown` 或 `marked` 后，必须重新验证本文档 3 的完整示例可被解析且满足零漂移（`back2 === back1`）。相关机制依赖详见 `dependency-compatibility.md`。
+
+## 6. 编辑通道与视图（v1.2.0 新增）
+
+> 背景：`docs/analysis-1.1.10/source-mode.md` 用 41 个构造实测出「经 ProseMirror 一次往返，逐字节一致 0/41」
+> （其中 5 项属不可逆内容损坏，已由 §2.6 修复，但**规范化**本身仍是既定行为）。
+> 因此「直接编辑原始 Markdown」必须是**第二条编辑通道**，而不是让 ProseMirror 变成唯一入口。
+
+### 6.1 通道定义
+
+| 通道 | 载体 | 内容来源 | 保存路径 |
+|---|---|---|---|
+| **正文（WYSIWYG）** | ProseMirror / Tiptap | `stripFrontmatter(raw).content` → 解析为 Document Model | 序列化 → `withFrontmatter` → `applyDocTraits` → 既有保存链 |
+| **源码（Source）** | 原生 `<textarea>`（零依赖） | `stripFrontmatter(raw).content` 的**原文**（逐字节） | **字符串直存**：编辑结果 + 原 frontmatter 区块 → `withFrontmatter`（只更新 `ke_version`）→ `applyDocTraits` → 既有保存链 |
+
+### 6.2 硬性契约
+
+1. **源码模式保存不得经过 ProseMirror**（不 parse、不 serialize）。这是该模式的存在前提：一经解析，未知/方言语法即被规范化。
+2. **单视图排他**：同一文档同一时刻只允许一个通道编辑。切换前必须 flush 未决保存（沿用既有保存链），切换后另一通道不得持有可写状态。
+3. **frontmatter 在源码视图隐藏**：源码视图只呈现正文（frontmatter 之后的内容）；保存时以**原 frontmatter 区块**为准（逐字节保留，仅更新 `ke_version`）。因此源码模式下**无法**编辑/删除 frontmatter 键。
+4. **用户可以改写未知/损坏的 `ke-*` 标记**（这是源码模式的能力），但 **保存时必须给出明确提示**（"你修改了非标准语法；保存后将以原文为准"），不得静默覆盖。
+5. **切回正文即重新解析**：源码保存后切回 WYSIWYG，正文由 PM 重新解析——此时**未知语法可能被规范化**，切换须提示（与 §2.6 的契约一致，不冲突）。
+6. **视图态为全局偏好**（不写入文档、不按文档记忆、不落 `.md`）。
+7. **既有链路全复用**：保存队列 / 防抖 / 恢复点（S-1）/ 历史快照 / 自写抑制（`mark_internal`）/ 外部修改检测 / BOM 与换行还原（`captureDocTraits`/`applyDocTraits`）**不得另起一套**。
+8. **只读/版本预览态不提供源码编辑**（与正文一致）。
+9. 大文档（≥256KB）源码模式使用 `<textarea>`；不得为此引入编辑器框架依赖（CodeMirror 等留待后续评估）。
+
+### 6.3 与 ke-* 保真的关系
+
+源码模式**不降低**也不**改变** §2.6 的保真契约：它提供一条「逐字节保存」的通道，是保真的**兜底手段**；
+而正文通道的保真承诺仍以 §2.6 为准（含 D-1/D-2/D-3 声明项）。

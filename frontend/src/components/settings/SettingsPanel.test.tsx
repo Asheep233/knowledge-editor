@@ -254,3 +254,114 @@ describe('SettingsPanel task-37 — 根因回归（不缓存 DOM 节点 / 加载
     expect(activeNav()).toBe('快捷键')
   })
 })
+
+describe('SettingsPanel task-37 追加 — 不可滚动（verifier 反例）与点击防闪', () => {
+  it('⑦ 内容不足一屏（不可滚动）：高亮必须为「常规」，不得被「触底例外」钉在末段', async () => {
+    const scroller = await render()
+    // scrollHeight === clientHeight（100% 缩放外的超高窗口/高倍缩小）→ 完全滚不动
+    await scrollTo(scroller, {
+      scrollTop: 0,
+      rel: { general: 128, appearance: 400, shortcuts: 700, maintenance: 950 },
+      clientHeight: 1200,
+      scrollHeight: 1200,
+    })
+    expect(activeNav(), '不可滚动时滚动位置无信息量 → 默认「常规」').toBe('常规')
+
+    // 再来几次 scroll 事件（例如窗口 resize 触发的）也不应改变
+    await act(async () => {
+      scroller.dispatchEvent(new Event('scroll'))
+    })
+    await settle()
+    expect(activeNav()).toBe('常规')
+  })
+
+  it('⑧ 不可滚动 + 点击各组：高亮跟随点击（不再恒末段）', async () => {
+    const scroller = await render()
+    const geometry = { scrollTop: 0, rel: { general: 128, appearance: 400, shortcuts: 700, maintenance: 950 }, clientHeight: 1200, scrollHeight: 1200 }
+    await scrollTo(scroller, geometry)
+
+    for (const label of ['外观', '快捷键', '维护', '常规']) {
+      await clickNav(label)
+      expect(activeNav(), `点击「${label}」后应立即高亮`).toBe(label)
+      // 滚不动 → 不会产生新的滚动事件把高亮覆盖掉
+      expect(scroller.scrollTop).toBe(0)
+    }
+  })
+
+  it('⑨ 可滚动时「触底例外」仍生效（不要为修 ⑦ 把例外删掉）', async () => {
+    const scroller = await render()
+    // maxScroll = 3600-800 = 2800；末段相对顶 589（永远到不了参考线）→ 触底应高亮末段
+    await scrollTo(scroller, {
+      scrollTop: 2800,
+      rel: { general: -2672, appearance: -2208, shortcuts: -1811, maintenance: 589 },
+      clientHeight: 800,
+      scrollHeight: 3600,
+    })
+    expect(activeNav()).toBe('维护')
+
+    // 非触底时同一段几何不得误判为末段
+    await scrollTo(scroller, {
+      scrollTop: 2000,
+      rel: { general: -1872, appearance: -1408, shortcuts: -1011, maintenance: 1389 },
+      clientHeight: 800,
+      scrollHeight: 3600,
+    })
+    expect(activeNav()).toBe('快捷键')
+  })
+
+  it('⑩ 点击后平滑滚动中途的 scroll 事件不得闪回中间分组；抑制窗口到期后按真实位置复核', async () => {
+    const scroller = await render()
+    await scrollTo(scroller, { scrollTop: 0, rel: AT_TOP })
+
+    vi.useFakeTimers()
+    try {
+      // 点击「维护」：立即高亮 + 开抑制窗口（700ms）
+      await act(async () => {
+        navButton('维护').click()
+      })
+      expect(activeNav()).toBe('维护')
+
+      // 平滑滚动**中途**：几何还停留在中间分组（shortcuts 越过参考线）
+      await act(async () => {
+        layout(scroller, {
+          scrollTop: 973,
+          rel: { general: -845, appearance: -381, shortcuts: 16, maintenance: 2416 },
+          clientHeight: 800,
+          scrollHeight: 3600,
+        })
+        scroller.dispatchEvent(new Event('scroll'))
+      })
+      expect(activeNav(), '抑制窗口内不得闪回中间分组').toBe('维护')
+
+      // 滚动到位：末段触底
+      await act(async () => {
+        layout(scroller, {
+          scrollTop: 2800,
+          rel: { general: -2672, appearance: -2208, shortcuts: -1811, maintenance: 589 },
+          clientHeight: 800,
+          scrollHeight: 3600,
+        })
+        scroller.dispatchEvent(new Event('scroll'))
+      })
+      expect(activeNav()).toBe('维护')
+
+      // 抑制到期 → 强制复核一次：真实位置（触底）与点击目标一致 → 仍为「维护」
+      await act(async () => {
+        vi.advanceTimersByTime(700)
+      })
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(activeNav(), '到期复核后仍应与真实位置一致').toBe('维护')
+
+      // 到期后再滚到顶部附近：高亮恢复「跟随滚动」
+      await act(async () => {
+        layout(scroller, { scrollTop: 0, rel: AT_TOP, clientHeight: 800, scrollHeight: 3600 })
+        scroller.dispatchEvent(new Event('scroll'))
+      })
+      expect(activeNav(), '抑制到期后滚动跟随必须恢复').toBe('常规')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

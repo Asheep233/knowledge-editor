@@ -48,6 +48,16 @@ type Group = (typeof GROUPS)[number]
 /** 左栏高亮参考线：滚动容器顶部下方 24px 处，最后一个越过该线的分组即激活 */
 const ACTIVE_LINE_OFFSET = 24
 
+/**
+ * 点击左栏后的**抑制窗口**（ms）：平滑滚动期间忽略滚动驱动的高亮更新，避免「点击后闪烁」
+ * （实测 维护 → 快捷键 → 维护）。取值依据：Chromium 平滑滚动典型 300–500ms，700ms 覆盖到位；
+ * 到期后**强制复核一次**（有界，不会永久滞留点击选择）。
+ */
+const CLICK_SYNC_SUPPRESS_MS = 700
+
+/** 「触底 / 可滚」判定容差（px） */
+const SCROLL_EPSILON = 2
+
 export default function SettingsPanel({ open, onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [ready, setReady] = useState(false)
@@ -56,22 +66,37 @@ export default function SettingsPanel({ open, onClose }: Props) {
   // 分组导航（参考稿 §3.6：常规 / 外观 / 快捷键 / 维护；左栏点击 = 右侧锚点跳转）
   const [group, setGroup] = useState<Group>('general')
   const contentRef = useRef<HTMLDivElement | null>(null)
+  /** 点击抑制截止时间戳（0 = 无抑制） */
+  const clickSuppressUntilRef = useRef(0)
+  /** 抑制到期后的复核定时器 */
+  const clickSuppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** 当前滚动同步函数（定时器/点击处理器复用，避免合成事件） */
+  const syncGroupRef = useRef<() => void>(() => undefined)
 
   // 右侧滚动监听：更新左栏激活态（scroll + 参考线比较；**不是** IntersectionObserver）。
   // task-37 修复：旧实现只在 `open` 时用 `document.getElementById` 取一次目标元素并缓存，
   // 而「加载设置中…」占位会把整棵内容子树卸载重挂 → 缓存节点变成 detached（rect 全 0）→
   // 每次比较都通过 → 恒高亮最后一组「维护」，且滚回顶部也不回落（主理人 GUI 实测缺陷）。
-  // 现在：① 依赖 `ready`（内容挂载后才注册）；② **每次滚动重新查询**目标元素，绝不缓存。
+  // 现在：① 依赖 `ready`（内容挂载后才注册）；② **每次滚动重新查询**目标元素，绝不缓存；
+  //       ③ 不可滚动时滚动位置无信息量 → 不动高亮（否则「触底例外」恒真会误高亮末段）；
+  //       ④ 点击后的抑制窗口内不跟滚动（防平滑滚动中途闪烁），到期复核一次。
   useEffect(() => {
     if (!open || !ready) return
     const root = contentRef.current
     if (!root) return
 
     const syncActiveGroup = () => {
+      // ④ 点击抑制窗口内：保持点击目标，避免平滑滚动中途闪回中间分组
+      if (Date.now() < clickSuppressUntilRef.current) return
       const sections = GROUPS.map((g) => root.querySelector<HTMLElement>(`#settings-group-${g}`)).filter(
         (el): el is HTMLElement => el !== null,
       )
       if (sections.length === 0) return
+      // ③ 不可滚动（内容不足一屏 / 高倍缩放）：滚动位置无信息量 → 高亮交给点击，不做滚动联动。
+      //    若不挡这一步，下面的「触底例外」会在 scrollHeight === clientHeight 时恒真 →
+      //    高亮被钉死在末段「维护」，而屏幕顶部显示的是「常规」（verifier 反例）。
+      const scrollable = root.scrollHeight - root.clientHeight > SCROLL_EPSILON
+      if (!scrollable) return
       const line = root.getBoundingClientRect().top + ACTIVE_LINE_OFFSET
       // 兜底：一个分组都未越过参考线（顶部品牌区下方）时高亮第一组
       let current = (sections[0].dataset.group as Group | undefined) ?? 'general'
@@ -81,15 +106,45 @@ export default function SettingsPanel({ open, onClose }: Props) {
       }
       // 触底例外：最后一组永远到不了参考线（已滚到底）→ 高亮最后一组，
       // 否则点击「维护」后高亮会停在倒数第二组（点击与高亮打架）。
-      const atBottom = root.scrollTop + root.clientHeight >= root.scrollHeight - 2
+      const atBottom = root.scrollTop + root.clientHeight >= root.scrollHeight - SCROLL_EPSILON
       if (atBottom) current = (sections[sections.length - 1].dataset.group as Group | undefined) ?? current
       setGroup((prev) => (prev === current ? prev : current))
     }
 
+    syncGroupRef.current = syncActiveGroup
     root.addEventListener('scroll', syncActiveGroup, { passive: true })
     syncActiveGroup()
-    return () => root.removeEventListener('scroll', syncActiveGroup)
+    return () => {
+      root.removeEventListener('scroll', syncActiveGroup)
+      syncGroupRef.current = () => undefined
+    }
   }, [open, ready])
+
+  // 卸载/关闭时清理点击抑制定时器
+  useEffect(
+    () => () => {
+      if (clickSuppressTimerRef.current !== null) clearTimeout(clickSuppressTimerRef.current)
+      clickSuppressTimerRef.current = null
+    },
+    [],
+  )
+
+  /**
+   * 点击左栏分组：立即高亮（点击意图优先）→ 开抑制窗口 → 平滑滚动 →
+   * 窗口到期**强制复核一次**（滚动已停，按真实位置对齐；与点击目标一致则无变化）。
+   * 取舍：抑制是**有界**的（700ms），到期必复核 → 既不闪烁，也不丢「滚轮/滚动条滚动时高亮跟随」。
+   */
+  const jumpToGroup = (g: Group) => {
+    setGroup(g)
+    clickSuppressUntilRef.current = Date.now() + CLICK_SYNC_SUPPRESS_MS
+    if (clickSuppressTimerRef.current !== null) clearTimeout(clickSuppressTimerRef.current)
+    clickSuppressTimerRef.current = setTimeout(() => {
+      clickSuppressTimerRef.current = null
+      clickSuppressUntilRef.current = 0
+      syncGroupRef.current()
+    }, CLICK_SYNC_SUPPRESS_MS)
+    document.getElementById(`settings-group-${g}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   // 打开时重新加载（面板独立于 App 生命周期，设置可能被外部修改）
   useEffect(() => {
@@ -214,11 +269,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
                 // task-37：激活态补 aria-current（与视觉高亮同源，便于断言/读屏）
                 aria-current={group === g ? 'page' : undefined}
                 data-nav-group={g}
-                onClick={() => {
-                  setGroup(g)
-                  const el = document.getElementById(`settings-group-${g}`)
-                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
+                onClick={() => jumpToGroup(g)}
                 className={[
                   'flex h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.97] focus-visible:outline-none motion-reduce:transition-none',
                   group === g

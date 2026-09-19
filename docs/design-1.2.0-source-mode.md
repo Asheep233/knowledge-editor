@@ -32,6 +32,11 @@
 8. **只读态**：`article` 为版本预览或 `editable=false` 时不可进入源码模式（按钮禁用 + 说明）。
 9. **性能**：≥256KB 文档用 `<textarea>`，不做实时高亮/解析；切换不得阻塞主线程超过既有正文切换的耗时量级。
 
+10. **⚠️ `<textarea>` 的换行陷阱（独立验证方提出，必须显式处理）**：DOM 会把 `textarea.value` 中的换行**规范化为 LF**。
+    因此「载荷逐字节 = 用户所写」对 CRLF 文档**必须**依赖 `applyDocTraits(md, captureDocTraits(raw))` 还原换行风格 ——
+    若直接把 `textarea.value` 交给保存，就会把 CRLF 文档静默改成 LF（等于在源码通道里重新引入 F-5）。
+    测试请把两件事**分开断言**：① 非换行字节不变；② 换行按 traits 还原（LF 文档不得变 CRLF，CRLF 文档必须回到 CRLF）。
+
 ## 4. 不做（明确排除）
 
 - 不做分屏双向同步（分析结论：每次同步都要 serialize/parse，256KB 下 39–138ms / 7–14s，且必经 PM ⇒ 保真必输）

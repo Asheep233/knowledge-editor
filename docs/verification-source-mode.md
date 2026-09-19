@@ -2,14 +2,15 @@
 
 - **验证者**：`verifier-attach`（独立对抗验证；不复述开发者自测）
 - **验证时刻**：2026-09-20 00:34:04 → 00:35:14（+08:00），单批次完成
-- **仓库**：`/mnt/f/Work/KE Project/knowledge-editor`（WSL），**git HEAD `b34a5af`**；`git status --porcelain`：` M EditorArea.tsx`（修复后未提交）+ 我的两个未跟踪 verify 文件
+- **仓库**：`/mnt/f/Work/KE Project/knowledge-editor`（WSL），**git HEAD `a3e40ff`**（`fix(editor): 切到源码时 textarea 初值落后…`，即对本报告 FAIL-1 的修复提交）；`git status --porcelain`：仅我的三个未跟踪产物（报告 + 两个套件）
 - **验证对象**：task-41 源码模式 MVP（切视图 + textarea 原文编辑 + 字符串直存 + 提示）
+- **提交后复跑（HEAD `a3e40ff`）**：`tsc` exit 0；本套件 **49 passed**；全量 **56 files / 1095 passed + 1 skipped**、exit 0 —— 与下方数字完全一致（本报告 ✅ 对应已提交的冻结态）
 
 ## 0. 所验证的 sha（跑前/跑后各复算一次，一致）
 
 | 文件 | 冻结 sha（Lead 发） | 实测 sha | 说明 |
 |---|---|---|---|
-| `components/layout/EditorArea.tsx` | `ad2b68de…` | **`ddc9ed9f99353ccd9fa79de09b1044700592705763ae6b1a00e71e573d342ff5`** | **验证期间被修**（见 §4 FAIL 闭环）：WYSIWYG 保存路径新增 `lastSavedRawRef.current.set(docId, saved.content)`；当前为未提交状态 |
+| `components/layout/EditorArea.tsx` | `ad2b68de…` | **`ddc9ed9f99353ccd9fa79de09b1044700592705763ae6b1a00e71e573d342ff5`** | **验证期间被修**（见 §4 FAIL 闭环）：WYSIWYG 保存路径新增 `lastSavedRawRef.current.set(docId, saved.content)`；**已由 Lead 提交为 `a3e40ff`，提交内容逐字节 = 我校验的该 sha** |
 | `components/editor/EditorToolbar.tsx` | `183af4a0…` | `183af4a052c019d8a5f96f46e94f8ca4b0c8381d45148d7f63ecf87249fbdcd3` | 未变 |
 | `state/viewMode.ts` | `4eeb200b…` | `4eeb200b0749ea5e0cb68567ab02f88b74e74546913f0450676550c707a92688` | 未变 |
 | `components/editor/SourceModeView.tsx` | `0cd87d0d…` | `0cd87d0dd85490d5389dcb50d0bec39762b4d3b5448e7f7c4a770e0f5d2a7cf2` | 未变 |
@@ -18,7 +19,7 @@
 | **`state/viewMode.verify.test.ts`**（本套件，34 例） | — | `2af4a7c28416f38cfed58e0b293447f19fba9b8aa7ca2bfbe472e43413e65e16` | verifier 产物 |
 | **`components/editor/SourceModeView.verify.test.tsx`**（本套件，15 例） | — | `75ed29f84275251e66508fbd652107689a7bf5337989bc4773e0645d33e0a60e` | verifier 产物 |
 
-> **对应最终资产的提示**：本报告的 PASS/FAIL 结论对应 **`EditorArea.tsx = ddc9ed9f…`**（不是 Lead 初发的 `ad2b68de…`）。请在重新覆盖预发布资产前把该文件**提交并重新冻结 sha**；其余 5 个冻结文件 sha 未变。
+> **冻结状态**：`EditorArea.tsx = ddc9ed9f…` 已随提交 `a3e40ff` 冻结（`git show HEAD:… | sha256sum` 与工作区一致，我已复算）；其余 5 个冻结文件 sha 未变。**最终资产应对应 HEAD `a3e40ff`**。
 
 ## 1. 结论摘要
 
@@ -29,7 +30,7 @@
 | 正文通道 vs 源码通道对照实验 | **PASS** | 真实 PM 管线实测：12 个样本确实被改写（作证据）；11 个未被改写（**已剔除、不用作证据**）；源码通道对全部 23 构造恒等 |
 | 单视图排他 / 切换顺序 / 取消 | **PASS** | flush 在切换之前（PUT 先于 textarea 出现）；超时 → 确认框；取消 → 留正文不丢；源码态正文 `setEditable(false)` |
 | 未知/损坏 `ke-*` 提示语义 | **PASS** | 未改动不弹；改写/删除/新增必须弹；同文档内只弹一次（纯函数 7 例 + 集成 B4） |
-| 外部重载 / 与所见自洽 | **PASS**（含已声明取舍） | 显式重载后 textarea = 磁盘内容（未保存源码输入丢弃，记录型断言）；后续保存载荷与当前所见一致 |
+| 外部重载 / 与所见自洽（**dev 报备的残余风险 ①**） | **PASS**（含已声明取舍） | 见 §3.4：外部修改 → 重载后，textarea 被刷为磁盘内容；后续源码保存载荷 = 原 frontmatter + 当前 textarea，**与用户所见自洽**；未保存的源码输入在**显式重载**时被丢弃（记录型断言，非静默丢失路径） |
 | `mark_internal` 依托链 | **PASS** | 源码保存复用既有 `PUT /api/articles/…`，无新端点（后端 `mark_internal` 语义沿用） |
 | 回归底线 | **PASS** | `tsc` exit 0；全量 **56 files / 1095 passed + 1 skipped**；本套件 **49 passed** |
 
@@ -75,6 +76,15 @@ npx vitest run
 > 其中 F-1/F-2/F-3（任务列表/行内 HTML/实体）在 pre.1 已修 → **不再被 PM 改写**，因此不再是源码模式的对照证据；本套件据实剔除，避免用失效样本充数。
 
 **源码通道**：上述 23 个构造经 `buildSourceSavePayload(raw, sourceBodyOf(raw))` **全部逐字节等于原文**（V3 用例）。
+
+### 3.4 dev 报备的残余风险 ①：源态遇外部修改 → 重载 → 源码保存
+
+**结论：PASS（无静默丢失路径）**，行为如下（B7，确定性组件级）：
+1. 源码态下用户输入 `'用户在源码里写的正文\n<!-- ke-future: ... -->\n'`（尚未到防抖保存点）；
+2. 触发外部重载（App 重取 article + `reloadToken+1`，即 R2 显式重载）→ 载入 effect 的源码分支把 textarea 刷新为**磁盘内容**并清 `sourceDirty`；
+3. 断言 textarea == 磁盘内容（**记录型**：显式重载以磁盘为准，未保存的源码输入被丢弃 —— 与"用户主动选择重新加载"一致，建议写进契约以免歧义）；
+4. 再次编辑并保存 → 载荷 = `原 frontmatter + 当前 textarea 内容`，尾部与 textarea 一致（**无旧 base / 外部内容之外的陈旧字节**）。
+> 即：dev 的判断「内容不会丢」在**保存一致性**意义上成立（保存的永远是用户当前所见）；但「外部重载会丢弃未保存的源码输入」是既有重载语义的结果，已作为**已声明行为**记录，非静默丢失。
 
 ### 3.3 `components/editor/SourceModeView.verify.test.tsx`（15 例）
 

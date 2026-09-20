@@ -22,3 +22,9 @@ tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = "2"
+
+# m7（发布前全面审查）：release 产物去掉调试符号（体积收益明确、构建时间无影响）。
+# 刻意**不开** lto / codegen-units=1：那是用分钟级构建时间换少量体积，本项目打包链路
+# （cargo build --release + NSIS）已经较长，收益不匹配；如后续要压体积再单独评估。
+[profile.release]
+strip = true

@@ -1,7 +1,7 @@
 // KnowledgeEditor Sidecar Manager（Phase 7 M1）
 //
 // 复用 start.ps1 四段式流程（环境检查 → 旧进程清理 → 启动 + health 握手 → 写记录），
-// 在 Rust 端按同一顺序实现；退出清理沿用 stop.ps1 思路（先通知、再等 5s、超时按 PID 树强杀）。
+// 在 Rust 端按同一顺序实现；退出清理沿用 stop.ps1 思路但**有界**（先通知、轮询最多 1.2s、超时按 PID 树强杀，见 GRACEFUL_WAIT）。
 //
 // 关键约定（phase7-plan.md 第 5 章）：
 // - 握手唯一依据：GET /api/health 返回 status=ok（30s 超时，1s 间隔）
@@ -11,12 +11,20 @@
 use serde::Serialize;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 /// 退出清理进行中标记：窗口关闭后不再自动拉起侧车。
 static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+
+/// M5（发布前全面审查修复）：**已 spawn 的 sidecar PID**（0 = 尚未拉起）。
+///
+/// 此前 PID 的唯一记录是 `SidecarState.info`，但它只在 health 握手（最长 30s）**成功之后**才写入；
+/// 而子进程在 `.spawn()` 时就已经诞生。于是「握手期关窗」或「崩溃重启窗口关窗」时
+/// `cleanup_on_exit` 拿不到 PID → 后端成为**永久孤儿**（占端口、持工作区句柄），
+/// 且 runtime.json 已删 → `cleanup_stale` 永久失明。故 spawn 成功即刻登记于此。
+static SPAWNED_PID: AtomicU32 = AtomicU32::new(0);
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -195,6 +203,10 @@ fn wait_health(port: u16) -> Result<serde_json::Value, String> {
     let deadline = Instant::now() + HEALTH_TIMEOUT;
     let mut last_err;
     loop {
+        // M5：握手等待期间（最长 30s）若已进入退出流程 → 立即放弃，不再空等。
+        if SHUTTING_DOWN.load(Ordering::SeqCst) {
+            return Err("应用正在退出，已取消 sidecar health 握手".into());
+        }
         let agent = ureq::AgentBuilder::new()
             .timeout_read(Duration::from_secs(2))
             .build();
@@ -279,6 +291,17 @@ fn spawn_sidecar(
         .env("KE_CORS_ORIGINS", cors.join(","))
         .spawn()
         .map_err(|e| format!("spawn sidecar 失败: {e}"))?;
+
+    // M5：进程已诞生 → 立刻登记 PID，使退出清理在 health 握手完成前也能找到它。
+    let spawned_pid = child.pid();
+    SPAWNED_PID.store(spawned_pid, Ordering::SeqCst);
+    // M5：启动与退出赛跑 —— 若本进程已在退出流程中，立即清掉刚拉起的子进程，不留孤儿。
+    if SHUTTING_DOWN.load(Ordering::SeqCst) {
+        if is_backend_process(spawned_pid) {
+            kill_tree(spawned_pid);
+        }
+        return Err("应用正在退出，已取消 sidecar 启动".into());
+    }
 
     match wait_health(port) {
         Ok(health) => {
@@ -397,6 +420,10 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                             .unwrap_or(DEFAULT_PORT);
                         let next_port = find_free_port(base, MAX_PORT_ATTEMPTS).unwrap_or(port);
                         std::thread::sleep(Duration::from_secs(1));
+                        // M5：1s 重启等待期间可能已进入退出流程 → 不再拉起。
+                        if SHUTTING_DOWN.load(Ordering::SeqCst) {
+                            return;
+                        }
                         match watch_sidecar(app_clone.clone(), next_port, restarts + 1) {
                             Ok(()) => {}
                             Err(e) => {
@@ -450,35 +477,49 @@ pub fn start(app: AppHandle) {
     });
 }
 
-/// 退出清理：窗口关闭时调用。先通知后端优雅退出（独立线程，防止 taskkill 挂起阻塞窗口关闭），
-/// 轮询等待最多 5s（进程退出即提前结束），超时按 PID 树强杀；最后删 runtime.json。
+/// 退出清理：窗口关闭/退出握手的**第二阶段**调用（有界，绝不复现 5s 假死）。
+///
+/// 流程：置 `SHUTTING_DOWN` → 取 PID（**优先 `SPAWNED_PID`**，其次 `SidecarState.info`）→
+/// 校验该 PID 确为本项目 backend（M6：防 PID 复用误杀无关进程树）→ 独立线程 `taskkill /F /T`
+/// → 轮询最多 [`GRACEFUL_WAIT`]（1.2s，进程退出即提前结束）→ 仍存活则 PID 树强杀 → 删 runtime.json。
 pub fn cleanup_on_exit(app: &AppHandle) {
     SHUTTING_DOWN.store(true, Ordering::SeqCst);
-    if let Some(state) = app.try_state::<SidecarState>() {
-        if let Some(info) = state.info.lock().unwrap().clone() {
-            // 1) 通知后端优雅退出（uvicorn 自行收尾）。PyInstaller bootloader 不响应
-            //    CTRL_CLOSE_EVENT 时 taskkill 会无限等待，因此放独立线程防阻塞。
-            let pid = info.pid;
-            std::thread::spawn(move || {
-                let _ = Command::new("taskkill")
-                    .args(["/F", "/T", "/PID", &pid.to_string()])
-                    .creation_flags(CREATE_NO_WINDOW)
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .status();
-            });
-            // 2) 轮询等待最多 5s，进程退出即提前结束
-            let deadline = Instant::now() + GRACEFUL_WAIT;
-            while Instant::now() < deadline {
-                if !is_alive(pid) {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(250));
+    // M5：优先用 spawn 时登记的 PID（health 握手未完成时 info 尚不存在）。
+    let registered = SPAWNED_PID.load(Ordering::SeqCst);
+    let info_pid = app
+        .try_state::<SidecarState>()
+        .and_then(|state| state.info.lock().unwrap().clone())
+        .map(|info| info.pid);
+    let pid = if registered != 0 { Some(registered) } else { info_pid };
+    if let Some(pid) = pid {
+        // M6：强杀前校验确实是我们拉起的 backend。PID 已被系统复用时，
+        // taskkill /F /T 会误杀无关进程树 → 此处不匹配就只清 runtime.json。
+        if !is_backend_process(pid) {
+            eprintln!("[sidecar] 退出清理跳过：PID {pid} 不是本项目 backend（可能已退出或 PID 被复用）");
+            let _ = std::fs::remove_file(runtime_file());
+            return;
+        }
+        // 1) 通知后端优雅退出（uvicorn 自行收尾）。PyInstaller bootloader 不响应
+        //    CTRL_CLOSE_EVENT 时 taskkill 会无限等待，因此放独立线程防阻塞。
+        std::thread::spawn(move || {
+            let _ = Command::new("taskkill")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .creation_flags(CREATE_NO_WINDOW)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        });
+        // 2) 轮询等待（有界），进程退出即提前结束
+        let deadline = Instant::now() + GRACEFUL_WAIT;
+        while Instant::now() < deadline {
+            if !is_alive(pid) {
+                break;
             }
-            // 3) 超时仍存活 → 按 PID 树强杀
-            if is_alive(pid) {
-                kill_tree(pid);
-            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        // 3) 超时仍存活 → 按 PID 树强杀
+        if is_alive(pid) {
+            kill_tree(pid);
         }
     }
     let _ = std::fs::remove_file(runtime_file());

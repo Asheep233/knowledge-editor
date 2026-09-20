@@ -130,7 +130,15 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
         MID_RECENT => {
             let _ = app.emit(MID_RECENT, ());
         }
-        MID_EXIT => request_exit(app),
+        // B2（发布前全面审查修复）：菜单退出 / Ctrl+Q **必须**与关窗走同一 flush 握手。
+        // 首次 → 隐藏窗口 + 通知前端 flush（`ke:close-requested`）+ 1.5s 兜底；
+        // 前端 flush 完二次 close（或兜底到时）才真正退出。
+        // 直接 request_exit 会 app.exit(0) 立即销毁 WebView，跳过 flush → 静默丢内容。
+        MID_EXIT => {
+            if !crate::begin_close_handshake(app) {
+                request_exit(app);
+            }
+        }
         MID_RELOAD => {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.reload();
@@ -147,8 +155,11 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
     }
 }
 
-/// 统一退出流程：隐藏主窗口 → 后台清理 sidecar → 退出。
-/// 与窗口 CloseRequested 完全一致（M2 冒烟修复后约定）。
+/// **退出第二阶段**：隐藏主窗口 → 后台清理 sidecar → 退出。
+///
+/// 这是「已确认可以退出」后的最终动作：正常路径由 `begin_close_handshake` 通知前端 flush，
+/// 前端二次 close 或 1.5s 兜底定时器到达后调用本函数。**不要**在首次退出请求时直接调用
+/// （那会跳过 flush 握手，见 B2）。
 pub fn request_exit(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();

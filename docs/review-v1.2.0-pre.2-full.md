@@ -190,22 +190,32 @@ splitLeadingFm(body) → fmLines: [], rest: "第二段\n"   // 「第一段」�
 
 | 项 | 处置 | 证据 |
 |---|---|---|
-| **B1** BOM/CRLF 字节损坏 | ✅ 已修（`dc4f99e`）· 待 verifier-s2 复核 | 首因 = 重建分支 `splitlines/join`；**第二根因（报告未列）= `read_text` 通用换行读把 CRLF 在读时折成 LF** → 改 `newline=""` 逐字节读。实测 `/articles` 与 `/meta` 两条路径均恢复「原 BOM + 原 CRLF + 原 title + 新正文」 |
-| **B2** 菜单退出绕过 flush 握手 | ✅ 已修（`73d48b9`）· 待 verifier-trash 静态核验 + Lead 真机验证 | 抽出 `begin_close_handshake`，关窗与菜单退出共用；`MID_EXIT` 不再直接 `request_exit` |
-| **B3** rename 反斜杠穿越 | ✅ 已修（`dc4f99e`）· 待复核 | 全平台拒 `\` + `_guard_rename_target` 包含性断言 + OSError→400；实测 BEFORE 200 → AFTER 400 且源不动 |
-| **B4** 工作区级放弃分支缺 `discardPending` | 🔄 task-44 实施中（dev-trash-fe） | — |
-| **B5** plain 导出吞段 | 🔄 task-44 实施中 | — |
+| **B1** BOM/CRLF 字节损坏 | ✅ 已修（`dc4f99e`）+ **独立验证 PASS**（`docs/verification-review-backend.md`：八组合逐字节、真实 API 落盘 sha 一致、旧模块执行对照证明修复前确实坏；第二根因 `read_text` 折行亦确认）| 首因 = 重建分支 `splitlines/join`；**第二根因（报告未列）= `read_text` 通用换行读把 CRLF 在读时折成 LF** → 改 `newline=""` 逐字节读。实测 `/articles` 与 `/meta` 两条路径均恢复「原 BOM + 原 CRLF + 原 title + 新正文」 |
+| **B2** 菜单退出绕过 flush 握手 | ✅ 已修（`73d48b9`）· **独立静态核验 PASS**（verifier-trash：`app.exit` 全仓唯一调用点、除 R-1/R-2 外无其它绕过路径；R-1/R-2 亦已修 `945179f`/`2795645`）· **真机验证待做** | 抽出 `begin_close_handshake`，关窗与菜单退出共用；`MID_EXIT` 不再直接 `request_exit` |
+| **B3** rename 反斜杠穿越 | ✅ 已修（`dc4f99e`）+ **独立验证 PASS**（8 危险名 ×2 端点全 400/409、工作区逐文件 sha256 不变、resolve 级守卫真实命中）| 全平台拒 `\` + `_guard_rename_target` 包含性断言 + OSError→400；实测 BEFORE 200 → AFTER 400 且源不动 |
+| **B4** 工作区级放弃分支缺 `discardPending` | ✅ 已修（`6b42c10`）：三处放弃分支补齐（现 5 处）+ App 级真实渲染用例 + **变异验证**（删一处即红）· 独立复核进行中 | — |
+| **B5** plain 导出吞段 | ✅ 已修（`6b42c10`）：两处统一 `scanFrontmatter` + 6 例（含 BOM/CRLF/幂等/真 fm 反向）· 独立复核进行中 | — |
 | **M1** rename_doc 顶层判定 | ✅ 已修（`dc4f99e`） | `parts[0]`（F8 对齐）；BEFORE 200 真改名 → AFTER 400 |
 | **M2** 附件删除保护规范化 | ✅ 已修（`dc4f99e`） | resolve 后 canonical rel + 仅 Windows 大小写兜底；BEFORE 200 被删 → AFTER 409 |
 | **M3** 附件保护大小写 | ✅ 已修（`dc4f99e`） | `_is_under_attachments` 不敏感；Windows-only 集成断言标注 `_win_only` |
-| **M4** 源码态导出陈旧 | 🔄 task-44 实施中 | — |
-| **M5/M6** sidecar 孤儿 / 误杀 | ✅ 已修（`73d48b9`）· 待静态核验 | `SPAWNED_PID` spawn 即登记 + `SHUTTING_DOWN` 检查 + 强杀前 `is_backend_process` |
+| **M4** 源码态导出陈旧 | ✅ 已修（`6b42c10`）：三导出源码态走 textarea 内容 · seam+接线级验证（端到端由 Lead 真机补） | — |
+| **M5/M6** sidecar 孤儿 / 误杀 | ✅ 已修（`73d48b9`+`945179f`+`090726f`）· **独立静态核验 PASS**：`SPAWNED_PID` 三处清零、父进程校验无反例（PyInstaller 孙进程推理正确）、校验失败保守保留 runtime.json | `SPAWNED_PID` spawn 即登记 + `SHUTTING_DOWN` 检查 + 强杀前 `is_backend_process` |
 | **M7** KE_API_TOKEN 半成品 | ✅ 已修（`dc4f99e`）· 按 Lead 决策**移除功能** | `token=secret` 时 `GET /api/tree` BEFORE 401 → AFTER 200 |
 | **M8** 目录删除无快照 | ✅ 已修（`dc4f99e`）· 契约：全成功 204 / 有失败 200 + `failed[]` | 每 `.md` 一份快照 + per-file 容错；BEFORE 首个锁文件即 500 且其余未删 → AFTER 部分成功 + 失败清单 |
 | m1–m12（MINOR） | 📋 已登记 backlog（不阻塞 1.2.0） | 见 `docs/backlog-1.1.x.md` |
 | **U1** Rust 弱验证 | ✅ 补：Windows `cargo test` **20 passed**（Lead 实跑） | — |
 | **U2** 导出四件产物字节校验 | ⏳ Lead 待修完 B5/M4 后复跑 | — |
-| **U4** 门禁 flaky | 🔄 task-44 实施中（要求连跑 3 次全绿） | — |
+| **U4** 门禁 flaky | ✅ 已修（`6b42c10`）：**真实根因 = App 的 Tauri 菜单 effect 动态 import 缺 `.catch` → Unhandled Rejection**（非 jsdom teardown）→ 连跑 3 次 1147 passed / Errors 0 / EXIT 0 · 独立复核进行中 | — |
 | **U6** 长文档性能 | 📋 发布注记声明，未立项 | — |
 | **U7** B2 后 GUI 重验退出路径 | ⏳ Lead 待打包版真机验证（连续输入 → Ctrl+Q → 重开 → 磁盘含全部输入） | — |
 | **F-3/F-4/F-5/F-1/F-2**（回收站硬化，审查外新增发现） | 🔄 task-48（dev-attach）· F-6 由 Lead 改契约文本 | 见 task-48 |
+
+### §7.1 独立验证额外发现（均已修，源自分派的对抗验证）
+
+| 编号 | 发现 | 处置 |
+|---|---|---|
+| **R-1** | 菜单「重新加载」/Ctrl+R 直接 `w.reload()` 绕过 flush 握手（`beforeunload` 的 `void flushPendingAll()` 不 await）→ 尾部防抖内容有丢失窗口 | ✅ 已修（`945179f`）：`ke:reload-requested` 握手 + 前端 await flush + `menu::reload_main_window` |
+| **R-2** | 首次握手隐藏窗口后，1.5s 兜底内被单实例唤回继续输入 → 兜底仍无条件退出 | ✅ 已修（`945179f`）：`CLOSE_GENERATION` 代数 + `cancel_pending_exit()` |
+| **R-3** | `SPAWNED_PID` 全仓无清零 → 残留 PID 被复用可误判；`is_backend_process` 仅比命令行，多实例下会**误杀别的实例后端**；校验失败删 runtime.json → 孤儿永久失明 | ✅ 已修（`945179f`+`090726f`）：三处清零 + `is_our_backend_process`（命令行 + 父进程 == 本进程）+ 校验失败**保留** runtime.json |
+| **R-4 / R-4b-1 / R-4b-2** | 我的重载握手引入的次生缺陷：1.5s 兜底无守卫 → **双重重载**（第二次会销毁重载后新输入）；`store` 非严格 once-only；清零使旧兜底线程被重新武装 | ✅ 已修（`090726f`+`2795645`）：`RELOAD_DONE` swap 严格 once-only + `RELOAD_GENERATION` 代数 |
+| **F-3/F-4/F-5/F-1/F-2**（回收站，探测自过期快照） | 经核实**早已由 `ff7e9b8` 修复**（`git diff ff7e9b8 HEAD -- trash.py` 为空），当前 HEAD 120/120 PASS；假红根因 = 快照与工作树不同源 | ✅ 无需改码；补 9 例审计锚定（`946bb02`）+ 方法学留痕（探针须钉 commit/时间戳） |

@@ -139,11 +139,11 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
                 request_exit(app);
             }
         }
-        MID_RELOAD => {
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.reload();
-            }
-        }
+        // R-1（独立验证发现）：重新加载会立即销毁 WebView 前端上下文，而 `beforeunload` 里的
+        // `void flushPendingAll()` **不 await** —— 尾部防抖尚未落盘的内容存在丢失窗口。
+        // 故改为握手：先 emit `ke:reload-requested` 让前端 await 完 flush，再由前端调用
+        // `reload_main_window`；1.5s 兜底保证不会因前端异常而卡住。
+        MID_RELOAD => crate::begin_reload_handshake(app),
         #[cfg(debug_assertions)]
         MID_DEVTOOLS => {
             if let Some(w) = app.get_webview_window("main") {
@@ -152,6 +152,17 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
         }
         MID_ABOUT => show_about(app),
         _ => {}
+    }
+}
+
+/// R-1：重新加载主窗口（`#[tauri::command]`，供前端 flush 完成后调用）。
+///
+/// 放在 menu 模块（而非 crate 根）是为了与其它命令一样以 `menu::` 路径注册 ——
+/// 同模块内 `#[tauri::command]` + `generate_handler!` 会触发 `__cmd__*` 宏重名（E0255）。
+#[tauri::command]
+pub fn reload_main_window(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.reload();
     }
 }
 

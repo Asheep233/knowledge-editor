@@ -34,12 +34,31 @@ export async function pickDirectory(title = '选择目录'): Promise<string | nu
  * 然后调用 getCurrentWindow().close() 触发第二次关窗，让 Rust 走正常清理（sidecar 等）。
  * 注意：不要用 destroy()——destroy 会跳过 Rust 的 sidecar 清理。
  * 若第二次 close() 前 1.5s 兜底定时器已到，Rust 自行退出，无害。
+ *
+ * R-1 追加：菜单「重新加载」（`ke:reload-requested`）同样先 flush 再刷新，
+ * 避免 reload 销毁前端上下文导致尾部防抖内容丢失。
  */
 export async function setupCloseHandshake(): Promise<() => void> {
   if (!isDesktop()) return () => {}
   try {
     const { listen } = await import('@tauri-apps/api/event')
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    // R-1（独立验证发现）：菜单「重新加载」/ Ctrl+R 会立即销毁 WebView 前端上下文，
+    // 而 `beforeunload` 里的 `void flushPendingAll()` **不 await** → 尾部防抖未落盘的内容
+    // 有丢失窗口。改由 Rust emit `ke:reload-requested`，前端 await 完 flush 再触发 reload；
+    // Rust 侧 1.5s 兜底保证即使前端异常也会刷新。
+    const unlistenReload = await listen('ke:reload-requested', async () => {
+      await Promise.race([
+        flushPendingAll().then(() => true),
+        new Promise<boolean>((r) => setTimeout(() => r(false), 1500)),
+      ])
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('reload_main_window')
+      } catch {
+        /* 兜底：Rust 侧 1.5s 到点会自行刷新 */
+      }
+    })
     const unlisten = await listen('ke:close-requested', async () => {
       // 全速 flush 未决保存（不等待防抖计时器）；1.5s 兜底由 Rust 侧负责。
       await Promise.race([
@@ -51,6 +70,11 @@ export async function setupCloseHandshake(): Promise<() => void> {
       void win.close()
     })
     return () => {
+      try {
+        unlistenReload()
+      } catch {
+        /* ignore */
+      }
       try {
         unlisten()
       } catch {

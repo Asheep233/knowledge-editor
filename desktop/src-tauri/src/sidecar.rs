@@ -143,6 +143,39 @@ fn is_backend_process(pid: u32) -> bool {
     }
 }
 
+/// R-3（独立验证发现）：**是否为本进程拉起的 sidecar**。
+/// `is_backend_process` 只比对命令行 —— 多实例场景下别的 AstraNota 实例的后端命令行相同，
+/// PID 复用后会被误判成"我们的"。故退出清理再加一层**父进程校验**（sidecar 由本进程 spawn）。
+#[cfg(windows)]
+fn is_our_backend_process(pid: u32) -> bool {
+    let me = std::process::id();
+    let script = format!(
+        "$p=Get-CimInstance Win32_Process -Filter \"ProcessId={pid}\"; if($p){{ \"$($p.CommandLine)|$($p.ParentProcessId)\" }}"
+    );
+    let out = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output();
+    match out {
+        Ok(o) => {
+            let text = String::from_utf8_lossy(&o.stdout);
+            let mut parts = text.trim().rsplitn(2, '|');
+            let parent = parts.next().and_then(|v| v.trim().parse::<u32>().ok());
+            let cmd = parts.next().unwrap_or("").to_lowercase();
+            cmd.contains("knowledgeeditor-backend") && parent == Some(me)
+        }
+        // PowerShell 不可用/失败 → 保守判否（宁可保守跳过强杀，也不误杀他人进程树）
+        Err(_) => false,
+    }
+}
+
+#[cfg(not(windows))]
+fn is_our_backend_process(pid: u32) -> bool {
+    is_backend_process(pid)
+}
+
 #[cfg(not(windows))]
 fn is_backend_process(_pid: u32) -> bool {
     // 非 Windows：不读取进程命令行，退化为「存活即可」逻辑（无法用 taskkill /T 杀树）。
@@ -297,9 +330,10 @@ fn spawn_sidecar(
     SPAWNED_PID.store(spawned_pid, Ordering::SeqCst);
     // M5：启动与退出赛跑 —— 若本进程已在退出流程中，立即清掉刚拉起的子进程，不留孤儿。
     if SHUTTING_DOWN.load(Ordering::SeqCst) {
-        if is_backend_process(spawned_pid) {
+        if is_our_backend_process(spawned_pid) {
             kill_tree(spawned_pid);
         }
+        SPAWNED_PID.store(0, Ordering::SeqCst);
         return Err("应用正在退出，已取消 sidecar 启动".into());
     }
 
@@ -397,6 +431,8 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                     eprintln!("[sidecar] 事件错误: {e}");
                 }
                 CommandEvent::Terminated(payload) => {
+                    // R-3：进程已终止 → 立刻清零登记 PID，避免残留 PID 被系统复用后误判。
+                    SPAWNED_PID.store(0, Ordering::SeqCst);
                     let _ = app_clone.emit(
                         "ke:sidecar-exited",
                         serde_json::json!({
@@ -492,11 +528,14 @@ pub fn cleanup_on_exit(app: &AppHandle) {
         .map(|info| info.pid);
     let pid = if registered != 0 { Some(registered) } else { info_pid };
     if let Some(pid) = pid {
-        // M6：强杀前校验确实是我们拉起的 backend。PID 已被系统复用时，
-        // taskkill /F /T 会误杀无关进程树 → 此处不匹配就只清 runtime.json。
-        if !is_backend_process(pid) {
-            eprintln!("[sidecar] 退出清理跳过：PID {pid} 不是本项目 backend（可能已退出或 PID 被复用）");
-            let _ = std::fs::remove_file(runtime_file());
+        // M6+R-3：强杀前校验「确实是我们这个进程拉起的 backend」（命令行 + 父进程）。
+        // 不匹配时**保守处理**：不强杀、且**保留 runtime.json** —— 若它其实是孤儿后端，
+        // 下次启动的 `cleanup_stale` 还能凭记录清掉；反之若删记录，就永久失明了
+        // （独立验证指出这正是「校验失败 → 删记录 → 孤儿失明」的反向风险）。
+        if !is_our_backend_process(pid) {
+            eprintln!(
+                "[sidecar] 退出清理：PID {pid} 未通过「本进程 sidecar」校验（已退出 / PID 被复用 / 查询失败），保守跳过强杀并保留 runtime.json 供下次启动清理"
+            );
             return;
         }
         // 1) 通知后端优雅退出（uvicorn 自行收尾）。PyInstaller bootloader 不响应

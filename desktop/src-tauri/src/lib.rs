@@ -7,7 +7,7 @@ mod menu;
 mod settings;
 mod sidecar;
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -15,6 +15,10 @@ use tauri::{AppHandle, Emitter, Manager};
 /// （通知前端先 flush 未保存内容），第二次（前端已 flush 或用户再次点关闭）立即退出。
 /// 用静态标记避免重复 emit / 重复 prevent_close。
 static CLOSE_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+/// R-2（独立验证发现）：退出握手的**代数**。1.5s 兜底线程捕获当时的代数，只有代数未变才真正退出
+/// —— 这样「窗口在兜底窗口内被重新激活（单实例 show）」即可取消待定退出，不会丢掉刚回来的输入。
+static CLOSE_GENERATION: AtomicU32 = AtomicU32::new(0);
 
 /// B2（发布前全面审查修复）：**统一的退出握手**。
 ///
@@ -34,12 +38,32 @@ pub fn begin_close_handshake(app: &AppHandle) -> bool {
         let _ = w.hide();
     }
     let _ = app.emit("ke:close-requested", ());
+    let generation = CLOSE_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     let app_handle = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(1500));
-        menu::request_exit(&app_handle);
+        if CLOSE_GENERATION.load(Ordering::SeqCst) == generation {
+            menu::request_exit(&app_handle);
+        }
     });
     true
+}
+
+/// R-2：**取消待定退出**。窗口被重新显示（单实例激活 show/unminimize/set_focus）时调用。
+pub fn cancel_pending_exit() {
+    CLOSE_REQUESTED.store(false, Ordering::SeqCst);
+    CLOSE_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+/// R-1：重新加载握手 —— 先通知前端 flush 未决保存，由前端回调 `reload_main_window`；
+/// 1.5s 兜底（不依赖前端）保证刷新不会卡住。
+pub fn begin_reload_handshake(app: &AppHandle) {
+    let _ = app.emit("ke:reload-requested", ());
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(1500));
+        menu::reload_main_window(app_handle);
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -50,6 +74,8 @@ pub fn run() {
             if let Some(w) = app.get_webview_window("main") {
                 // v1.1.6 加固：关窗后实例可能处于「隐藏但未退出」状态（退出链偶发挂起），
                 // 二次启动必须 show()（仅 unminimize/focus 对隐藏窗口无效——本 bug 现象）
+                // R-2：用户回到应用 → 取消可能的待定退出（1.5s 兜底窗口内）。
+                cancel_pending_exit();
                 let _ = w.show();
                 let _ = w.unminimize();
                 let _ = w.set_focus();
@@ -86,6 +112,7 @@ pub fn run() {
         })
         .on_menu_event(|app, event| menu::handle_event(app, event))
         .invoke_handler(tauri::generate_handler![
+            menu::reload_main_window,
             sidecar::get_runtime_info,
             settings::get_settings,
             settings::update_settings,

@@ -2,7 +2,39 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-19（**v1.2.0-pre.1 预发布**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.1）
+> 最后更新：2026-09-20（**v1.2.0-pre.2 预发布**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.2）
+
+## 2026-09-20（★ v1.2.0-pre.2 预发布）
+
+类型：Pre-release（三步走第 2 步）
+状态：Published（Pre-release；四附件齐全；Latest 仍为 v1.1.9）
+Tag：`v1.2.0-pre.2` · commit `ad2e526`（bump）→ 内容见下（实现 `b34a5af`/`a3e40ff` 等）
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.2（published 2026-09-20T03:17:28Z）
+
+**内容**
+1. **源码模式 MVP**（主理人拍板：切视图自动保存 / 视图态全局 / frontmatter 隐藏 / `<textarea>` / 未知语法可改但保存提示）
+   - 工具栏视图切换按钮；源码视图 = `<textarea>` 直编 Markdown 原文
+   - **字符串直存**：`frontmatterBlockOf + withFrontmatter(..., {stripCaretArtifacts:false}) + applyDocTraits` → 既有 saveArticle 链，**不经 ProseMirror**
+   - 单视图排他、切前 flush + 确认（取消留正文）、初值 = 保存后内容、未知/损坏 `ke-*` 改动首次保存提示、切回正文重解析提示
+   - 复用既有防抖/恢复点/历史/自写抑制/BOM 换行还原；U+200B 保留；只读态不可进入
+   - 规范先行：`document-format.md` §6（9 条硬性契约 + §6.2.1 两条边界 + §6.2.2 重载语义）；契约见 `docs/design-1.2.0-source-mode.md`
+2. **D-1 混排列表紧凑**（`- [x] a` + `- b` + `- [ ] c` → 不再插空行；引用块内/任务↔有序同样生效）
+3. **D-2 嵌套未知标签**（`<em><span>x</span></em>` → `<span>*x*</span>`，集合保全；D-5 声明不作顺序镜像）
+4. **EDGE-1 空 frontmatter**（`---\n---\n\n正文` 正确识别/剥离/写回）
+5. **ADD-1 两条内容丢失**（`---\n---\n\n正文\n\n---\n\n更多` 吞正文；`---\n\n正文\n\n---\n` 整篇为空）
+6. **ADD-2 有序任务项**（`1. [x] a` 不再被转义）；ADD-3 控制项（松散纯列表）零改动
+7. **ADD-1 过度收紧回归**（首行空行型 / 顶层序列型合法 frontmatter 被误拒 → 双区块）—— 独立验证发现，Lead 修复
+8. **源码模式初值修复**（编辑 → 直接切源码 → 下一次源码保存曾覆盖刚 flush 的编辑）—— 独立验证发现，Lead 修复
+
+**门禁**：pytest **630 passed + 2 skipped** · tsc 0 · vitest **56 files / 1095 passed + 1 skipped** · cargo **20**
+**独立对抗验证**：保真修复 **47 例**（`docs/verification-fidelity-fixes-120.md`，含 41 构造矩阵终测 `EXACT=0/TRAILING=24/CHANGED=17`）、
+源码模式 **49 例**（`docs/verification-source-mode.md`，含对照实验与「先实测后取证」样本筛选）。
+**打包冒烟 + GUI 验收**：版本横幅 `v1.2.0-pre.2` 与后端一致、无不一致提示；标签栏正常；
+设置页左栏高亮四态（顶部/滚到各组/回顶/点击）全对；**源码模式端到端**：切源码 → textarea 含正文原文且 frontmatter 隐藏 →
+追加两行 → 自动保存 → 磁盘与原文件**逐字节差异仅那两行**（frontmatter/正文/`ke-*` 注释/换行风格全保留）→ 切回正文恢复 ProseMirror。
+
+**已知偏差 / 限制**：D-4 混合换行统一为主导风格（纯 LF/纯 CRLF 逐字节保留）；D-5 嵌套顺序不作镜像保证；
+显式外部重载丢弃未保存的源码输入（有意取舍，与正文通道一致）。
 
 ## 2026-09-19（★ v1.2.0-pre.1 预发布）
 

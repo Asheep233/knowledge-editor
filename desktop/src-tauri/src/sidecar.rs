@@ -531,14 +531,16 @@ pub fn cleanup_on_exit(app: &AppHandle) {
         .map(|info| info.pid);
     let pid = if registered != 0 { Some(registered) } else { info_pid };
     if let Some(pid) = pid {
-        // M6+R-3：强杀前校验「确实是我们这个进程拉起的 backend」（命令行 + 父进程）。
-        // 不匹配时**保守处理**：不强杀、且**保留 runtime.json** —— 若它其实是孤儿后端，
-        // 下次启动的 `cleanup_stale` 还能凭记录清掉；反之若删记录，就永久失明了
-        // （独立验证指出这正是「校验失败 → 删记录 → 孤儿失明」的反向风险）。
-        if !is_our_backend_process(pid) {
-            eprintln!(
-                "[sidecar] 退出清理：PID {pid} 未通过「本进程 sidecar」校验（已退出 / PID 被复用 / 查询失败），保守跳过强杀并保留 runtime.json 供下次启动清理"
-            );
+        // M6/R-3 修正（2026-09-20 事故复盘）：**退出路径不得同步调用 PowerShell**。
+        // 原实现用 `is_our_backend_process`（WMI 查命令行 + 父进程）做「是不是我们的后端」校验，
+        // 在个别机器上 PowerShell/WMI 会长时间阻塞 → `request_exit` 卡在清理里，主线程永远到不了
+        // `app.exit(0)`（用户看到窗口消失但进程与侧车仍在）。改为：
+        //   · 只按**spawn 时登记的 PID**（本进程直接子进程，见 SPAWNED_PID）清理，纯本地操作、有界；
+        //   · PID 复用/跨实例误杀风险由 `cleanup_stale`（下次启动、非退出路径）承担，
+        //     那里的 `is_backend_process` 校验可以慢慢查，不影响退出。
+        if !is_alive(pid) {
+            eprintln!("[sidecar] 退出清理：PID {pid} 已不存在，无需强杀");
+            let _ = std::fs::remove_file(runtime_file());
             return;
         }
         // 1) 通知后端优雅退出（uvicorn 自行收尾）。PyInstaller bootloader 不响应

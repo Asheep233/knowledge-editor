@@ -21,6 +21,9 @@ const MID_CLOSE_WS: &str = "ke-menu:close-workspace";
 const MID_RECOVERY: &str = "ke-menu:recovery-check";
 const MID_SETTINGS: &str = "ke-menu:settings";
 const MID_EXIT: &str = "ke-menu:exit";
+/// 退出清理预算：主线程最多等这么久，超时**无条件退出**（侧车清理由独立线程继续，通常更快）。
+const CLEANUP_BUDGET: std::time::Duration = std::time::Duration::from_millis(2000);
+
 const MID_RELOAD: &str = "ke-menu:reload";
 #[cfg(debug_assertions)]
 const MID_DEVTOOLS: &str = "ke-menu:devtools";
@@ -174,10 +177,17 @@ pub fn request_exit(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
     }
-    // v1.1.7：清理**同步**执行但严格有界（force/tree 杀 + 1.2s 预算）——
-    // 保证侧车随主进程消亡（否则孤儿侧车占 8000，二次启动与陈旧后端交互）；
-    // 同时不再复现 v1.1.6 的 5s 阻塞假死（预算内必定返回）。
-    let _ = cleanup_on_exit(app);
+    // v1.1.7 起约定：退出清理**严格有界**（绝不出现「窗口已隐藏但进程不退出」的假死）。
+    // 2026-09-20 事故复盘：清理里同步调用 PowerShell（WMI 查命令行）在个别机器上会**阻塞主线程**，
+    // 导致 `app.exit(0)` 永不执行 —— 用户看到窗口消失但进程与侧车还在。
+    // 因此：清理放独立线程，主线程最多等 CLEANUP_BUDGET，之后**无条件** `app.exit(0)`。
+    let app_handle = app.clone();
+    let (tx, rx) = std::sync::mpsc::channel::<()>();
+    std::thread::spawn(move || {
+        let _ = cleanup_on_exit(&app_handle);
+        let _ = tx.send(());
+    });
+    let _ = rx.recv_timeout(CLEANUP_BUDGET);
     app.exit(0);
 }
 

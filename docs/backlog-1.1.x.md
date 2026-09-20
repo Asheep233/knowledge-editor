@@ -45,23 +45,33 @@
 
 | ID | 项 | 处置 |
 |---|---|---|
-| D-1 | 混合任务/普通列表被拆成两个列表（tight→loose，项间多空行） | **修**：列表序列化需保持相邻同类列表的紧凑结构（任务项与普通项混排不得被拆成两个列表块） |
-| D-2 | 标准标签**嵌套**未知标签（`<em><span>x</span></em>` → `*x*`）内层未知标签丢失 | **修**：标准标签的处理需递归到其内部的未知标签（内层未知标签按 §2.6 契约原样保留） |
+| D-1 | 混合任务/普通列表被拆成两个列表（tight→loose，项间多空行） | ✅ **已修（v1.2.0-pre.2）**：混排保持紧凑（引用块内、任务↔有序同样生效）；实现 = `KeBlockJoin`。验证 14/14 |
+| D-2 | 标准标签**嵌套**未知标签（`<em><span>x</span></em>` → `*x*`）内层未知标签丢失 | ✅ **已修（v1.2.0-pre.2）**：`<em><span>x</span></em>` → `<span>*x*</span>`（集合保全）；实现 = `claimStandardWrapper`。嵌套**顺序**差异见 §2.6 **D-5** |
 | D-3 | 裸 `&` → `&amp;`、`[X]` → `[x]`、`<br>`/`<a>` 走标准转换 | **保持现状**（语义等价的字节变化，已在 §2.6 表内声明；不属于「损坏」） |
-| EDGE-1 / K8 | 空 frontmatter 区块 `---\n---\n\n正文` 不被 `stripFrontmatter` 识别（整块被当正文载入） | **修**：`stripFrontmatter`/`withFrontmatter` 需识别空块并正确剥离/回写 |
+| EDGE-1 / K8 | 空 frontmatter 区块 `---\n---\n\n正文` 不被 `stripFrontmatter` 识别（整块被当正文载入） | ✅ **已修（v1.2.0-pre.2）**：新增共享行扫描 `scanFrontmatter`（另覆盖首行空行/顶层序列型合法 frontmatter）· 16/16 |
 
-## v1.2.0-pre.1 保真修复的遗留（2026-09-18）
+## v1.2.0 保真与源码模式收口状态（2026-09-20 更新）
 
-| ID | 项 | 现状 | 处置 |
-|---|---|---|---|
-| **D-1** | 混合任务/普通列表被拆成两个列表 → tight 变 loose（项间多空行） | F-1 注册 `TaskList` 的副作用；复选框状态与文本不变，字节/结构变化 | 记录为已知偏差（`document-format.md` §2.6 D-1）；若要逐字节保持需自定义列表序列化 → 另立任务 |
-| **D-2** | 标准标签嵌套未知标签（`<em><span>x</span></em>` → `*x*`）内层标签丢失 | 既有缺口（不在 41 矩阵内） | 记录为已知偏差（§2.6 D-2）；修法需在标准标签 tokenizer 内递归处理未知标签 |
-| **D-3** | 裸 `&` → `&amp;`、`[X]` → `[x]`、`<br>`/`<a>` 走标准转换 | 语义等价、字节变化 | 契约内（§2.6 表） |
-| **DEP-1** | `frontend/src/editor/index.ts` 新增 `@tiptap/extension-list` import，但 `package.json` 未声明 | 靠 starter-kit 传递提升可用；换 node-linker / 依赖树变动会构建失败 | ✅ 已补：`package.json` + lock 显式声明 `^3.29.2`（lock resolved 3.31.3） |
-| **ADP-1** | 自定义快捷键的动作执行曾走 **DOM 过渡适配层**（点工具栏按钮 title / 合成既有键位） | 过渡实现 | ✅ **已收口（task-35 A/B）**：删除 `runActionViaDom`/`DomEnv`/合成按键；`runAction(actionId)` 只走 handler（未注册 → `via:'none'` 安全降级）；真实闭包注册点：EditorArea 22 个 `editor.*` + `doc.save` + `app.history.open`；App 的 `doc.new`/`app.settings.open`/`app.workspace.open`/`app.panel.right.toggle`/`doc.next\|prev\|close`；LeftSidebar 的 `app.search.focus`/`app.trash.open`；新增「动作表每个 id 都有注册点」完整性守卫 |
-| **DEL-1** | 「放弃修改」后仍可能出现第二次落盘 | 用户确认「放弃」后，被放弃的内容仍被写入磁盘 | ✅ **已修（task-35 C）**：共享 `discardPending(docId)`（`cancelPending` + `abortPending`）接入 `requestOpenArticle` 与 `closeTabById` **两条**放弃分支。**根因更正（重要）**：先前记录的「`flushWithTimeout` 超时后 `latest` 仍在 → 切档 flush 发新 PUT」**不成立** —— 独立验证白盒证明 `drain` 在**首个 `await` 之前**已取走并清空 `latest`（`enqueueSave` 返回时 `slowFn` 已同步被调用）→ 超时后切档 `flushPending` 只 `return e.running`，**不产生新写入**。**真实可达路径**：flush 开始后、确认框弹出期间用户继续输入（`enqueueSave` 重新 armed `latest`）→ 确认放弃 → 切档 `flushPending` 会 drain 这份新内容。独立验证给出**对照证据**：不调 `discardPending` 时同序列必然发生第 2 次写入（`saved.length 2`），调用后为 1 → **修复必要性成立**。未验证项：确认框期间能否继续输入编辑器属 GUI 焦点行为，未做真机验证 |
-| **EXP-1** | KE 导出（单文件 + **文档包 .zip**）只写 `ke_version`，源 frontmatter 的 `title`/`tags`/自定义键被丢弃 → 整文件 diff≠0，与「导出 vs 磁盘源文档 diff=0」验收口径冲突 | 既有行为（基线 `adc733a` 同） | 单文件路径 ✅ 已修并独立复验 PASS（取原文 frontmatter 区块拼回、只更新 `ke_version`；K1–K7 含未知键/注释/嵌套映射逐字节一致）；**文档包路径**修复中（task-35，一并做） |
-| **EDGE-1** | 空 frontmatter 区块 `---\n---\n\n正文` 不被 `stripFrontmatter` 识别（正则要求块内至少一个换行）→ 整块被当正文载入 | 既有边界（导出产物本身正常） | documented-edge（独立验证已按此处理，不计 FAIL）；如需修需放宽正则并补 round-trip 用例 |
+| ID | 项 | 状态 |
+|---|---|---|
+| **D-1** | 混排列表 tight→loose | ✅ 已修（`KeBlockJoin`）· 独立验证 14/14 |
+| **D-2** | 嵌套未知标签内层丢失 | ✅ 已修（`claimStandardWrapper`）· 契约口径通过（集合保全） |
+| **D-3** | 裸 `&`→`&amp;`、`[X]`→`[x]`、`<br>`/`<a>` 标准转换 | **保持现状**（语义等价字节变化，§2.6 表已声明） |
+| **D-4** | 混合 EOL（LF+CRLF 混用）被统一为主导风格 | **已声明限制**（`DocTraits` 是文档级模型；纯 LF/纯 CRLF 逐字节保留）· §6.2.1 |
+| **D-5** | D-2 修复后的嵌套**顺序**与原文镜像不同（`<span>*x*</span>`） | **已声明偏差**（契约只要求集合保全 + 幂等；追求镜像会在混合形态产出 `*a**<span>x</span>**b*`）· §2.6 |
+| **EDGE-1 / K8** | 空 frontmatter 区块不被识别 | ✅ 已修（`scanFrontmatter`）· 16/16 |
+| **ADD-1** | frontmatter 定界符扫描吞正文（中间正文被吞 / 整篇为空）——**内容丢失** | ✅ 已修 · 独立验证复验通过 |
+| **ADD-2** | 有序列表任务项 `1. [x] a` 被转义为 `1. \[x\] a` | ✅ 已修（`ListExtension.renderMarkdown`） |
+| **ADD-3** | `- a\n\n- b`（本就松散的纯普通列表）被压紧 | **既有行为，保持不动**（控制用例，验证方确认未被改坏） |
+| **ADD-4** | ADD-1 收紧过头：首行空行型 / 顶层序列型**合法** frontmatter 被误拒（写回双区块） | ✅ 已修（跳过前导空行 + 接受 `-` 序列项）· 独立验证复验通过 |
+| **DEP-1** | `@tiptap/extension-list` 未显式声明 | ✅ 已补（`package.json` + lock `^3.29.2`） |
+| **SRC-1** | 源码模式「切到源码时初值落后于刚 flush 的编辑」→ 下一次源码保存覆盖该编辑（**内容丢失**） | ✅ 已修（WYSIWYG 保存路径补写 `lastSavedRawRef`）· 独立验证 B1/B1b 复验通过 |
+| **U+200B** | `withFrontmatter` 无条件剥除零宽空格 → 源码通道删用户字节 | ✅ 已修（`{ stripCaretArtifacts }` 默认 true；源码通道传 false）· §6.2.1 |
+| **ADP-1** | 快捷键动作曾走 DOM 过渡适配层 | ✅ 已收口（真实 handler 注册 + 完整性守卫） |
+| **DEL-1** | 「放弃修改」后仍可能二次落盘（确认框期间继续输入） | ✅ 已修（共享 `discardPending` 接两条放弃分支）· 对照实验证明修复必要 |
+| **EXP-1** | KE 导出丢源 frontmatter 键（单文件 + 文档包） | ✅ 已修（`frontmatterBlockOf` 拼回 + 只更新 `ke_version`）· 独立验证 K1–K12 通过 |
+
+**验证报告**：`docs/verification-fidelity-fixes-120.md`（47 例）· `docs/verification-source-mode.md`（49 例）· `docs/verification-math-fidelity.md` · `docs/verification-shortcuts-tabs.md` · `docs/verification-settings-nav.md`
 
 ## 移动路径 4 项已修（2026-09-15，F9b/F9c/F11/F12）
 

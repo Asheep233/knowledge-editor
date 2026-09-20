@@ -124,18 +124,13 @@ async def require_workspace(request, call_next):
 
     关闭工作区后文件树/搜索/编辑等接口不再可用，前端回到工作区选择页。
 
-    P2-16：设置 KE_API_TOKEN 环境变量时，/api/*（除健康检查）必须带
-    X-KE-Token 头（sidecar 生成随机 token 注入前端，防本机其它进程调用）。
+    M7（2026-09-20 发布前审查）：原 P2-16 的 API token 校验已**整体移除**——它
+    是半成品：中间件顺序使 OPTIONS 预检 401、前端从不发送该头、Rust sidecar 也
+    从不生成/注入 token，任何设置该环境变量的用户会直接砖掉整个应用。当前无人
+    使用（默认空 token），移除后中间件只保留「未打开工作区 409」职责，不再读取
+    任何 token 配置。
     """
     path = request.url.path
-    token = config.API_TOKEN
-    if (
-        token
-        and path.startswith("/api/")
-        and not path.startswith("/api/health")
-        and request.headers.get("x-ke-token") != token
-    ):
-        return JSONResponse(status_code=401, content={"detail": "未授权"})
     if (
         getattr(app.state, "workspace_root", None) is None
         and path.startswith("/api/")

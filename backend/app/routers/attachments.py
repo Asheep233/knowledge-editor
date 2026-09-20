@@ -21,6 +21,7 @@ S-3：保留原名后，非内联附件的 Content-Disposition 升级为 RFC 626
 """
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 from datetime import datetime, timezone
@@ -270,19 +271,28 @@ def delete_attachment(request: Request, rel_path: str) -> dict:
     full = _guard_attachment_rel(request, rel_path)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="附件不存在")
+    # ★ M2：引用保护必须用**归一化后**的相对路径做成员判断。原实现拿 URL 原始
+    #   输入比对 refs 键：Windows 上 `USED.PNG` / 反斜杠变体可命中 is_file 却
+    #   不在 refs 里 → 被引用附件被永久删除。resolve 后的路径在 Windows 上即为
+    #   磁盘规范大小写；再对「引用键大小写与磁盘不一致」做一层 NT 专属兜底。
+    canonical = full.relative_to(root).as_posix()
     refs = _doc_refs_index(root)
-    if rel_path in refs:
+    ref = canonical if canonical in refs else None
+    if ref is None and os.name == "nt":
+        lowered = canonical.lower()
+        ref = next((k for k in refs if k.lower() == lowered), None)
+    if ref is not None:
         raise HTTPException(
             status_code=409,
-            detail=f"附件被 {len(refs[rel_path])} 个文档引用，不可删除",
+            detail=f"附件被 {len(refs[ref])} 个文档引用，不可删除",
         )
     try:
         full.unlink()
     except OSError:
         # P4-4：不回显本地绝对路径（避免错误信息泄漏目录结构）
         raise HTTPException(status_code=500, detail="删除附件失败")
-    request.app.state.indexer.update_file(rel_path)
-    return {"deleted": rel_path}
+    request.app.state.indexer.update_file(canonical)
+    return {"deleted": canonical}
 
 
 @router.post("", status_code=201)

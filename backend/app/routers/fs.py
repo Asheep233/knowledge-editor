@@ -15,6 +15,7 @@ import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from .. import config
@@ -105,6 +106,44 @@ def _require_business_top(root: Path, full: Path) -> None:
 
 def _top_of(rel: str) -> str:
     return rel.split("/", 1)[0]
+
+
+def _is_under_attachments(rel: str) -> bool:
+    """M3：是否位于 Attachments 顶层之下（**大小写不敏感**）。
+
+    Windows 上 `attachments/…` 与 `Attachments/…` 是同一目录；原实现用
+    `rel.startswith("Attachments/")` 做附件引用保护判定，可被小写/混合大小写
+    路径绕过（顶层业务校验本身已大小写不敏感，两处口径不一致）。
+    """
+    parts = Path(rel).parts
+    return len(parts) >= 2 and parts[0].lower() == config.DIR_ATTACHMENTS.lower()
+
+
+def _validate_new_name(raw_name: str) -> str:
+    """B3：重命名的新名称必须是**单个安全组件**（对齐附件 `_is_single_component`）。
+
+    - 拒绝 `/` 与 `\\`：Windows 上 `\\` 是路径分隔符，`..\\..\\evil` 会把文件/
+      文件夹移出工作区。**全平台统一拒绝**（POSIX 下 `\\` 虽合法，但同一请求
+      在不同平台语义分叉正是缺陷根源）；
+    - 拒绝空名 / `.` / `..` / 控制字符；
+    - Windows 保留名、尾点尾空格等由 rename 的 OSError → 400 兜底（同 move_path）。
+    """
+    name = raw_name.strip()
+    if not name or name in (".", ".."):
+        raise HTTPException(status_code=400, detail="新名称不能为空")
+    if "/" in name or "\\" in name:
+        raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
+    if any(ord(ch) < 32 for ch in name):
+        raise HTTPException(status_code=400, detail="新名称不能包含控制字符")
+    return name
+
+
+def _guard_rename_target(root: Path, target: Path) -> None:
+    """B3：构造目标后追加解析级包含性断言 + 业务顶层约束（防拼接绕过）。"""
+    resolved = target.resolve()
+    if root.resolve() not in resolved.parents:
+        raise HTTPException(status_code=400, detail="新名称越出工作区")
+    _require_business_top(root, resolved)
 
 
 def _existing_dir_detail(rel: str) -> str:
@@ -251,14 +290,20 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     if not full.is_dir():
         raise HTTPException(status_code=404, detail="目录不存在")
     _require_business_top(root, full)
-    new_name = body.new_name.strip().strip("/")
-    if not new_name or "/" in new_name:
-        raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
+    # ★ B3：新名称必须是单个安全组件（拒 `/` 与 `\`）。原实现只查 `/`，
+    #   Windows 下 `..\..\..\evil` 会把整个文件夹移出工作区（F8 同族）。
+    new_name = _validate_new_name(body.new_name.strip("/"))
     target = full.parent / new_name
+    # ★ B3：拼接后再做一次解析级包含性断言，不依赖单一字符串校验
+    _guard_rename_target(root, target)
     if target.exists():
         raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
     old_rel = full.relative_to(root).as_posix()
-    full.rename(target)
+    try:
+        full.rename(target)
+    except OSError as e:
+        # ★ B3：Windows 保留名 / 尾点尾空格 / 文件占用等 → 明确 400（对齐 move_path）
+        raise HTTPException(status_code=400, detail=f"重命名失败：{e.strerror or e}")
     new_rel = target.relative_to(root).as_posix()
     # K3-I2：索引/历史同步失败不阻断（签名过期由下次 reconcile 自愈）
     _sync_after_move(request, old_rel, new_rel)
@@ -266,7 +311,7 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
 
 
 @router.delete("/dir", status_code=204)
-def delete_dir(request: Request, path: str = Query(...)) -> None:
+def delete_dir(request: Request, path: str = Query(...)):
     root = _require_ws(request)
     rel = path.strip("/")
     full = _guard_rel(root, rel)
@@ -274,8 +319,9 @@ def delete_dir(request: Request, path: str = Query(...)) -> None:
         raise HTTPException(status_code=404, detail="目录不存在")
     _require_business_top(root, full)
     # P2-15：目录内含被引用的附件时拒绝删除（与 DELETE /api/attachments 保护一致）
+    # M3：附件顶层判定大小写不敏感（`attachments/…` 变体不得绕过）
     dir_rel = full.relative_to(root).as_posix()
-    if dir_rel.startswith(config.DIR_ATTACHMENTS + "/"):
+    if _is_under_attachments(dir_rel):
         refs = referencing_docs(root, prefix=dir_rel)
         if refs:
             total = sum(len(v) for v in refs.values())
@@ -283,27 +329,67 @@ def delete_dir(request: Request, path: str = Query(...)) -> None:
                 status_code=409,
                 detail=f"目录内 {len(refs)} 个附件被 {total} 个文档引用，不可删除",
             )
+
+    # M8：目录删除是永久物理删除（不进回收站）——删除前对目录内每个 Markdown
+    # 文档写一份历史快照，给用户留可恢复的最后一道防线。快照是辅助能力：
+    # 失败只记日志，绝不阻断删除。
+    hist = getattr(request.app.state, "history", None)
+    if hist is not None:
+        for p in markdown_io.walk_files(full):
+            if p.suffix.lower() not in _DOC_EXTS:
+                continue
+            rel_p = p.relative_to(root).as_posix()
+            try:
+                content = markdown_io.read_text(p)
+            except (OSError, UnicodeDecodeError):
+                logger.warning("删除前快照跳过（读取失败）: %s", rel_p)
+                continue
+            try:
+                hist.snapshot(rel_p, content)
+            except Exception:  # noqa: BLE001 快照失败不阻断删除
+                logger.warning("删除前快照失败（不影响删除）: %s", rel_p, exc_info=True)
+
     # P1-17：walk_* 跳过符号链接/Junction，不越界删除外部真实文件；
     # 链接本体（unlink/rmdir 只移除链接，绝不触碰目标）单独移除以清空目录。
+    # M8：per-file 容错——单个文件删除失败（Windows 文件锁等）不中断循环，
+    # 失败清单随响应返回，绝不让已删文件在 500 里“无声”丢失上下文。
+    failed: list[dict] = []
     for p in sorted(markdown_io.walk_files(full), reverse=True):
         rel_p = p.relative_to(root).as_posix()
-        p.unlink()
+        try:
+            p.unlink()
+        except OSError as e:
+            failed.append({"path": rel_p, "error": e.strerror or str(e)})
+            continue
         # K3-I1：经索引器删除以同步扫描签名（直接 store.delete_file 会让
         # 下次启动 reconcile 因签名不一致退化为全量重建）
         request.app.state.indexer.delete_file(rel_p)
     for link in sorted(markdown_io.walk_links(full), reverse=True):
-        markdown_io.unlink_link(link)
+        try:
+            markdown_io.unlink_link(link)
+        except OSError:
+            failed.append({"path": link.name, "error": "链接移除失败"})
     for d in sorted(markdown_io.walk_dirs(full), reverse=True):
         try:
             d.rmdir()
         except OSError:
             pass  # 非空（理论不可达：文件已全部删除）或已被删除
+    removed = True
     try:
         full.rmdir()
     except OSError:
-        # 目录内残留（如并发写入）：回滚语义——保持现状并上报
+        removed = False  # 目录内残留（如并发写入 / 上一步删除失败）
+    if failed:
+        # M8：有失败 → 200 + 失败清单（保留既有 204 契约只在全部成功时使用）
+        return JSONResponse(
+            status_code=200,
+            content={"deleted": dir_rel if removed else None, "removed": removed, "failed": failed},
+        )
+    if not removed:
+        # 无失败却删不掉目录（并发写入）：保持原 409 语义
         raise HTTPException(status_code=409, detail="目录未完全清空，请重试")
-    # 目录删除：不留自身索引记录（indexer.delete_file 已清理子文件）
+    # 全部成功：保持 204（既有契约不变）
+    return Response(status_code=204)
 
 
 # ---------- document ----------
@@ -352,18 +438,26 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
     full = _guard_rel(root, rel)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文档不存在")
-    if _top_of(rel) not in (config.DIR_ARTICLES, config.DIR_MODULES):
+    # ★ M1：顶层判定必须用**归一化后**的路径（F8 对齐）。原实现用未归一化的
+    #   原始串 `_top_of(rel)`：`Articles/../Attachments/images/x.png` 会被误判为
+    #   Articles 而通过「仅支持重命名文档」校验 → 实际改名被引用附件、引用断裂。
+    norm_parts = full.relative_to(root).parts
+    if norm_parts[0] not in (config.DIR_ARTICLES, config.DIR_MODULES):
         raise HTTPException(status_code=400, detail="仅支持重命名 Markdown 文档")
-    new_name = body.new_name.strip()
-    if not new_name or "/" in new_name:
-        raise HTTPException(status_code=400, detail="新名称不能包含路径分隔符")
+    # ★ B3：新名称必须单组件（拒 `/` 与 `\`）+ 构造后解析级包含性断言
+    new_name = _validate_new_name(body.new_name)
     if Path(new_name).suffix.lower() not in _DOC_EXTS:
         new_name = f"{new_name}{full.suffix}"
     target = full.parent / new_name
+    _guard_rename_target(root, target)
     if target.exists():
         raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
     old_rel = full.relative_to(root).as_posix()
-    full.rename(target)
+    try:
+        full.rename(target)
+    except OSError as e:
+        # ★ B3：Windows 保留名 / 尾点尾空格 / 文件占用等 → 明确 400
+        raise HTTPException(status_code=400, detail=f"重命名失败：{e.strerror or e}")
     new_rel = target.relative_to(root).as_posix()
     _sync_after_move(request, old_rel, new_rel)
     return {"from": old_rel, "to": new_rel}
@@ -391,7 +485,8 @@ def move_path(request: Request, body: MoveBody) -> dict:
         _require_business_top(root, src)
         # P2-15：目录内附件被引用时不可移出（外部引用路径由身份相对性决定，
         # 移动目录会让全部引用失效——与删除保护一致，命中引用返回 409）
-        if src_rel.startswith(config.DIR_ATTACHMENTS + "/"):
+        # M3：顶层名判定大小写不敏感（`attachments/…` 变体不得绕过保护）
+        if _is_under_attachments(src_rel):
             refs = referencing_docs(root, prefix=src_rel)
             if refs:
                 total = sum(len(v) for v in refs.values())
@@ -403,7 +498,8 @@ def move_path(request: Request, body: MoveBody) -> dict:
         if _top_of(src_rel) not in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_ATTACHMENTS):
             raise HTTPException(status_code=400, detail="不支持移动该类型文件")
         # P2-15：被引用的附件文件不可移动/重命名（引用会失效）
-        if src_rel.startswith(config.DIR_ATTACHMENTS + "/"):
+        # M3：同样使用大小写不敏感的附件顶层判定
+        if _is_under_attachments(src_rel):
             refs = referencing_docs(root, rel=src_rel)
             if refs:
                 raise HTTPException(

@@ -179,18 +179,39 @@ def render_frontmatter(meta: dict) -> str:
     return "\n".join(lines) + "\n\n"
 
 
+def _bom_of(content: str) -> str:
+    """原文档 BOM 前缀（B1：重写 frontmatter 时必须还原，绝不丢失）。"""
+    return "\ufeff" if content.startswith("\ufeff") else ""
+
+
+def _newline_style(text: str, default: str = "\n") -> str:
+    """文本主换行风格（B1：CRLF 文档的 frontmatter 块重建不得折成 LF）。
+
+    含 CRLF 即视为 CRLF 文档；否则用默认 LF。
+    """
+    return "\r\n" if "\r\n" in text else default
+
+
 def set_meta(content: str, updates: dict) -> str:
     """更新（或新增）frontmatter 元信息，返回重写后的完整 Markdown。
 
     正文逐字节保持不变（Markdown 唯一事实源）。updates 中值为 None 的
     键会被忽略（不删除）。P2-1：含嵌套对象/注释等复杂 YAML 的旧块走
     逐键字符串手术，其余键原样保留——不再整体重渲染丢弃嵌套字段。
+    B1：保留原 BOM 与原 frontmatter 块换行风格（含闭合 --- 之后的空行），
+    避免每次保存把 BOM 丢成无 BOM、CRLF 块折成 LF（混合换行）。
     """
     if not updates:
         return content
+    bom = _bom_of(content)
     block, body = split_frontmatter_block(content)
     if block is None:
-        return render_frontmatter({k: v for k, v in updates.items() if v is not None}) + body
+        # B1：无 frontmatter 时新增块，同样还原 BOM 与原文换行风格
+        rendered = render_frontmatter({k: v for k, v in updates.items() if v is not None})
+        nl = _newline_style(content)
+        return bom + (rendered.replace("\n", nl) if nl != "\n" else rendered) + body
+    nl = _newline_style(block)
+    raw = block.splitlines(keepends=True)
     lines = block.splitlines()
     open_idx = 0
     closing_idx = _closing_dash_idx(lines)
@@ -209,11 +230,13 @@ def set_meta(content: str, updates: dict) -> str:
         if value is None or key in consumed:
             continue
         out_lines.extend(_render_key_lines(key, value))
-    # 结尾 ---（原块最后一行）
+    # 结尾 ---（原块最后一行）+ B1：闭合行的原始行尾与之后的原始字节（空行）原样还原
+    tail = ""
     if closing_idx >= 0 and lines[closing_idx].strip() == "---":
         out_lines.append("---")
-    trailing = "\n" if block.endswith("\n") else ""
-    return "\n".join(out_lines) + trailing + body
+        closing_raw = raw[closing_idx]
+        tail = closing_raw[len(closing_raw.rstrip("\r\n")):] + "".join(raw[closing_idx + 1:])
+    return bom + nl.join(out_lines) + tail + body
 
 
 def _closing_dash_idx(lines: list[str]) -> int:
@@ -285,16 +308,22 @@ def merge_frontmatter(old_content: str, new_content: str) -> str:
     - 双方都有 → 逐行扫描旧块顶层键，其中「新块缺失」的键以原始行
       （含其嵌套子行/注释）原样插回新块的结束 --- 之前；
     - 旧内容无 frontmatter → 原样返回新内容。
+
+    B1：重建分支还原**原（磁盘）文档**的 BOM 与原 frontmatter 块换行风格。
+    WYSIWYG 保存载荷的 frontmatter 块由前端重新渲染（LF），若直接
+    `splitlines()` + `"\\n".join()` 重建，带 BOM/CRLF 的文档首次保存即永久
+    丢 BOM 并产生混合换行；只做字节保真，不改合并语义。
     """
     if not new_content:
         return new_content
+    bom = _bom_of(old_content)
     old_block, _ = split_frontmatter_block(old_content)
     new_block, new_body = split_frontmatter_block(new_content)
     if old_block is None:
         return new_content
     if new_block is None:
-        # 旧块（含尾部换行）原样前置，正文是 new_content 本身
-        return old_block + new_body
+        # 旧块（含尾部换行）原样前置，正文是 new_content 本身；B1：还原原 BOM
+        return bom + old_block + new_body
     old_groups = _raw_top_level_lines(old_block)
     new_keys = {g[0].split(":", 1)[0].strip() for g in _raw_top_level_lines(new_block)}
     missing_lines: list[str] = []
@@ -310,12 +339,15 @@ def merge_frontmatter(old_content: str, new_content: str) -> str:
         if lines[i].strip() == "---":
             close_idx = i
             break
+    # B1：块换行风格取原（磁盘）文档的块，使 CRLF 文档保存后仍为 CRLF
+    nl = _newline_style(old_block)
     if close_idx is None:
         # 理论上不可达（块以 --- 结尾），防御性兜底：直接在块后追加
-        return new_block.rstrip("\r\n") + "\n" + "\n".join(missing_lines) + "\n" + new_body
-    trailing = "\n" if new_block.endswith("\n") else ""
-    assembled = "\n".join(lines[:close_idx] + missing_lines + lines[close_idx:]) + trailing
-    return assembled + new_body
+        tail = nl if new_block.endswith("\n") else ""
+        return bom + new_block.rstrip("\r\n") + nl + nl.join(missing_lines) + tail + new_body
+    trailing = nl if new_block.endswith("\n") else ""
+    assembled = nl.join(lines[:close_idx] + missing_lines + lines[close_idx:]) + trailing
+    return bom + assembled + new_body
 
 
 def parse_tags(meta: dict) -> list[str]:
@@ -431,7 +463,16 @@ def atomic_write(path: Path, content: str) -> None:
 
 
 def read_text(path: Path) -> str:
-    return Path(path).read_text(encoding="utf-8")
+    """读取 Markdown 文本（**逐字节**：保留 BOM 与 CRLF 原样）。
+
+    B1：Python 默认的通用换行会把 CRLF 静默折成 LF。保存合并/元信息手术/历史
+    恢复/导出这些需要字节保真的路径若用默认读法，原文件的换行风格在“读”这一
+    步就已丢失（写回时无论怎么还原都拿不到 CRLF）——这正是 `PUT /articles/{id}`
+    与 `PUT /articles/{id}/meta` 把整篇 CRLF 文档 LF 化的另一半根因。
+    统一改为 `newline=""`；解析侧一律用 splitlines()/正则，不受影响。
+    """
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        return f.read()
 
 
 def safe_rel_path(root: Path, rel: str) -> Optional[Path]:

@@ -542,19 +542,18 @@ def test_p215_delete_dir_with_referenced_attachment_409(client):
 
 # ---------- P2-16 ----------
 
-def test_p216_token_enforced(client, monkeypatch):
-    import app.main as main_mod
+def test_p216_token_feature_removed(client, monkeypatch):
+    """M7（发布前审查）：KE_API_TOKEN 半成品已移除——设置 token 不再拦截请求。
+
+    原实现启用后 OPTIONS 预检 401 + 前端从不发送该头 = 全功能不可用；现中间件
+    只保留「未打开工作区 409」职责，不再读取 config.API_TOKEN。
+    """
     from app import config
 
     monkeypatch.setattr(config, "API_TOKEN", "secret-token")
-    # 测试服务已启动，middleware 读 config.API_TOKEN（模块导入时绑定在闭包里吗？
-    # require_workspace 引用 config 模块全局 → 重新请求生效）
-    r = client.get("/api/health")
-    assert r.status_code == 200  # 健康检查豁免
+    assert client.get("/api/health").status_code == 200  # 健康检查
     r = client.get("/api/workspace/current")
-    if r.status_code == 401:
-        r2 = client.get("/api/workspace/current", headers={"X-KE-Token": "secret-token"})
-        assert r2.status_code == 200
+    assert r.status_code == 200, f"token 已移除，不应再被 401 拦截: {r.status_code}"
 
 
 def test_p216_host_whitelist(client):

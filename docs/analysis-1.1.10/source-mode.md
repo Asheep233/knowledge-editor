@@ -95,6 +95,12 @@ frontend/src/editor/export-actions.ts     无 saveArticle/updateArticle 调用�
 
 ## 4. 保真风险（最重要）
 
+> ⚠️ **本节数字已过期（2026-09-19 重测）**：下方 `EXACT=0 / TRAILING=19 / CHANGED=22` 测于 v1.2.0 保真修复**之前**。
+> 在 `0d91833` 用同一口径 + 当前生产扩展栈重测 = **`EXACT=0 / TRAILING=24 / CHANGED=17`**（5 条转为语义等价：任务列表、
+> 行内 HTML、HTML 实体、BOM/traits、行尾两空格）。详见 `docs/verification-fidelity-fixes-120.md` §6（含两条方法学注记：
+> 该矩阵是**正文级**口径、不含 traits；引用须注明 HEAD/时刻/扩展栈版本）。**结论不变**：仍有 17/41 会被设计内规范化
+> → 源码模式必须**字符串直存**。
+
 ### 4.1 实测矩阵：41 个构造成分经「加载口径 → PM → 序列化」
 
 口径 = `stripFrontmatter` → `normalizeGfmFootnotes` → `setContent(markdown)` → `getMarkdown()`；比较采用项目 `fidelity-regression.test.ts` 同款「行尾换行不计差」归一化。

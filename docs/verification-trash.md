@@ -89,3 +89,77 @@
 - **未覆盖**：并发删除同一文档、多进程同时写 `Trash/`、`Trash/` 被外部工具批量修改后的行为。
 - **范围外**（契约 §8 明确排除）：自动清理/保留策略、保留天数设置项、文件夹与附件的回收站、
   回收站内容预览、恢复撤销、任何正文引用重写。
+
+---
+
+## 6. 独立复跑与最终判定（`verifier-trash` 本人执行 · 2026-09-20 · HEAD `fff59cd`/`1cde79b`）
+
+> 本节由**用例作者本人**在**当前 HEAD** 上执行，用于闭合 §0/§5 记录的「执行独立性降级」缺口：
+> **用例设计 + 执行 + 判定现在同属非开发者一方**，且**不 import 任何 trash 实现模块**。
+
+### 6.1 冻结锚点（跑前/跑后一致）
+| 项 | sha256 |
+|---|---|
+| HEAD | `fff59cd`（后 `1cde79b` docs-only）；回收站后端文件自 `ff7e9b8` 起未再变动 |
+| `backend/app/services/trash.py` | `c647cc15609b47e67c688caf3810de3c38fc5fdec16016c5da8aa55064f0fda5` |
+| `backend/app/routers/trash.py` | `56ebbddac67cf3286e08ff719f37acceef59212ed2946ea4cc5b8cd16c469998` |
+| `backend/tests/test_trash_verify.py`（本套件） | `73427719e8ae3a4215f84a5ed159fdf531a262edcf08dcdaa13c95d5eda44aee` |
+
+### 6.2 实际命令与实际输出
+```text
+$ cd backend && python3 -m pytest -o addopts="" -q -p no:warnings tests/test_trash_verify.py --tb=line
+120 passed in 4.15s        # HEAD 946bb02
+
+$ cd backend && python3 -m pytest -o addopts="" -q -p no:warnings tests/test_trash_verify.py --tb=line
+120 passed in 7.81s        # HEAD 090726f
+
+# F-1…F-5 失败模式锚点（6 例）
+$ python3 -m pytest ... -k "dedup_cap or symlink_entry or symlink_dir_inside or handmade_entry or entry_id_collision or path_param_naming"
+6 passed, 114 deselected in 2.41s
+
+# 全量后端
+$ python3 -m pytest -o addopts="" -q -p no:warnings
+735 passed, 6 skipped in 36.07s   # HEAD 945179f
+735 passed, 6 skipped in 30.71s   # HEAD 090726f
+735 passed, 6 skipped in 38.33s   # HEAD 1cde79b（最终；741 collected，含 task-46 的 62 例）
+```
+
+> 注：§1 表中的 `450 passed + 2 skipped` 是 `ff7e9b8` 时代的**历史数字**（当时仓库规模）；
+> 当前 HEAD 的实测为 **735 passed + 6 skipped**（含本套件 120 例与 task-46 的 62 例），较立项基线 314+2 只增不减。
+**判定：PASS（120/120；F-1…F-6 全部转 PASS）。**
+
+### 6.3 「套件有牙齿」的控制组证据
+在 `/tmp` 后端副本（`ctl2`，11:06:07 快照，**早于修复** `ff7e9b8` 11:18:24）上跑同一套件：
+```text
+6 failed, 114 passed in 8.22s
+ - 去重上限耗尽：未捕获 FileExistsError（F-1）
+ - purge 符号链接 entry：未捕获 OSError（F-2）
+ - 符号链接 entry restore：200（F-3）
+ - 手工 entry `Attachments/evil.md`：恢复成功 200（F-4）
+ - 路径模板 `{entry_id}` ≠ 契约 `{id}`（F-6）
+ - 同秒两次删除 → 实际 1 个 entry（F-5）
+```
+6 条红与 §3 表中 6 处缺陷**一一对应** → 断言确实能捕获真实缺陷，非空转。
+
+### 6.4 假红留痕（方法学教训，Lead 要求）
+| 快照 | 拷贝时刻 | 状态 | 与修复的关系 |
+|---|---|---|---|
+| `/tmp/ke-verify-ctl` | 09-15 **11:03:38** | `trash.py` 6161 B，0 处加固（MVP 初版） | **早于** `ff7e9b8`（11:18:24） |
+| `/tmp/ke-verify-ctl2` | 09-15 **11:06:07** | 6788 B，仅 `_PROTECTED_TOP`；无 `is_doc_rel` / 无撞号检查 / 无 409 映射 | **早于** `ff7e9b8` |
+| 当前工作树 | 2026-09-20 | 已含 `ff7e9b8` 全部加固 | 120/120 PASS |
+**教训**：验证快照必须钉 commit + sha + 时刻，否则「已修」会被报成「现网缺陷」（我最初 6 条红的根因）。
+
+### 6.5 低优先级观察（非 FAIL）
+`backend/tests/test_openapi_snapshot.py` 文件头注释（:9）仍写 `DELETE /api/trash/{entry_id}`，
+而 `SNAPSHOT_PATHS`（:47）已是 `/api/trash/{id}` —— 注释与基线文本不一致，建议同步。
+
+### 6.6 本节的未验证项（沿用并补充 §5）
+- **Windows/NTFS 真机语义**仍未验证：全部证据来自 WSL/Linux（pytest + TestClient）；
+  `os.symlink`/junction、大小写不敏感 FS 下的恢复冲突（`X.MD` vs `x.md`）需真机另测。
+- **崩溃/断电时序**未验证：C3 原子性仅以 **inode 不变** 作行为代理（rename 保留 inode）。
+- **多进程并发删除**未压测：撞号用例是「冻结时间 + 冻结 token」的确定性构造，非自然概率复现。
+- **GUI 端到端**未验证（回收站面板点选）：由 task-7 侧测试与 Lead 真机验收覆盖。
+- **性能曲线**未量化：数千条 entry 的 `GET /api/trash` 遍历成本未测。
+
+**最终判定（本节）：PASS。** 归属：F-1…F-6 均**本功能引入**、已修复并被本节独立复跑确认；
+C1…C6 不变量与契约一致性实测通过；既有系统行为无回归（全量 `735 passed + 6 skipped`，基线 314+2）。

@@ -63,6 +63,25 @@
 2. **EXP-1**：KE 导出丢源 frontmatter 键（既有）→ 单文件已修并复验 PASS，文档包路径修复中。
 3. **流程失误（Lead）**：给 `shortcuts.ts` 冻结 sha 的同一时间派出了会改同一文件的 task-35 → 验证方 S 组红、旧结论作废。教训：**冻结 sha 不得发给「同时有在飞写任务」的文件**；此后按「写任务全部落地 → 一次冻结 → 一次验证」执行。
 
-**已知偏差（`document-format.md` §2.6 D-1/D-2/D-3 + backlog EDGE-1）**：混合列表 tight→loose（D-1，可选修，需自定义列表序列化）、标准标签嵌套未知标签（D-2）、语义等价字节变化（D-3）、空 frontmatter 区块不被识别（EDGE-1）。**均待主理人决定是否排期**。
+**已知偏差**：D-1/D-2/EDGE-1/ADD-1/ADD-2 **全部已修**（见 §6）；D-3 保持现状；D-4（混合 EOL）、D-5（嵌套顺序）已声明。
 
 **打包前置（等主理人发话，当前刻意不做）**：`bump-version.mjs 1.2.0-pre.1` → 前端构建 → 侧车重建（版本串必须同步）→ NSIS → manifest → tag/预发布。
+
+## 6. pre.2 执行状态（2026-09-20 快照 · 已发布）
+
+| 任务 | 内容 | 状态 |
+|---|---|---|
+| task-39/40 | **D-1 混排列表 / D-2 嵌套未知标签 / EDGE-1 空 frontmatter** + 追加 ADD-1（两条内容丢失）/ADD-2（有序任务项）/ADD-4（过度收紧回归） | ✅ 完成 + 独立验证（47 例，报告 `verification-fidelity-fixes-120.md`） |
+| task-41/42 | **源码模式 MVP**（视图切换 + textarea 原文 + 字符串直存 + 提示 + 单视图排他） | ✅ 完成 + 独立验证（49 例，报告 `verification-source-mode.md`） |
+| — | SRC-1 源码模式初值落后（独立验证发现的内容丢失） | ✅ 已修并复验 |
+| — | U+200B 静默删除（独立验证发现） | ✅ 已修（开关默认 true） |
+| — | D-4 混合 EOL / D-5 嵌套顺序 | **已声明**（§6.2.1 / §2.6），不修 |
+
+**发布**：`v1.2.0-pre.2` Pre-release（2026-09-20T03:17:28Z）· 安装包 50,792,339 B sha `1fb969fc…` · 侧车 46,203,171 B sha `88019566…`
+**门禁**：pytest 630+2 · tsc 0 · vitest **56 files / 1095 passed + 1 skipped** · cargo 20
+**GUI 验收（Lead 亲跑）**：版本横幅一致、标签栏正常、设置页高亮四态全对、**源码模式端到端**（切源码 → 原文 + frontmatter 隐藏 → 追加两行 → 自动保存 → 磁盘逐字节差异仅那两行 → 切回正文恢复）
+**规范/契约**：`document-format.md` §2.6（含 D-4/D-5）+ §6/§6.2.1/§6.2.2；`markdown-extension-spec.md` P2 澄清；`design-1.2.0-source-mode.md`
+
+**三步走进度**：① `1.2.0-pre.1` ✅ → ② `1.2.0-pre.2` ✅ → ③ **大规模全量审查（不由 Lead 做）** → `1.2.0` 正式版
+
+**下次发布前置**：`bump-version.mjs` → 前端构建 → 侧车重建（版本串同步）→ NSIS → manifest → tag/Release（预发布带 `--prerelease`，正式版另附 `--latest`）；打包前建议先在打包版上跑一遍 GUI 验收（本轮脚本化做法见 CHANGELOG_DEV.md 对应的 pre.2 记录）。

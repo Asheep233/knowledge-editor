@@ -161,9 +161,8 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
 /// 同模块内 `#[tauri::command]` + `generate_handler!` 会触发 `__cmd__*` 宏重名（E0255）。
 #[tauri::command]
 pub fn reload_main_window(app: AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.reload();
-    }
+    // R-4：委托给 lib 侧（内置幂等守卫，避免与前端的回调各重载一次）。
+    crate::reload_main_window_now(&app);
 }
 
 /// **退出第二阶段**：隐藏主窗口 → 后台清理 sidecar → 退出。

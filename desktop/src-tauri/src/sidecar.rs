@@ -364,6 +364,9 @@ fn spawn_sidecar(
             // P2-19：健康检查失败时应整树停止（PyInstaller onefile 中 bootloader 会再拉起子进程，
             // 只杀 child 会留下孤儿进程），改按 PID 树 kill。
             let _ = kill_tree(child.pid());
+            // R-3 补：健康握手失败已整树杀掉 → 清零登记 PID（与 :336/:435 对齐，
+            // 避免三次启动全失败后残留一个已死 PID）。
+            SPAWNED_PID.store(0, Ordering::SeqCst);
             // 读取 stderr 后 30 行用于诊断（事件循环刚启动，直接从 rx 短暂读取）
             let mut stderr_lines = Vec::new();
             while let Ok(event) = rx.try_recv() {

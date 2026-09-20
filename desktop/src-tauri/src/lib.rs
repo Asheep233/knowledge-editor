@@ -20,6 +20,11 @@ static CLOSE_REQUESTED: AtomicBool = AtomicBool::new(false);
 /// —— 这样「窗口在兜底窗口内被重新激活（单实例 show）」即可取消待定退出，不会丢掉刚回来的输入。
 static CLOSE_GENERATION: AtomicU32 = AtomicU32::new(0);
 
+/// R-4（独立验证发现）：**重新加载幂等守卫**。否则「前端 flush 完后回调重载」与
+/// 「1.5s 无守卫兜底」会各重载一次（双重重载），而第 2 次重载会直接销毁重载#1 之后
+/// 用户已输入的未落盘内容 —— 正是 R-1 想堵的丢内容族。
+static RELOAD_DONE: AtomicBool = AtomicBool::new(false);
+
 /// B2（发布前全面审查修复）：**统一的退出握手**。
 ///
 /// 首次调用：隐藏主窗口 → 通知前端 flush 未决保存（`ke:close-requested`）→ 启动 1.5s 兜底强退，
@@ -58,12 +63,24 @@ pub fn cancel_pending_exit() {
 /// R-1：重新加载握手 —— 先通知前端 flush 未决保存，由前端回调 `reload_main_window`；
 /// 1.5s 兜底（不依赖前端）保证刷新不会卡住。
 pub fn begin_reload_handshake(app: &AppHandle) {
+    RELOAD_DONE.store(false, Ordering::SeqCst);
     let _ = app.emit("ke:reload-requested", ());
     let app_handle = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(1500));
-        menu::reload_main_window(app_handle);
+        // R-4：只有「前端还没重载过」时才兜底重载（swap 兼作互斥）。
+        if !RELOAD_DONE.swap(true, Ordering::SeqCst) {
+            reload_main_window_now(&app_handle);
+        }
     });
+}
+
+/// R-4：真正执行重载（前端回调与兜底线程都走这里，先置位保证**只重载一次**）。
+pub fn reload_main_window_now(app: &AppHandle) {
+    RELOAD_DONE.store(true, Ordering::SeqCst);
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.reload();
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

@@ -5,7 +5,7 @@
 
 ---
 
-你是 **KnowledgeEditor 的主协调 agent**。知识库是本地优先的个人知识创作软件（Tiptap 编辑器 × Markdown 唯一事实源 × 可复用模块系统），当前处于 **v1.1.1-pre.1（Alpha 测试期 · 预发布）**。
+你是 **KnowledgeEditor 的主协调 agent**。知识库是本地优先的个人知识创作软件（Tiptap 编辑器 × Markdown 唯一事实源 × 可复用模块系统），当前处于 **v1.2.0-pre.2（预发布；Latest 正式版为 v1.1.9）**。
 
 ## 0. 你的工作空间（就地，无需克隆）
 
@@ -17,10 +17,10 @@
 
 ## 1. 第一步必读（按顺序）
 
-1. `docs/agent-handoff-v1.1.0.md` — **交接文档**：状态基线 / 拍板决策 / 环境坑 / 发布剧本 / backlog
-2. `docs/backlog-1.1.x.md` — 延后项（K3-I1/I2/T1/B1）
+1. `docs/agent-handover-v1.2.0-pre.2.md` — **交接文档（最新，先读这份）**：状态基线 / 三步走进度 / 文档地图 / 环境坑 / 流程规矩；历史版本见 `agent-handover-v1.1.8.md`、`agent-handoff-v1.1.0.md`
+2. `docs/backlog-1.1.x.md` — 裁决记录 + 收口状态表（15 项）
 3. `docs/tauri-build-env-notes.md` — **构建环境备忘**（WSL symlink 坑与 NSIS 方案）
-4. `docs/reports/knowledge-editor-v1.1.0-pre.1-审查总汇报.md` — K3 对抗式审查结论
+4. `docs/design-1.2.0-plan.md` — 1.2.0 三步走 + 11 条裁决 + 执行状态；`docs/document-format.md` — D 层规范（§2.6 保真契约 / §6 编辑通道与视图）
 5. `tools/README.md` — 本机工具索引
 6. `CHANGELOG_DEV.md` / `PROJECT_STATE.md` / `README.md` — 项目状态
 
@@ -48,7 +48,7 @@
 
 ## 4. 当前状态快照（核对基线）
 
-- 版本：**1.1.1-pre.1**（七处源一致：Cargo/tauri/frontend/desktop×2/backend/version.ts/Cargo.lock）
+- 版本：**1.2.0-pre.2**（九处源一致：frontend/package{,-lock} · desktop/package{,-lock} · tauri.conf · Cargo.toml · Cargo.lock · backend/app/__init__.py · frontend/src/version.ts，用 `node scripts/bump-version.mjs` 维护）
 - git：master 已推（远程确认以 gh API 为准）；tag `v1.1.1-pre.1`
 - Release：v1.1.0（正式，四附件）/ v1.1.1-pre.1（pre，三附件：sidecar/manifest/versions，NSIS 随正式版）
 - 测试基线：前端 vitest 205 passed/1 skipped；后端 pytest 全绿；Rust 11 passed；导出专项 14 passed

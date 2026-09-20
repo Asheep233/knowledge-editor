@@ -25,6 +25,11 @@ static CLOSE_GENERATION: AtomicU32 = AtomicU32::new(0);
 /// 用户已输入的未落盘内容 —— 正是 R-1 想堵的丢内容族。
 static RELOAD_DONE: AtomicBool = AtomicBool::new(false);
 
+/// R-4b-2（独立验证发现）：**重新加载握手代数**。每次握手 +1，兜底线程捕获当时代数，
+/// 醒来时若代数已变（用户在 1.5s 内又按了一次 Ctrl+R）就放弃 —— 否则旧线程会把新一轮
+/// 握手重载一次，造成「第二次重载销毁窄窗内新输入」。
+static RELOAD_GENERATION: AtomicU32 = AtomicU32::new(0);
+
 /// B2（发布前全面审查修复）：**统一的退出握手**。
 ///
 /// 首次调用：隐藏主窗口 → 通知前端 flush 未决保存（`ke:close-requested`）→ 启动 1.5s 兜底强退，
@@ -63,21 +68,26 @@ pub fn cancel_pending_exit() {
 /// R-1：重新加载握手 —— 先通知前端 flush 未决保存，由前端回调 `reload_main_window`；
 /// 1.5s 兜底（不依赖前端）保证刷新不会卡住。
 pub fn begin_reload_handshake(app: &AppHandle) {
+    let generation = RELOAD_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     RELOAD_DONE.store(false, Ordering::SeqCst);
     let _ = app.emit("ke:reload-requested", ());
     let app_handle = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(1500));
-        // R-4：只有「前端还没重载过」时才兜底重载（swap 兼作互斥）。
-        if !RELOAD_DONE.swap(true, Ordering::SeqCst) {
+        // R-4b-2：仅当「本次握手的代数仍是当前」时才兜底（旧的兜底线程放弃）。
+        if RELOAD_GENERATION.load(Ordering::SeqCst) == generation {
             reload_main_window_now(&app_handle);
         }
     });
 }
 
-/// R-4：真正执行重载（前端回调与兜底线程都走这里，先置位保证**只重载一次**）。
+/// R-4 / R-4b-1：真正执行重载（前端回调与兜底线程都走这里）。
+/// **严格 once-only**：`swap` 失败说明已经重载过（或正在重载）→ 直接返回，
+/// 保证一次握手只重载一次，不给「第二次重载销毁窄窗内新输入」留口子。
 pub fn reload_main_window_now(app: &AppHandle) {
-    RELOAD_DONE.store(true, Ordering::SeqCst);
+    if RELOAD_DONE.swap(true, Ordering::SeqCst) {
+        return;
+    }
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.reload();
     }

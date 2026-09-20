@@ -214,3 +214,59 @@ describe('plain export：GFM 渲染验证（Typora/GitHub 等价检查）', () =
     expect(html).toContain('ke-unknown-thing')
   })
 })
+
+/**
+ * B5（审查 BLOCKER）：plain 导出的 frontmatter 判定必须与保存/导入同口径（ke.ts scanFrontmatter）。
+ *
+ * 修前（宽松正则 `/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n+)+/`）实测：
+ *   body = "---\n\n第一段\n\n---\n\n第二段\n" → `splitLeadingFm` 得 fmLines=[]、rest="第二段\n"
+ *   → **「第一段」被静默吞掉**（导出产物丢段）。
+ */
+describe('B5 · 正文以 HR 开头的文档：plain 导出零丢失', () => {
+  const HR_FIRST = '---\n\n第一段\n\n---\n\n第二段\n'
+
+  it('B5-1 正文首行 HR + 后文独立 HR：两段都必须在（修前丢「第一段」）', () => {
+    const out = plainMarkdown(HR_FIRST, {})
+    expect(out).toContain('第一段')
+    expect(out).toContain('第二段')
+  })
+
+  it('B5-2 stripKeFrontmatter 同口径：首行 HR 不被当 frontmatter 剥离', () => {
+    expect(stripKeFrontmatter(HR_FIRST)).toBe(HR_FIRST)
+  })
+
+  it('B5-3 首行 HR + 空 frontmatter 形态：内容零丢失', () => {
+    const cases: Array<[string, string[]]> = [
+      ['---\n---\n\n正文\n', ['正文']],
+      ['---\n\n正文\n', ['正文']],
+      ['---\n\n第一段\n\n---\n', ['第一段']],
+    ]
+    for (const [body, parts] of cases) {
+      const out = stripKeFrontmatter(body)
+      for (const part of parts) expect(out, JSON.stringify(body)).toContain(part)
+    }
+  })
+
+  it('B5-4 BOM / CRLF 变体：零丢失', () => {
+    const bom = `\ufeff${HR_FIRST}`
+    expect(stripKeFrontmatter(bom)).toContain('第一段')
+    expect(stripKeFrontmatter(bom)).toContain('第二段')
+    const crlf = '---\r\n\r\n第一段\r\n\r\n---\r\n\r\n第二段\r\n'
+    const out = stripKeFrontmatter(crlf)
+    expect(out).toContain('第一段')
+    expect(out).toContain('第二段')
+  })
+
+  it('B5-5 真正的 frontmatter 仍被正确剥离（不得一刀切放过）', () => {
+    const withFm = '---\ntitle: 标题\nke_version: 1\n---\n\n正文\n'
+    const out = stripKeFrontmatter(withFm)
+    expect(out).not.toContain('ke_version')
+    expect(out).toContain('title: 标题') // 保留键
+    expect(out).toContain('正文')
+  })
+
+  it('B5-6 幂等：对输出再跑一次不变', () => {
+    const once = plainMarkdown(HR_FIRST, {})
+    expect(plainMarkdown(once, {})).toBe(once)
+  })
+})

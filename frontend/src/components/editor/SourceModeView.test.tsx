@@ -96,6 +96,8 @@ const CS = vi.hoisted(() => ({
   setKeContentCalls: [] as string[],
   confirmResult: true,
   confirmMessages: [] as string[],
+  exported: [] as Array<{ text: string; filename: string }>,
+  zipped: [] as string[],
 }))
 
 vi.mock('@tiptap/react', () => ({
@@ -125,21 +127,39 @@ vi.mock('../../editor', () => ({
 }))
 vi.mock('../../settings', () => ({ getAutosaveIntervalMs: () => CS.autosaveMs }))
 vi.mock('./EditorToolbar', () => ({
-  default: (props: { viewMode?: string; viewModeDisabledReason?: string; onToggleViewMode?: () => void }) => (
-    <button
-      type="button"
-      data-testid="toggle"
-      data-mode={props.viewMode}
-      disabled={!!props.viewModeDisabledReason}
-      onClick={props.onToggleViewMode}
-    >
-      toggle
-    </button>
+  default: (props: {
+    viewMode?: string
+    viewModeDisabledReason?: string
+    onToggleViewMode?: () => void
+    exportButton?: unknown
+  }) => (
+    <>
+      <button
+        type="button"
+        data-testid="toggle"
+        data-mode={props.viewMode}
+        disabled={!!props.viewModeDisabledReason}
+        onClick={props.onToggleViewMode}
+      >
+        toggle
+      </button>
+      {(props as { exportButton?: React.ReactNode }).exportButton}
+    </>
   ),
 }))
 vi.mock('./TableBubbleMenu', () => ({ default: () => null }))
 vi.mock('./MathEditorModal', () => ({ default: () => null }))
 vi.mock('./nodeviews/MathNodeView', () => ({ MATH_EDIT_EVENT: 'ke:math-edit' }))
+vi.mock('../../editor/export-actions', () => ({
+  runExport: async (t: { blob: Blob; filename: string }) => {
+    CS.exported.push({ text: await t.blob.text(), filename: t.filename })
+  },
+  packageExportAndSave: async (_title: string, md: string) => {
+    CS.zipped.push(md)
+  },
+  keExportPayload: () => ({ blob: new Blob(['KE-WYSIWYG']), filename: 'ke.md' }),
+  plainExportPayload: () => ({ blob: new Blob(['PLAIN-WYSIWYG']), filename: 'plain.md' }),
+}))
 vi.mock('../common/PromptDialog', () => ({
   askConfirm: async (msg: string) => {
     CS.confirmMessages.push(msg)
@@ -208,6 +228,16 @@ async function renderEditor(raw: string) {
 }
 
 const toggle = (): HTMLButtonElement => container.querySelector<HTMLButtonElement>('[data-testid="toggle"]')!
+const findButton = (label: string): HTMLButtonElement | undefined =>
+  Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find((b) => b.textContent?.trim() === label)
+async function clickExportItem(label: string): Promise<void> {
+  await act(async () => {
+    findButton('导出')?.click()
+  })
+  await act(async () => {
+    findButton(label)?.click()
+  })
+}
 const puts = () => CS.requests.filter((r) => r.method === 'PUT' && r.url.includes('/api/articles/'))
 const putPayload = (): string => (puts().at(-1)?.body as { content?: string })?.content ?? ''
 
@@ -221,6 +251,8 @@ beforeEach(() => {
   CS.setKeContentCalls = []
   CS.confirmResult = true
   CS.confirmMessages = []
+  CS.exported = []
+  CS.zipped = []
   __resetViewModeForTest('wysiwyg')
   installFetch()
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -329,6 +361,33 @@ describe('B. EditorArea 源码通道（字符串直存）', () => {
     expect(CS.confirmMessages.some((m) => m.includes('非标准语法'))).toBe(true)
     // 提示后仍保存（用户确认）
     expect(puts().length).toBeGreaterThan(0)
+  })
+
+
+  it('M4 源码态三种导出均取 textarea 原文（不是进源码前的旧正文）', async () => {
+    const raw = '---\nke_version: 1\n---\n\n旧正文\n'
+    await renderEditor(raw)
+    await act(async () => {
+      toggle().click()
+    })
+    await typeInto(textarea(), '源码态新正文\n')
+
+    await clickExportItem('导出 Markdown（KE 格式）')
+    expect(CS.exported.at(-1)?.text).toContain('源码态新正文')
+    expect(CS.exported.at(-1)?.text).not.toContain('旧正文')
+
+    await clickExportItem('导出普通 Markdown (.md)')
+    expect(CS.exported.at(-1)?.text).toContain('源码态新正文')
+
+    await clickExportItem('导出文档包 (.zip)')
+    expect(CS.zipped.at(-1)).toContain('源码态新正文')
+    expect(CS.zipped.at(-1)).not.toContain('旧正文')
+  })
+
+  it('M4 对照：正文态导出仍走既有 PM 载荷（既有行为不回归）', async () => {
+    await renderEditor('---\nke_version: 1\n---\n\n正文\n')
+    await clickExportItem('导出 Markdown（KE 格式）')
+    expect(CS.exported.at(-1)?.text).toBe('KE-WYSIWYG')
   })
 
   it('B6 无文档：切换按钮禁用（只读/版本预览态不提供源码编辑）', async () => {

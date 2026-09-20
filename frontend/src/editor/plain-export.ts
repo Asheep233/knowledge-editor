@@ -11,6 +11,23 @@
  */
 
 import type { ArticleMeta } from '../types'
+import { scanFrontmatter } from './ke'
+
+const BOM = '\ufeff'
+
+/**
+ * 前导 frontmatter 扫描（B5，2026-09-20）：**与保存/导入同口径**，复用 `ke.ts` 的
+ * `scanFrontmatter`（ADD-1/EDGE-1 收紧后的判定：开块后首个有效行须 YAML 形态，闭合须独立整行）。
+ *
+ * 旧实现用一条宽松的「`---` … `---`」非贪婪正则匹配（见 task-44 B5 报告）：正文以 HR 开头时
+ * （`---\n\n第一段\n\n---\n\n第二段`）会把首段整段误判为 frontmatter 并静默丢弃。
+ * BOM 属文件级标记，扫描时剥离（偏移回填，输出不再含 BOM）。
+ */
+function scanLeadingFm(body: string): { start: number; end: number; inner: string } | null {
+  const bom = body.startsWith(BOM) ? BOM.length : 0
+  const fm = scanFrontmatter(body.slice(bom))
+  return fm ? { start: bom, end: bom + fm.blockEnd, inner: fm.inner } : null
+}
 
 export interface PlainMeta {
   /** 导出 frontmatter 的 title（省略则不写该键） */
@@ -102,9 +119,9 @@ function standardFrontmatterLines(meta: PlainMeta): string[] {
 
 /** 前导 frontmatter 块按「顶层键组」切分（删除/替换键时保持其它键逐字节）。 */
 function splitLeadingFm(body: string): { fmLines: string[] | null; rest: string } {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n+)+/.exec(body)
-  if (!m) return { fmLines: null, rest: body }
-  const lines = m[1].split('\n')
+  const fm = scanLeadingFm(body)
+  if (!fm) return { fmLines: null, rest: body }
+  const lines = fm.inner.split('\n')
   const groups: Array<{ key: string; raw: string[] }> = []
   let cur: { key: string; raw: string[] } | null = null
   for (const line of lines) {
@@ -119,7 +136,7 @@ function splitLeadingFm(body: string): { fmLines: string[] | null; rest: string 
   // 还原为「去掉闭合 --- 后」的形式：groups 逐组
   const flat: string[] = []
   for (const g of groups) flat.push(...g.raw)
-  return { fmLines: flat, rest: body.slice(m[0].length) }
+  return { fmLines: flat, rest: body.slice(fm.end) }
 }
 
 /** 移除 KE frontmatter 键后是否已标准化的判断（供 withPlainFrontmatter 合并）。 */
@@ -170,11 +187,11 @@ export function withPlainFrontmatter(body: string, meta: PlainMeta): string {
  * - 全部删除后移除整个 --- 块。
  */
 export function stripKeFrontmatter(md: string): string {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)+/.exec(md)
-  if (!m) return md
+  const fm = scanLeadingFm(md)
+  if (!fm) return md
   const keep: string[] = []
   let count = 0
-  for (const line of m[1].split('\n')) {
+  for (const line of fm.inner.split('\n')) {
     const km = /^(ke-[\w-]+|ke_[\w-]+|[A-Za-z_][\w-]*)\s*:/.exec(line)
     if (km && isDroppedFrontmatterKey(km[1])) {
       count++
@@ -182,8 +199,8 @@ export function stripKeFrontmatter(md: string): string {
     }
     keep.push(line)
   }
-  const body = md.slice(m[0].length)
-  if (count === 0) return md // 无删除项：不动 frontmatter
+  const body = md.slice(fm.end)
+  if (count === 0) return md // 无 KE 删除项：不动 frontmatter（空块亦然，键序/字节保留）
   // 剩余键是否可渲染为行内键值形式（块列表行属于上一个键，原样保留）
   const head = keep.join('\n').trim()
   if (!head) return body // 删空：移除整个 --- 块

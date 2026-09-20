@@ -514,13 +514,18 @@ describe('task-35 收口 — 真实 handler 闭包 + doc.close + 无 DOM 兜底'
     }
   })
 
-  it('task-35 C：App 两条放弃分支都调用共享 discardPending（requestOpenArticle / closeTabById）', () => {
+  it('task-35 C + task-44 B4：App 全部「放弃」分支都调用共享 discardPending', () => {
     const app = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
     expect(app).toContain('discardPending')
-    // 恰两个调用点（import 行不含括号，故统计 `discardPending(` 即为调用次数）
-    expect((app.match(/discardPending\(/g) ?? []).length).toBe(2)
+    // 5 个调用点（import 行不含括号，故统计 `discardPending(` 即为调用次数）：
+    //   ① requestOpenArticle ② closeTabById（task-35 C）
+    //   ③ switchWorkspace ④ handleCloseWorkspace ⑤ handleNewArticle（task-44 B4，工作区级三处）
+    expect((app.match(/discardPending\(/g) ?? []).length).toBe(5)
     expect(app).toContain("askConfirm('当前有未保存修改，切换将放弃这些修改，是否继续？')")
     expect(app).toContain("askConfirm('当前有未保存修改，关闭标签将放弃这些修改，是否继续？')")
+    expect(app).toContain("askConfirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？')")
+    expect(app).toContain("askConfirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？')")
+    expect(app).toContain("askConfirm('当前有未保存修改，新建将放弃这些修改，是否继续？')")
   })
 
   it('动作表完整性：每个 action id 都有真实注册点（App / EditorArea / LeftSidebar）', () => {

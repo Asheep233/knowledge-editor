@@ -47,7 +47,7 @@ function splitLines(src: string, from: number): Array<{ text: string; start: num
  *
  * @returns null = 不是 frontmatter（整篇即正文）
  */
-function scanFrontmatter(src: string): { blockEnd: number; inner: string } | null {
+export function scanFrontmatter(src: string): { blockEnd: number; inner: string } | null {
   const open = /^---[ \t]*\r?\n/.exec(src)
   if (!open) return null
   const restStart = open[0].length

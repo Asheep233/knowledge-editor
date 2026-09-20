@@ -23,6 +23,8 @@ import {
 } from '../../api/client'
 import { openMathEditorById, setKeContent, useKeEditor } from '../../editor'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
+import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
+import { slugForDownload } from '../../editor/import-export'
 import { applyDocTraits, captureDocTraits, frontmatterBlockOf, KE_VERSION, newId, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
 import { applyMathDeleteCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
@@ -704,6 +706,16 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 导出 Markdown 单文件（内容来自 Markdown Serializer，不修改原文件）
   const handleExportMarkdown = useCallback(() => {
     if (!editor || !article) return
+    // M4（审查）：源码态 textarea 不回灌 PM → 导出必须取**源码字符串**（与保存同口径），
+    // 否则导出的是进入源码模式前的旧正文。
+    if (viewModeRef.current === 'source') {
+      const md = buildSourceSavePayload(sourceBaseRawRef.current, sourceValueRef.current)
+      void runExport({
+        blob: new Blob([md], { type: 'text/markdown' }),
+        filename: `${slugForDownload(article.title)}.md`,
+      })
+      return
+    }
     // F-4/F-5：KE 导出按磁盘原文还原 BOM/换行（与「导出 vs 源文档 diff=0」口径一致）
     void runExport(keExportPayload(editor, article.title, article.content))
   }, [editor, article])
@@ -712,6 +724,15 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // 不含 ke_version 与任何 ke-* 注释（见 docs/knowledge-editor-plain-export-design.md）
   const handleExportPlainMarkdown = useCallback(() => {
     if (!editor || !article) return
+    // M4：源码态对 textarea 原文跑 plainMarkdown（同样不经过 PM）
+    if (viewModeRef.current === 'source') {
+      const md = plainMarkdown(sourceValueRef.current, metaFromArticle(article))
+      void runExport({
+        blob: new Blob([md], { type: 'text/markdown' }),
+        filename: `${slugForDownload(article.title)}.md`,
+      })
+      return
+    }
     void runExport(plainExportPayload(editor, article))
   }, [editor, article])
 
@@ -725,11 +746,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     setExporting(true)
     setExportOpen(false)
     try {
-      const fmBlock = frontmatterBlockOf(article.content)
-      const md = applyDocTraits(
-        withFrontmatter(fmBlock ? fmBlock + editor.getMarkdown() : editor.getMarkdown(), KE_VERSION),
-        captureDocTraits(article.content),
-      )
+      // M4：源码态 zip 载荷取源码字符串（与 save 同口径 buildSourceSavePayload）；
+      // 正文态保持既有 PM 序列化 + 原文 frontmatter 区块 + traits 还原。
+      const md =
+        viewModeRef.current === 'source'
+          ? buildSourceSavePayload(sourceBaseRawRef.current, sourceValueRef.current)
+          : (() => {
+              const fmBlock = frontmatterBlockOf(article.content)
+              return applyDocTraits(
+                withFrontmatter(fmBlock ? fmBlock + editor.getMarkdown() : editor.getMarkdown(), KE_VERSION),
+                captureDocTraits(article.content),
+              )
+            })()
       await packageExportAndSave(article.title, md)
     } catch (e) {
       window.alert(`导出失败：${e instanceof Error ? e.message : String(e)}`)

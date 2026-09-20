@@ -491,9 +491,16 @@ export default function App() {
   const switchWorkspace = useCallback(
     async (path: string, mode: 'open' | 'create') => {
       if (hasUnsaved && articleIdRef.current) {
-        const flushed = await flushWithTimeout(articleIdRef.current)
-        if (!flushed && !(await askConfirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？'))) {
-          return
+        const docId = articleIdRef.current
+        const flushed = await flushWithTimeout(docId)
+        if (!flushed) {
+          if (!(await askConfirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？'))) {
+            return
+          }
+          // B4（审查 BLOCKER）：用户明确放弃 → 取消未决条目 + 中止在途 PUT。
+          // 不做的后果：确认期间重新入队的 latest / 在途请求会在 root 已切换后才到达，
+          // 把 ws1 内容写进 ws2 的同相对路径文件（F02 只防了一半）。
+          discardPending(docId)
         }
       }
       try {
@@ -553,9 +560,14 @@ export default function App() {
   const handleCloseWorkspace = useCallback(async () => {
     if (hasUnsaved && articleIdRef.current) {
       // F02：关闭前先 flush 未决保存（与 switchWorkspace 同款），防跨工作区串写
-      const flushed = await flushWithTimeout(articleIdRef.current)
-      if (!flushed && !(await askConfirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？'))) {
-        return
+      const docId = articleIdRef.current
+      const flushed = await flushWithTimeout(docId)
+      if (!flushed) {
+        if (!(await askConfirm('当前文档有未保存修改，关闭工作区将放弃这些修改，是否继续？'))) {
+          return
+        }
+        // B4：放弃分支必须同时丢弃未决/在途写入（否则关闭后迟到 PUT 仍落旧 root 路径）
+        discardPending(docId)
       }
     }
     await closeWorkspace()
@@ -565,8 +577,13 @@ export default function App() {
   const handleNewArticle = useCallback(async () => {
     // P0-2：新建会替换当前文档，先处理未保存修改（flush + confirm 兜底）
     if (hasUnsaved && articleIdRef.current) {
-      const flushed = await flushWithTimeout(articleIdRef.current)
-      if (!flushed && !(await askConfirm('当前有未保存修改，新建将放弃这些修改，是否继续？'))) return
+      const docId = articleIdRef.current
+      const flushed = await flushWithTimeout(docId)
+      if (!flushed) {
+        if (!(await askConfirm('当前有未保存修改，新建将放弃这些修改，是否继续？'))) return
+        // B4：放弃分支丢弃未决/在途写入（与 requestOpenArticle / closeTabById 同一语义）
+        discardPending(docId)
+      }
     }
     const title = await askPrompt('文档标题', `新文档 ${new Date().toLocaleDateString()}`)
     if (!title) return
@@ -736,9 +753,13 @@ export default function App() {
     if (!isDesktop()) return
     let disposed = false
     const unlisteners: Array<() => void> = []
-    void import('@tauri-apps/api/event').then(async ({ listen }) => {
-      if (disposed) return
-      const un = await Promise.all([
+    // U4（审查 flaky）：Tauri 事件 API 可能不可用（Web/测试环境、运行期失败）——
+    // 该动态 import 链此前没有 catch，任何失败都会变成 **unhandled rejection**
+    // （vitest 会因此 exit 1「Errors N」即使全部用例通过）。这里吞掉并保持静默降级。
+    void import('@tauri-apps/api/event')
+      .then(async ({ listen }) => {
+        if (disposed) return
+        const un = await Promise.all([
         listen('ke-menu:new-document', () => void handleNewArticle()),
         listen('ke-menu:open-workspace', () => void handleOpenWorkspaceMenu()),
         listen('ke-menu:new-workspace', () => void handleCreateWorkspaceMenu()),
@@ -756,10 +777,11 @@ export default function App() {
         listen('ke-menu:refresh-recent', () => {
           setWsMenuOpen(true)
         }),
-      ])
-      if (disposed) un.forEach((f) => f())
-      else unlisteners.push(...un)
-    })
+        ])
+        if (disposed) un.forEach((f) => f())
+        else unlisteners.push(...un)
+      })
+      .catch(() => undefined)
     return () => {
       disposed = true
       unlisteners.forEach((f) => f())

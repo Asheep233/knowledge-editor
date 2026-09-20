@@ -2,10 +2,21 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前版本 **v1.1.7**（公式编辑体验版 · 最新正式）· 预发布 **v1.1.8-pre.1**（文件名保留原标题）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前正式版 **v1.1.9** · 预发布 **v1.2.0-pre.2**（源码模式 + 保真修复）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
+> **v1.2.0-pre.2（预发布）**：**源码模式**（在一个原生文本框里直接编辑 Markdown 原文，保存走
+> **字符串直存**——不经排版引擎，逐字节落盘；frontmatter 隐藏且原样保留；切视图自动保存；
+> 改动未知语法会提示）+ 三项保真修复（混排任务列表保持紧凑、标准标签内嵌未知标签不再丢、
+> 空 frontmatter 区块正确识别）+ 两条内容丢失修复（frontmatter 定界符曾吞正文 / 整篇变空）。
+> 见 [Releases](https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.2)。
+>
+> **v1.2.0-pre.1（预发布）**：**自定义快捷键**（设置 → 快捷键，既有键位默认零改动）· **文档标签栏** ·
+> **公式编辑光标**（行内→公式后、块级→既有段落行首）· Markdown 保真修复（任务列表 / 行内 HTML /
+> HTML 实体 / BOM / CRLF 文档换行风格 / 导出保留源 frontmatter）。
+>
+> **v1.1.9（最新正式）**：学习模块 + 附件管理 + 草稿防抖 + 回收站等（继承 v1.1.8 的 GFM 脚注、附件保留原名）。
+>
 > **v1.1.7（公式编辑体验版）**：全屏公式编辑器（模板/Tab 补全/槽位）+ 信息块块级内容 + 启动进度；继承 v1.1.6。
-> 发布后补丁（17:21 包）：图片 CSP/粘贴与拖拽修复、公式插入与撤销行为、空信息块 0 行、补全前缀、设置工作区入口、侧车孤儿、版本一致性。
 >
 > **v1.1.6（体验优化版）**：主题/编辑器/创建流打磨 + 恶性 bug 修复（见 Releases）；继承 v1.1.5。
 >
@@ -22,7 +33,7 @@
 
 ## 安装（Windows 桌面版）
 
-1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载 `AstraNota_1.1.7_x64-setup.exe`（当前正式安装包）。
+1. 从 [Releases](https://github.com/Asheep233/knowledge-editor/releases) 下载安装包：正式版 `AstraNota_1.1.9_x64-setup.exe`（Latest），或体验新版 `AstraNota_1.2.0-pre.2_x64-setup.exe`（Pre-release，源码模式）。
 2. 双击安装：安装到 `%LOCALAPPDATA%\AstraNota`，开始菜单创建快捷方式。
 3. 首次启动选择「使用已有工作区」或「创建新工作区」，即可开始写作。
 

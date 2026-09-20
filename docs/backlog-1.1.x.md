@@ -135,3 +135,23 @@
 1. **换名（stem 变化）的崩溃窗口不可自愈** —— 唯一 stem 匹配的前提不成立 → fail-safe 不动（草稿保留在磁盘，内容不丢，可手工找回）。这是「绝不猜」的直接代价。
 2. 自愈随**每次工作区激活**跑（非严格「进程一次」），以覆盖启动与运行期切库；靠幂等 + early-return 控制开销。
 3. **未做**：rename/move 的 fsync 加固（方案 B，Windows/NTFS 收益有限）与引用计数索引（方案 C，性能向、非正确性必需）。
+
+## 发布前全面审查（`docs/review-v1.2.0-pre.2-full.md`）的可延期项（2026-09-20 登记）
+
+BLOCKER B1–B5 与 M1–M8 均已修复中/已修（见该报告 §7 处置状态）；以下 MINOR 项**不阻塞 1.2.0**，登记备查：
+
+| # | 项 | 位置 |
+|---|---|---|
+| m1 | `atomic_write` 崩溃残留 `.tmp-*.md` 会被索引/显示为文档 | `markdown_io.py:416-418` + `indexer.py` |
+| m2 | title/tags 含换行可注入破坏 frontmatter 结构（正文不丢） | `markdown_io.py:226-240` |
+| m3 | `atomic_write` 缺父目录 fsync（断电场景目录项可能未持久化） | `markdown_io.py:409-430` |
+| m4 | 文档保存无乐观并发（双开 last-write-wins；有历史快照兜底） | `documents.py` |
+| m5 | 列表型 title 导入 500；导出包无大小上限；`_rewrite_refs` 只匹配三种空格变体 | `import_export.py:449/528、96-118、351` |
+| m6 | purge 对普通文件 500；watcher 自删除产事件（噪音）；`rglob` 在 ≤3.12 跟随符号链接 | `trash.py:233-238`、`fs_watch.py:130-141`、`history_store.py:147` |
+| m7 | ✅ 已修（`[profile.release] strip = true`） | `Cargo.toml` |
+| m8 | NSIS 钩子双份漂移（`desktop/` 版为死副本）；卸载器不查错误/强杀无提示 | `desktop/nsis/` |
+| m9 | 前端未监听 `ke:sidecar-exited`/`ke:runtime-error` → 后端启动失败时无根因界面 | `sidecar.rs:377-416` |
+| m10 | ✅ 已修（注释改准） | `sidecar.rs:453-481` |
+| m11 | `tools/gen-manifest.py` 硬编码路径，仓库外不可复现 | `tools/gen-manifest.py:3` |
+| m12 | 深色主题完整适配未实现（已知声明项） | 全局 |
+

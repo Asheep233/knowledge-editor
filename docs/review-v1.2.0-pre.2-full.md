@@ -183,3 +183,29 @@ splitLeadingFm(body) → fmLines: [], rest: "第二段\n"   // 「第一段」�
 - **设置系统**：白名单三处同步有守门测试、深合并对齐、原子保存、BOM 兼容；
 - **CSP / capabilities / 单实例 / 崩溃风暴防护 / bump-version.mjs**；
 - **附件上传**：净化 + 白名单 + resolve 二道防线 + O_EXCL 防竞态覆盖 + SVG 强制下载。
+
+---
+
+## 7. 处置状态（Lead 维护 · 2026-09-20 起滚动更新）
+
+| 项 | 处置 | 证据 |
+|---|---|---|
+| **B1** BOM/CRLF 字节损坏 | ✅ 已修（`dc4f99e`）· 待 verifier-s2 复核 | 首因 = 重建分支 `splitlines/join`；**第二根因（报告未列）= `read_text` 通用换行读把 CRLF 在读时折成 LF** → 改 `newline=""` 逐字节读。实测 `/articles` 与 `/meta` 两条路径均恢复「原 BOM + 原 CRLF + 原 title + 新正文」 |
+| **B2** 菜单退出绕过 flush 握手 | ✅ 已修（`73d48b9`）· 待 verifier-trash 静态核验 + Lead 真机验证 | 抽出 `begin_close_handshake`，关窗与菜单退出共用；`MID_EXIT` 不再直接 `request_exit` |
+| **B3** rename 反斜杠穿越 | ✅ 已修（`dc4f99e`）· 待复核 | 全平台拒 `\` + `_guard_rename_target` 包含性断言 + OSError→400；实测 BEFORE 200 → AFTER 400 且源不动 |
+| **B4** 工作区级放弃分支缺 `discardPending` | 🔄 task-44 实施中（dev-trash-fe） | — |
+| **B5** plain 导出吞段 | 🔄 task-44 实施中 | — |
+| **M1** rename_doc 顶层判定 | ✅ 已修（`dc4f99e`） | `parts[0]`（F8 对齐）；BEFORE 200 真改名 → AFTER 400 |
+| **M2** 附件删除保护规范化 | ✅ 已修（`dc4f99e`） | resolve 后 canonical rel + 仅 Windows 大小写兜底；BEFORE 200 被删 → AFTER 409 |
+| **M3** 附件保护大小写 | ✅ 已修（`dc4f99e`） | `_is_under_attachments` 不敏感；Windows-only 集成断言标注 `_win_only` |
+| **M4** 源码态导出陈旧 | 🔄 task-44 实施中 | — |
+| **M5/M6** sidecar 孤儿 / 误杀 | ✅ 已修（`73d48b9`）· 待静态核验 | `SPAWNED_PID` spawn 即登记 + `SHUTTING_DOWN` 检查 + 强杀前 `is_backend_process` |
+| **M7** KE_API_TOKEN 半成品 | ✅ 已修（`dc4f99e`）· 按 Lead 决策**移除功能** | `token=secret` 时 `GET /api/tree` BEFORE 401 → AFTER 200 |
+| **M8** 目录删除无快照 | ✅ 已修（`dc4f99e`）· 契约：全成功 204 / 有失败 200 + `failed[]` | 每 `.md` 一份快照 + per-file 容错；BEFORE 首个锁文件即 500 且其余未删 → AFTER 部分成功 + 失败清单 |
+| m1–m12（MINOR） | 📋 已登记 backlog（不阻塞 1.2.0） | 见 `docs/backlog-1.1.x.md` |
+| **U1** Rust 弱验证 | ✅ 补：Windows `cargo test` **20 passed**（Lead 实跑） | — |
+| **U2** 导出四件产物字节校验 | ⏳ Lead 待修完 B5/M4 后复跑 | — |
+| **U4** 门禁 flaky | 🔄 task-44 实施中（要求连跑 3 次全绿） | — |
+| **U6** 长文档性能 | 📋 发布注记声明，未立项 | — |
+| **U7** B2 后 GUI 重验退出路径 | ⏳ Lead 待打包版真机验证（连续输入 → Ctrl+Q → 重开 → 磁盘含全部输入） | — |
+| **F-3/F-4/F-5/F-1/F-2**（回收站硬化，审查外新增发现） | 🔄 task-48（dev-attach）· F-6 由 Lead 改契约文本 | 见 task-48 |

@@ -77,6 +77,11 @@
    「窗口已隐藏但进程不退出」的假死）—— 清理必须放独立线程 + 有界预算，主线程之后**无条件** `app.exit(0)`。
 11. **`#[tauri::command]` 要放在子模块**：在 crate 根（lib.rs）定义命令又被同文件的 `generate_handler!`
    注册，会触发 `__cmd__*` 宏重名（E0255）。放进 `menu`/`settings`/`sidecar` 等子模块并用 `模块::命令` 注册。
+12b. **大块编辑面的 focus 环**：`index.css` 有一条全局 `:is(button,a,input,select,textarea):focus-visible
+   { outline: 2px solid var(--ring) !important }`（F2/K3 无障碍回退）。WebView2 下**鼠标点击也会匹配
+   `:focus-visible`** → 大块编辑面（正文编辑器、源码模式 textarea）会出现「凭空一圈蓝框」。
+   正文用 `.ke-editor-prose{outline:none}` 豁免，源码模式用新增的 `.ke-source-textarea` 同口径豁免 ——
+   **以后新增任何大块编辑面都要按此豁免**（用户对这类视觉问题很敏感，已两次回报）。
 12. **`capabilities/*.json` 必须是纯 JSON**（不能有 `//` 注释）——含注释会让 `tauri-build` 直接 panic；
    而 `rebuild-nsis.sh` 的 tail 输出**会掩盖**这类失败：**构建后务必核对产物大小/资源名变化**，
    并确认 GUI 已关闭（否则 `tauri-build` 报 PermissionDenied 静默失败，容易拿旧产物当新构建验证）。

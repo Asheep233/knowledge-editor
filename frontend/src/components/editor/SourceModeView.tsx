@@ -86,7 +86,7 @@ export default function SourceModeView({
         aria-label="Markdown 原文"
         data-testid="source-textarea"
         placeholder="在此直接编辑 Markdown 原文…"
-        className="ke-scroll mx-auto min-h-0 w-full max-w-[780px] flex-1 resize-none bg-background px-[32px] py-3 font-mono text-[13px] leading-[1.6] text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        className="ke-scroll ke-source-textarea mx-auto min-h-0 w-full max-w-[780px] flex-1 resize-none bg-background px-[32px] py-3 font-mono text-[13px] leading-[1.6] text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-60"
         style={{ tabSize: 2 }}
       />
     </div>

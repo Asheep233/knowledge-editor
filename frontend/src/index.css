@@ -112,6 +112,14 @@ body {
   outline-offset: 2px !important;
 }
 
+/* 2026-09-22（用户实测：「源码模式点击后外面出现边框」，与 F2 当年记录的同类问题）：
+   源码模式 textarea 是**整块编辑面**，与正文编辑器同性质 —— 鼠标点击聚焦不该出现全局 focus 环。
+   WebView2 下鼠标点击也会匹配 :focus-visible，因此这里按类名显式豁免（与 .ke-editor-prose 同口径）。 */
+.ke-source-textarea:focus,
+.ke-source-textarea:focus-visible {
+  outline: none !important;
+}
+
 /* 滚动条 */
 *::-webkit-scrollbar {
   width: 8px;

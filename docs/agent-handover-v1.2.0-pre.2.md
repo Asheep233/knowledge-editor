@@ -14,7 +14,7 @@
 |---|---|
 | 仓库 | `F:\Work\KE Project\knowledge-editor`（WSL: `/mnt/f/Work/KE Project/knowledge-editor`）· 分支 `master` |
 | 远端 | https://github.com/Asheep233/knowledge-editor |
-| 当前版本 | `1.2.0-pre.2`（9 处版本源一致，`node scripts/bump-version.mjs <ver>` 维护） |
+| 当前版本 | `1.2.0-pre.3`（发布前全面审查 B1-B5/M1-M8/U4 修复 + 对抗验证 R-1…R-4b + 真机发现的退出挂死与 Ctrl+Q 加速键问题；`node scripts/bump-version.mjs <ver>` 维护） |
 | 最近发布 | `v1.2.0-pre.2`（Pre-release，2026-09-20T03:17:28Z，四附件）· `v1.2.0-pre.1`（Pre-release）· `v1.1.9`（Latest 正式版） |
 | 应用安装位置（主理人机器） | `D:\AstraNota`（覆盖安装即可，数据目录 `%APPDATA%\KnowledgeEditor` 与工作区 `C:\Users\y8882\Documents\KE workspace` 不受影响） |
 | 门禁基线（**任何改动不得低于**） | pytest **630 passed + 2 skipped** · tsc **0** · vitest **56 files / 1095 passed + 1 skipped**（+ 待实现的 verifier todo）· cargo **20** |
@@ -67,6 +67,19 @@
 6. **frontmatter**：`stripFrontmatter`/`frontmatterBlockOf`/`withFrontmatter` 三函数必须**行为一致**（共享 `scanFrontmatter` 行扫描）；开块判定要容忍首行空行与顶层序列，同时不得把「行首 HR + 正文 + 行尾 HR」当 frontmatter（否则**整篇丢失**，历史真事故）。
 7. **验证要冻结**：给验证方 sha 前确认**没有在飞写任务会碰同批文件**；否则验证结论作废（已踩过）。
 8. **文本默认规则**：`window.alert`/`askConfirm` 等对话框在自动化下不可点，验收脚本要么避开要么用 CDP 处理。
+9. **WebView2 焦点下原生菜单加速键可能不送达**（2026-09-20 真机发现，用户报「Ctrl+Q 没反应」）：
+   原生菜单（muda）定义的 `Ctrl+Q`/`Ctrl+R` 在 WebView 获得焦点时**不保证**触发 `on_menu_event`；
+   `Ctrl+R` 还会被 WebView2 当**浏览器加速键**自行刷新（看起来"正常"，实则跳过我们的 flush 握手，
+   会丢尾部防抖内容）。**结论：桌面壳的全局快捷键必须在 WebView 层再兜一层**
+   （见 `frontend/src/desktop.ts::setupNativeShortcutFallback` → `invoke('app_request_exit'|'app_request_reload')`，
+   与菜单共用同一个 Rust 握手函数）。
+10. **退出路径禁止同步阻塞调用**：`cleanup_on_exit` 里**不要**放 PowerShell/WMI 查询（曾导致
+   「窗口已隐藏但进程不退出」的假死）—— 清理必须放独立线程 + 有界预算，主线程之后**无条件** `app.exit(0)`。
+11. **`#[tauri::command]` 要放在子模块**：在 crate 根（lib.rs）定义命令又被同文件的 `generate_handler!`
+   注册，会触发 `__cmd__*` 宏重名（E0255）。放进 `menu`/`settings`/`sidecar` 等子模块并用 `模块::命令` 注册。
+12. **`capabilities/*.json` 必须是纯 JSON**（不能有 `//` 注释）——含注释会让 `tauri-build` 直接 panic；
+   而 `rebuild-nsis.sh` 的 tail 输出**会掩盖**这类失败：**构建后务必核对产物大小/资源名变化**，
+   并确认 GUI 已关闭（否则 `tauri-build` 报 PermissionDenied 静默失败，容易拿旧产物当新构建验证）。
 
 ## 6. 流程规矩（沿用，别省）
 

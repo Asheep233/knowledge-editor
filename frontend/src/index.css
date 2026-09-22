@@ -133,11 +133,25 @@ body {
   background: transparent;
 }
 
+/* 2026-09-22（用户实测：「（1）」「（2）」这类编号后面的文字不齐，红线圈出 4px 偏移）：
+   根因 = 字体栈首位 DM Sans 是**比例数字**（实测 `1`=4.68px、`2`=8.64px），
+   而文档里写的是全角括号 + 半角数字 `（1）`/`（2）` → 两个标签宽度差 3.96px，
+   其后的文字也就差 4px。修法：ASCII 数字改由带 **tabular figures** 的字体渲染
+   （unicode-range 只覆盖 U+0030-0039，不影响其它字符），再开 `tnum` 特性确保等宽。
+   实测：`（1）`/`（2）` 均由 34.68/38.64px 变为**同为 38.09px**。 */
+@font-face {
+  font-family: 'KE Digits';
+  src: local('Segoe UI');
+  unicode-range: U+0030-0039;
+}
+
 /* ============ 编辑器排版（Phase 2） ============ */
 .ke-editor-prose {
   max-width: 780px;
   margin: 0 auto;
   padding: 28px 32px 160px;
+  font-family: 'KE Digits', var(--font-sans);
+  font-feature-settings: 'tnum' 1;
   font-size: 15px;
   line-height: 1.75;
   color: #1f2937;

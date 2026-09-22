@@ -2,7 +2,31 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-09-20（**v1.2.0-pre.2 预发布**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.2）
+> 最后更新：2026-09-22（**v1.2.0-pre.3 预发布 · 发布前全面审查修复版**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.3）
+
+## 2026-09-22（★ v1.2.0-pre.3 预发布 · 全量审查修复）
+
+类型：Pre-release（三步走第 2 步收口：审查修复 + 界面修订）
+状态：Published（Pre-release；四附件齐全；Latest 仍为 v1.1.9）
+Tag：`v1.2.0-pre.3` · commit `54ff492`
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.3（2026-09-22T03:18:48Z）
+
+**修复**：发布前全面审查（NO-GO）的 **B1-B5 + M1-M8 + U4** ——
+B1 BOM/CRLF 字节损坏（含 `read_text` 通用换行第二根因）、B2 菜单退出绕过 flush、B3 rename 反斜杠穿越、
+B4 跨工作区串写、B5 plain 导出吞段、M1-M3 引用保护绕过族、M4 源码态导出陈旧、M5/M6 sidecar 孤儿与误杀、
+M7 token 半成品移除、M8 目录删除建档+容错、U4 门禁 flaky（App 动态 import 缺 `.catch`）。
+**对抗验证新增并修复**：R-1 Ctrl+R 绕过握手、R-2 兜底退出不可取消、R-3 SPAWNED_PID 生命周期、
+R-4/R-4b 重载双刷与两处竞态。
+**真机验收发现并自修**：退出清理里同步 PowerShell/WMI 阻塞主线程 → 「窗口消失但进程与侧车不退出」；
+`capabilities` 缺 `core:window:allow-close`；WebView2 焦点下原生菜单加速键不送达（Ctrl+Q 无反应）→ 前端兜底。
+**界面（用户实测）**：标签栏移到最顶端（并修双滚动条）、源码模式说明条/编辑区与正文同列（去「神秘线条」）、
+源码模式点击不再出现 focus 外框、`.tmp-*.md` 残留不再成为文档/标签（枚举跳过 + 启动清理）。
+
+**门禁**：pytest **735 passed + 6 skipped** · tsc 0 · vitest **59 files / 1150 passed + 1 skipped**（3 连跑 exit 0）· cargo 20
+**独立验证**：后端 61 例、前端 122 例、回收站 120 例（报告 `docs/verification-review-backend.md`、`verification-review-frontend-rust.md`、`verification-trash.md`）
+**资产**：安装包 50,807,474 B sha `4adb9b04…` · 侧车 46,208,684 B sha `35ff9658…` · manifest `663e7914…` · versions `4f9d345c…`
+
+**正式版 `1.2.0` 前仍缺**：干净 Windows 首装演练（U3，清空 `%APPDATA%\KnowledgeEditor` 模拟首装）+ 导出四件产物字节校验在新版本上复跑。
 
 ## 2026-09-20（★ v1.2.0-pre.2 预发布）
 

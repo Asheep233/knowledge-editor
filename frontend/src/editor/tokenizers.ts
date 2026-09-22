@@ -23,7 +23,12 @@ export const mathInlineTokenizer = {
   start: (src: string) => src.indexOf('$'),
   tokenize(src: string): MarkdownToken | undefined {
     if (!src.startsWith('$') || src.startsWith('$$')) return undefined
-    const m = /^\$(?!\$)([\s\S]*?[^\\\s$])\$(?!\$)/.exec(src)
+    // 2026-09-22 修复（用户实测：`$\iff$$A$` 直接输入正常、**刷新后渲染成红色错误文本**）：
+    // 原闭合侧 `(?!\$)` 在「两个行内公式紧挨」时会被下一个公式的开头 `$` 顶掉 →
+    // 正则回溯把两个公式吞成一个（latex = `\iff$$A` → KaTeX 报错 → 显示原始文本）。
+    // 现改为：闭合 `$` 之后允许「紧跟另一段行内公式的开头」（`$` + 非 `$`），
+    // 仍拒绝 `$$`（块级定界符，行内不消费）。
+    const m = /^\$(?!\$)([\s\S]*?[^\\\s$])\$(?=\$[^$]|[^$]|$)/.exec(src)
     if (!m || !m[1].trim()) return undefined
     return { type: 'math_inline', raw: m[0], latex: m[1].trim(), id: '' }
   },

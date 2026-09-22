@@ -391,7 +391,8 @@ body {
   margin: 0;
 }
 .ke-math-edit-btn,
-.ke-math-del-btn {
+.ke-math-del-btn,
+.ke-math-more-btn {
   display: none;
   cursor: pointer;
   font-size: 12px;
@@ -410,10 +411,21 @@ body {
   color: #e11d48;
   border-color: #e11d48;
 }
+/* task-49：⋮ 更多按钮（互转菜单入口） */
+.ke-math-more-btn:hover {
+  color: #2563eb;
+  border-color: #2563eb;
+}
 .ProseMirror-selectednode > .ke-math .ke-math-edit-btn,
 .ProseMirror-selectednode > .ke-math .ke-math-del-btn,
+.ProseMirror-selectednode > .ke-math .ke-math-more-btn,
 .ke-math:hover .ke-math-edit-btn,
-.ke-math:hover .ke-math-del-btn {
+.ke-math:hover .ke-math-del-btn,
+.ke-math:hover .ke-math-more-btn {
+  display: inline-block;
+}
+/* 菜单打开时必须可见（鼠标移出按钮/节点后仍可点击） */
+.ke-math .ke-math-more-btn[aria-expanded='true'] {
   display: inline-block;
 }
 .ke-math-field {
@@ -697,7 +709,8 @@ body {
   background: var(--muted);
 }
 [data-theme='dark'] .ke-math-edit-btn,
-[data-theme='dark'] .ke-math-del-btn {
+[data-theme='dark'] .ke-math-del-btn,
+[data-theme='dark'] .ke-math-more-btn {
   background: var(--popover);
   border-color: var(--border);
   color: var(--muted-foreground);

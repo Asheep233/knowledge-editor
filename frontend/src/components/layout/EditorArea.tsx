@@ -28,6 +28,7 @@ import { slugForDownload } from '../../editor/import-export'
 import { applyDocTraits, captureDocTraits, frontmatterBlockOf, KE_VERSION, newId, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
 import { applyMathDeleteCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
+import { MATH_CONVERT_EVENT, convertBlockToInline, convertInlineToBlock, type ConvertRequest } from '../../editor/math/convert'
 import { getAutosaveIntervalMs } from '../../settings'
 import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
@@ -587,6 +588,31 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
     window.addEventListener(MATH_EDIT_EVENT, onReq)
     return () => window.removeEventListener(MATH_EDIT_EVENT, onReq)
+  }, [])
+
+  // task-49：公式互转请求（行内 ⇄ 行间）。NodeView 只发请求，事务在本组件（编辑器根）执行，
+  // 避免 NodeView 独立 React 根触发 PM 事务（坑 1/React #300）；只读态由命令内闸门拦下（0 事务）。
+  useEffect(() => {
+    const onConvert = (ev: Event) => {
+      const req = (ev as CustomEvent<ConvertRequest>).detail
+      const ed = editorRef.current
+      if (!ed || !req) return
+      const result =
+        req.to === 'block'
+          ? convertInlineToBlock(ed, { id: req.id, pos: req.pos })
+          : convertBlockToInline(ed, { id: req.id, pos: req.pos })
+      if (!result.ok && result.reason === 'multiline') {
+        // 非破坏性提示：多行 LaTeX 无法转为行内（文档未改动）
+        window.alert(result.message ?? '多行公式无法转为行内公式（文档未改动）。')
+        return
+      }
+      // 真机验收发现（2026-09-22）：⋮ 菜单按钮是 tabIndex=0 的 span —— 点它会把焦点从
+      // ProseMirror 拿走，命令虽然设置了 selection，但**键盘焦点仍在按钮上**，
+      // 于是用户接着按 Ctrl+Z / 打字都不生效。转完把焦点交还编辑器（selection 已由命令定位）。
+      if (result.ok) ed.commands.focus()
+    }
+    window.addEventListener(MATH_CONVERT_EVENT, onConvert)
+    return () => window.removeEventListener(MATH_CONVERT_EVENT, onConvert)
   }, [])
 
   // 文档切换：flush 上一文档的未决防抖保存（P0-2，不再丢弃输入），再重载内容。

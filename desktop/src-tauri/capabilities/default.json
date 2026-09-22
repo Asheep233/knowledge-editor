@@ -2,14 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "dialog:default",
-    // P1-14 关窗 flush 握手第二阶段：前端 flush 完成后调用 getCurrentWindow().close()
-    // 触发第二次关窗，让 Rust 走正常清理（bounded）。缺此权限时该调用被 ACL 拒绝
-    // （实测报错 `plugin:window|close not allowed by ACL`），退出只能依赖 1.5s 兜底，
-    // 且会产生一条 unhandled rejection（与 U4 同族）。
     "core:window:allow-close"
   ]
 }

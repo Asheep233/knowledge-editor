@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { invoke } from '@tauri-apps/api/core'
-import { setupCloseHandshake } from './desktop'
+import { setupCloseHandshake, setupNativeShortcutFallback } from './desktop'
 import { waitForRuntimeBase } from './state/runtimeWait'
 // DM Sans（设计稿正文字体栈首项；@fontsource 本地打包，非外链 CDN）
 import '@fontsource/dm-sans/400.css'
@@ -107,6 +107,7 @@ async function bootstrap() {
   )
   // P1-14 桌面关窗 flush 握手（仅桌面环境生效）
   void setupCloseHandshake()
+void setupNativeShortcutFallback()
 }
 
 void bootstrap()

@@ -85,3 +85,27 @@ export async function setupCloseHandshake(): Promise<() => void> {
     return () => {}
   }
 }
+
+/**
+ * 2026-09-20 真机发现：**WebView2 持有焦点时原生菜单加速键不一定送达** ——
+ * 用户实测「Ctrl+Q 没反应」（Ctrl+R 则被 WebView2 当浏览器加速键自行刷新）。
+ * 这里在 WebView 层补一条兜底：Ctrl+Q / Ctrl+R 直接调用与菜单**同一个** Rust 握手命令。
+ *
+ * 菜单项与其加速键仍然保留（焦点在 WebView 之外时照旧可用）；两条路径最终都进
+ * `begin_close_handshake` / `begin_reload_handshake`，行为一致。
+ */
+export function setupNativeShortcutFallback(): () => void {
+  if (!isDesktop()) return () => {}
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (!e.ctrlKey || e.altKey || e.metaKey) return
+    const key = e.key.toLowerCase()
+    if (key !== 'q' && key !== 'r') return
+    e.preventDefault()
+    e.stopPropagation()
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => invoke(key === 'q' ? 'app_request_exit' : 'app_request_reload'))
+      .catch(() => undefined)
+  }
+  window.addEventListener('keydown', onKeyDown, true)
+  return () => window.removeEventListener('keydown', onKeyDown, true)
+}

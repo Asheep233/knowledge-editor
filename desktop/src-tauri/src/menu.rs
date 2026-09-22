@@ -158,6 +158,22 @@ pub fn handle_event(app: &AppHandle, event: MenuEvent) {
     }
 }
 
+/// 2026-09-20 真机发现（用户报「Ctrl+Q 没反应」）：WebView2 持有焦点时原生菜单加速键
+/// 不一定送达（Ctrl+R 还会被 WebView2 当浏览器加速键自行吃掉）。故把两个握手暴露为命令，
+/// 由前端 keydown 兜底调用 —— 与菜单走**同一个函数**，行为一致；菜单加速键保留。
+#[tauri::command]
+pub fn app_request_exit(app: AppHandle) {
+    if !crate::begin_close_handshake(&app) {
+        request_exit(&app);
+    }
+}
+
+/// 见 [`app_request_exit`]：前端 Ctrl+R 兜底。
+#[tauri::command]
+pub fn app_request_reload(app: AppHandle) {
+    crate::begin_reload_handshake(&app);
+}
+
 /// R-1：重新加载主窗口（`#[tauri::command]`，供前端 flush 完成后调用）。
 ///
 /// 放在 menu 模块（而非 crate 根）是为了与其它命令一样以 `menu::` 路径注册 ——

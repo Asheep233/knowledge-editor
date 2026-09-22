@@ -90,7 +90,12 @@ export function TabBar({ tabs, activeId, dirtyId, onActivate, onClose }: TabBarP
       role="tablist"
       aria-label="打开的文档"
       data-testid="tab-bar"
-      className="flex h-8 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto scroll-smooth"
+      // 2026-09-22 用户实测：标签栏「很拥挤 + 出现意义不明的滑动条」。
+      // 根因：`overflow-x-auto` 会让 CSS 把另一轴计算成 `auto` → 横向滚动条吃掉高度后
+      // 又触发纵向滚动条（两条叠加在标签上）；且全局 `*::-webkit-scrollbar` 是粗圆角样式，
+      // 视觉上像两条灰棒。修法：显式 `overflow-y-hidden` + 隐藏本条的滚动条
+      // （标签少时用不到，多时仍可用滚轮/键盘横向滚动），并把间距放宽一档。
+      className="flex h-8 min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {tabs.map((t) => {
         const active = t.id === activeId

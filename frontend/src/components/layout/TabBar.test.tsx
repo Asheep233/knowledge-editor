@@ -189,6 +189,7 @@ describe('B. 组件渲染与交互', () => {
 
 describe('C. App/工具栏接线守卫（防只改组件不接线）', () => {
   const app = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
+  const editorArea = readFileSync(resolve(process.cwd(), 'src/components/layout/EditorArea.tsx'), 'utf8')
   const toolbar = readFileSync(resolve(process.cwd(), 'src/components/editor/EditorToolbar.tsx'), 'utf8')
 
   it('C1 App 注册 doc.next / doc.prev（项① 快捷键真实分派）且无标签时不注册', () => {
@@ -209,8 +210,15 @@ describe('C. App/工具栏接线守卫（防只改组件不接线）', () => {
     expect(app).toMatch(/<TabsContext\.Provider[\s\S]*?<AppShell/)
   })
 
-  it('C4 工具栏使用 tabBar 槽位回退到 TabBarSlot；G-2 死按钮与 prop 已删除', () => {
-    expect(toolbar).toMatch(/\{tabBar \?\? <TabBarSlot \/>\}/)
+  it('C4 Tab 栏已移到「工具栏之上」的独立行（tab-strip → TabBarSlot）；G-2 死按钮与 prop 已删除', () => {
+    // 2026-09-22 用户要求：Tab 栏从工具栏行内挪到**最顶上**单独成行 →
+    // 落位改为 EditorArea 的 `data-testid="tab-strip"`，工具栏不再渲染该槽位。
+    expect(editorArea).toContain('data-testid="tab-strip"')
+    expect(editorArea).toMatch(/<TabBarSlot \/>/)
+    // 工具栏不得再渲染 Tab 槽位（避免两处都渲染）
+    expect(toolbar).not.toMatch(/TabBarSlot/)
+    expect(toolbar).not.toMatch(/tabBar \?\?/)
+    // G-2：死按钮与 prop 已删除
     expect(toolbar).not.toContain('onOpenAttachments')
     expect(toolbar).not.toMatch(/title="附件"/)
   })

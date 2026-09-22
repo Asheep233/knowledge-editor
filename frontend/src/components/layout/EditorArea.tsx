@@ -51,6 +51,7 @@ import { Icon } from '../icons'
 import MathEditorModal from '../editor/MathEditorModal'
 import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathNodeView'
 import EditorToolbar, { stripModuleTitle } from '../editor/EditorToolbar'
+import { TabBarSlot } from './TabBar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
 
@@ -1076,6 +1077,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         </div>
       ) : article && editor ? (
         <EditorContext.Provider value={{ editor }}>
+          {/* 2026-09-22 用户要求：Tab 栏移到**最顶上**（工具栏之上），单独成行。
+              与工具栏同底色/同底边框，保持视觉连续；滚动条见 TabBar 内部处理。 */}
+          <div
+            className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-card px-2"
+            data-testid="tab-strip"
+          >
+            <TabBarSlot />
+          </div>
           <EditorToolbar
             saveLabel={saveLabel}
             onSave={() => void saveNow()}

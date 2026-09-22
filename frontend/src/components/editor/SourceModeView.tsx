@@ -41,36 +41,41 @@ export default function SourceModeView({
 }: SourceModeViewProps) {
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="source-mode-view">
-      {/* 说明条：frontmatter 已隐藏 + 保存状态 */}
-      <div
-        className="flex shrink-0 items-center gap-2 border-b px-3 py-1.5 text-[12px]"
-        style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
-        data-testid="source-mode-banner"
-      >
-        <span className="font-medium" style={{ color: 'var(--foreground)' }}>
-          源码模式
-        </span>
-        <span className="min-w-0 truncate">
-          直接编辑 Markdown 原文；frontmatter 已隐藏（保存时按原块逐字节保留，仅更新 ke_version）
-        </span>
-        {title ? <span className="ml-auto shrink-0 opacity-70">{title}</span> : null}
-        {saveLabel ? <span className={title ? 'shrink-0' : 'ml-auto shrink-0'}>{saveLabel}</span> : null}
-        {readOnly ? (
-          <span className="shrink-0 rounded bg-muted px-1.5 py-[1px] text-[11px]">
-            {readOnlyReason ?? '只读'}
+      {/* 2026-09-22 用户实测反馈：说明条此前是全宽 + 全宽下边框，既像「一条神秘线条」，
+          又与居中列宽的正文标题不齐。改为与页眉/正文**同一列**（780px + 32px 内边距），
+          说明条收成列内的一条胶囊。 */}
+      <div className="mx-auto w-full max-w-[780px] shrink-0 px-[32px] pt-3">
+        <div
+          className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-[12px]"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)' }}
+          data-testid="source-mode-banner"
+        >
+          <span className="font-medium" style={{ color: 'var(--foreground)' }}>
+            源码模式
           </span>
-        ) : null}
+          <span className="min-w-0 truncate">
+            直接编辑 Markdown 原文；frontmatter 已隐藏（保存时按原块逐字节保留，仅更新 ke_version）
+          </span>
+          {title ? <span className="ml-auto shrink-0 opacity-70">{title}</span> : null}
+          {saveLabel ? <span className={title ? 'shrink-0' : 'ml-auto shrink-0'}>{saveLabel}</span> : null}
+          {readOnly ? (
+            <span className="shrink-0 rounded bg-muted px-1.5 py-[1px] text-[11px]">
+              {readOnlyReason ?? '只读'}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {notice ? (
         <p
-          className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[12px] text-amber-700"
+          className="mx-auto mt-2 w-full max-w-[780px] shrink-0 rounded-md border border-amber-200 bg-amber-50 px-[32px] py-1.5 text-[12px] text-amber-700"
           data-testid="source-mode-notice"
         >
           {notice}
         </p>
       ) : null}
 
+      {/* 编辑区与页眉/正文同列（780px + 32px 内边距）→ 源码与标题左边界对齐 */}
       <textarea
         ref={textareaRef}
         value={value}
@@ -81,7 +86,7 @@ export default function SourceModeView({
         aria-label="Markdown 原文"
         data-testid="source-textarea"
         placeholder="在此直接编辑 Markdown 原文…"
-        className="ke-scroll min-h-0 flex-1 resize-none bg-background p-3 font-mono text-[13px] leading-[1.6] text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        className="ke-scroll mx-auto min-h-0 w-full max-w-[780px] flex-1 resize-none bg-background px-[32px] py-3 font-mono text-[13px] leading-[1.6] text-foreground outline-none disabled:cursor-not-allowed disabled:opacity-60"
         style={{ tabSize: 2 }}
       />
     </div>

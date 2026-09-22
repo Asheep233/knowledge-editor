@@ -260,6 +260,31 @@ def count_backup_orphans(root: Path) -> tuple[int, list[str]]:
     return len(orphans), orphans
 
 
+def cleanup_stale_tmp_files(workspace: Path) -> int:
+    """清理 `atomic_write` 残留的 `.tmp-*.md`（写入中断产物）。
+
+    只在**启动时**执行：此刻本进程尚无写入在飞，单实例保证没有别的实例在写，
+    因此工作区里存在的 `.tmp-*` 必然是历史残留。返回清理数量。
+    """
+    from . import markdown_io  # 局部导入，避免循环依赖
+
+    removed = 0
+    try:
+        for p in markdown_io.walk_entries(workspace):
+            if not p.name.startswith(markdown_io.TMP_FILE_PREFIX):
+                continue
+            if not p.is_file():
+                continue
+            try:
+                p.unlink()
+                removed += 1
+            except OSError:
+                continue
+    except Exception:
+        return removed
+    return removed
+
+
 def run_startup_self_heal(root: Path | None, store: IndexStore | None) -> dict:
     """自愈入口：工作区激活后调用一次，任何情况下都不抛出。
 

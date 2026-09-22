@@ -80,6 +80,9 @@ async def lifespan(app: FastAPI):
     # 调用点纵深防御：即使入口整体被替换成抛异常函数（或将来重构出 try 之外
     # 的异常），也绝不阻断启动。
     try:
+        cleaned = self_heal.cleanup_stale_tmp_files(workspace)
+        if cleaned:
+            logger.info("启动自愈：清理 %d 个原子写残留临时文件（.tmp-*）", cleaned)
         self_heal.run_startup_self_heal(
             getattr(app.state, "workspace_root", None),
             getattr(app.state, "store", None),

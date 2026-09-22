@@ -16,7 +16,6 @@ import { newId } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
 import { Icon } from '../icons'
 import { askPrompt } from '../common/PromptDialog'
-import { TabBarSlot } from '../layout/TabBar'
 
 /** 工具栏图标按钮（方形 32px，hover --muted 底；激活 --primary 色） */
 function ToolIcon({
@@ -292,8 +291,6 @@ function moduleLabel(p: string): string {
 }
 
 export interface EditorToolbarProps {
-  /** TabBar 段（文档标签 + 新标签按钮），渲染在行最左（参考稿同一行） */
-  tabBar?: ReactNode
   /** task-41：当前视图通道（源码模式切换按钮的 `aria-pressed` 态） */
   viewMode?: 'wysiwyg' | 'source'
   /** task-41：切换视图通道（未传 = 不渲染切换按钮） */
@@ -311,7 +308,6 @@ export interface EditorToolbarProps {
 }
 
 export default function EditorToolbar({
-  tabBar,
   saveLabel,
   onOpenHistory,
   exportButton,
@@ -440,8 +436,6 @@ export default function EditorToolbar({
 
   return (
     <div className="flex h-10 shrink-0 items-center gap-0.5 border-b border-border bg-card px-2">
-      {/* TabBar 段（文档标签，参考稿同一行）；显式 tabBar prop 优先，否则读 App 注入的 TabsContext */}
-      {tabBar ?? <TabBarSlot />}
 
       {/* 样式下拉：正文 / 标题1~6（参考稿「正文 ▾」第一段；单行纯图标 → 文字下拉） */}
       <Dropdown

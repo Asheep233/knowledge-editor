@@ -446,7 +446,7 @@ def atomic_write(path: Path, content: str) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(
-        dir=str(path.parent), prefix=".tmp-", suffix=".md", text=True
+        dir=str(path.parent), prefix=TMP_FILE_PREFIX, suffix=".md", text=True
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
@@ -533,14 +533,27 @@ def _is_junction(entry: os.DirEntry) -> bool:
     return False
 
 
+#: `atomic_write` 的临时文件前缀（写入中断会留下这类文件，永非用户内容）
+TMP_FILE_PREFIX = ".tmp-"
+
+
 def walk_files(base: Path) -> list[Path]:
     """递归枚举 base 下的全部文件（不含目录），跳过符号链接与 junction。
 
     P1-17/P3-10：Python ≤3.12 的 pathlib.rglob 会跟随目录符号链接，
     workspace 内指向外部的 junction 会被递归删除/索引到外部内容。
     统一用本函数做文件枚举，符号链接/Junction 一律不进入。
+
+    2026-09-22（用户实测）：**跳过 `atomic_write` 的中间产物 `.tmp-*`** ——
+    写入中断（崩溃/断电/进程被杀）会在文档目录里留下 `Articles/.tmp-xxxx.md`，
+    此前会被索引/树/标签栏当成一篇文档显示（用户看到「意义不明的页签」）。
+    这类文件永远不是用户内容，一律不枚举。
     """
-    return [p for p in walk_entries(base) if p.is_file()]
+    return [
+        p
+        for p in walk_entries(base)
+        if p.is_file() and not p.name.startswith(TMP_FILE_PREFIX)
+    ]
 
 
 def walk_dirs(base: Path) -> list[Path]:

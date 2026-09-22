@@ -869,7 +869,7 @@ export default function App() {
         </div>
       ) : null}
     <PromptRoot>
-    {/* Tab 栏状态注入：EditorToolbar 的 tabBar 槽位经 TabBarSlot 读取（不改 EditorArea） */}
+    {/* Tab 栏状态注入：由 EditorArea 顶部的 tab-strip 行经 TabBarSlot 读取 */}
     <TabsContext.Provider
       value={{
         tabs,

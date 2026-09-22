@@ -2,6 +2,30 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
+> 最后更新：2026-09-22（**v1.2.0 正式版已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0）
+
+## 2026-09-22（★★ v1.2.0 正式版）
+
+状态：Published · **Latest**（四附件齐全，Latest 已从 v1.1.9 切到 v1.2.0）
+Tag：`v1.2.0` · commit `85ecbfd`（bump）
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0（2026-09-22T11:26:54Z）
+
+**内容 = 三步走第 1/2 步 + 发布前全面审查全部修复 + 一轮界面修订**
+- 新增：自定义快捷键（42 动作、既有键位零改动）· 文档标签栏 · 公式编辑光标 · **源码模式**（字符串直存）· Markdown 保真（任务列表/行内 HTML/实体/BOM/CRLF/导出 frontmatter）
+- 修复：审查 B1-B5 + M1-M8 + U4（含 BOM/CRLF 字节损坏、菜单退出绕过 flush、rename 反斜杠穿越、跨工作区串写、plain 导出吞段…）· 对抗验证 R-1…R-4b（重载握手/兜底取消/PID 生命周期/重载双刷）· 真机事故（退出清理同步 PowerShell 致「窗口消失但进程不退」、Ctrl+Q 加速键不送达、capabilities 缺 window-close）
+- 界面：标签栏移到最顶端 + 去双滚动条 · 源码模式同列对齐 + 去「神秘分割线」· 源码模式点击不再出外框 · `.tmp-*.md` 残留不再成文档
+
+**发布前门禁与验收（全部实做）**
+| 项 | 结果 |
+|---|---|
+| pytest / tsc / vitest / cargo | **735 passed + 6 skipped** / **0** / **59 files · 1150 passed + 1 skipped**（3 连跑全绿）/ **20 passed** |
+| 独立对抗验证 | 后端 61 例 · 前端 122 例 · 回收站 120 例 |
+| 真机验收 | 版本一致性 · 标签栏 · 设置导航 · 源码模式端到端 · **Ctrl+Q 连续输入中退出 3.9s 干净退出且内容全部落盘** |
+| **U3 干净首装演练** | ✅ 清空 `%APPDATA%\KnowledgeEditor` → 首启进入工作区引导、无崩溃、无版本不一致；演练后已从备份还原用户数据 |
+| **U2 导出四件产物字节校验** | ✅ **KE 导出 vs 磁盘源文档逐字节一致（sha 相同，diff=0；6/6 次导出一致）** · 普通导出零 `ke-` 残留 · zip 内嵌 md 与 KE 导出 diff=0 |
+
+**资产**：安装包 50,806,063 B sha `a81d8fd1…` · 侧车 46,207,371 B sha `9422652e…` · manifest `09fd8319…` · versions `84979b46…`
+
 > 最后更新：2026-09-22（**v1.2.0-pre.3 预发布 · 发布前全面审查修复版**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.0-pre.3）
 
 ## 2026-09-22（★ v1.2.0-pre.3 预发布 · 全量审查修复）

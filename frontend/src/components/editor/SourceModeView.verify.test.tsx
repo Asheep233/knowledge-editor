@@ -499,4 +499,27 @@ describe('C 源码级不变量与回归面', () => {
       expect(existsSync(rel), `${rel} 缺失`).toBe(true)
     }
   })
+
+  it('C3 布局（2026-09-22 用户实测）：说明条/textarea 与页眉同列（780px + 32px），说明条不再有全宽下边框', async () => {
+    const { readFileSync } = await import('node:fs')
+    const lines = readFileSync('src/components/editor/SourceModeView.tsx', 'utf8').split('\n')
+
+    const bannerIdx = lines.findIndex((l) => l.includes('data-testid="source-mode-banner"'))
+    expect(bannerIdx, '说明条锚点丢失').toBeGreaterThan(-1)
+    const bannerWin = lines.slice(Math.max(0, bannerIdx - 5), bannerIdx + 4).join('\n')
+    expect(bannerWin, '说明条必须与页眉同列宽（780px）').toContain('max-w-[780px]')
+    expect(bannerWin, '说明条必须与页眉同左内边距（32px）').toContain('px-[32px]')
+    expect(bannerWin, '说明条不得再用 border-b（全宽下边框 = 用户报的「神秘线条」）').not.toContain('border-b')
+
+    const taIdx = lines.findIndex((l) => l.includes('data-testid="source-textarea"'))
+    expect(taIdx, 'textarea 锚点丢失').toBeGreaterThan(-1)
+    const taWin = lines.slice(Math.max(0, taIdx - 4), taIdx + 6).join('\n')
+    expect(taWin, 'textarea 必须与页眉同列宽（780px）').toContain('max-w-[780px]')
+    expect(taWin, 'textarea 必须与页眉同左内边距（32px）').toContain('px-[32px]')
+
+    // 同一列宽的宿主侧锚点：EditorArea 的正文页眉（三者对齐的来源）
+    const area = readFileSync('src/components/layout/EditorArea.tsx', 'utf8')
+    const headerIdx = area.indexOf('<article className="mx-auto w-full max-w-[780px] px-[32px]')
+    expect(headerIdx, 'EditorArea 页眉未使用同一列宽（780px/32px）→ 源码与标题会错位').toBeGreaterThan(-1)
+  })
 })

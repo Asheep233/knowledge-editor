@@ -212,3 +212,65 @@ $ npx vitest run src/state/review-fixes.verify.test.ts src/editor/plain-export.v
 | U4「任意时刻 3/3 干净」 | 组④ RUN3 在宿主高负载下红（perf 门 + worker 超时）；组③/⑤ 3/3 干净。**结论：U4 根因已修，门禁对宿主负载仍敏感（PRE-EXISTING）** |
 | B4「已在服务端处理的 PUT」 | `abort()` 无法撤销已到达服务端的请求；未构造真实会话证据 |
 | R-2 兜底/cancel 指令级竞态 | 静态推理（cancel 恰好晚于代数比对时仍会退出）；未做并发实测 |
+
+---
+
+# 8. 追加：2026-09-22 UI 落位变更（Tab 栏最顶上 / 源码模式同列 / 滚动条）与复跑
+
+> 触发：用户实测反馈 → `d9c5bac`（Tab 栏落位 + 源码模式列宽 + `.tmp-*`）+ `a1d82b5`（源码 textarea focus 环）。
+> 本节由 `verifier-trash` 独立执行；**未修改任何源码**（仅更新我的两个 verify 套件断言）。
+
+## 8.1 冻结锚点（我复算）
+| 文件 | sha256 |
+|---|---|
+| `frontend/src/components/layout/TabBar.tsx` | `1c794825e735fb5bc80cd3ddc03eaaae8dca61575402c0e231e2d9d6e791285f` |
+| `frontend/src/components/layout/EditorArea.tsx` | `b713250c8dd536f0f27ed2a7dbcde3a408364a7ae66e3ee2bd8036dba1ee85f0` |
+| `frontend/src/components/editor/EditorToolbar.tsx` | `c8e6e7d9cac5efd17a1a217c064cea5355cf5e17081131d8d1a4c47291f2453f` |
+| `frontend/src/components/editor/SourceModeView.tsx` | `22aa1a1be9011d17b9617fbd0e4e9113790bd14454f5189a7b2f4e2b350c4536` |
+| `frontend/src/components/layout/TabBar.test.tsx`（dev 侧守卫） | `5e411dc9b5cf692e04aaf33601f4990ab83996598f0dad24c8a9db1579ecf20f` |
+| `frontend/src/index.css` | `f256e3f37f867aa0a73c660210eecc0bbf8652922f02cbf5ac5546d6d871216a` |
+| 我的 `TabBar.verify.test.tsx`（更新后） | `a6c9653aff2647cf64c089d70c12baa6667c164c4654f94dec49c9d7cf11e2e6` |
+| 我的 `SourceModeView.verify.test.tsx`（更新后） | `554b21474184b05c35df9bdc0de549756e171984559f88e382de8921bce02ca3` |
+| 我的 `plain-export.verify.test.ts`（加超时后） | `c0b9e986cde54eb62a8c886512dda0731b40c87e8e69deca52d240f78340ffa2` |
+| HEAD（本轮） | `a1d82b5`；三连跑 B/C 期间 9 个被扫描文件 hash **跑前=跑后**（§8.3） |
+
+## 8.2 我的断言更新（按新架构，**未放宽**）
+| 文件 | 变更 |
+|---|---|
+| `TabBar.verify.test.tsx` | T-5 旧断言「EditorToolbar 应引用 TabBarSlot」→ **拆为两条更严的断言**：① 落位＝`EditorArea` 的 `data-testid="tab-strip"` 内渲染 `<TabBarSlot />`，且 `tab-strip` 源码位置**必须先于 `<EditorToolbar`**（「最顶上」回归守卫）；② `EditorToolbar` **不得**再出现 `TabBarSlot`，且 `\btabBar\b` prop 已移除。**保留 G-2（`onOpenAttachments` 已删）/G-3（「附件」title 已删）** |
+| `TabBar.verify.test.tsx` | **新增滚动条守卫**：`overflow-x-auto` 仍须保留（横向可滚动），但必须同时 `overflow-y-hidden` + `[scrollbar-width:none]` + `[&::-webkit-scrollbar]:hidden`（防「仅 overflow-x-auto → 另一轴 auto → 双条叠加」，即用户看到的「移动滑块条」） |
+| `SourceModeView.verify.test.tsx` | **新增 C3 布局守卫**：说明条（`source-mode-banner`）与 `source-textarea` 必须带 `max-w-[780px]` + `px-[32px]`；说明条窗口内**不得**再有 `border-b`（用户报的「神秘线条」＝全宽下边框）；并断言 `EditorArea` 页眉 `<article className="mx-auto w-full max-w-[780px] px-[32px]…` 同列宽（三者对齐的来源） |
+| `plain-export.verify.test.ts` | E1 全仓扫描加 **20s 显式超时**（非放宽判据，仅防宿主负载下 5s 默认超时假红，见 §8.3 组 A） |
+
+## 8.3 复跑数字（逐次 exit code；被扫描源文件 hash 跑前=跑后）
+全量命令：`cd frontend && npx vitest run`
+
+| 组 | 时刻 | RUN1 | RUN2 | RUN3 | 红因（逐条定位） |
+|---|---|---|---|---|---|
+| **A** | 10:34–10:37 | exit 0 | exit 0 | **exit 1** | 2 红**均为 5s 默认超时**（非断言失败）：我的 `plain-export.verify` E1 全仓扫描 + 既有 `components/common/no-native-dialog.test.ts` 全仓扫描（各读 136 个文件；后者录得 `9867ms`）。**→ 我已给 E1 加 20s 超时**；`no-native-dialog.test.ts` **不在我的写入边界内，未改动**（§8.5） |
+| **B** | 10:38–10:40 | exit 0 | **exit 1** | exit 0 | 1 红＝`perf-bench.test.ts` **绝对时间门**：`first=8717ms` vs `gateFirst=8676ms`（**超 0.47%**，`[perf]` 日志原文）——宿主 load avg ≈11.8，**PRE-EXISTING 标定余量过薄** |
+| **C** | 10:40–10:43 | **exit 0** | **exit 0** | **exit 0** | 3/3 干净：59 files / **1150 passed + 1 skipped** / 无 FAIL / Unhandled 0（`first=7741–10131ms`，`gateFirst` 同步上浮至 8811–10861ms 故通过）；**9 个被扫描文件 hash 跑前=跑后，确认非移动目标** |
+
+**结论**：本次 UI 落位变更本身**无功能回归**（组 C 3/3 干净；组 A/B 的红分别归因于「既有测试超时余量」与「既有 perf 标定余量」，与落位变更无关）。
+**门禁稳定性（更新 §7）**：U4 根因已修；当前 `npx vitest run` 在宿主高负载下有两类 PRE-EXISTING 敏感点：① 全仓同步扫描用例的 5s 默认超时（我的已加超时；`no-native-dialog` 待办）；② `perf-bench` 绝对墙钟门 0.47% 余量。
+
+### 8.3.1 其它实测
+```text
+$ npx tsc -b --noEmit                          → TSC_EXIT=0
+$ npx vitest run <6 个受影响/自有套件>          → 6 files / 122 passed
+  TabBar.verify 32 · TabBar.test 22 · SourceModeView.verify 16 · SourceModeView.test 12
+  review-fixes.verify 19 · plain-export.verify 21
+$ cd backend && python3 -m pytest -q           → 735 passed, 6 skipped in 19.74s（HEAD a1d82b5）
+$ python3 -m pytest tests/test_trash_verify.py → 120 passed in 3.46s（task-8 套件无回归，含 .tmp-* 改动后）
+```
+
+## 8.4 真机几何复核（Lead 提供的数据）
+Lead 实测：`title left=486 / banner left=486 / textarea 文本 left=486`（三者对齐）、`tab-strip top=0 h=36`、`toolbar top=36`、`scrollW == clientW`（无横向溢出）。
+**本环境无法独立复现像素级几何**（WSL，无 Windows GUI/布局引擎；happy-dom 无真实 layout）。
+我给出的**源码级等价证据**：`tab-strip` 位于 `EditorToolbar` 之前 + `h-9`（36px）；`SourceModeView` 说明条/textarea 与 `EditorArea` 页眉同一 `max-w-[780px] px-[32px]` 列宽；滚动条类名组合见 §8.2。
+→ **像素数字引述自 Lead 的真机实测，非我独立复算**（诚实标注）。
+
+## 8.5 待办（非我边界，上报）
+1. `frontend/src/components/common/no-native-dialog.test.ts`：每个用例对 136 个文件同步读盘，**默认 5s 超时在高负载下会假红**（实测 9867ms）。建议其 owner 加显式超时（如 20s）或把 `walk` + 读盘结果缓存一次。
+2. `frontend/src/editor/perf-bench.test.ts`：`gateFirst = max(常量, calib128×5.5)` 的**标定余量过薄**（实测 0.47% 越界）。建议提高倍数或改为相对基线阈值（PRE-EXISTING，不阻塞本次落位变更）。
+3. `EditorToolbar.tsx:5` 注释仍写「标签（由 TabBar 提供）」——Tab 栏已移出工具栏，**注释已过期**（LOW，不影响行为）。

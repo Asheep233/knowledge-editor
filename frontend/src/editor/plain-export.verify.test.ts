@@ -163,7 +163,7 @@ describe('B5-E 「无第三处宽松正则」全仓扫描（独立推导，比�
       stripComments(readFileSync(f, 'utf8')).includes(LOOSE),
     )
     expect(offenders, `仍有可执行的宽松正则: ${offenders.join(', ')}`).toEqual([])
-  })
+  }, 20_000) // 全仓同步读盘：宿主高负载下默认 5s 会超时（2026-09-22 实测 RUN3）
 
   it('E2 plain-export 两处判定都走 ke.ts：import scanFrontmatter 且 scanLeadingFm 委托', () => {
     const src = readFileSync('src/editor/plain-export.ts', 'utf8')

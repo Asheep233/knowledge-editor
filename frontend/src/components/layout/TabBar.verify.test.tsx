@@ -26,9 +26,10 @@ import {
 } from './TabBar'
 import * as docSwitch from '../../state/docSwitch'
 import { discardPending, enqueueSave, flushPending, flushWithTimeout } from '../../state/saveQueue'
-// 源码级断言（App 集成 / G-2 G-3 死按钮清理）
+// 源码级断言（App 集成 / G-2 G-3 死按钮清理 / Tab 栏落位）
 import appSource from '../../App.tsx?raw'
 import toolbarSource from '../../components/editor/EditorToolbar.tsx?raw'
+import editorAreaSource from './EditorArea.tsx?raw'
 import tabBarSource from './TabBar.tsx?raw'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -191,6 +192,16 @@ describe('T-2 TabBar 组件（受控）', () => {
     expect(tabs[0].getAttribute('data-tab-id')).toBe('A')
     expect(tabs[0].getAttribute('data-active')).toBe('false')
     expect(tabs[1].getAttribute('data-active')).toBe('true')
+  })
+
+  it('滚动条：横向可滚动，但纵向必须 hidden + 隐藏本条滚动条（防双条叠加，2026-09-22 用户实测）', () => {
+    render(<TabBar tabs={[T('A'), T('B')]} activeId="A" onActivate={onActivate} onClose={onClose} />)
+    const bar = container.querySelector('[data-testid="tab-bar"]')!
+    const cls = bar.className
+    expect(cls, '标签过多仍需横向滚动').toContain('overflow-x-auto')
+    expect(cls, '仅 overflow-x-auto 会让另一轴计算为 auto → 双滚动条叠加').toContain('overflow-y-hidden')
+    expect(cls, '必须隐藏本条滚动条（scrollbar-width）').toContain('[scrollbar-width:none]')
+    expect(cls, '必须隐藏本条滚动条（webkit）').toContain('[&::-webkit-scrollbar]:hidden')
   })
 
   it('激活控件是原生 button[role=tab][aria-selected]；点击 → onActivate(该 id)', () => {
@@ -451,7 +462,18 @@ describe('T-5 G-2/G-3（死按钮已删 + 槽位接线）', () => {
     expect(/title="[^"]*附件[^"]*"/.test(toolbarSource), 'G-3：title 不应再含「附件」').toBe(false)
   })
 
-  it('EditorToolbar 的 tabBar 槽位接线到 TabBarSlot（Tab 栏落位）', () => {
-    expect(toolbarSource, 'EditorToolbar 应引用 TabBarSlot').toContain('TabBarSlot')
+  it('Tab 栏落位：EditorArea 的 tab-strip 内渲染 TabBarSlot，且位于 EditorToolbar **之前**（2026-09-22 用户要求「最顶上」）', () => {
+    const stripIdx = editorAreaSource.indexOf('data-testid="tab-strip"')
+    expect(stripIdx, 'EditorArea 缺少 tab-strip 容器').toBeGreaterThan(-1)
+    const strip = editorAreaSource.slice(stripIdx, stripIdx + 400)
+    expect(strip, 'tab-strip 内必须渲染 TabBarSlot').toMatch(/<TabBarSlot\s*\/>/)
+    const toolbarIdx = editorAreaSource.indexOf('<EditorToolbar')
+    expect(toolbarIdx, 'EditorArea 缺少 EditorToolbar').toBeGreaterThan(-1)
+    expect(stripIdx, 'Tab 栏必须排在工具栏之前（最顶上）——落位回归').toBeLessThan(toolbarIdx)
+  })
+
+  it('工具栏不得再承载 Tab 栏（tabBar prop 与 TabBarSlot 渲染均已移除）', () => {
+    expect(toolbarSource.includes('TabBarSlot'), '工具栏不应再渲染 TabBarSlot').toBe(false)
+    expect(/\btabBar\b/.test(toolbarSource), '工具栏不应再有 tabBar prop（大小写敏感匹配）').toBe(false)
   })
 })

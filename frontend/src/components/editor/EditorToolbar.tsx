@@ -2,7 +2,8 @@ import { openMathEditorById } from '../../editor'
 import { TextSelection } from '@tiptap/pm/state'
 /**
  * 编辑器工具栏（对齐参考稿 editor.html：单行 h-10 纯图标）。
- * 从左到右：标签（由 TabBar 提供）→ 字号▾ → 分隔线 → B/I/U/S → 分隔线 →
+ * 注意：**文档标签栏已移到工具栏之上独立一行**（`EditorArea` 的 `tab-strip`），本行不再承载 Tab。
+ * 从左到右：字号▾ → 分隔线 → B/I/U/S → 分隔线 →
  * 无序/有序/引用/代码/链接/图片/公式 → 模块▾ → 「更多」▾（代码块/注释/信息块/表格/撤销/重做）→
  * 右侧：保存状态 + 历史快照 + 导出主按钮（--primary 底白字）。
  * 图标控件直接映射 Tiptap 命令；激活态（B/I/U）随光标状态实时更新。

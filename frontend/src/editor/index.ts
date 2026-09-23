@@ -23,6 +23,7 @@ import { KeBlockquote, KeDocument } from './extensions/KeBlockJoin'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { MathExtension } from './extensions/MathExtension'
 import { MathBlockExtension } from './extensions/MathBlockExtension'
+import { MathIdUniqueness } from './extensions/MathIdUniqueness'
 import { NoteExtension } from './extensions/NoteExtension'
 import { ModuleExtension } from './extensions/ModuleExtension'
 import { AttachmentExtension } from './extensions/AttachmentExtension'
@@ -186,6 +187,8 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       // KE 扩展节点（math / mathBlock / note / module / attach / video / footnote）
       MathExtension,
       MathBlockExtension,
+      // task-50：公式 id 去重（复制粘贴保留 id → 同 id 两节点会让编辑落到第一行）
+      MathIdUniqueness,
       NoteExtension,
       ModuleExtension,
       AttachmentExtension,

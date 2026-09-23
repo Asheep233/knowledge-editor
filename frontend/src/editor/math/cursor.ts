@@ -30,23 +30,45 @@ export function isMathNode(node: PMNode | null | undefined): node is PMNode {
 }
 
 /**
- * 按节点 id 定位公式（主定位），失败回退到 pos（NodeView mount 期 getPos 快照可能过期）。
+ * 按节点 id 定位公式。
+ *
+ * task-50 起为**「pos 优先 + 最近邻」**：
+ *  ① `nodeAt(fallbackPos)` 就是该 id 的公式 → 直接返回（点哪个改哪个）；
+ *  ② 否则按 id 遍历，**多命中取离 `fallbackPos` 最近的那个**（而非第一个）；
+ *  ③ 都没有 → 返回 `fallbackPos`（无效 → -1，调用方据此保持「目标失效严格 0 事务」）。
+ *
+ * 背景：复制粘贴会保留 `id`，同 id 两节点时旧的「id 优先取首个」会让编辑落到第一行
+ * （静默写错节点）。根治去重见 `extensions/MathIdUniqueness.ts`。
+ *
  * @returns 公式节点起始位置；-1 = 未找到
  */
 export function locateMathById(doc: PMNode, id: string | undefined, fallbackPos: number): number {
+  const hasPos = Number.isFinite(fallbackPos) && fallbackPos >= 0
+  // ① pos 优先：`nodeAt(fallbackPos)` 就是该 id 的公式 → 直接命中（**点哪个改哪个**）。
+  //    task-50：复制粘贴会让两个公式共用同一 id，旧的「id 优先取首个」会把编辑落到第一行。
+  if (hasPos && id && fallbackPos <= doc.content.size) {
+    // 越界 fallbackPos 不能进 nodeAt（PM 会抛 RangeError）——见下方 ③ 的兜底语义
+    const at = doc.nodeAt(fallbackPos)
+    if (isMathNode(at) && at.attrs.id === id) return fallbackPos
+  }
+  // ② 按 id 遍历；多命中取**距离 fallbackPos 最近**的（无 pos 信息时退化为第一个）
   if (id) {
     let target = -1
+    let bestDist = Number.POSITIVE_INFINITY
     doc.descendants((node, pos) => {
-      if (target >= 0) return false
       if (isMathNode(node) && node.attrs.id && node.attrs.id === id) {
-        target = pos
-        return false
+        const dist = hasPos ? Math.abs(pos - fallbackPos) : pos
+        if (dist < bestDist) {
+          bestDist = dist
+          target = pos
+        }
       }
       return true
     })
     if (target >= 0) return target
   }
-  return Number.isFinite(fallbackPos) ? fallbackPos : -1
+  // ③ 都没有 → 保持既有契约：返回兜底位置（无效则 -1，调用方据此「严格 0 事务」）
+  return hasPos ? fallbackPos : -1
 }
 
 /**

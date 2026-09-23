@@ -369,6 +369,11 @@ body {
 .ke-math {
   display: inline-block;
   vertical-align: middle;
+  /* 2026-09-22（用户实测：「点 ⋮ 没反应」）：⋮ 菜单用 `absolute right-0 top-full`，
+     而 .ke-math 原本**没有定位上下文** → 菜单锚到了最近的定位祖先（ProseMirror 根），
+     实测被放到 (1090, 2078)（视口外）→ 看起来就是"点了没反应"。
+     这里给公式包裹层加定位上下文，菜单才会贴着公式出现。 */
+  position: relative;
 }
 .ke-math--block {
   display: block;

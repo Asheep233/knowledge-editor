@@ -2,6 +2,22 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
+> 最后更新：2026-09-22（**v1.2.1 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.1）
+
+## 2026-09-22（★ v1.2.1 补丁版）
+
+状态：Published · **Latest**（Latest 由 v1.2.0 切到 v1.2.1）· Tag `v1.2.1` · commit `851a7b3`（bump）
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.1
+
+**新增**：公式互转（行内 ⇄ 行间；⋮ 菜单入口；光标落新块之后；多行 LaTeX 拒绝；一次撤销可回退）
+
+**修复（4 项）**：编号数字等宽（`（1）`/`（2）` 后文字 4px 错位）· 相邻公式 `$\iff$$A$` 解析 ·
+⋮ 菜单定位（原在视口外）· 转换后交还键盘焦点（否则 Ctrl+Z 无效）
+
+**门禁**：pytest **735 passed + 6 skipped** · tsc **0** · vitest **61 files / 1169 passed + 1 skipped**（连跑 2 次 exit 0）· cargo **20**
+**真机验收**：版本一致性 · ⋮ 菜单紧贴公式（真实鼠标事件 + rect 断言）· 双向转换 · 直接 Ctrl+Z 撤回 ✓
+**资产**：安装包 50,809,604 B sha `5f04d22a…` · 侧车 46,208,784 B sha `ac56577b…` · manifest `5b412697…` · versions `8c80ad81…`
+
 > 最后更新：2026-09-22（v1.2.0 已发布；**以下修复已进 master，攒着一起发 1.2.1**）
 
 ## 未发布（1.2.1 待发）

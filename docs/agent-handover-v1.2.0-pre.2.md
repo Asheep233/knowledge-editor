@@ -7,14 +7,14 @@
 
 ## 0. 一句话现状
 
-**v1.2.0 正式版已发布（Latest）**（`1.2.0-pre.1`、`1.2.0-pre.2`，Latest 仍是 `v1.1.9`）；
+**v1.2.1 补丁版已发布（Latest）**（`1.2.0-pre.1`、`1.2.0-pre.2`，Latest 仍是 `v1.1.9`）；
 **下一步是第 3 步「大规模全量审查」（明确不由 Lead 执行）**，通过后才有 `1.2.0` 正式版。
 
 | 项 | 值 |
 |---|---|
 | 仓库 | `F:\Work\KE Project\knowledge-editor`（WSL: `/mnt/f/Work/KE Project/knowledge-editor`）· 分支 `master` |
 | 远端 | https://github.com/Asheep233/knowledge-editor |
-| 当前版本 | `1.2.0`（**正式版已发布，Latest**）（发布前全面审查 B1-B5/M1-M8/U4 修复 + 对抗验证 R-1…R-4b + 真机发现的退出挂死与 Ctrl+Q 加速键问题；`node scripts/bump-version.mjs <ver>` 维护） |
+| 当前版本 | `1.2.1`（**补丁版已发布，Latest**）（发布前全面审查 B1-B5/M1-M8/U4 修复 + 对抗验证 R-1…R-4b + 真机发现的退出挂死与 Ctrl+Q 加速键问题；`node scripts/bump-version.mjs <ver>` 维护） |
 | 最近发布 | `v1.2.0-pre.2`（Pre-release，2026-09-20T03:17:28Z，四附件）· `v1.2.0-pre.1`（Pre-release）· `v1.1.9`（Latest 正式版） |
 | 应用安装位置（主理人机器） | `D:\AstraNota`（覆盖安装即可，数据目录 `%APPDATA%\KnowledgeEditor` 与工作区 `C:\Users\y8882\Documents\KE workspace` 不受影响） |
 | 门禁基线（**任何改动不得低于**） | pytest **630 passed + 2 skipped** · tsc **0** · vitest **56 files / 1095 passed + 1 skipped**（+ 待实现的 verifier todo）· cargo **20** |

@@ -77,6 +77,13 @@
    「窗口已隐藏但进程不退出」的假死）—— 清理必须放独立线程 + 有界预算，主线程之后**无条件** `app.exit(0)`。
 11. **`#[tauri::command]` 要放在子模块**：在 crate 根（lib.rs）定义命令又被同文件的 `generate_handler!`
    注册，会触发 `__cmd__*` 宏重名（E0255）。放进 `menu`/`settings`/`sidecar` 等子模块并用 `模块::命令` 注册。
+12c. **悬浮菜单/浮层必须显式给宿主定位上下文**（2026-09-22 用户报「点 ⋮ 没反应」）：
+   公式互转菜单用 `absolute right-0 top-full`，而 `.ke-math` 没有 `position` → 菜单锚到最近的
+   定位祖先（`.ProseMirror{position:relative}`）→ 实测被放到 (1090, 2078)（**视口外**），
+   用户看到的就是「点了没反应」。修法：`.ke-math{position:relative}`。
+   **验收方法学**：`element.click()` 不校验命中位置，会漏掉这类问题 —— 必须用
+   **真实鼠标事件（mousePressed/Released）+ 断言目标 rect 在视口内**（本仓库的
+   `C:\ke-tmp\probe-moremenu.py` 是现成模板）。
 12b. **大块编辑面的 focus 环**：`index.css` 有一条全局 `:is(button,a,input,select,textarea):focus-visible
    { outline: 2px solid var(--ring) !important }`（F2/K3 无障碍回退）。WebView2 下**鼠标点击也会匹配
    `:focus-visible`** → 大块编辑面（正文编辑器、源码模式 textarea）会出现「凭空一圈蓝框」。

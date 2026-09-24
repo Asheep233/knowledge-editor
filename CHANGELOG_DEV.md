@@ -2,6 +2,21 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
+> 最后更新：2026-09-23（**v1.2.2 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.2）
+
+## 2026-09-23（★ v1.2.2 修复版）
+
+状态：Published · **Latest**（Latest 由 v1.2.1 切到 v1.2.2）· Tag `v1.2.2` · commit `2719ac1`（bump）
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.2
+
+**修复**：**复制公式后编辑第二行却改到第一行**（静默写错节点）—— ① 复制粘贴保留公式 `id` → 两行同 id；
+② `locateMathById` 原按 id 取**第一个**命中。修法：`MathIdUniqueness` 文档变更后去重（仅 math/mathBlock，
+单事务可撤销）+ `locateMathById` 改「pos 优先 + 最近邻」（点哪改哪，旧重复 id 文档亦即时可用）。
+
+**门禁**：pytest **735 passed + 6 skipped** · tsc **0** · vitest **62 files / 1177 passed + 1 skipped** · cargo **20**
+**真机复验（主理人）**：复制含公式行 → 编辑第二行 → **只有第二行变化、第一行不变** ✓
+**资产**：安装包 50,808,060 B sha `80cd19d3…` · 侧车 46,208,763 B sha `d8eb9cc1…` · manifest `34c9ea94…` · versions `52179b9c…`
+
 > 最后更新：2026-09-23（v1.2.1 已发布；**以下修复待发 1.2.2**）
 
 ## 未发布（1.2.2 待发）

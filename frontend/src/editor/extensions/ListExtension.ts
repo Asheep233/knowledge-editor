@@ -47,8 +47,6 @@ export const OrderedListParenExtension = OrderedList.extend({
   },
 })
 
-let continuationEmpty = false
-
 export const KeListItem = ListItem.extend({
   // 高优先级：确保 Enter 行为对列表项生效（默认同优先级时按键可能被 StarterKit 系抢先）
   priority: 1000,
@@ -67,35 +65,12 @@ export const KeListItem = ListItem.extend({
         if (!li) return false
         const isEmpty = li.textContent.length === 0 && li.childCount <= 1
         if (isEmpty) {
-          if (continuationEmpty) {
-            continuationEmpty = false
-            return ed.commands.liftListItem('listItem')
-          }
-          continuationEmpty = true
-          // splitListItem 对「真空项」会内部转 lift（删列表的根因）——
-          // 手动事务：在当前 li 后插入同列表的新空 li，并把光标移到其中。
-          const schema = ed.state.schema
-          const newLi = schema.nodes.listItem.create(
-            null,
-            schema.nodes.paragraph.create(null),
-          )
-          // 定位当前 li 的结束位置（作为同级插入点）
-          let pos = -1
-          let endPos = -1
-          for (let d = $from.depth; d > 0; d--) {
-            if ($from.node(d).type.name === 'listItem') {
-              pos = $from.before(d)
-              endPos = $from.after(d)
-              break
-            }
-          }
-          if (pos < 0 || endPos < 0) return false
-          const tr = ed.state.tr.insert(endPos, newLi).scrollIntoView()
-          ed.view.dispatch(tr)
-          ed.commands.setTextSelection(endPos + 1) // 新 li 的 paragraph 首
-          return true
+          // task-51：空项 Enter → **干净退出列表**（主流编辑器行为，也是用户期望）。
+          // 不再使用模块级 `continuationEmpty`（不来自文档状态 → 跨文档/跨会话残留 → 行为不可预测）；
+          // 也不走 `splitListItem`（它对真空项会内部转 lift，是「删列表根」的历史根因）。
+          // 该路径不依赖任何历史状态：同一输入 → 同一结果。
+          return ed.commands.liftListItem('listItem')
         }
-        continuationEmpty = false
         return ed.commands.splitListItem('listItem')
       },
     }

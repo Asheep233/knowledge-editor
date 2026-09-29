@@ -200,3 +200,28 @@ describe('4. 嵌套 / 引用块', () => {
     ed.destroy()
   })
 })
+describe('6. 只含公式的列表项（atom 的 textContent 为空串 —— 用户实测那条列表）', () => {
+  it('6-1 在 `2. $b$` 上 Enter → 新增第 3 项，不得把第 2 项提出列表', () => {
+    const ed = makeEditor('1. $a$\n2. $b$\n\n后文\n')
+    caretAtEndOfItem(ed, 2)
+    expect(pressEnter(ed)).toBe(true)
+    // 注意：atom（行内公式）在 PM 里的 textContent 是 latex 文本（含 $），不是空串 ——
+    // 所以断言写实际值；关键是「三项」而不是「两项 + 列表外段落」。
+    expect(listItems(ed)).toEqual(['$a$', '$b$', ''])       // 三项，且第 2 项内容未被提出
+    expect(ed.getMarkdown()).toContain('3.')
+    expect(childTypes(ed)).toEqual(['orderedList', 'paragraph'])  // 列表仍在（没被拆）、后文段落仍在
+    ed.destroy()
+  })
+
+  it('6-2 再 Enter（真空项）→ 干净退出列表（2 项 + 列表外空段落）', () => {
+    const ed = makeEditor('1. $a$\n2. $b$\n\n后文\n')
+    caretAtEndOfItem(ed, 2)
+    pressEnter(ed)
+    pressEnter(ed)
+    expect(listItems(ed)).toEqual(['$a$', '$b$'])
+    expect(childTypes(ed)[0]).toBe('orderedList')
+    expect(childTypes(ed)[1]).toBe('paragraph')
+    expect(ed.getMarkdown()).not.toContain('3.')
+    ed.destroy()
+  })
+})

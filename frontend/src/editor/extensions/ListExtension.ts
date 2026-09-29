@@ -63,7 +63,15 @@ export const KeListItem = ListItem.extend({
           }
         }
         if (!li) return false
-        const isEmpty = li.textContent.length === 0 && li.childCount <= 1
+        // 判空必须看**结构**，不能看 textContent：行内公式/图片等 atom 节点的 textContent 是空串，
+        // 于是「只含一个公式的列表项」会被误判为空项 → Enter 直接把该项提出列表。
+        // 用户实测：`2. $J(A,L(A))=L(A)∩U(L(A))$` 上按 Enter → 第 2 项变成列表外的段落。
+        const first = li.firstChild
+        const isEmpty =
+          li.childCount === 1 &&
+          first !== null &&
+          first.type.name === 'paragraph' &&
+          first.content.size === 0
         if (isEmpty) {
           // task-51：空项 Enter → **干净退出列表**（主流编辑器行为，也是用户期望）。
           // 不再使用模块级 `continuationEmpty`（不来自文档状态 → 跨文档/跨会话残留 → 行为不可预测）；

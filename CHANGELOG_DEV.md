@@ -2,6 +2,22 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
+> 最后更新：2026-09-24（**v1.2.3 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.3）
+
+## 2026-09-24（★ v1.2.3 修复版）
+
+状态：Published · **Latest** · Tag `v1.2.3` · commit `72e5818`（bump）
+Release：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.3
+
+**修复**：**列表项只含公式（原子节点）时被误判为空项 → Enter 把整项踢出列表**。
+判空原用 `li.textContent.length === 0`，而 atom（行内公式）的 textContent 表达不出内容 → 误判；
+改为**结构判定**（`childCount === 1 && first.type.name === 'paragraph' && first.content.size === 0`）。
+同时空项 Enter 改为**一步干净退出列表**（删掉模块级 `continuationEmpty` 不可预测标志，提交 `9ba3f6b` + `3106a0c`）。
+
+**门禁**：pytest **735 passed + 6 skipped** · tsc **0** · vitest **63 files / 1188 passed + 1 skipped** · cargo **20**
+**真机复验（用户原列表）**：① Enter → 3 项（不再提出第 2 项）② Enter → 2 项 + 列表外空段落（无缩进残留）③ Enter → 普通换行 ✓
+**资产**：安装包 50,808,565 B sha `59a3411c…` · 侧车 46,208,064 B sha `dc2e3f37…` · manifest `47b22089…` · versions `0b67166b…`
+
 > 最后更新：2026-09-23（**v1.2.2 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.2）
 
 ## 2026-09-23（★ v1.2.2 修复版）

@@ -395,15 +395,32 @@ body {
 .ke-math-render .katex-display {
   margin: 0;
 }
+/* 2026-09-23（用户实测：行末公式「hover 即漂移」——鼠标移上去公式跳到下一行首，
+   移开又跳回，极难点中）：
+   根因 = 下面三个按钮是**在流内的 inline 元素**（display:none → hover 时 inline-block），
+   显示时给公式节点加了约 72px 宽度；行末放不下 → 整块被挤到下一行（布局回流）。
+   修法 = 按钮统一放进 .ke-math-tools **绝对定位**容器（.ke-math 已 position:relative），
+   hover / 选中 / 菜单展开只切换**容器**可见性，公式自身占位宽高恒不变
+   （实测 hover 前后公式 getBoundingClientRect 完全一致；浏览器级验证见 task-52 回报）。 */
+.ke-math-tools {
+  display: none;
+  position: absolute;
+  /* 贴公式右缘，往外让 4px（块级公式在下方另设 right:0） */
+  left: calc(100% + 4px);
+  top: -6px;
+  align-items: center;
+  gap: 2px;
+  z-index: 20;
+  white-space: nowrap;
+}
 .ke-math-edit-btn,
 .ke-math-del-btn,
 .ke-math-more-btn {
-  display: none;
   cursor: pointer;
   font-size: 12px;
+  line-height: 1.2;
   border-radius: 4px;
   padding: 1px 5px;
-  margin-left: 3px;
   background: #fff;
   border: 1px solid #e2e5ea;
   color: #6b7280;
@@ -421,18 +438,40 @@ body {
   color: #2563eb;
   border-color: #2563eb;
 }
-.ProseMirror-selectednode > .ke-math .ke-math-edit-btn,
-.ProseMirror-selectednode > .ke-math .ke-math-del-btn,
-.ProseMirror-selectednode > .ke-math .ke-math-more-btn,
-.ke-math:hover .ke-math-edit-btn,
-.ke-math:hover .ke-math-del-btn,
-.ke-math:hover .ke-math-more-btn {
-  display: inline-block;
+.ProseMirror-selectednode > .ke-math .ke-math-tools,
+.ke-math:hover .ke-math-tools {
+  display: flex;
 }
 /* 菜单打开时必须可见（鼠标移出按钮/节点后仍可点击） */
 .ke-math .ke-math-more-btn[aria-expanded='true'] {
-  display: inline-block;
+  display: inline-flex;
 }
+/* 块级公式：工具条挂在公式**下方右对齐**（公式常居中，右伸会跑出正文列） */
+.ke-math--block .ke-math-tools {
+  left: auto;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+}
+/* 几何说明（2026-09-23 实测）：行内公式在正文列**右边界**时，工具条（76px）
+   从公式右缘再往外伸 → 可能超出正文列/视口（Chromium 实测：公式右缘 824.11 → 工具条
+   840.11..916.11，视口 1280 内可见；正文列右缘 880 时会压到列表右侧空白）。
+   这是**悬浮层**的固有取舍：宁可让临时浮层略微越界，也不能让它参与公式占位
+   （参与占位 = hover 即回流换行，正是要修的 Bug A）。 */
+
+/* task-52 Bug B：⋮ 菜单的「点击外部关闭」遮罩。
+   原实现是 `fixed inset-0 z-40` 且参与命中测试 → 菜单打开期间**整篇正文**都被它盖住
+   （Chromium 实测：elementFromPoint(正文) 命中 `span.fixed.inset-0.z-40`，rect 1280×900）
+   —— 用户实测「`2.` 右侧有看不见的块，光标放不进去」就是它。
+   现在遮罩只负责视觉/结构，命中测试一律穿透（pointer-events:none）；
+   关闭动作由 MathNodeView 的 document 捕获监听完成（mousedown/touchstart）。 */
+.ke-math-more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
 .ke-math-field {
   width: 100%;
   min-width: 120px;

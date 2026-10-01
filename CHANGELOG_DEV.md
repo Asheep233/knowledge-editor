@@ -2,6 +2,23 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
+> 最后更新：2026-09-29（**v1.2.4 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.4）
+
+## 2026-09-29（★ v1.2.4 修复版）
+
+Tag `v1.2.4` · commit `d0d120e`（bump）· Latest 由 v1.2.3 切到 v1.2.4
+
+**修复（task-52，公式悬浮工具条两处交互缺陷）**
+- **行末公式 hover 漂移**：✏️/🗑/⋮ 三个按钮原在文档流内，显示时给公式 **+72.21px** 宽度 → 行末换行。
+  改为**绝对定位工具条**（`.ke-math-tools`），hover 只切可见性 → 实测 9 场景 hover 前后 rect 变化 **0**；
+  真机 6/6 公式宽度变化 **0px**
+- **正文点不进去**：`⋮` 菜单的「点击外部关闭」遮罩是 **1280×900 全屏透明元素**（`elementFromPoint` 实测），
+  菜单开着时盖住整篇正文 → 改 `pointer-events:none` + 文档捕获监听（豁免 `.ke-math` 内部）→ 菜单开着时
+  正文仍是命中目标、点正文菜单关闭且光标落下、菜单项仍可点
+
+**门禁**：pytest **735 passed + 6 skipped** · tsc **0** · vitest **64 files / 1207 passed + 1 skipped** · cargo **20**
+**资产**：安装包 50,809,921 B sha `69e460ac…` · 侧车 46,208,831 B sha `4881fc50…` · manifest `94494f9c…` · versions `d8a5b06c…`
+
 > 最后更新：2026-09-24（**v1.2.3 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.3）
 
 ## 2026-09-24（★ v1.2.3 修复版）

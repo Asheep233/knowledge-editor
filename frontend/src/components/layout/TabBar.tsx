@@ -54,6 +54,36 @@ export function replaceTab(tabs: TabItem[], fromId: string, toId: string, title?
   return tabs.map((t, k) => (k === i ? { id: toId, title: title ?? t.title } : t))
 }
 
+/**
+ * UI-1：**目录**重命名/移动的前缀替换。
+ *
+ * 文件树对文件夹也发 `rename/move`，而 `replaceTab` 只做精确 id 匹配 →
+ * `Articles/Sub/a.md` 这类子文档标签与激活路径都留在旧前缀（保存 PUT 404、
+ * 标签点击静默失败）。这里把 `fromId` 本身及其全部子路径整体搬到 `toId`。
+ *
+ * - 纯映射、**不新增标签**（文件夹不是文档，找不到匹配时返回原数组）；
+ * - `title` 只作用于 `fromId` 自身（文件重命名场景），子项标题不变。
+ */
+export function replaceTabPrefix(
+  tabs: TabItem[],
+  fromId: string,
+  toId: string,
+  title?: string,
+): TabItem[] {
+  if (!fromId || !toId) return tabs
+  let changed = false
+  const next = tabs.map((t) => {
+    if (t.id !== fromId && !t.id.startsWith(fromId + '/')) return t
+    changed = true
+    return {
+      ...t,
+      id: toId + t.id.slice(fromId.length),
+      title: t.id === fromId && title !== undefined ? title : t.title,
+    }
+  })
+  return changed ? next : tabs
+}
+
 /** 同步标题（保存回包 / 页眉重命名）。 */
 export function setTabTitle(tabs: TabItem[], id: string, title: string): TabItem[] {
   const i = tabs.findIndex((t) => t.id === id)

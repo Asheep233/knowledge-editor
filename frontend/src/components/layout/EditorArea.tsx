@@ -365,7 +365,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       return async (signal?: AbortSignal) => {
         const ed = editorRef.current
         const seq = docSeq(docId)
-        const isCurrent = articleRef.current?.id === docId
+        // UI-2：await 之后**必须重读实时态**——保存启动时的快照若在 await 后仍用作门控，
+        // 保存期间切档会让 A 的正文被 setKeContent 进此刻显示 B 的编辑器（串档）。
+        //   stillCurrent：该文档是否仍是激活文档（决定 saveState / 404 提示的门控）；
+        //   stillEditorDoc：编辑器此刻是否仍载着该文档（决定**内容**写入的门控）。
+        const stillCurrent = () => articleRef.current?.id === docId
+        const stillEditorDoc = () => stillCurrent() && editorDocIdRef.current === docId
         // F14 / F-S1-2：保存内容来源按「**编辑器此刻载着谁**」裁决（editorDocId），
         // 而不是 articleRef —— 后者在切档窗口里已指向新文档，会把新文档内容写进旧路径。
         // 只有编辑器仍载着 docId 时才允许实时序列化；否则必须用切档快照；
@@ -381,7 +386,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         })
         if (md === null) return
         try {
-          if (isCurrent) setSaveState('saving')
+          if (stillCurrent()) setSaveState('saving')
           // 草稿/恢复点：内部数据，恒 LF、无 BOM —— 不套 traits（规范 §2.6 只约束文档写入）
           await registerRecoveryPoint(docId, md)
           // F-4/F-5：文档写入前还原该文档的 BOM/换行特征（编辑器内部一律 LF）
@@ -392,7 +397,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           // 下一次源码保存会把刚 flush 的编辑覆盖掉（内容丢失）。
           lastSavedRawRef.current.set(docId, saved.content)
           const latest = docSeq(docId) === seq
-          if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
+          if (stillCurrent()) setSaveState(latest ? 'saved' : 'dirty')
           onSaved?.(docId, saved)
           if (latest) {
             void clearRecoveryPoint(docId)
@@ -405,7 +410,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           }
           // F15：A→B→A 回退竞态——GET 先于在途 PUT 返回旧内容时，保存完成后
           // 若正文与编辑器不一致（且期间无新编辑），用保存结果对齐编辑器。
-          if (isCurrent && latest && ed) {
+          if (stillEditorDoc() && latest && ed) {
             // F-4/F-5：服务端回包 = 磁盘原样（可能带 BOM/CRLF）→ 捕获为该文档当前特征
             captureTraits(docId, saved.content)
             const savedBody = stripFrontmatter(saved.content).content
@@ -422,7 +427,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         } catch (e) {
           if (signal?.aborted) {
             // R2：主动中止（重新加载外部版本）——放弃本次内容并清理恢复点
-            if (isCurrent) setSaveState('idle')
+            if (stillCurrent()) setSaveState('idle')
             void clearRecoveryPoint(docId)
             // S-1：本次编辑已被放弃（编辑器随后由外部版本重载覆盖），必须**一并放弃未决的
             // 恢复点登记**。否则 3s 后调度器会用重载后的磁盘内容再登记一条「孤儿草稿」——
@@ -436,11 +441,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             if (articleRef.current?.id === docId) draftRegRef.current?.cancel()
             return
           }
-          if (isCurrent) setSaveState('error')
+          if (stillCurrent()) setSaveState('error')
           // P3-7：保存时 404 说明文档已被外部删除，明确提示而非静默失败
           // F19：404 提示门控 isCurrent——后台文档（已切走的旧文档）404
           // 对当前无关文档弹窗、且可能双弹窗（旧实现不门控）
-          if (is404Error(e) && isCurrent) window.alert('保存失败：文档已被删除（404）')
+          if (is404Error(e) && stillCurrent()) window.alert('保存失败：文档已被删除（404）')
           // R01：**必须抛回 saveQueue** —— 队列据此记录 'failed'，flushWithTimeout 才会返回
           // false，调用方才会走「未保存修改」确认，而不是把失败当成已完成、静默丢弃编辑。
           throw e
@@ -475,7 +480,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         const raw = sourceBaseRawRef.current
         const body = sourceValueRef.current
         const seq = docSeq(docId)
-        const isCurrent = articleRef.current?.id === docId
+        // UI-2：await 之后重读实时态（源码通道同款；避免陈旧快照门控）
+        const stillCurrent = () => articleRef.current?.id === docId
         // §6.2-4：未知/损坏 ke-* 被改动 → 首次保存必须显式提示，不得静默覆盖。
         // R11：提示与许可都按「当前这份内容」判定 ——
         //  · 已明确拒绝且内容未变 → 直接跳过（不清除脏状态、不写盘、不重复打扰）；
@@ -483,7 +489,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         //  · 内容再变化 → 重新判定/再次询问。
         if (unknownMarkersChanged(sourceInitialRef.current, body)) {
           if (sourceUnknownDeclinedRef.current === body) {
-            if (isCurrent) setSaveState('dirty')
+            if (stillCurrent()) setSaveState('dirty')
             return
           }
           if (!sourceUnknownAckSessionRef.current && sourceUnknownAckRef.current !== body) {
@@ -494,7 +500,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               // R11：**仅取消时**登记「拒绝」并绑定该内容 —— 之后内容不变则不写盘、不重复打扰；
               // 内容一旦再变 → 重新判定（可再次询问），绝不静默写入未确认的改动。
               sourceUnknownDeclinedRef.current = body
-              if (isCurrent) setSaveState('dirty')
+              if (stillCurrent()) setSaveState('dirty')
               return
             }
             // 仅确认成功后登记许可（绑定被确认的内容 + 会话级去重）
@@ -504,12 +510,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         }
         const md = buildSourceSavePayload(raw, body)
         try {
-          if (isCurrent) setSaveState('saving')
+          if (stillCurrent()) setSaveState('saving')
           // 恢复点：草稿恒 LF/无 BOM（S-1 口径），内容同样取自源码字符串
           await registerRecoveryPoint(docId, buildSourceDraft(raw, body))
           const saved = await saveArticle(docId, md, signal)
           const latest = docSeq(docId) === seq
-          if (isCurrent) setSaveState(latest ? 'saved' : 'dirty')
+          if (stillCurrent()) setSaveState(latest ? 'saved' : 'dirty')
           if (latest) {
             lastSavedRawRef.current.set(docId, saved.content)
             if (articleRef.current?.id === docId) sourceDirtyRef.current = false
@@ -527,12 +533,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           onSaved?.(docId, saved)
         } catch (e) {
           if (signal?.aborted) {
-            if (isCurrent) setSaveState('idle')
+            if (stillCurrent()) setSaveState('idle')
             void clearRecoveryPoint(docId)
             return
           }
-          if (isCurrent) setSaveState('error')
-          if (is404Error(e) && isCurrent) window.alert('保存失败：文档已被删除（404）')
+          if (stillCurrent()) setSaveState('error')
+          if (is404Error(e) && stillCurrent()) window.alert('保存失败：文档已被删除（404）')
           // R01：同 PM 通道 —— 失败必须抛回队列（源码模式的磁盘写失败同样不得被当成已完成）
           throw e
         }

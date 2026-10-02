@@ -6,11 +6,16 @@ import {
   cancelPending,
   discardPending,
   enqueueSave,
+  hasFailedSave,
+  isFlushSafe,
+  lastSaveError,
+  lastSaveOutcome,
   flushPending,
   flushPendingAll,
   flushWithTimeout,
   hasPending,
   pendingDocIds,
+  type SaveFn,
 } from './saveQueue'
 
 describe('saveQueue — P0-2 防抖窗口输入不静默丢失', () => {
@@ -399,5 +404,145 @@ describe('saveQueue — task-35 C：discardPending（放弃修改）', () => {
 
     expect(saved).toEqual(['c1', 'c2'])
     expect(hasPending('doc-C')).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// task-54 R01（审查报告）：保存失败不得被当成已完成
+// ---------------------------------------------------------------------------
+describe('saveQueue — task-54 R01：明确结果（成功/失败/取消/超时）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('R01-① 保存失败：flushWithTimeout 必须返回 false（旧实现返回 true）+ 结果 failed + 保留 dirty 与重试信息', async () => {
+    const boom = new Error('EACCES: 目标文件被占用')
+    const failing: SaveFn = async () => {
+      throw boom
+    }
+    enqueueSave('doc-A', failing, 0)
+    await Promise.resolve()
+
+    const flushed = await flushWithTimeout('doc-A', 3000)
+    // 旧实现：.then(() => true) → 保存失败也放行；修复后：只有 saved/none 才安全
+    expect(flushed, '保存失败必须返回 false（调用方据此走未保存确认）').toBe(false)
+    expect(lastSaveOutcome('doc-A')).toBe('failed')
+    expect(lastSaveError('doc-A')).toBe(boom)
+    expect(hasFailedSave('doc-A')).toBe(true)
+    // dirty 状态保留：仍算「有未保存内容」，可重试
+    expect(hasPending('doc-A')).toBe(true)
+    expect(pendingDocIds()).toContain('doc-A')
+    expect(isFlushSafe('failed')).toBe(false)
+  })
+
+  it('R01-② 失败后重试成功：结果变 saved，条目清理，flush 恢复 true', async () => {
+    let fail = true
+    const flaky: SaveFn = async () => {
+      if (fail) throw new Error('网络错误')
+    }
+    enqueueSave('doc-B', flaky, 0)
+    await Promise.resolve()
+    await expect(flushWithTimeout('doc-B', 3000)).resolves.toBe(false)
+    expect(lastSaveOutcome('doc-B')).toBe('failed')
+
+    fail = false
+    enqueueSave('doc-B', flaky, 0) // 重试（新内容入队 → 旧失败标记作废）
+    await expect(flushWithTimeout('doc-B', 3000)).resolves.toBe(true)
+    expect(lastSaveOutcome('doc-B')).toBe('saved')
+    expect(hasFailedSave('doc-B')).toBe(false)
+    expect(hasPending('doc-B')).toBe(false)
+  })
+
+  it('R01-③ 成功路径不回归：saved → true；无未决 → none → true', async () => {
+    const ok: SaveFn = async () => undefined
+    enqueueSave('doc-C', ok, 0)
+    await expect(flushWithTimeout('doc-C', 3000)).resolves.toBe(true)
+    expect(lastSaveOutcome('doc-C')).toBe('saved')
+    await expect(flushWithTimeout('doc-C', 3000)).resolves.toBe(true)
+    expect(isFlushSafe('none')).toBe(true)
+  })
+
+  it('R01-④ 超时仍是 false；随后保存完成可再 flush 判定', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    enqueueSave(
+      'doc-D',
+      async () => {
+        await gate
+      },
+      0,
+    )
+    await Promise.resolve()
+    const p = flushWithTimeout('doc-D', 10)
+    vi.advanceTimersByTime(10)
+    await expect(p).resolves.toBe(false)
+    release()
+    await flushPending('doc-D')
+    expect(lastSaveOutcome('doc-D')).toBe('saved')
+  })
+
+  it('R01-⑤ 中止（abortPending/放弃）记 cancelled，且不再算「未落盘的失败」', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    void enqueueSave(
+      'doc-E',
+      async (signal?: AbortSignal) => {
+        await gate
+        if (signal?.aborted) throw new Error('aborted')
+      },
+      0,
+    )
+    await Promise.resolve()
+    abortPending('doc-E')
+    release()
+    await flushPending('doc-E')
+    expect(lastSaveOutcome('doc-E')).toBe('cancelled') // 中止 ≠ 失败：内容被显式放弃
+    expect(hasFailedSave('doc-E')).toBe(false)
+    expect(isFlushSafe('cancelled')).toBe(true)
+    await expect(flushWithTimeout('doc-E', 1000)).resolves.toBe(true)
+  })
+
+  it('R01-⑥ task-44 回归：discardPending 仍是「取消未决 + 中止在途」且零新增写入', async () => {
+    const saved: string[] = []
+    let release!: () => void
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    void enqueueSave(
+      'doc-F',
+      async () => {
+        saved.push('first')
+        await gate
+      },
+      0,
+    )
+    await Promise.resolve()
+    const p = flushWithTimeout('doc-F', 10)
+    vi.advanceTimersByTime(10)
+    await expect(p).resolves.toBe(false)
+    // 确认框期间用户又输入 → 重新 armed latest
+    void enqueueSave(
+      'doc-F',
+      async () => {
+        saved.push('second')
+      },
+      DEFAULT_DEBOUNCE_MS,
+    )
+    discardPending('doc-F') // 用户点「放弃修改」
+    const after = flushPending('doc-F')
+    release()
+    await after
+    expect(saved, '放弃后不得落盘被放弃的内容').toEqual(['first'])
+    expect(hasPending('doc-F')).toBe(false)
+    expect(hasFailedSave('doc-F')).toBe(false)
+    expect(isFlushSafe(lastSaveOutcome('doc-F') ?? 'none')).toBe(true)
   })
 })

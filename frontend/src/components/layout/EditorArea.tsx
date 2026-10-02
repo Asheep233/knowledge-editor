@@ -30,7 +30,7 @@ import { attachmentNode } from '../../editor/upload'
 import { applyMathDeleteCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
 import { MATH_CONVERT_EVENT, convertBlockToInline, convertInlineToBlock, type ConvertRequest } from '../../editor/math/convert'
 import { getAutosaveIntervalMs } from '../../settings'
-import { enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
+import { cancelPending, enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
 import { createDeferredLoader, onDocumentSwitch, resolveRecoveryTarget, resolveSaveContent, type DeferredLoader } from '../../state/docSwitch'
 import {
@@ -164,7 +164,17 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const sourceBaseRawRef = useRef('')
   const sourceInitialRef = useRef('')
   const sourceDirtyRef = useRef(false)
-  const sourceUnknownPromptedRef = useRef(false)
+  /**
+   * R11（审查报告：取消未知语法确认后仍被自动保存写入）：
+   * 许可必须**仅在用户确认成功后**登记，且绑定**被确认的那份内容**；拒绝同样绑定内容。
+   * 旧实现（`sourceUnknownPromptedRef` 布尔）在 `askConfirm` **之前**置位 → 取消后不再询问，
+   * 之后只加普通正文，自动保存也会把「被取消的未知语法改动」写进磁盘。
+   */
+  const sourceUnknownAckRef = useRef<string | null>(null)
+  /** 会话级「已确认」：确认成功一次后不再反复询问（与 task-42 verifier B4 口径一致）；
+   *  但**拒绝**不置位 —— 拒绝后内容再变化必须重新询问（task-54 R11）。 */
+  const sourceUnknownAckSessionRef = useRef(false)
+  const sourceUnknownDeclinedRef = useRef<string | null>(null)
   /** 最近一次「已保存」的磁盘原文（源码初值取保存后的内容，而非旧盘面） */
   const lastSavedRawRef = useRef(new Map<string, string>())
   // F-S1-2：编辑器**此刻实际载入**的文档 id（实时内容的可信域）。切档快照的守卫必须用它，
@@ -431,6 +441,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           // F19：404 提示门控 isCurrent——后台文档（已切走的旧文档）404
           // 对当前无关文档弹窗、且可能双弹窗（旧实现不门控）
           if (is404Error(e) && isCurrent) window.alert('保存失败：文档已被删除（404）')
+          // R01：**必须抛回 saveQueue** —— 队列据此记录 'failed'，flushWithTimeout 才会返回
+          // false，调用方才会走「未保存修改」确认，而不是把失败当成已完成、静默丢弃编辑。
+          throw e
         }
       }
     },
@@ -463,13 +476,31 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         const body = sourceValueRef.current
         const seq = docSeq(docId)
         const isCurrent = articleRef.current?.id === docId
-        // §6.2-4：未知/损坏 ke-* 被改动 → 首次保存必须显式提示，不得静默覆盖
-        if (!sourceUnknownPromptedRef.current && unknownMarkersChanged(sourceInitialRef.current, body)) {
-          sourceUnknownPromptedRef.current = true
-          const ok = await askConfirm(
-            '你修改了非标准语法（未知/损坏的 ke-* 标记）；保存后将以这段原文为准。是否继续保存？',
-          )
-          if (!ok) return
+        // §6.2-4：未知/损坏 ke-* 被改动 → 首次保存必须显式提示，不得静默覆盖。
+        // R11：提示与许可都按「当前这份内容」判定 ——
+        //  · 已明确拒绝且内容未变 → 直接跳过（不清除脏状态、不写盘、不重复打扰）；
+        //  · 未确认过该内容 → 弹提示；**仅确认成功才登记许可**（绑定该内容）；
+        //  · 内容再变化 → 重新判定/再次询问。
+        if (unknownMarkersChanged(sourceInitialRef.current, body)) {
+          if (sourceUnknownDeclinedRef.current === body) {
+            if (isCurrent) setSaveState('dirty')
+            return
+          }
+          if (!sourceUnknownAckSessionRef.current && sourceUnknownAckRef.current !== body) {
+            const ok = await askConfirm(
+              '你修改了非标准语法（未知/损坏的 ke-* 标记）；保存后将以这段原文为准。是否继续保存？',
+            )
+            if (!ok) {
+              // R11：**仅取消时**登记「拒绝」并绑定该内容 —— 之后内容不变则不写盘、不重复打扰；
+              // 内容一旦再变 → 重新判定（可再次询问），绝不静默写入未确认的改动。
+              sourceUnknownDeclinedRef.current = body
+              if (isCurrent) setSaveState('dirty')
+              return
+            }
+            // 仅确认成功后登记许可（绑定被确认的内容 + 会话级去重）
+            sourceUnknownAckSessionRef.current = true
+            sourceUnknownAckRef.current = body
+          }
         }
         const md = buildSourceSavePayload(raw, body)
         try {
@@ -482,6 +513,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           if (latest) {
             lastSavedRawRef.current.set(docId, saved.content)
             if (articleRef.current?.id === docId) sourceDirtyRef.current = false
+            // R02/R11：基线推进到**已落盘**的正文（含已确认的未知语法改动）——
+            // 之后普通编辑不再与「进入时的初值」反复比对/重复询问。
+            const savedBody = sourceBodyOf(saved.content)
+            sourceInitialRef.current = savedBody
+            // 保留「会话级已确认」（用户已被告知一次未知语法写入，不反复打扰）；
+            // 仅清空按内容绑定的许可/拒绝（基线已推进到已落盘内容）。
+            sourceUnknownAckRef.current = null
+            sourceUnknownDeclinedRef.current = null
             void clearRecoveryPoint(docId)
             if (articleRef.current?.id === docId) draftRegRef.current?.markSaved(true)
           }
@@ -494,6 +533,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           }
           if (isCurrent) setSaveState('error')
           if (is404Error(e) && isCurrent) window.alert('保存失败：文档已被删除（404）')
+          // R01：同 PM 通道 —— 失败必须抛回队列（源码模式的磁盘写失败同样不得被当成已完成）
+          throw e
         }
       }
     },
@@ -532,7 +573,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     sourceInitialRef.current = body
     sourceValueRef.current = body
     sourceDirtyRef.current = false
-    sourceUnknownPromptedRef.current = false
+    sourceUnknownAckRef.current = null
+    sourceUnknownAckSessionRef.current = false
+    sourceUnknownDeclinedRef.current = null
     setSourceValue(body)
     setViewModeState('source')
     persistViewMode('source')
@@ -661,7 +704,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       sourceInitialRef.current = srcBody
       sourceValueRef.current = srcBody
       sourceDirtyRef.current = false
-      sourceUnknownPromptedRef.current = false
+      sourceUnknownAckRef.current = null
+      sourceUnknownAckSessionRef.current = false
+      sourceUnknownDeclinedRef.current = null
       setSourceValue(srcBody)
       editorDocIdRef.current = article.id
       return
@@ -989,9 +1034,27 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       try {
         setSaveState('saving')
         const doc = await restoreHistory(article.id, v.id)
+        // R02（审查报告：源码模式恢复历史后被陈旧 textarea 覆盖）：
+        // 恢复 = 用磁盘旧版本**替换**当前内容，必须同时处理三条边界，否则刚恢复的版本会被
+        // ①在途/未决保存 或 ②陈旧的 textarea 再次覆盖回去：
+        //  ① 丢弃该文档的未决保存 + 推进文档代次（让在途 PUT 的回包失效）；
+        //  ② 源码通道的 textarea 值 / 基线 / 初值 / 文件特征一并替换；
+        //  ③ 许可（未知语法）按新内容重置。
+        cancelPending(article.id)
+        bumpSeq(article.id)
         // F-4/F-5：服务端已把历史版本写回磁盘 → 文件特征随快照变化，捕获回包原文。
         // （只读预览路径不捕获：预览不写盘，若用旧快照特征覆盖会让下一次保存改写现有换行）
         captureTraits(article.id, doc.content)
+        lastSavedRawRef.current.set(article.id, doc.content)
+        const restoredBody = sourceBodyOf(doc.content)
+        sourceBaseRawRef.current = doc.content
+        sourceInitialRef.current = restoredBody
+        sourceValueRef.current = restoredBody
+        sourceDirtyRef.current = false
+        sourceUnknownAckRef.current = null
+        sourceUnknownAckSessionRef.current = false
+        sourceUnknownDeclinedRef.current = null
+        setSourceValue(restoredBody)
         // 刷新编辑器内容（Document Model）；编辑器内部一律 LF
         setKeContent(editor, normalizeForCompare(stripFrontmatter(doc.content).content))
         setSaveState('saved')
@@ -1004,7 +1067,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         setSaveState('error')
       }
     },
-    [article, editor, saveState, onSaved, onArticleRestored, loadHistory],
+    [article, editor, saveState, onSaved, onArticleRestored, loadHistory, bumpSeq],
   )
 
   const saveInfo = SAVE_LABEL[saveState]

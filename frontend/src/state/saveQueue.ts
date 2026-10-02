@@ -34,9 +34,28 @@ interface Entry {
   timer: ReturnType<typeof setTimeout> | null
   /** 当前在途保存在途用的 AbortController（R2 残余：可中止在途 PUT） */
   abort?: AbortController
+  /** R01：最近一次保存的**明确结果**（未跑过 = null）。调用方据此只认「已成功落盘」。 */
+  outcome?: SaveOutcome
+  /** R01：失败原因（供提示/重试），成功或取消时清空 */
+  lastError?: unknown
 }
 
+/**
+ * R01（审查报告：保存失败被当成已完成）：保存的**明确结果**。
+ * - `'saved'`    本次内容已成功落盘（PUT 已返回成功）
+ * - `'failed'`   本次保存失败（网络/5xx/磁盘锁等）→ **未落盘**，脏状态与重试信息保留
+ * - `'cancelled'` 被主动中止（abortPending / 放弃修改）
+ * - `'none'`     本无未决保存（无可丢内容，等价于安全）
+ *
+ * ⚠️ 语义约定：只有 `'saved'` 与 `'none'` 才允许视为「可以安全离开/切换」——
+ * 旧实现把「Promise 已结束」一律映射为 true，导致保存失败也放行，用户编辑被静默丢弃。
+ */
+export type SaveOutcome = 'saved' | 'failed' | 'cancelled' | 'none'
+
 const entries = new Map<string, Entry>()
+
+/** R01：每 doc 最近一次保存的明确结果（entry 被清理后仍可查询；新内容入队/显式放弃时刷新） */
+const outcomes = new Map<string, { outcome: SaveOutcome; error?: unknown }>()
 
 function entryFor(docId: string): Entry {
   let e = entries.get(docId)
@@ -61,8 +80,21 @@ function drain(e: Entry): Promise<void> {
         // 队列只保证串行与“完成后再补一次”，不中断后续保存。
         try {
           await fn(e.abort.signal)
-        } catch {
-          /* 继续取下一个（若有最新内容） */
+          // R01：显式记录成功（只有 saveFn 正常 resolve 才算落盘）
+          e.outcome = 'saved'
+          e.lastError = undefined
+          outcomes.set(e.docId, { outcome: 'saved' })
+        } catch (err) {
+          // R01：失败/中止必须区分记录 —— 失败时保留脏状态（条目不删除）以便重试与提示；
+          // 继续取下一个（若有最新内容，latest-wins）。
+          if (e.abort?.signal.aborted) {
+            e.outcome = 'cancelled'
+            outcomes.set(e.docId, { outcome: 'cancelled' })
+          } else {
+            e.outcome = 'failed'
+            e.lastError = err
+            outcomes.set(e.docId, { outcome: 'failed', error: err })
+          }
         } finally {
           e.abort = undefined
         }
@@ -72,9 +104,11 @@ function drain(e: Entry): Promise<void> {
       // 若 drain 期间又有新内容入队，则再跑一遍；否则清理空闲条目。
       if (e.latest !== undefined) {
         void drain(e)
-      } else {
+      } else if (e.outcome !== 'failed') {
         entries.delete(e.docId)
       }
+      // R01：失败条目不删除 —— hasPending/pendingDocIds 继续反映「有未保存内容」，
+      // 调用方（关标签/切工作区/关窗）据此仍走「未保存确认」而不是静默放行。
     }
   })()
   return e.running
@@ -90,6 +124,12 @@ function drain(e: Entry): Promise<void> {
 export function enqueueSave(docId: string, saveFn: SaveFn, debounceMs = DEFAULT_DEBOUNCE_MS): Promise<void> {
   const e = entryFor(docId)
   e.latest = saveFn
+  // 新一轮内容入队：上一轮的失败标记作废（结果只反映最近一次尝试）
+  if (e.outcome === 'failed') {
+    e.outcome = undefined
+    e.lastError = undefined
+    outcomes.delete(docId)
+  }
   if (e.timer !== null) clearTimeout(e.timer)
   if (debounceMs > 0) {
     e.timer = setTimeout(() => {
@@ -135,6 +175,8 @@ export function cancelPending(docId: string): void {
     e.timer = null
   }
   e.latest = undefined
+  // R01：显式取消 → 该 doc 不再有「未落盘的失败」语义（调用方随后可安全离开）
+  outcomes.delete(docId)
   if (e.running === null) entries.delete(docId)
 }
 
@@ -151,6 +193,8 @@ export function abortPending(docId: string): void {
   }
   e.latest = undefined
   e.abort?.abort()
+  // R01：放弃/中止同样清结果（内容已被有意丢弃，不再算「未落盘的编辑」）
+  outcomes.delete(docId)
   if (e.running === null) entries.delete(docId)
 }
 
@@ -177,9 +221,44 @@ export function discardPending(docId: string): void {
  * 一切路径变更前先落盘未决内容）。
  * @returns true = 未决保存已清空（已落盘或本无未决）；false = 超时（保存未完成）。
  */
+/**
+ * 是否「可以安全离开/切换/关闭」：
+ *  - `'saved'` 已成功落盘 ✓
+ *  - `'none'`  本无未决 ✓
+ *  - `'cancelled'` 内容被**显式放弃/中止**（用户确认放弃、外部版本重载）→ 已无待保护内容 ✓
+ *  - `'failed'` 保存失败但内容仍在 → **不安全**（必须走未保存确认/中止切换）
+ */
+export function isFlushSafe(outcome: SaveOutcome): boolean {
+  return outcome === 'saved' || outcome === 'none' || outcome === 'cancelled'
+}
+
+/** 每 doc 最近一次保存结果（null = 本会话没有过保存尝试 / 已被显式取消） */
+export function lastSaveOutcome(docId: string): SaveOutcome | null {
+  return outcomes.get(docId)?.outcome ?? null
+}
+
+/** 每 doc 最近一次保存失败原因（无失败 = undefined） */
+export function lastSaveError(docId: string): unknown {
+  return outcomes.get(docId)?.error
+}
+
+/** 是否有「保存失败且尚未成功重试」的未落盘内容（R01：UI 据此保留 dirty 与重试入口） */
+export function hasFailedSave(docId: string): boolean {
+  return outcomes.get(docId)?.outcome === 'failed'
+}
+
+/**
+ * 带超时兜底的「取消并触发保存」，返回**是否已成功落盘**（R01 修正）。
+ *
+ * 旧实现：`flushPending(...).then(() => true)` —— 把「Promise 已结束」一律映射为 true，
+ * 于是 **保存失败也被当成已完成**，调用方（切视图/关标签/切工作区/关窗）静默丢弃编辑。
+ * 现在：只有 `'saved'`（成功落盘）或 `'none'`（本无未决）才返回 true；
+ * `'failed'` / `'cancelled'` / 超时 → false，调用方必须走「未保存修改」确认或中止。
+ * 明确结果请用 `lastSaveOutcome(docId)` / `lastSaveError(docId)`。
+ */
 export function flushWithTimeout(docId: string, timeoutMs = 3000): Promise<boolean> {
   return Promise.race([
-    flushPending(docId).then(() => true),
+    flushPending(docId).then(() => isFlushSafe(lastSaveOutcome(docId) ?? 'none')),
     new Promise<boolean>((r) => setTimeout(() => r(false), timeoutMs)),
   ])
 }
@@ -187,7 +266,7 @@ export function flushWithTimeout(docId: string, timeoutMs = 3000): Promise<boole
 /** 是否存在未决（防抖中/在途待补）保存。 */
 export function hasPending(docId: string): boolean {
   const e = entries.get(docId)
-  return !!e && (e.latest !== undefined || e.running !== null)
+  return !!e && (e.latest !== undefined || e.running !== null || e.outcome === 'failed')
 }
 
 /** 当前存在未决保存的文档 id 列表（用于 beforeunload / close-requested 巡检）。 */

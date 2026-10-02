@@ -2,7 +2,7 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前正式版 **v1.1.9** · 预发布 **v1.2.0-pre.2**（源码模式 + 保真修复）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前正式版 **v1.2.4**（公式悬浮工具条交互缺陷修复）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
 
 > **v1.2.0-pre.2（预发布）**：**源码模式**（在一个原生文本框里直接编辑 Markdown 原文，保存走
 > **字符串直存**——不经排版引擎，逐字节落盘；frontmatter 隐藏且原样保留；切视图自动保存；

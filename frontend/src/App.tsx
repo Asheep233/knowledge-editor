@@ -33,6 +33,7 @@ import {
   closeTab as closeTabState,
   openTab,
   replaceTab,
+  replaceTabPrefix,
   setTabTitle,
   type TabItem,
 } from './components/layout/TabBar'
@@ -97,6 +98,8 @@ export default function App() {
   const [tabs, setTabs] = useState<TabItem[]>([])
   const [treeRefresh, setTreeRefresh] = useState(0)
   const [extModal, setExtModal] = useState<FsEvent | null>(null)
+  /** UI-9：打开文档失败的可见反馈（状态条 + 重试），替代只 console.error 的静默失败 */
+  const [openError, setOpenError] = useState<{ id: string; message: string } | null>(null)
   // 原生菜单 refresh-recent 事件：历史遗留 → 保留状态以防 future 重新接线（当前无 UI 消费）。
   const [, setWsMenuOpen] = useState(false)
   /** Phase 7 M3：设置面板开关 */
@@ -118,6 +121,8 @@ export default function App() {
   useEffect(() => {
     tabsRef.current = tabs
   }, [tabs])
+  // UI-4：外部删除回调需要调用最新的 openArticle（其定义在下方，用 ref 规避顺序/TDZ）
+  const openArticleRef = useRef<(id: string) => Promise<void>>(async () => {})
   // P1-7：打开请求序号，防止旧响应覆盖后发起的请求
   const openSeqRef = useRef(createRequestSeq())
   // R2：外部版本重载令牌（同 id 下强制编辑器重载磁盘内容）
@@ -254,13 +259,20 @@ export default function App() {
   // ---------- 文件监听轮询（Phase 4.3） ----------
   useEffect(() => {
     if (!workspace?.open) return
+    // 小项：在途去重——慢响应期间不得并发第二轮，否则 `eventCursor` 可能回退
+    // （第二轮的旧游标先返回、把已消费的事件再吐一遍/漏掉新事件）。
+    let inFlight = false
     const poll = async () => {
+      if (inFlight) return
+      inFlight = true
       try {
         const payload = await getFsEvents(eventCursor.current)
         eventCursor.current = payload.last_seq
         for (const ev of payload.events) handleFsEvent(ev)
       } catch {
         /* 网络抖动忽略，下一轮重试 */
+      } finally {
+        inFlight = false
       }
     }
     const timer = setInterval(() => void poll(), FS_POLL_MS)
@@ -269,6 +281,23 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspace?.open, workspace?.root])
+
+  /**
+   * UI-4：关闭「当前激活文档」并激活相邻（左优先）——内部删除与**外部删除**
+   * 两条路径共用，避免外部删除只 `setArticle(null)` 而留下悬空标签、不激活相邻。
+   */
+  const closeActiveAndActivateAdjacent = useCallback(
+    async (deletedId: string, message?: string) => {
+      lastDeletedIdRef.current = deletedId
+      const after = closeTabState(tabsRef.current, deletedId, deletedId)
+      setTabs(after.tabs)
+      setArticle(null)
+      setSaveState('idle')
+      if (message) window.alert(message)
+      if (after.activeId) await openArticleRef.current(after.activeId)
+    },
+    [],
+  )
 
   const handleFsEvent = useCallback((ev: FsEvent) => {
     // 读最新 id 而非闭包捕获的旧 article（P1-8 stale closure）
@@ -283,16 +312,18 @@ export default function App() {
     if (decision.surface === 'modified') {
       setExtModal(ev)
     } else if (decision.surface === 'deleted') {
-      // P3-7：当前文档被外部删除了 → 提示 + 清空当前编辑
-      setArticle(null)
-      setSaveState('idle')
-      window.alert('当前文档已被外部删除')
+      // P3-7 + UI-4：当前文档被外部删除 → 清理标签 + 激活相邻（与内部删除同款），并提示
+      void closeActiveAndActivateAdjacent(ev.rel, '当前文档已被外部删除')
     }
-  }, [])
+  }, [closeActiveAndActivateAdjacent])
 
   const openArticle = useCallback(async (id: string) => {
     loadingCountRef.current += 1
     setLoading(true)
+    // UI-5：切档即清空「外部修改」弹窗——它绑定的是上一份文档，跨档滞留会把用户
+    // 切回旧文档并可能丢弃当前编辑。UI-9：清掉上一轮打开失败的提示。
+    setExtModal(null)
+    setOpenError(null)
     try {
       await openWithSeq(id, {
         fetchFn: async (docId) => {
@@ -314,7 +345,9 @@ export default function App() {
         },
       })
     } catch (e) {
+      // UI-9：后端 down / 404 / 409 时给出可见反馈与重试入口，不再只有 console
       console.error('打开文档失败', e)
+      setOpenError({ id, message: e instanceof Error ? e.message : String(e) })
     } finally {
       loadingCountRef.current -= 1
       if (loadingCountRef.current <= 0) {
@@ -323,6 +356,10 @@ export default function App() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    openArticleRef.current = openArticle
+  }, [openArticle])
 
   // P0-2：统一的「替换当前文档」入口。存在未保存/保存中/错误时先 flushPending
   // （带 3s 超时再强切），并用 confirm 兜底，避免防抖窗口内切换静默丢失输入。
@@ -459,6 +496,9 @@ export default function App() {
     const rel = extModal?.rel
     setExtModal(null)
     if (!rel) return
+    // UI-5：弹窗可能是在另一份文档上弹出的（跨档滞留）——只处理仍属当前文档的事件，
+    // 否则会把用户切回旧文档并可能丢弃当前编辑。
+    if (rel !== articleIdRef.current) return
     if (hasUnsaved && !(await askConfirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？'))) {
       return
     }
@@ -570,8 +610,14 @@ export default function App() {
         discardPending(docId)
       }
     }
-    await closeWorkspace()
-    applyWorkspace({ open: false })
+    try {
+      await closeWorkspace()
+      applyWorkspace({ open: false })
+    } catch (e) {
+      // UI-7：后端 down 时不再产生未处理 rejection；给出可见提示且保持工作区打开
+      console.error('关闭工作区失败', e)
+      window.alert(`关闭工作区失败：${e instanceof Error ? e.message : String(e)}`)
+    }
   }, [hasUnsaved, applyWorkspace])
 
   const handleNewArticle = useCallback(async () => {
@@ -592,6 +638,9 @@ export default function App() {
       openSeqRef.current.next()
       const created = await createArticle(title)
       setArticle(created)
+      // UI-6：新建文档必须入标签集合——否则首次新建时 tabs 为空、TabBar 整行不渲染，
+      // 文档从标签体系消失（切换后无法再回到它）
+      setTabs((prev) => openTab(prev, { id: created.id, title: created.title }))
       setTreeRefresh((n) => n + 1)
     } catch (e) {
       console.error('新建文档失败', e)
@@ -628,24 +677,24 @@ export default function App() {
       setTreeRefresh((n) => n + 1)
       if (!article) return
       if (m.type === 'delete' && m.from === article.id) {
-        lastDeletedIdRef.current = m.from
-        // task-30：激活标签被删除 → 标签移除 + 激活相邻（左优先；无邻则回空态）
-        const after = closeTabState(tabsRef.current, article.id, m.from)
-        setTabs(after.tabs)
-        setArticle(null)
-        setSaveState('idle')
-        window.alert('当前文档已被删除')
-        if (after.activeId) await openArticle(after.activeId)
+        // task-30 + UI-4：激活标签被删除 → 标签移除 + 激活相邻（左优先；无邻则回空态）
+        await closeActiveAndActivateAdjacent(m.from, '当前文档已被删除')
       } else if (m.type === 'delete' && m.from) {
         // 非激活文档被删除：仅移除对应标签，激活项不变（关闭标签不产生删除请求，反向亦然）
         setTabs(closeTabState(tabsRef.current, articleIdRef.current, m.from).tabs)
       } else if ((m.type === 'rename' || m.type === 'move') && m.from && m.to) {
-        // 重命名/移动：标签 id 原位替换（激活项同步走 requestOpenArticle）
-        setTabs((prev) => replaceTab(prev, m.from!, m.to!))
-        if (m.from === article.id) await requestOpenArticle(m.to)
+        // UI-1：文件夹 rename/move → **前缀替换**（子文档标签同步；原来的精确匹配
+        // 只更新文件夹自身，子文档标签与激活路径留在旧前缀 → 自动保存 PUT 404）
+        const from = m.from
+        const to = m.to
+        setTabs((prev) => replaceTabPrefix(prev, from, to))
+        const curId = articleIdRef.current
+        if (curId && (curId === from || curId.startsWith(from + '/'))) {
+          await requestOpenArticle(to + curId.slice(from.length))
+        }
       }
     },
-    [article, openArticle, requestOpenArticle],
+    [article, closeActiveAndActivateAdjacent, requestOpenArticle],
   )
 
   // R1-B：文件树重命名/移动/删除当前文档（或其所在目录）前，先 flush 未决保存。
@@ -825,9 +874,14 @@ export default function App() {
   ])
 
   // ---------- 渲染 ----------
+  // R08（2026-10-02 独立审查）：PromptHost 必须在**所有分支**下都已挂载。
+  // 此前工作区选择页分支在 <PromptRoot> 之外渲染，而 WorkspacePicker 的 Web 回退要
+  // `await askPrompt('打开已有工作区路径')`：宿主未挂载 → PromptDialog 的 setterRef 为
+  // null → 该 Promise 永不 settle → 用户点「打开已有工作区」**没有任何反应**（Web 实测）。
+  // 现在把选择页分支也包进 PromptRoot（两个分支互斥，不会出现双宿主）。
   if (workspaceChecked && (!workspace?.open || firstRun)) {
     return (
-      <>
+      <PromptRoot>
         <WorkspacePicker
           onOpened={applyWorkspace}
           guide={!!workspace?.open && firstRun}
@@ -838,7 +892,7 @@ export default function App() {
             后端服务未连接，请启动 backend（uvicorn app.main:app）
           </div>
         )}
-      </>
+      </PromptRoot>
     )
   }
 
@@ -949,6 +1003,28 @@ export default function App() {
       statusBar={
         <StatusBar>
           <span>{article ? `${article.title} · ${article.word_count ?? 0} 字` : '未打开文档'}</span>
+          {openError ? (
+            // UI-9：打开失败可见反馈 + 一键重试（替代原先只有 console.error 的静默失败）
+            <span className="flex items-center gap-1 text-rose-600" data-testid="open-error">
+              <Icon name="alert" className="size-3" />
+              打开失败：{openError.message}
+              <button
+                type="button"
+                className="underline decoration-dotted hover:text-rose-800"
+                onClick={() => void requestOpenArticle(openError.id)}
+              >
+                重试
+              </button>
+              <button
+                type="button"
+                className="opacity-70 hover:opacity-100"
+                title="忽略"
+                onClick={() => setOpenError(null)}
+              >
+                ×
+              </button>
+            </span>
+          ) : null}
           <span>本地存储 · 自动保存已开启</span>
           <span className="text-muted-foreground/80">{saveStateLabel}</span>
           {backendDown ? (

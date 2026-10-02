@@ -114,11 +114,76 @@ app.add_middleware(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=config.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=list(config.CORS_ORIGINS),
+    # R07（2026-10-02 独立审查）：本服务**不使用 Cookie / HTTP 认证**，
+    # 因此必须关闭凭据模式（allow_credentials=True 只在有凭据可带时才有意义，
+    # 却会把跨源响应暴露给带凭据请求）。
+    # 注：浏览器形态（Web 版）需要独立的 CSP 头；桌面形态由 Tauri 配置提供。
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── R07：非安全方法的来源校验（副作用执行前）────────────────────────────────
+# 审查实测（真实本机服务，`Origin: https://untrusted.example`）：
+#   · multipart POST /api/import/markdown → 201，真的新增 Articles/untrusted.md
+#   · 无正文 POST /api/workspace/close   → 200，工作区真的被关闭
+# 原因：CORS 只阻止「跨源**读响应**」，不阻止「跨源**发请求**」；multipart /
+# text/plain / 无正文 POST 属 CORS 简单请求，不触发预检。Host 白名单只约束访问目标。
+#
+# 策略（仅在带 Origin 时生效，且只约束非安全方法）：
+#   · 安全方法（GET/HEAD/OPTIONS）与 /api/health 一律放行（健康检查是 sidecar 握手依赖）；
+#   · 无 Origin → 放行（非浏览器客户端：桌面原生调用、curl、TestClient）。
+#     浏览器对非 GET 请求**总会**带 Origin，故这不构成 CSRF 面；若连无 Origin 也拒绝，
+#     会重演 P2-16 那次的半成品事故（设置该环境变量曾让整个应用不可用：
+#     预检 401 + 前端不发头 + sidecar 不生成 → 前端/测试/脚本全断）。
+#   · 带 Origin 且不在受信任集合 → 403，副作用不会发生。
+#
+# 受信任集合 = 固定本地来源（Tauri WebView + 默认 dev 端口）
+#            ∪ config.CORS_ORIGINS（sidecar 按实际 dev 端口注入）
+#            ∪ 请求自身同源（后端直接提供页面时的同源调用）
+_TRUSTED_ORIGINS_FIXED = frozenset(
+    {
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    }
+)
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+# 健康检查永远放行：sidecar 启动握手 / 版本核对依赖它，任何来源策略都不得阻断
+_R07_EXEMPT_PATHS = ("/api/health",)
+
+
+def _trusted_origins(request: Request) -> set[str]:
+    """受信任来源集合（固定项 + CORS 配置项 + 请求自身同源）"""
+    allowed = set(_TRUSTED_ORIGINS_FIXED)
+    allowed.update(config.CORS_ORIGINS)
+    host = request.headers.get("host")
+    if host:
+        # 同源（后端自己提供页面的场景）：只由 TrustedHostMiddleware 已校验的 Host 头推导
+        allowed.add(f"http://{host}")
+        allowed.add(f"https://{host}")
+    return allowed
+
+
+@app.middleware("http")
+async def verify_request_origin(request: Request, call_next):
+    """R07：拒绝来源不可信的**写请求**（在进入路由、产生副作用之前）。"""
+    path = request.url.path
+    if request.method in _SAFE_METHODS or path.startswith(_R07_EXEMPT_PATHS):
+        return await call_next(request)
+    if not path.startswith("/api"):
+        return await call_next(request)
+    origin = request.headers.get("origin")
+    if origin is None:
+        # 非浏览器客户端（桌面原生 / curl / 测试）——浏览器发非 GET 一定带 Origin
+        return await call_next(request)
+    if origin.rstrip("/") not in _trusted_origins(request):
+        logger.warning("R07 拒绝来源不可信的写请求：%s %s origin=%s", request.method, path, origin)
+        return JSONResponse(status_code=403, content={"detail": "请求来源不可信，已拒绝"})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -127,11 +192,13 @@ async def require_workspace(request, call_next):
 
     关闭工作区后文件树/搜索/编辑等接口不再可用，前端回到工作区选择页。
 
-    M7（2026-09-20 发布前审查）：原 P2-16 的 API token 校验已**整体移除**——它
-    是半成品：中间件顺序使 OPTIONS 预检 401、前端从不发送该头、Rust sidecar 也
-    从不生成/注入 token，任何设置该环境变量的用户会直接砖掉整个应用。当前无人
-    使用（默认空 token），移除后中间件只保留「未打开工作区 409」职责，不再读取
-    任何 token 配置。
+    M7（2026-09-20 发布前审查）：原 P2-16 的令牌鉴权已**整体移除**——它是半成品：
+    中间件顺序使 OPTIONS 预检 401、前端从不发送该头、Rust sidecar 也从不生成/注入，
+    任何设置该环境变量的用户会直接砖掉整个应用。当前无人使用，移除后中间件只保留
+    「未打开工作区 409」职责，不再读取任何令牌配置。
+
+    R07（2026-10-02 独立审查）：写操作来源校验由上方 `verify_request_origin`
+    承担（Origin 白名单，**不引入 token**，避免重演上述事故）。
     """
     path = request.url.path
     if (

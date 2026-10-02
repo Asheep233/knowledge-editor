@@ -36,7 +36,17 @@ APP_CONFIG_LEGACY_PATH = Path(
 HOST = os.environ.get("KE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("KE_PORT", "8000"))
 
-# P2-16：本地 API 访问令牌（sidecar 启动时生成并注入前端；空 = 开发模式不校验）
+# ⚠️ 已废弃的死配置（R07 / 2026-10-02 独立审查核实，原注释「sidecar 启动时生成并注入
+#   前端；空 = 开发模式不校验」与实现**完全不符**，属误导性注释，已更正）：
+#   · 全仓**无任何消费方**（main.py 不再读取它）；
+#   · 历史：P2-16 曾用它做本机 API 鉴权，因半成品（中间件顺序使 OPTIONS 预检 401、
+#     前端从不发送该头、sidecar 从不生成/注入）在 M7 阶段整体移除——设置该环境变量
+#     曾导致整个应用不可用；
+#   · 保留该常量**仅为兼容**两处既有守卫测试对其 monkeypatch
+#     （tests/test_review_pre2_fixes.py::TestM7TokenRemoved、
+#       tests/test_v101_regressions.py::test_p216_token_feature_removed），
+#     它们断言「token 已不再参与鉴权」。删除它必须同时改这两处测试。
+#   · 新的写操作来源校验在 main.py::verify_request_origin（Origin 白名单，无 token）。
 API_TOKEN = os.environ.get("KE_API_TOKEN", "")
 
 CORS_ORIGINS = [

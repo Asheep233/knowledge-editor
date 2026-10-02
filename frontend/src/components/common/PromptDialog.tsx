@@ -21,7 +21,10 @@
  * ⚠️ 调用方必须 `await`（参见 `frontend/src/components/common/no-native-dialog.test.ts`
  * 的回归守卫：源码中再用 `window.confirm` 会直接测试失败）。
  */
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+// F5：Enter/Escape 必须避让输入法 —— 组词中的回车 = 上屏候选词、Escape = 取消组词，
+// 不是「确定/取消弹窗」（否则中文输入时弹窗会被半截输入误关/误提交）。
+import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 
 interface PromptState {
   title: string
@@ -43,6 +46,51 @@ type DialogState =
 
 let activeDialog: DialogState | null = null
 let setterRef: ((s: DialogState | null) => void) | null = null
+/**
+ * F1（UI-3）：后到的请求**排队**等待，而不是覆盖 `activeDialog`。
+ * 覆盖会让先发起的 Promise 永久悬挂（await 它的调用方卡死），且被覆盖的请求永远拿不到用户决定。
+ * 选队列而非「第二个请求立即以取消值返回」的理由：本模块的存在意义就是「确认/输入必须来自用户」，
+ * 静默伪造「取消」会让调用方无法区分用户取消与系统取消（对删除类操作是一次伪造的否定决定）。
+ */
+const pendingDialogs: DialogState[] = []
+
+/** F1：入队或直接展示（同一时刻只允许一个弹窗） */
+function openDialog(d: DialogState): void {
+  if (activeDialog) {
+    pendingDialogs.push(d)
+    return
+  }
+  activeDialog = d
+  setterRef?.(d)
+}
+
+/**
+ * F1：结算当前弹窗并推进队列。
+ * 不变量：`activeDialog` **先**清空/前移，再 resolve —— 不留已 settle 的悬挂引用，
+ * 且 Promise 的 await 续体（可能再次调用 ask*）一定排在新的活动项之后。
+ */
+function finishDialog(d: DialogState, result: string | null | boolean): void {
+  if (activeDialog === d) {
+    activeDialog = pendingDialogs.shift() ?? null
+  } else {
+    const i = pendingDialogs.indexOf(d)
+    if (i >= 0) pendingDialogs.splice(i, 1)
+  }
+  setterRef?.(activeDialog)
+  if (d.kind === 'prompt') d.resolve(result as string | null)
+  else d.resolve(result as boolean)
+}
+
+/** 测试钩子：观察全局单例状态（active = 当前弹窗类型；queued = 排队数量） */
+export function __promptDialogStateForTests(): { active: DialogState['kind'] | null; queued: number } {
+  return { active: activeDialog?.kind ?? null, queued: pendingDialogs.length }
+}
+
+/** 测试钩子：清空模块级单例与队列（生产不使用；避免用例之间互相污染） */
+export function __resetPromptDialogForTests(): void {
+  activeDialog = null
+  pendingDialogs.length = 0
+}
 
 /**
  * 打开输入弹窗（任意位置可调用，无需 hook）。
@@ -50,8 +98,16 @@ let setterRef: ((s: DialogState | null) => void) | null = null
  */
 export function askPrompt(title: string, defaultValue = ''): Promise<string | null> {
   return new Promise<string | null>((resolve) => {
-    activeDialog = { kind: 'prompt', title, defaultValue, resolve }
-    setterRef?.(activeDialog)
+    if (!setterRef) {
+      // R08（2026-10-02 独立审查）：宿主（PromptHost）未挂载时**必须明确失败**——
+      // 此前 Promise 永不 settle，调用方 `await askPrompt(...)` 永久挂起，表现为
+      // 「点了没反应」（Web 工作区选择页「打开已有工作区」实测）。这里按「取消」立即
+      // 结算：调用方可以继续走 fallback，而不是静默卡死。
+      console.error('[PromptDialog] PromptHost 未挂载，askPrompt 立即取消：', title)
+      resolve(null)
+      return
+    }
+    openDialog({ kind: 'prompt', title, defaultValue, resolve })
   })
 }
 
@@ -69,15 +125,20 @@ export interface AskConfirmOptions {
  */
 export function askConfirm(message: string, opts: AskConfirmOptions = {}): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
-    activeDialog = {
+    if (!setterRef) {
+      // R08：同 askPrompt —— 宿主未挂载时立即按「取消」结算，绝不返回永不 settle 的 Promise
+      console.error('[PromptDialog] PromptHost 未挂载，askConfirm 立即取消：', message)
+      resolve(false)
+      return
+    }
+    openDialog({
       kind: 'confirm',
       message,
       confirmText: opts.confirmText ?? '确定',
       cancelText: opts.cancelText ?? '取消',
       danger: opts.danger ?? false,
       resolve,
-    }
-    setterRef?.(activeDialog)
+    })
   })
 }
 
@@ -91,6 +152,18 @@ export function PromptHost() {
   const [value, setValue] = useState('')
   setterRef = setState
 
+  // R08：宿主卸载后清空 setterRef，使「宿主未挂载」可被 ask* 可靠检测到
+  // （否则 ref 会一直指向已卸载组件的 setState：调用无效 → Promise 永不 settle）。
+  // F1 补：同时清空模块级 activeDialog / 队列 —— 否则重新挂载后，这个「幽灵活动项」
+  // 会把新请求全部挤进队列（弹窗永不出现）。
+  useEffect(
+    () => () => {
+      if (setterRef === setState) setterRef = null
+      __resetPromptDialogForTests()
+    },
+    [],
+  )
+
   // 每次打开重置输入值（默认值预填而非占位——修「上次输入内容残留」；
   // 调用方传默认值的语义 = 预填文本）
   const [lastState, setLastState] = useState<DialogState | null>(null)
@@ -102,8 +175,7 @@ export function PromptHost() {
   const closePrompt = useCallback(
     (result: string | null) => {
       const s = state
-      setState(null)
-      if (s?.kind === 'prompt') s.resolve(result)
+      if (s?.kind === 'prompt') finishDialog(s, result)
     },
     [state],
   )
@@ -111,8 +183,7 @@ export function PromptHost() {
   const closeConfirm = useCallback(
     (ok: boolean) => {
       const s = state
-      setState(null)
-      if (s?.kind === 'confirm') s.resolve(ok)
+      if (s?.kind === 'confirm') finishDialog(s, ok)
     },
     [state],
   )
@@ -134,6 +205,7 @@ export function PromptHost() {
               autoFocus={state.danger}
               onClick={() => closeConfirm(false)}
               onKeyDown={(e) => {
+                if (shouldIgnoreReactKeyEvent(e)) return
                 if (e.key === 'Escape') closeConfirm(false)
               }}
               className="h-8 rounded-md border border-border bg-background px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted"
@@ -145,6 +217,7 @@ export function PromptHost() {
               autoFocus={!state.danger}
               onClick={() => closeConfirm(true)}
               onKeyDown={(e) => {
+                if (shouldIgnoreReactKeyEvent(e)) return
                 if (e.key === 'Enter') closeConfirm(true)
                 else if (e.key === 'Escape') closeConfirm(false)
               }}
@@ -172,6 +245,7 @@ export function PromptHost() {
           onChange={(e) => setValue(e.target.value)}
           onFocus={(e) => e.target.select()}
           onKeyDown={(e) => {
+            if (shouldIgnoreReactKeyEvent(e)) return
             if (e.key === 'Enter') closePrompt(value || null)
             else if (e.key === 'Escape') closePrompt(null)
           }}

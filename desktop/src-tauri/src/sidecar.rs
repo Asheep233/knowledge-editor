@@ -269,6 +269,48 @@ fn wait_health(port: u16) -> Result<serde_json::Value, String> {
     }
 }
 
+/// 组装注入后端的 `KE_CORS_ORIGINS` 白名单（SEC-6 / 2026-10-02 独立审查）。
+///
+/// 审查事实：此前 `KE_CORS_ORIGINS` 被**无条件**并入白名单 → 任何能设置该环境变量的
+/// 手段都能把 `https://evil.example` 加进后端 CORS 白名单（叠加「本机 API 无来源校验」被放大）。
+///
+/// 现在：
+/// - `dev == false`（release）：**完全忽略环境变量**，只返回硬编码的 tauri.localhost；
+/// - `dev == true`（debug）：采纳 `KE_CORS_ORIGINS`，并额外追加 dev 前端端口的
+///   127.0.0.1 / localhost 两种写法（端口取 `KE_DEV_FRONTEND_PORT`，缺省 5173，
+///   与 tauri.conf.json devUrl 一致）。
+///
+/// 参数显式传入（而非内部读 env / `cfg!`）以便单测覆盖两种构建模式。
+fn build_cors_origins(dev: bool, env_cors: Option<String>, env_dev_port: Option<String>) -> Vec<String> {
+    let mut cors = vec![
+        "http://tauri.localhost".to_string(),
+        "https://tauri.localhost".to_string(),
+    ];
+    if !dev {
+        return cors;
+    }
+    if let Some(existing) = env_cors {
+        for item in existing.split(',') {
+            let item = item.trim().to_string();
+            if !item.is_empty() && !cors.contains(&item) {
+                cors.push(item);
+            }
+        }
+    }
+    let dev_port = env_dev_port
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(5173);
+    for origin in [
+        format!("http://127.0.0.1:{dev_port}"),
+        format!("http://localhost:{dev_port}"),
+    ] {
+        if !cors.contains(&origin) {
+            cors.push(origin);
+        }
+    }
+    cors
+}
+
 /// 启动 sidecar 并完成 health 握手 + 写记录。返回 (child, rx, info)。
 /// 事件（stderr/stdout/terminated）与崩溃自动拉起由 watch_sidecar 统一管理。
 fn spawn_sidecar(
@@ -289,28 +331,11 @@ fn spawn_sidecar(
         return Err(format!("创建应用数据目录失败: {e}"));
     }
 
-    // 桌面 release 的 WebView origin 为 tauri.localhost；dev 模式（debug 构建）追加 Vite 开发
-    // 服务器 origin（端口取 KE_DEV_FRONTEND_PORT，缺省 5173，与 tauri.conf.json devUrl 一致）。
-    let mut cors = vec![
-        "http://tauri.localhost".to_string(),
-        "https://tauri.localhost".to_string(),
-    ];
-    if let Ok(existing) = std::env::var("KE_CORS_ORIGINS") {
-        for item in existing.split(',') {
-            let item = item.trim().to_string();
-            if !item.is_empty() && !cors.contains(&item) {
-                cors.push(item);
-            }
-        }
-    }
-    if cfg!(debug_assertions) {
-        let dev_port = std::env::var("KE_DEV_FRONTEND_PORT")
-            .ok()
-            .and_then(|p| p.parse::<u16>().ok())
-            .unwrap_or(5173);
-        cors.push(format!("http://127.0.0.1:{dev_port}"));
-        cors.push(format!("http://localhost:{dev_port}"));
-    }
+    let cors = build_cors_origins(
+        cfg!(debug_assertions),
+        std::env::var("KE_CORS_ORIGINS").ok(),
+        std::env::var("KE_DEV_FRONTEND_PORT").ok(),
+    );
 
     let sidecar = app
         .shell()
@@ -578,4 +603,71 @@ pub fn get_runtime_info(state: State<'_, SidecarState>) -> Result<RuntimeInfo, S
         .unwrap()
         .clone()
         .ok_or_else(|| "后端尚未就绪".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_cors_origins;
+
+    /// SEC-6：release（dev=false）必须**完全忽略**环境变量 —— 不可由环境注入任意来源。
+    #[test]
+    fn cors_release_ignores_env() {
+        let cors = build_cors_origins(
+            false,
+            Some("https://evil.example,http://127.0.0.1:5173".to_string()),
+            Some("6000".to_string()),
+        );
+        assert_eq!(
+            cors,
+            vec![
+                "http://tauri.localhost".to_string(),
+                "https://tauri.localhost".to_string()
+            ],
+            "release 白名单必须硬编码、与环境变量无关"
+        );
+        assert!(!cors.iter().any(|o| o.contains("evil.example")));
+        assert!(!cors.iter().any(|o| o.contains(":6000")));
+    }
+
+    /// release 在环境变量缺失时同样只含 tauri 来源（幂等）
+    #[test]
+    fn cors_release_without_env() {
+        assert_eq!(build_cors_origins(false, None, None).len(), 2);
+    }
+
+    /// dev（dev=true）采纳环境变量 + 追加 dev 端口两种写法
+    #[test]
+    fn cors_dev_adopts_env_and_dev_port() {
+        let cors = build_cors_origins(
+            true,
+            Some(" https://custom.dev ,, http://127.0.0.1:5173 ".to_string()),
+            Some("6000".to_string()),
+        );
+        assert!(cors.contains(&"https://custom.dev".to_string()));
+        assert!(cors.contains(&"http://127.0.0.1:5173".to_string()));
+        assert!(cors.contains(&"http://127.0.0.1:6000".to_string()));
+        assert!(cors.contains(&"http://localhost:6000".to_string()));
+        // 空项与重复项被清理
+        assert!(!cors.iter().any(|o| o.is_empty()));
+        let mut sorted = cors.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), cors.len(), "白名单不得有重复项");
+    }
+
+    /// dev 缺省端口 = 5173（与 tauri.conf.json devUrl 一致）
+    #[test]
+    fn cors_dev_default_port_is_5173() {
+        let cors = build_cors_origins(true, None, None);
+        assert!(cors.contains(&"http://127.0.0.1:5173".to_string()));
+        assert!(cors.contains(&"http://localhost:5173".to_string()));
+    }
+
+    /// 非法端口 → 回退 5173（不得 panic、不得丢 tauri 来源）
+    #[test]
+    fn cors_dev_invalid_port_falls_back() {
+        let cors = build_cors_origins(true, None, Some("not-a-port".to_string()));
+        assert!(cors.contains(&"http://127.0.0.1:5173".to_string()));
+        assert!(cors.contains(&"http://tauri.localhost".to_string()));
+    }
 }

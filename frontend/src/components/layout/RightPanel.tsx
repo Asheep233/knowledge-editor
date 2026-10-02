@@ -4,9 +4,11 @@
  * - 历史快照卡片 + 收起右栏能力
  * 只读展示：本组件不写回任何文档内容（引用重写属 D 层红线，本期排除）。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { updateArticleMeta } from '../../api/client'
 import { extractOutline, type OutlineItem } from '../../state/outline'
+// F5：标签输入框的 Enter/Backspace 必须避让输入法（组词回车 = 上屏候选词，不是「加标签」）
+import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import type { ArticleMeta } from '../../types'
 import { Icon } from '../icons'
 
@@ -35,6 +37,11 @@ function fmtSize(n?: number): string {
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
+}
+
+/** 标签数组等值比较（F4：区分「外部真更新」与「同一内容的新数组引用」） */
+function sameTags(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i])
 }
 
 export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHistory, lastSnapshotAt }: Props) {
@@ -67,13 +74,58 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
     window.alert(`跳转到标题：${item.text}`)
   }, [])
 
-  // 切换文档时同步元信息表单
+  // 切换文档时同步元信息表单（F4）。
+  // 旧实现只要 `article.title/tags` 变化就无条件 `setTitle/setTags`：用户正在编辑（未点保存）时，
+  // 外部刷新（编辑器页眉改标题 / 保存回包 / 文件系统事件）会在下一次渲染**静默覆盖**输入，
+  // 用户以为改好的内容消失且无任何提示。
+  // 现语义：① 切档（id 变化）→ 无条件重置（新文档不存在「未提交修改」）；
+  //         ② 同文档外部更新 + 非 dirty → 照旧同步（外部更新即时可见）；
+  //         ③ 同文档外部更新 + dirty → 保留用户输入 + 可见提示 +「放弃并刷新」出口。
+  const lastMetaRef = useRef<{ id: string | null; title: string; tags: string[] }>({
+    id: null,
+    title: '',
+    tags: [],
+  })
+  // dirty 的最新值：不放进 effect 依赖 —— 否则用户自己的输入也会触发本 effect（误报「外部更新」）
+  const dirtyRef = useRef(false)
+  dirtyRef.current = dirty
+  const [externalUpdate, setExternalUpdate] = useState(false)
+
   useEffect(() => {
+    const next = { id: article?.id ?? null, title: article?.title ?? '', tags: article?.tags ?? [] }
+    const prev = lastMetaRef.current
+    const idChanged = prev.id !== next.id
+    const metaChanged = prev.title !== next.title || !sameTags(prev.tags, next.tags)
+    lastMetaRef.current = next
+    if (!idChanged && !metaChanged) return
+
+    if (idChanged) {
+      setTitle(next.title)
+      setTags(next.tags)
+      setTagInput('')
+      setDirty(false)
+      setExternalUpdate(false)
+      return
+    }
+    if (dirtyRef.current) {
+      // 有未提交编辑：保留用户输入，明确提示（绝不静默丢弃）
+      setExternalUpdate(true)
+      return
+    }
+    setTitle(next.title)
+    setTags(next.tags)
+    setTagInput('')
+    setExternalUpdate(false)
+  }, [article?.id, article?.title, article?.tags])
+
+  /** F4：「放弃并刷新」= 丢弃本地未提交编辑，采用外部最新元信息 */
+  const discardLocalMeta = useCallback(() => {
     setTitle(article?.title ?? '')
     setTags(article?.tags ?? [])
     setTagInput('')
     setDirty(false)
-  }, [article?.id, article?.title, article?.tags])
+    setExternalUpdate(false)
+  }, [article?.title, article?.tags])
 
   // ---------- 属性保存（Phase 4.6：标题/标签写入 frontmatter，由后端 set_meta 完成） ----------
   const handleSaveMeta = useCallback(async () => {
@@ -158,6 +210,7 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
                     placeholder="+ 标签"
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => {
+                      if (shouldIgnoreReactKeyEvent(e)) return
                       if (e.key === 'Enter') { e.preventDefault(); addTag() }
                       else if (e.key === 'Backspace' && !tagInput && tags.length > 0) { removeTag(tags[tags.length - 1]) }
                     }}
@@ -166,6 +219,23 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
                   />
                 </div>
               </div>
+              {externalUpdate && (
+                <div
+                  data-testid="meta-external-update"
+                  role="status"
+                  className="flex items-center gap-2 px-3.5 py-2 text-[12px]"
+                  style={{ borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
+                >
+                  <span>文档已更新，当前编辑未保存</span>
+                  <button
+                    type="button"
+                    onClick={discardLocalMeta}
+                    className="ml-auto h-7 shrink-0 rounded-[6px] border border-border bg-background px-2 text-[12px] text-foreground/80 transition-colors hover:bg-muted"
+                  >
+                    放弃并刷新
+                  </button>
+                </div>
+              )}
               {dirty && (
                 <div className="px-3.5 py-2" style={{ borderBottom: '1px solid var(--border)' }}>
                   <button

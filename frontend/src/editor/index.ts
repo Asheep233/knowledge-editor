@@ -40,8 +40,10 @@ import { GenericFallbackExtension, GenericFallbackInlineExtension } from './exte
 import { HtmlPassthroughExtension, HtmlPassthroughInlineExtension } from './extensions/HtmlPassthroughExtension'
 import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
 import { normalizeGfmFootnotes } from './gfm-footnote'
-import { uploadAttachment } from '../api/client'
+import { uploadAttachment, type UploadResult } from '../api/client'
 import { attachmentNode, isRealFile } from './upload'
+// F2 接线：drop 编排 + 文档身份令牌（后者由下方 setKeContent 换发）
+import { currentDropDocToken, rotateDropDocToken, runDropInsert } from '../state/dropInsert'
 
 /** 自定义命令的 TS 类型声明（运行时命令由各扩展 addCommands 提供） */
 declare module '@tiptap/core' {
@@ -260,20 +262,23 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
         const real = Array.from(files).filter(isRealFile)
         if (real.length === 0) return false
         event.preventDefault()
-        const pos =
-          view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ??
-          view.state.selection.from
-        void (async () => {
-          for (const f of real) {
-            try {
-              const res = await uploadAttachment(f)
-              const node = attachmentNode(view.state.schema, res, f.name)
-              view.dispatch(view.state.tr.insert(pos, node).scrollIntoView())
-            } catch (err) {
-              window.alert(`附件上传失败：${String(err)}`)
-            }
-          }
-        })()
+        // P3-20 / F2 接线：多文件 drop 的插入点**每个文件重新取**（旧的固定 pos 会让多个文件
+        // 全插在同一处，后插的甚至反插到先插的之前）；并在每次上传返回后校验「编辑器仍载着
+        // drop 时那篇文档」（令牌不同 = 上传期间切档/重载 → 过期结果丢弃，绝不写进新文档）。
+        void runDropInsert({
+          docIdAtDrop: currentDropDocToken(),
+          files: real,
+          readCurrentDocId: () => currentDropDocToken(),
+          readCurrentPos: () =>
+            view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? null,
+          readDocEndPos: () => view.state.doc.content.size,
+          upload: (f) => uploadAttachment(f),
+          insert: (pos, res, f) => {
+            const node = attachmentNode(view.state.schema, res as UploadResult, f.name)
+            view.dispatch(view.state.tr.insert(pos, node).scrollIntoView())
+          },
+          onError: (err) => window.alert(`附件上传失败：${String(err)}`),
+        })
         return true
       },
     },
@@ -335,6 +340,8 @@ const MD_CACHE_MAX = 16
  * - P1-1：`emitUpdate: false` 抑制加载触发的 update（「打开文档即保存」消失）；
  * - P3-2：命中会话缓存时走 JSON 快速路径（复制后 setContent，避免二次解析）。 */
 export function setKeContent(editor: Editor, markdown: string): void {
+  // F2：内容被整篇替换 = 编辑器换了一篇文档 → 换发身份令牌，使在途的 drop 上传结果过期。
+  rotateDropDocToken()
   const cached = mdDocCache.get(markdown)
   if (cached) {
     editor.commands.setContent(JSON.parse(JSON.stringify(cached)) as JSONContent, {

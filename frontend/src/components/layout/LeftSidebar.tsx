@@ -40,7 +40,7 @@ import type {
   TreePayload,
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
-import { registerActionHandlers } from '../../state/shortcuts'
+import { registerActionHandlers, shouldIgnoreKeyEvent, shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { Icon } from '../icons'
 import TrashPanel from '../trash/TrashPanel'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
@@ -173,6 +173,8 @@ export default function LeftSidebar({
   // Ctrl/Cmd+K：聚焦全局搜索（handoff §6）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // F5：IME 组合中的 Ctrl+K 不得抢焦点（组合态按键是输入法上屏的一部分）
+      if (shouldIgnoreKeyEvent(e)) return
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         searchRef.current?.focus()
@@ -296,6 +298,8 @@ export default function LeftSidebar({
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // F5：IME 组合中的 Enter 不得提交搜索（中文/日文选词回车会误触发）
+      if (shouldIgnoreReactKeyEvent(e)) return
       if (e.key !== 'Enter') return
       if (searchTimer.current) window.clearTimeout(searchTimer.current)
       void doSearch(searchQ)
@@ -719,7 +723,15 @@ export default function LeftSidebar({
               <button
                 className="text-[11px] text-muted-foreground hover:text-foreground/80"
                 onClick={() => {
-                  void clearRecentDocuments().then(refreshAll)
+                  // F3：`.then(refreshAll)` 后必须 catch —— 后端 down 时 Promise rejected 且无人处理
+                  // → unhandled rejection（控制台报错、用户只看到「点了没反应」）。
+                  // 失败反馈沿用本文件既有约定（window.alert；见「删除失败」「重建索引失败」）。
+                  // 注：不复用 notify() —— 它无条件 refreshAll 并上报「文件系统已变更」，语义只适用于成功变更。
+                  void clearRecentDocuments()
+                    .then(refreshAll)
+                    .catch((e) => {
+                      window.alert(`清空最近文档失败：${e instanceof Error ? e.message : String(e)}`)
+                    })
                 }}
               >
                 清空

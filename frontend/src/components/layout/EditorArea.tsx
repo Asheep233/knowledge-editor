@@ -45,7 +45,7 @@ import {
   type ViewMode,
 } from '../../state/viewMode'
 import SourceModeView from '../editor/SourceModeView'
-import { registerActionHandlers } from '../../state/shortcuts'
+import { registerActionHandlers, shouldIgnoreKeyEvent, shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
@@ -772,6 +772,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // F5：IME 组合中的 Ctrl+S 不得触发生效（组合态按键是输入法上屏的一部分）
+      if (shouldIgnoreKeyEvent(e)) return
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
         void saveNow()
@@ -1237,6 +1239,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onBlur={(e) => void handleTitleBlur(e.target.value)}
                 onKeyDown={(e) => {
+                  // F5：IME 组合中的 Enter/Escape 不得提交/回滚标题（用户只是在选词）
+                  if (shouldIgnoreReactKeyEvent(e)) return
                   if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                   else if (e.key === 'Escape') {
                     setTitleDraft(null)

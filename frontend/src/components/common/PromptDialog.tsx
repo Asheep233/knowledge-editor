@@ -81,6 +81,32 @@ function finishDialog(d: DialogState, result: string | null | boolean): void {
   else d.resolve(result as boolean)
 }
 
+/** 按「取消」结算一条请求（宿主已卸载时取不到用户决定，只能明确失败而不是永久挂起） */
+function cancelDialog(d: DialogState): void {
+  if (d.kind === 'prompt') d.resolve(null)
+  else d.resolve(false)
+}
+
+/**
+ * F1×R08 收口：结算并清空**全部**未决请求（前台 + 队列）。
+ *
+ * 与 R08 的分工：R08 只覆盖「宿主**从未**挂载」（`setterRef === null`）。但「宿主挂载过、
+ * 弹窗还没答完就卸载」（App 分支切换 / 关闭工作区）此前没有任何结算路径 —— `setterRef`
+ * 被清空、React 树已消失，前台与队列里的 Promise **永久悬挂**。这正是本工单要根除的那类
+ * 静默卡死，故卸载时必须按「取消」明确结算，并打印可诊断日志（不静默丢弃）。
+ */
+function abortAllPendingDialogs(reason: string): void {
+  const active = activeDialog
+  const queued = pendingDialogs.splice(0)
+  activeDialog = null
+  if (!active && queued.length === 0) return
+  console.error(
+    `[PromptDialog] ${reason}，${queued.length + (active ? 1 : 0)} 个未决请求按「取消」结算`,
+  )
+  if (active) cancelDialog(active)
+  for (const d of queued) cancelDialog(d)
+}
+
 /** 测试钩子：观察全局单例状态（active = 当前弹窗类型；queued = 排队数量） */
 export function __promptDialogStateForTests(): { active: DialogState['kind'] | null; queued: number } {
   return { active: activeDialog?.kind ?? null, queued: pendingDialogs.length }
@@ -154,12 +180,14 @@ export function PromptHost() {
 
   // R08：宿主卸载后清空 setterRef，使「宿主未挂载」可被 ask* 可靠检测到
   // （否则 ref 会一直指向已卸载组件的 setState：调用无效 → Promise 永不 settle）。
-  // F1 补：同时清空模块级 activeDialog / 队列 —— 否则重新挂载后，这个「幽灵活动项」
-  // 会把新请求全部挤进队列（弹窗永不出现）。
+  // F1 补 1：同时清空模块级 activeDialog / 队列 —— 否则重新挂载后，这个「幽灵活动项」
+  //   会把新请求全部挤进队列（弹窗永不出现）。
+  // F1 补 2：清空**之前**必须先把未决请求按「取消」结算（abortAllPendingDialogs）——
+  //   静默清空 = 调用方 await 永久悬挂；这正是本工单要根除的缺陷。
   useEffect(
     () => () => {
       if (setterRef === setState) setterRef = null
-      __resetPromptDialogForTests()
+      abortAllPendingDialogs('PromptHost 已卸载')
     },
     [],
   )

@@ -276,6 +276,32 @@ export function shouldIgnoreKeyEvent(e: KeyEventLike): boolean {
   return e.key === 'Dead' || e.key === 'Unidentified'
 }
 
+/** React 合成键盘事件的最小形状（本模块不 import React，保持纯逻辑可单测） */
+export interface ReactKeyEventLike {
+  key: string
+  keyCode?: number
+  isComposing?: boolean
+  /** React 的 nativeEvent（isComposing / keyCode 的权威来源） */
+  nativeEvent?: { isComposing?: boolean; keyCode?: number }
+}
+
+/**
+ * F5：React `onKeyDown` 处理器的 IME 守卫（`shouldIgnoreKeyEvent` 的合成事件适配）。
+ *
+ * 为什么需要：中文/日文输入法组词时按回车 = **上屏候选词**（keydown 带 `isComposing=true`
+ * 或 `keyCode=229`）；若处理器只判 `e.key === 'Enter'`，用户上屏会被误当成「确定」
+ * （关弹窗 / 提交半截输入 / 触发删除确认）。React 合成事件的 `keyCode` 可能为 0，
+ * 故优先读 `nativeEvent`。
+ */
+export function shouldIgnoreReactKeyEvent(e: ReactKeyEventLike): boolean {
+  const native = e.nativeEvent
+  return shouldIgnoreKeyEvent({
+    key: e.key,
+    keyCode: native?.keyCode ?? e.keyCode,
+    isComposing: native?.isComposing ?? e.isComposing,
+  })
+}
+
 const MODIFIER_KEY_NAMES = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'OS'])
 
 /** 平台是否为 macOS（`Mod` 的展开依据） */

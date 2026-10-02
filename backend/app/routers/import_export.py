@@ -184,17 +184,20 @@ def _extract_refs(md: str) -> list[str]:
 def _validate_refs(md: str, doc_dir: Path) -> None:
     """校验附件引用安全性与存在性。
 
-    - 引用（去 ./ 前缀后）以 Attachments/ 开头 → 视为包内附件引用：
-      必须无路径穿越（.. / 绝对路径），且包内该文件真实存在；
+    - 引用以 `Attachments/` 开头（R03：经共享解析器做角括号/URI 解码/普通链接/
+      顶层大小写规范化）→ 视为包内附件引用：必须无路径穿越（.. / 绝对路径），
+      且包内该文件真实存在；
     - 网络 URL 与本地绝对路径等其它引用 → 保持原样放行（Phase 4 附件管理范围）。
     """
-    for raw in _extract_refs(md):
-        ref = raw.strip()
-        if ref.startswith("./"):
-            ref = ref[2:]
-        if not ref.startswith("Attachments/"):
-            continue  # 网络/绝对路径/其它相对路径：保持原样
-        if ref.startswith("/") or ".." in Path(ref).parts:
+    # R03：与附件扫描/孤儿判定共用同一套引用解析（`attachment_refs_in` /
+    # `normalize_attachment_ref`），避免 zip 导入与引用索引各自一套正则而漂移。
+    # 先拒绝「形如附件但含 .. / 绝对路径」的危险引用（它们会被规范化丢弃，
+    # 不能因此静默忽略），再校验合法引用的包内存在性。
+    unsafe = markdown_io.unsafe_attachment_refs_in(md)
+    if unsafe:
+        raise HTTPException(status_code=400, detail=f"非法附件引用路径: {unsafe[0]}")
+    for ref in sorted(markdown_io.attachment_refs_in(md)):
+        if not markdown_io.is_attachment_rel(ref) or ".." in Path(ref).parts:
             raise HTTPException(status_code=400, detail=f"非法附件引用路径: {ref}")
         if not (doc_dir / ref).is_file():
             raise HTTPException(status_code=400, detail=f"附件引用在文档包中缺失: {ref}")
@@ -233,7 +236,7 @@ MAX_EXTRACTED_TOTAL = 1024 * 1024 * 1024
 
 
 async def _read_limited(file: UploadFile, limit: int) -> bytes:
-    """分块读取并限制总量（P2-5：超限报 413，不整包入内存先行裁剪）。"""
+    """分块读取并限制总量（P2-5：超限报 413）。仅用于小文件（如 Markdown 导入）。"""
     chunks: list[bytes] = []
     total = 0
     while chunk := await file.read(1024 * 256):
@@ -242,6 +245,24 @@ async def _read_limited(file: UploadFile, limit: int) -> bytes:
             raise HTTPException(status_code=413, detail="文件超过大小上限")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+async def _spool_limited(file: UploadFile, dest: Path, limit: int) -> int:
+    """SEC-3：分块写入**磁盘**并限制总量（超限 413），返回字节数。
+
+    导入包（最大 512MB）不再整包驻留内存；后续 `zipfile.ZipFile(path)` 直接
+    从磁盘按需读取条目。失败时调用方的 `finally` 会清理整个导入临时目录。
+    """
+    total = 0
+    with open(dest, "wb") as out:
+        while chunk := await file.read(1024 * 256):
+            total += len(chunk)
+            if total > limit:
+                raise HTTPException(status_code=413, detail="文件超过大小上限")
+            out.write(chunk)
+        out.flush()
+        os.fsync(out.fileno())
+    return total
 
 
 def _extract_zip_safe(zf: zipfile.ZipFile, dest: Path) -> None:
@@ -475,15 +496,24 @@ async def import_package(request: Request, file: UploadFile = File(...)) -> dict
     raw = file.filename or "package.zip"
     if not raw.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="文档包必须是 .zip 文件")
-    data = await _read_limited(file, MAX_ZIP_SIZE)
-    if not data.startswith(_ZIP_MAGIC):
-        raise HTTPException(status_code=400, detail="文件不是有效的 zip 压缩包")
 
     root: Path = request.app.state.workspace_root
     tmp_dir = _new_import_dir(root)
     try:
+        # ★ SEC-3：整包**落盘**后再用 zipfile 从磁盘读取，不再把最多 512MB 的
+        #   zip 整体驻留内存（原 `_read_limited` 返回 b"".join(chunks) 可 OOM）。
+        zip_path = tmp_dir / "package.zip"
+        await _spool_limited(file, zip_path, MAX_ZIP_SIZE)
+        try:
+            with open(zip_path, "rb") as f:
+                magic = f.read(len(_ZIP_MAGIC))
+        except OSError:
+            magic = b""
+        if magic != _ZIP_MAGIC:
+            raise HTTPException(status_code=400, detail="文件不是有效的 zip 压缩包")
+
         pkg_dir = tmp_dir / "pkg"
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+        with zipfile.ZipFile(zip_path) as zf:
             _extract_zip_safe(zf, pkg_dir)
 
         # 1) 校验：定位文档 + UTF-8 可读 + ke-* 节点可处理 + 附件引用安全

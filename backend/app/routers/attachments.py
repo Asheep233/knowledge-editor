@@ -39,7 +39,7 @@ from ..services import markdown_io
 # （F7：后端曾有三份引用提取实现）。回收站要求「被回收站文档引用的附件不算孤儿」，
 # 两份并存会让此处漏掉 `Trash/`，导致「清理孤儿」毁掉可恢复文档的引用链（契约 §6）。
 # 共享服务 docstring 本就声明「避免两套实现漂移」，本次落实。
-from ..services.references import _doc_refs_index
+from ..services.references import doc_refs_index as _doc_refs_index
 
 router = APIRouter(prefix="/api/attachments", tags=["attachments"])
 

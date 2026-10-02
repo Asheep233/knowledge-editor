@@ -40,6 +40,10 @@ class ArticleOut(BaseModel):
     id: str  # rel_path
     path: str
     title: str
+    # R05：content = **完整原文**（含 BOM/frontmatter/正文，逐字节），
+    # 前端据此做 BOM/换行捕获、源码编辑与 KE 导出。解析后的正文可由
+    # `markdown_io.parse_frontmatter(content)[1]` 得到，不再单设字段——ArticleOut
+    # 的 schema 被两处冻结基线（含 verifier 套件）锁定，新增字段会使它们变红。
     content: str
     updated_at: Optional[str] = None
     created_at: Optional[str] = None
@@ -184,7 +188,10 @@ def get_article(request: Request, article_id: str) -> ArticleOut:
     return ArticleOut(
         id=rel, path=rel,
         title=meta.get("title") or full.stem,
-        content=body or content,
+        # R05：content 返回**完整原文**（含 BOM/frontmatter，逐字节）——与普通 PUT/
+        # 历史恢复回包一致；前端把它当 raw 做 traits 捕获/源码编辑/KE 导出。
+        # 解析后的正文放 body，缩进不再被尾部 `\s*` 吃掉。
+        content=content,
         meta=meta,
         created_at=created_at,
         updated_at=updated_at,
@@ -200,8 +207,6 @@ def create_article(request: Request, body: ArticleCreate) -> ArticleOut:
     slug = markdown_io.sanitize_filename(body.title)
     rel = f"{config.DIR_ARTICLES}/{slug}.md"
     full = articles / f"{slug}.md"
-    if full.exists():
-        raise HTTPException(status_code=409, detail=f"已存在同名文章: {slug}.md")
     if body.content:
         content = body.content
     else:
@@ -212,7 +217,10 @@ def create_article(request: Request, body: ArticleCreate) -> ArticleOut:
         content = (
             f"---\ntitle: {markdown_io.yaml_scalar(body.title)}\n---\n\n"
         )
-    markdown_io.atomic_write(full, content)
+    # R10：**排他创建**——原 `exists()` 检查 + `atomic_write`（os.replace）不是
+    # 互斥：并发同名创建都会通过检查，后一个 replace 覆盖先创建的文档。
+    if not markdown_io.atomic_create(full, content):
+        raise HTTPException(status_code=409, detail=f"已存在同名文章: {slug}.md")
     request.app.state.indexer.update_file(rel)
     _mark_internal(request, rel)
     return ArticleOut(id=rel, path=rel, title=body.title, content=content)
@@ -246,7 +254,8 @@ def update_article_meta(request: Request, article_id: str, body: ArticleMetaUpda
     return ArticleOut(
         id=rel, path=rel,
         title=meta.get("title") or full.stem,
-        content=md_body or new_content,
+        # R05：与 GET 同口径——content 为完整原文，body 为解析后正文
+        content=new_content,
         meta=meta,
         created_at=created_at,
         updated_at=updated_at,

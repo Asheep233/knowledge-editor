@@ -11,8 +11,15 @@ from typing import Optional
 
 from .. import config
 
-# 宽松的 YAML frontmatter 解析（仅处理顶层 key: value / key: [..] / key 块列表）
-_FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.DOTALL)
+# frontmatter 边界扫描（R04/R05：与前端 `ke.ts::scanFrontmatter` 同口径）。
+# 旧实现 `\A---\s*\n(.*?)\n---\s*\n?` 有三个缺陷：
+#   ① 空头 `---\n---\n正文` 被误判 → 中间正文被当 frontmatter 吞掉（R04）；
+#   ② 尾部 `\s*` 会把正文开头的四空格缩进吃进区块（R05，代码块被毁）；
+#   ③ 开块无 YAML 形态校验 → `---\n\n正文\n\n---\n` 整篇被吞（ADD-1）。
+_FM_OPEN_RE = re.compile(r"\A---[ \t]*\r?\n")
+_FM_DASH_LINE_RE = re.compile(r"\A---[ \t]*\Z")
+_FM_BLANK_LINE_RE = re.compile(r"\A[ \t]*\Z")
+_FM_YAML_START_RE = re.compile(r"\A[ \t]*(?:#|-(?:\s|$)|[^\s#][^\n:]*:)")
 _TOP_KEY_RE = re.compile(r"^([A-Za-z_][\w-]*)\s*:\s*(.*)$")
 
 _BAD_CHARS = re.compile(r'[\\/:*?"<>|\r\n\t]')
@@ -28,7 +35,14 @@ _WIN_RESERVED = {
 # F07：ke-*(attach|video) 头标记改为括号平衡匹配（见 attachment_refs_in），
 # 非贪婪 `\{[\s\S]*?\}` 会在 title/caption 含 `}` 时截断 JSON。
 _RE_KE_HEAD = re.compile(r"<!--\s*ke-(?:attach|video):\s*")
-_RE_MD_IMAGE = re.compile(r"!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+\"[^\"]*\")?\s*\)")
+# R03：图片 **与普通链接**；目标支持角括号包裹（`<…>`，允许空格）与普通形态，
+# 并支持 `"title"` / `'title'` / `(title)` 尾随标题。
+_RE_MD_LINK = re.compile(
+    r"!?\[[^\]]*\]\(\s*(?:<([^<>\n]*)>|([^\s()]*))"
+    r"(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\s*\)"
+)
+#: URI scheme（http: / data: / mailto: / file: …）——非 workspace 附件
+_RE_URI_SCHEME = re.compile(r"\A[a-zA-Z][a-zA-Z0-9+.-]*:")
 
 # CJK 字符范围（字数统计）
 _CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
@@ -115,6 +129,69 @@ def sanitize_filename(name: str, fallback: str = "untitled") -> str:
     return s
 
 
+def _split_lines(src: str, start: int = 0):
+    """按 `\\n` 切行（与前端 `ke.ts::splitLines` 同口径）。
+
+    产出 (start, end, text)：`text` 不含行尾 `\\r`（CRLF 兼容），`end` 含 `\\n`。
+    """
+    i = start
+    n = len(src)
+    while i < n:
+        nl = src.find("\n", i)
+        raw_end = n if nl < 0 else nl
+        text = src[i:raw_end]
+        if text.endswith("\r"):
+            text = text[:-1]
+        yield i, (n if nl < 0 else nl + 1), text
+        i = n if nl < 0 else nl + 1
+
+
+def scan_frontmatter_block(content: str) -> tuple[str, str, str]:
+    """扫描文档开头的 frontmatter 区块 → (bom, block, body)。
+
+    与前端 `ke.ts::scanFrontmatter` **逐条同口径**（EDGE-1/ADD-1 收紧规则）：
+
+    - 首行必须 `---`（允许尾随空白）且其后有换行；BOM 容忍并单独返回；
+    - 跳过**前导空行**后，首个有效行必须是 `---`（空块，R04）或像 YAML 起始
+      （`#` 注释 / `- ` 序列 / `key:`）；否则**整篇视为正文**（ADD-1：不吞正文）；
+    - 闭合必须是独立整行 `---`（`key: "---"` 不算）；
+    - 区块覆盖到闭合行**及其后的连续空行**为止 —— 只消费空行，
+      **绝不消费正文的缩进/内容**（R05：旧尾部 `\\s*` 会吃掉正文四空格缩进）；
+    - 返回 (`bom`, `block 不含 BOM`, `body`)；非 frontmatter 时 block 为空串、
+      body 为去 BOM 的整篇原文（逐字节）。
+    """
+    bom = "\ufeff" if content.startswith("\ufeff") else ""
+    src = content[1:] if bom else content
+    m = _FM_OPEN_RE.match(src)
+    if not m:
+        return bom, "", src
+    lines = list(_split_lines(src, m.end()))
+    first = 0
+    while first < len(lines) and _FM_BLANK_LINE_RE.match(lines[first][2]):
+        first += 1
+    if first >= len(lines):
+        return bom, "", src
+    is_empty_block = bool(_FM_DASH_LINE_RE.match(lines[first][2]))
+    if not is_empty_block and not _FM_YAML_START_RE.match(lines[first][2]):
+        return bom, "", src
+    if is_empty_block:
+        close_idx = first
+    else:
+        close_idx = -1
+        for i in range(first + 1, len(lines)):
+            if _FM_DASH_LINE_RE.match(lines[i][2]):
+                close_idx = i
+                break
+    if close_idx < 0:
+        return bom, "", src
+    block_end = lines[close_idx][1]
+    i = close_idx + 1
+    while i < len(lines) and _FM_BLANK_LINE_RE.match(lines[i][2]):
+        block_end = lines[i][1]
+        i += 1
+    return bom, src[:block_end], src[block_end:]
+
+
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     """解析 frontmatter，返回 (meta, body)。
 
@@ -122,13 +199,13 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     - 支持标量、内联列表 `tags: [a, b]`、块列表 `tags:\\n  - a`；
     - 无 frontmatter 时返回 ({}, content)；
     - 容忍 UTF-8 BOM（P2-1：BOM 前缀剥离后解析，正文不含 BOM）。
+    R04/R05：边界改由 `scan_frontmatter_block` 按行扫描（支持空头/BOM/LF/CRLF，
+    闭合只消费空行、绝不吞正文缩进），与前端 `scanFrontmatter` 同口径。
     """
-    if content.startswith("\ufeff"):
-        content = content[1:]
-    m = _FRONTMATTER_RE.match(content)
-    if not m:
-        return {}, content
-    lines = m.group(1).splitlines()
+    _bom, block, body = scan_frontmatter_block(content)
+    if not block:
+        return {}, body
+    lines = block.splitlines()
     meta: dict = {}
     i = 0
     while i < len(lines):
@@ -160,7 +237,7 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     for k in ("title", "author", "label"):
         if isinstance(meta.get(k), (int, float)):
             meta[k] = str(meta[k])
-    return meta, content[m.end():]
+    return meta, body
 
 
 def render_frontmatter(meta: dict) -> str:
@@ -269,13 +346,13 @@ def split_frontmatter_block(content: str) -> tuple[Optional[str], str]:
     与 parse_frontmatter 不同：块内不做任何解析/渲染，供 P0-1 合并时
     无损保留复杂 YAML（嵌套对象/注释/CRLF/日期等）。无块时返回 (None, content)。
     BOM 前缀在返回前剥离（正文随之不含 BOM）。
+    R04/R05：边界判定复用 `scan_frontmatter_block`（与前端同口径：支持空头/
+    前导空行/BOM/CRLF，且不吞正文缩进）。
     """
-    if content.startswith("\ufeff"):
-        content = content[1:]
-    m = _FRONTMATTER_RE.match(content)
-    if not m:
-        return None, content
-    return content[: m.end()], content[m.end():]
+    _bom, block, body = scan_frontmatter_block(content)
+    if not block:
+        return None, body
+    return block, body
 
 
 def _raw_top_level_lines(block: str) -> list[list[str]]:
@@ -365,13 +442,56 @@ def word_count(text: str) -> int:
     return len(_CJK_RE.findall(text)) + len(_LATIN_RE.findall(text))
 
 
+def normalize_attachment_ref(ref: str) -> Optional[str]:
+    """把 Markdown 链接目标规范化为 workspace 附件相对路径（R03）；非附件返回 None。
+
+    覆盖审计发现的四类漏判：
+    - **角括号包裹**（允许空格）：`<Attachments/images/my pic.png>`；
+    - **URI 解码**：`Attachments/images/encoded%20pic.png` → 真实空格文件名
+      （解码后再做路径边界检查）；
+    - **普通链接**（不只是图片）：`[report](Attachments/files/report.pdf)`；
+    - **顶层大小写**：`attachments/…` 不再被 `startswith("Attachments/")` 漏掉
+      （Windows 上同一目录；POSIX 也可保守保护）。
+
+    网络 URL / 绝对路径 / `#` 锚点不是 workspace 附件 → None；
+    规范化后仍含 `..` 段 → None（防穿越）。
+    """
+    ref = (ref or "").strip()
+    if not ref:
+        return None
+    if ref.startswith("<") and ref.endswith(">"):
+        ref = ref[1:-1].strip()
+    if not ref or ref.startswith(("/", "#")) or _RE_URI_SCHEME.match(ref):
+        return None
+    from urllib.parse import unquote
+
+    ref = unquote(ref).replace("\\", "/")
+    parts = [p for p in ref.split("/") if p not in ("", ".")]
+    if not parts or any(p == ".." for p in parts):
+        return None
+    if parts[0].lower() != config.DIR_ATTACHMENTS.lower():
+        return None
+    return "/".join(parts)
+
+
 def attachment_refs_in(content: str) -> set[str]:
     """提取正文中的 workspace 附件引用（规范化后相对路径集合）。
 
-    覆盖 ke-attach / ke-video src 与标准 Markdown 图片路径；
-    网络 URL 与绝对路径不属于 workspace 附件，直接忽略。
+    覆盖 ke-attach / ke-video src、Markdown 图片**与普通链接**（R03）；
+    角括号目标、URI 编码、`Attachments` 顶层大小写统一经
+    `normalize_attachment_ref` 处理；网络 URL 与绝对路径直接忽略。
     """
     refs: set[str] = set()
+    for raw in _raw_ref_candidates(content):
+        ref = normalize_attachment_ref(raw)
+        if ref:
+            refs.add(ref)
+    return refs
+
+
+def _raw_ref_candidates(content: str) -> list[str]:
+    """原始引用候选（ke-attach/ke-video src + Markdown 链接目标），未规范化。"""
+    out: list[str] = []
     # F07：括号平衡匹配（non-greedy 会在 title/caption 含 `}` 时截断）
     pos = 0
     while True:
@@ -389,19 +509,37 @@ def attachment_refs_in(content: str) -> set[str]:
                 except ValueError:
                     src = None
                 if isinstance(src, str):
-                    ref = src.strip()
-                    if ref.startswith("./"):
-                        ref = ref[2:]
-                    if ref.startswith("Attachments/") and ".." not in Path(ref).parts:
-                        refs.add(ref)
+                    out.append(src)
         pos = m.end()
-    for m in _RE_MD_IMAGE.finditer(content):
-        ref = m.group(1).strip()
-        if ref.startswith("./"):
-            ref = ref[2:]
-        if ref.startswith("Attachments/") and ".." not in Path(ref).parts:
-            refs.add(ref)
-    return refs
+    for m in _RE_MD_LINK.finditer(content):
+        target = m.group(1) if m.group(1) is not None else m.group(2)
+        if target:
+            out.append(target)
+    return out
+
+
+def unsafe_attachment_refs_in(content: str) -> list[str]:
+    """R03：形如 workspace 附件却含 `..`/绝对路径的危险引用（供导入校验 400）。
+
+    与 `attachment_refs_in` 共用同一套原始候选提取；后者会**丢弃**非法引用
+    （不作为引用），但导入校验必须显式拒绝它们（不能静默忽略）。
+    """
+    from urllib.parse import unquote
+
+    bad: list[str] = []
+    for raw in _raw_ref_candidates(content):
+        ref = (raw or "").strip()
+        if ref.startswith("<") and ref.endswith(">"):
+            ref = ref[1:-1].strip()
+        if not ref or _RE_URI_SCHEME.match(ref):
+            continue
+        decoded = unquote(ref).replace("\\", "/")
+        parts = [p for p in decoded.split("/") if p not in ("", ".")]
+        if not parts or parts[0].lower() != config.DIR_ATTACHMENTS.lower():
+            continue
+        if decoded.startswith("/") or any(p == ".." for p in parts):
+            bad.append(ref)
+    return bad
 
 
 def content_hash(content: str) -> str:
@@ -501,6 +639,45 @@ def is_doc_rel(rel: str) -> bool:
         and rel.lower().endswith((".md", ".markdown"))
         and ".." not in Path(rel).parts
     )
+
+
+def atomic_create(path: Path, content: str) -> bool:
+    """**排他**原子创建：目标已存在时返回 False，绝不覆盖既有文件。
+
+    R10：`exists()` 检查 + `atomic_write`（os.replace）不是排他创建——两个并发
+    同名创建请求都能通过检查，后一个 replace 覆盖先创建的文档（仅留一份、无历史）。
+    这里先把内容写入临时文件（flush + fsync），再用 `os.link` 以**不覆盖**语义
+    发布到目标路径；文件系统不支持硬链接时退回 `O_CREAT|O_EXCL` 直接写。
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(
+        dir=str(path.parent), prefix=TMP_FILE_PREFIX, suffix=".md", text=True
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            os.link(tmp, path)
+        except FileExistsError:
+            return False
+        except OSError:
+            # 平台/文件系统不支持硬链接：退回 O_EXCL 直接写
+            try:
+                with open(path, "x", encoding="utf-8", newline="\n") as f:
+                    f.write(content)
+                    f.flush()
+                    os.fsync(f.fileno())
+            except FileExistsError:
+                return False
+        return True
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def is_attachment_rel(rel: str) -> bool:

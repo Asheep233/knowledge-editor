@@ -142,13 +142,12 @@ def test_roundtrip_full_loop(client):
         assert a["reused"] is True, a
 
     # 5) 打开恢复后的文档：内容一致
-    #    get_article 剥离 frontmatter 返回正文；将正文重新包装后应与导出前的 md 完全相同（零漂移）
+    #    R05：GET content 为**完整原文**（含 frontmatter），零漂移断言直接比对导出前 md
     r = client.get(f"/api/articles/{new_id}")
     assert r.status_code == 200
     restored = r.json()["content"]
-    assert restored == md_body
-    md2 = f"---\nke_version: 1\n---\n\n{restored}"
-    assert md2 == md
+    assert restored == md
+    assert markdown_io.parse_frontmatter(restored)[1] == md_body
 
     # 6) 附件引用可解析（引用路径未变，指向 workspace 原附件）
     for a in info["imported"]["attachments"]:
@@ -159,7 +158,7 @@ def test_roundtrip_full_loop(client):
     # 7) 二次导出：解压后内容与首次导出完全一致（无格式漂移）
     r = client.post(
         "/api/export/package",
-        json={"title": title, "md": md2, "refs": [a["to"] for a in info["imported"]["attachments"]]},
+        json={"title": title, "md": md, "refs": [a["to"] for a in info["imported"]["attachments"]]},
     )
     assert r.status_code == 200
 

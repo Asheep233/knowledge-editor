@@ -46,8 +46,28 @@ def _doc_paths(root: Path) -> list[Path]:
     return out
 
 
+def resolve_attachment_rel(root: Path, ref: str) -> str:
+    """R03：把规范化引用映射到**磁盘上的真实相对路径**（平台文件身份/大小写）。
+
+    - 能解析到现存文件 → 返回 resolve 后的实际路径（Windows 上即磁盘规范大小写，
+      `attachments/images/Case.png` 与 `Attachments/images/case.png` 视为同一文件）；
+    - 解析不到 → 尝试把首段换成规范 `Attachments`（POSIX 上大小写变体引用也
+      保守保护）；
+    - 都不行 → 原样返回规范化引用（**保守保护**：宁可多保护，绝不少保护而误删）。
+    """
+    candidates = [ref]
+    head, sep, tail = ref.partition("/")
+    if head != config.DIR_ATTACHMENTS and head.lower() == config.DIR_ATTACHMENTS.lower():
+        candidates.append(f"{config.DIR_ATTACHMENTS}/{tail}" if sep else config.DIR_ATTACHMENTS)
+    for cand in candidates:
+        full = markdown_io.safe_rel_path(root, cand)
+        if full is not None and full.is_file():
+            return full.relative_to(root).as_posix()
+    return ref
+
+
 def _doc_refs_index(root: Path) -> dict[str, list[str]]:
-    """扫描所有 Markdown 文档的附件引用 -> {附件rel: [文档rel,...]}。"""
+    """扫描所有 Markdown 文档的附件引用 -> {附件rel: [文档rel,...]}（R03 规范化）。"""
     index: dict[str, list[str]] = {}
     for p in _doc_paths(root):
         try:
@@ -56,8 +76,14 @@ def _doc_refs_index(root: Path) -> dict[str, list[str]]:
             continue
         doc_rel = p.relative_to(root).as_posix()
         for ref in markdown_io.attachment_refs_in(content):
-            index.setdefault(ref, []).append(doc_rel)
+            key = resolve_attachment_rel(root, ref)
+            index.setdefault(key, []).append(doc_rel)
     return index
+
+
+def doc_refs_index(root: Path) -> dict[str, list[str]]:
+    """共享附件引用索引（R03）：attachments 路由与 fs 保护统一使用本函数。"""
+    return _doc_refs_index(root)
 
 
 def referencing_docs(
@@ -66,9 +92,14 @@ def referencing_docs(
     """返回引用指定附件（rel）或目录下任一附件（prefix）的文档映射。
 
     返回 {附件rel: [文档rel, ...]}；无引用时为空 dict。
+    R03：索引键已解析为磁盘真实路径；rel 若为大小写变体也可命中（见
+    `resolve_attachment_rel`）。
     """
     index = _doc_refs_index(root)
     if rel is not None:
-        return {rel: index[rel]} if rel in index else {}
+        if rel in index:
+            return {rel: index[rel]}
+        key = resolve_attachment_rel(root, rel)
+        return {key: index[key]} if key in index else {}
     assert prefix is not None
     return {r: v for r, v in index.items() if r.startswith(prefix + "/")}

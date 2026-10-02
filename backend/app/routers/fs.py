@@ -290,6 +290,21 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     if not full.is_dir():
         raise HTTPException(status_code=404, detail="目录不存在")
     _require_business_top(root, full)
+    # ★ R09：重命名/移动含**在用附件**的目录必须与 delete_dir/move_path 同一引用
+    #   保护——原实现只做路径与存在性校验，重命名后文档引用立刻 404（附件“失联”
+    #   但文件仍在）。产品没有同步重写引用能力 → 直接拒绝并说明原因。
+    dir_rel = full.relative_to(root).as_posix()
+    if _is_under_attachments(dir_rel):
+        refs = referencing_docs(root, prefix=dir_rel)
+        if refs:
+            total = sum(len(v) for v in refs.values())
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"目录内 {len(refs)} 个附件被 {total} 个文档引用，"
+                    "重命名会让引用失效；请先更新文档引用再重命名"
+                ),
+            )
     # ★ B3：新名称必须是单个安全组件（拒 `/` 与 `\`）。原实现只查 `/`，
     #   Windows 下 `..\..\..\evil` 会把整个文件夹移出工作区（F8 同族）。
     new_name = _validate_new_name(body.new_name.strip("/"))
@@ -420,13 +435,26 @@ def create_doc(request: Request, body: DocCreate) -> dict:
             _guard_rel(root, f"{top}/{sub}")
     slug = markdown_io.sanitize_filename(body.title)
     rel = f"{top}/{sub}/{slug}.md" if sub else f"{top}/{slug}.md"
-    full = root / rel
+    # ★ SEC-2：`dir="Articles/../Attachments"` 之类可把 `.md` 写进附件区/工作区根
+    #   （`_guard_rel` 只保证「在工作区内、非受保护目录」，不校验业务顶层）。
+    #   用归一化后的 `full` 反算相对路径，并补 `_require_business_top` +
+    #   「文档只能落在 Articles/Modules」检查（与 create_article 的白名单一致）。
+    full = _guard_rel(root, rel)
+    _require_business_top(root, full)
+    norm_parts = full.relative_to(root).parts
+    if norm_parts[0] not in (config.DIR_ARTICLES, config.DIR_MODULES):
+        raise HTTPException(status_code=400, detail="文档只能创建在 Articles 或 Modules 下")
+    if not markdown_io.is_doc_rel(full.relative_to(root).as_posix()):
+        raise HTTPException(status_code=400, detail="文档只能创建在 Articles 或 Modules 下")
+    rel = full.relative_to(root).as_posix()
     if full.exists():
         raise HTTPException(status_code=409, detail=f"已存在同名文档: {slug}.md")
     # P3-12/dual-title 对齐：新建文档正文不生成 `# {title}`（标题由编辑器页眉承载、
     # 同步 frontmatter），与 /api/articles 创建路径保持一致
     content = f"---\ntitle: {markdown_io.yaml_scalar(body.title)}\n---\n\n"
-    markdown_io.atomic_write(full, content)
+    # R10：排他创建（并发同名创建不得互相覆盖）
+    if not markdown_io.atomic_create(full, content):
+        raise HTTPException(status_code=409, detail=f"已存在同名文档: {slug}.md")
     _finish(request, rel)
     return {"id": rel, "path": rel, "title": body.title, "created": True}
 

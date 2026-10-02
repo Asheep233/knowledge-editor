@@ -623,10 +623,11 @@ def test_t0_e2e_save_reopen_byte_exact(client):
     # P1-2：HTML 注释与 HTML 块字节保留
     assert "<!-- 普通注释 -->" in disk
     assert "<div class=\"x\">内容</div>" in disk
-    # 重开：GET content == 磁盘 body（逐字节），meta 完整
+    # 重开：GET content == 磁盘**完整原文**（R05 契约）；解析后正文与磁盘 body 一致
     got = client.get(f"/api/articles/{rel}").json()
     _, disk_body = markdown_io.parse_frontmatter(disk)
-    assert got["content"] == disk_body, "重开后正文必须与磁盘逐字节一致"
+    assert got["content"] == disk, "重开后 content 必须是逐字节完整原文"
+    assert markdown_io.parse_frontmatter(got["content"])[1] == disk_body
     assert got["meta"]["custom_key"] == "自定义值"
     assert set(got["tags"]) == {"alpha", "beta", "gamma"}
     # 幂等：用 GET 返回内容再次保存 → 磁盘不再变化

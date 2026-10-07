@@ -13,6 +13,8 @@
  * - 文档模型不变、不碰 `ke-*`、不新增节点类型。
  */
 import { Blockquote } from '@tiptap/extension-blockquote'
+import { TextSelection } from '@tiptap/pm/state'
+import type { Node as PMNode } from '@tiptap/pm/model'
 import { Document } from '@tiptap/extension-document'
 import type { JSONContent } from '@tiptap/core'
 
@@ -93,4 +95,69 @@ export const KeBlockquote = Blockquote.extend({
       })
       .join('')
   },
+  addKeyboardShortcuts() {
+      const deleteEmptyAfterAtom = (): boolean => {
+        const { state, view } = this.editor
+        const sel = state.selection
+        if (!sel.empty) return false
+        const $from = sel.$from
+        const para = $from.parent
+        if (para.type.name !== 'paragraph' || para.content.size !== 0) return false
+        const depth = $from.depth
+
+        // ① 容器内（如引用块）：空段落紧跟在 atom 之后
+        if (depth >= 2) {
+          const idx = $from.index(depth - 1)
+          if (idx <= 0 || !isAtomNode($from.node(depth - 1).child(idx - 1))) return false
+          const start = $from.before(depth)
+          const tr = state.tr.delete(start, start + para.nodeSize)
+          tr.setSelection(TextSelection.create(tr.doc, prevTextblockEnd(tr.doc, start)))
+          view.dispatch(tr)
+          return true
+        }
+        // 仅接管「容器内、atom 之后的空段落」这一条用户复现路径。
+        // 文档级空段落（容器之后）不接管：那里 ProseMirror 默认 join 的方向相反，
+        // 且 trailingNode 契约要求文末必有段落 —— 改动收益低、风险高（可能落到 atom 前
+        // 导致下一次 Backspace 删掉公式），故交回默认行为。
+        return false
+      }
+
+      return { Backspace: deleteEmptyAfterAtom }
+    },
 })
+
+/**
+ * task-59：容器内「atom 之后紧跟空段落」的 Backspace 横跳修复。
+ *
+ * 复现（用户实测，`数学分析习题 Week 3 Day 2.md`）：`blockquote[段落, mathBlock, 空段落]`，
+ * 光标在空段落上反复按 Backspace：
+ *   - 第 1 次：空段落被 **lift 出引用块**（1 个事务，steps=1）；
+ *   - 第 2 次：ProseMirror `joinBackward` 把这个文档级空段落 **又 join 回引用块**
+ *     （1 次按键 3 个事务，最后 1 个 docChanged=true）→ 结构与光标**回到原点**；
+ *   - 第 3 次重复第 1 次 …… → 净变化 0，光标 8↔9 反复横跳。
+ * 对照：前一块是**普通段落**时，第 2 次 Backspace 不会重新 join（PM 无块可并入），
+ * 故只有「atom（如 mathBlock）+ 其后空段落」这一组合会振荡。
+ *
+ * 修法：该组合下 Backspace 直接**删除这个空段落**（一次按键 = 一次单调变化），
+ * 光标落到删除点之前最近的文本位置；不再依赖 lift ↔ join 的往返。
+ * 其余情形一律返回 false，交回 ProseMirror 默认行为（不改动既有语义）。
+ */
+function isAtomNode(node: { isAtom?: boolean } | null | undefined): boolean {
+  return Boolean(node && node.isAtom)
+}
+
+/** 删除点 `pos` 之前**最近的文本块末尾**（光标落点；找不到则退回 pos）。
+ *  目的：删掉空行后光标回到上一行文字末尾，而不是停在容器层级——
+ *  否则下一次 Backspace 会直接删掉前面的 atom（如公式），属不可接受的副作用。 */
+function prevTextblockEnd(doc: PMNode, pos: number): number {
+  const $pos = doc.resolve(pos)
+  for (let d = $pos.depth; d > 0; d--) {
+    const container = $pos.node(d)
+    const idx = $pos.index(d)
+    for (let i = idx - 1; i >= 0; i--) {
+      const child = container.child(i)
+      if (child.isTextblock) return $pos.posAtIndex(i, d) + 1 + child.content.size
+    }
+  }
+  return pos
+}

@@ -405,9 +405,14 @@ body {
 .ke-math-tools {
   display: none;
   position: absolute;
-  /* 贴公式右缘，往外让 4px（块级公式在下方另设 right:0） */
-  left: calc(100% + 4px);
+  /* 2026-10-07（用户实测：「笔按钮位置变了、更难点到了」）：工具条与公式之间原本有
+     4px/2px 的空隙 —— 鼠标从公式移向按钮时**中途会离开 .ke-math 的 hover 区域**，
+     工具条立刻 display:none → 按钮"够不着"。
+     修法：容器**紧贴公式边缘**（left:100% / top:100%，不再外移），把可见间距改成容器自身的
+     padding（padding 属于容器盒 → 悬停它等同悬停工具条 → 不会有断裂带）。 */
+  left: 100%;
   top: -6px;
+  padding-left: 4px;
   align-items: center;
   gap: 2px;
   z-index: 20;
@@ -451,7 +456,8 @@ body {
   left: auto;
   right: 0;
   top: 100%;
-  margin-top: 2px;
+  margin-top: 0;
+  padding-top: 4px; /* 同上：用 padding 代替空隙，保证鼠标可以从公式一路移到按钮 */
 }
 /* 几何说明（2026-09-23 实测）：行内公式在正文列**右边界**时，工具条（76px）
    从公式右缘再往外伸 → 可能超出正文列/视口（Chromium 实测：公式右缘 824.11 → 工具条

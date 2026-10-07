@@ -1040,6 +1040,18 @@ export default function App() {
                 </span>
               ) : null}
               <span className="opacity-70">后端 v{health?.version ?? ''}</span>
+              {/* 发版策略（docs/release-policy.md）：内部验证构建用 `x.y.z-dev.N`，
+                  与已发布的正式补丁（纯 x.y.z）区分开 —— 这里给 dev 构建加显式角标，
+                  避免"分不清我看的是 dev 还是装的那版"。 */}
+              {/-dev\./.test(APP_VERSION) ? (
+                <span
+                  data-testid="dev-build-badge"
+                  className="rounded bg-amber-500/15 px-1.5 py-[1px] text-[11px] font-medium text-amber-600"
+                  title={`开发构建 ${APP_VERSION}（非正式发布版本，仅供验证）`}
+                >
+                  dev
+                </span>
+              ) : null}
             </>
           )}
           <StatusBarPath path={workspace?.root ?? ''} />

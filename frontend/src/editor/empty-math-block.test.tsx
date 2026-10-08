@@ -14,6 +14,8 @@
  *     且正在弹窗编辑的那个必须保留；非空公式（含 `\tag`/`align`）一律不动；
  *  ③ **清空有内容的公式**不得静默删除：弹窗先 `askConfirm` 确认（删除本身单事务、Ctrl+Z 可撤销）。
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { Editor } from '@tiptap/core'
@@ -27,7 +29,8 @@ import { MathExtension } from './extensions/MathExtension'
 import { TableMarkdownExtension, TableRow, TableCell, TableHeader } from './extensions/TableMarkdownExtension'
 import { KE_VERSION, withFrontmatter } from './ke'
 import { setKeContent } from './index'
-import { pruneEmptyMathBlocks } from './math/emptyBlocks'
+import { markdownForSave, pruneEmptyMathBlocks } from './math/emptyBlocks'
+import { applyMathInsertCursor } from './math/cursor'
 import MathEditorModal from '../components/editor/MathEditorModal'
 
 const CS = vi.hoisted(() => ({ confirmResult: true, confirmMessages: [] as string[] }))
@@ -160,6 +163,91 @@ describe('task-61 ② 保存前清理空 mathBlock（pruneEmptyMathBlocks）', (
     const ed = makeEditor('正文 $x$ 结尾\n')
     expect(pruneEmptyMathBlocks(ed, null)).toBe(false)
     expect(ed.getMarkdown()).toContain('$x$')
+    ed.destroy()
+  })
+})
+
+describe('task-61 ⑤ 漏网路径（Lead 沙箱真机复现）：弹窗开着时保存也不得写空块', () => {
+  /** 列表项内 + 顶层各放一个空 mathBlock（列表项内是缩进形态，Lead 实测的漏网形态） */
+  function editorWithEmptyBlocks(): Editor {
+    return new Editor({
+      extensions: EXTENSIONS,
+      content: {
+        type: 'doc',
+        content: [
+          {
+            type: 'orderedList',
+            content: [
+              {
+                type: 'listItem',
+                content: [
+                  { type: 'paragraph', content: [{ type: 'text', text: '测试列表项：' }] },
+                  { type: 'mathBlock', attrs: { latex: '', id: 'editing-block' } },
+                ],
+              },
+            ],
+          },
+          { type: 'mathBlock', attrs: { latex: 'a+b=c \\tag{S.1}', id: 'tagged' } },
+        ],
+      },
+    })
+  }
+
+  it('修复前语义对照（红灯本体）：保留「正在编辑的空节点」→ 载荷必然出现空 `$$` 块', () => {
+    const ed = editorWithEmptyBlocks()
+    // 旧实现 = 保存时 keepId 指向正在弹窗编辑的节点 → 它被保留并序列化
+    pruneEmptyMathBlocks(ed, 'editing-block')
+    const oldPayload = withFrontmatter(ed.getMarkdown(), KE_VERSION)
+    expect(oldPayload, '若这里失败说明「修复前的红灯」不再成立，需重新审视线索').toContain('$$')
+    expect(oldPayload).toContain('$$\n\n$$') // 空块指纹
+    ed.destroy()
+  })
+
+  it('修复后：弹窗开着（空节点仍在文档里）+ 保存载荷 → 零空块，且非空公式/`\tag` 不受影响', () => {
+    const ed = editorWithEmptyBlocks()
+    expect(mathBlocks(ed), '前提：文档里确实有 2 个 mathBlock（1 空 1 有内容）').toEqual(['', 'a+b=c \\tag{S.1}'])
+    const payload = markdownForSave(ed)
+    expect(payload, `空块进了载荷：${JSON.stringify(payload)}`).not.toBeNull()
+    expect(payload!, '空块进了载荷').not.toContain('$$\n\n$$')
+    // 列表项内的缩进空块同样不得出现：判据 = 「两个定界符之间只有空行」（不能拿 `^ *$$$` 当判据，
+    // 那会误伤**非空**公式自己的定界符行）
+    expect(payload!, `缩进空块进了载荷：${JSON.stringify(payload)}`).not.toMatch(/^[ \t]*\$\$[ \t]*\n(?:[ \t]*\n)*[ \t]*\$\$/m)
+    // 非空公式与 tag 原样保留
+    expect(payload!).toContain('a+b=c \\tag{S.1}')
+    expect(payload!).toContain('测试列表项：')
+    // 载荷再打开一次：不留任何空块痕迹，内容稳定
+    const ed2 = makeEditor(payload!.replace(/^---\n[\s\S]*?---\n\n/, ''))
+    expect(mathBlocks(ed2)).toEqual(['a+b=c \\tag{S.1}'])
+    ed2.destroy()
+    ed.destroy()
+  })
+
+  it('Ctrl+S 与自动保存共用同一条保存路径 → 源码守卫：载荷必须走 markdownForSave（不再传 keepId）', () => {
+    // vitest 变换后 import.meta.url 可能不是 file: → 用 cwd（vitest 以 frontend/ 为 cwd）
+    const src = readFileSync(join(process.cwd(), 'src/components/layout/EditorArea.tsx'), 'utf8')
+    // buildSaveFn 是 Ctrl+S（saveNow）与自动保存（enqueueSave）共同使用的 saveFn 构造器
+    expect(src).toMatch(/markdownForSave\(ed\)/)
+    expect(src, '仍在使用 keepId 形式 = 弹窗开着时会漏').not.toMatch(/pruneEmptyMathBlocks\(ed,\s*mathEditIdRef/)
+    expect(src).not.toContain('mathEditIdRef')
+  })
+
+  it('确认弹窗时目标节点已被清理 → 新插入（用户输入不丢，且单事务可撤销）', () => {
+    const ed = editorWithEmptyBlocks()
+    const payload = markdownForSave(ed)!
+    expect(ed.state.doc.textContent).not.toContain('$$') // 空块已被清掉
+    void payload
+    // 模拟用户确认时节点已不存在：按捕获位置插入用户输入的 latex
+    const before = ed.state.doc.childCount
+    ed.chain()
+      .command(({ tr }) => applyMathInsertCursor(tr, 2, true, 'x+y=z \\tag{S.2}', 'new-id'))
+      .run()
+    const blocks = mathBlocks(ed)
+    expect(blocks, `确认的内容丢失了：${JSON.stringify(blocks)}`).toContain('x+y=z \\tag{S.2}')
+    expect(ed.state.doc.childCount).toBeGreaterThanOrEqual(before)
+    // 新插入的节点不会被下一次保存清掉（latex 非空）
+    expect(markdownForSave(ed)!).toContain('x+y=z \\tag{S.2}')
+    // 空 latex 不插入（防「插入空节点」的新入口）
+    expect(applyMathInsertCursor(ed.state.tr, 0, true, '   ', 'x')).toBe(false)
     ed.destroy()
   })
 })

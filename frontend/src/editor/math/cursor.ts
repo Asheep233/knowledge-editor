@@ -154,3 +154,26 @@ export function applyMathDeleteCursor(tr: Transaction, pos: number): boolean {
   placeCursorNear(tr, pos)
   return true
 }
+
+/**
+ * task-61：**确认弹窗时目标节点已不存在**（例如它本是空块、已在保存前被清理）→
+ * 按用户确认的 latex **新插入**一个公式节点，绝不让输入静默消失。
+ * 与 `applyMathSaveCursor` 一样在单事务内完成 → 一次 Ctrl+Z 即回到插入前。
+ * @returns false = latex 为空或 schema 缺节点类型（调用方不派发）
+ */
+export function applyMathInsertCursor(
+  tr: Transaction,
+  pos: number,
+  isBlock: boolean,
+  latex: string,
+  id: string,
+): boolean {
+  if (!latex.trim()) return false
+  const type = tr.doc.type.schema.nodes[isBlock ? 'mathBlock' : 'math']
+  if (!type) return false
+  const node = type.create({ latex, id })
+  const at = Math.max(0, Math.min(pos, tr.doc.content.size))
+  tr.insert(at, node)
+  placeCursorNear(tr, at + node.nodeSize)
+  return true
+}

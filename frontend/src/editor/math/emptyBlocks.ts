@@ -20,6 +20,7 @@
  * - 非空公式一律不动（含 `\tag`、`align` 等）。
  */
 import type { Editor } from '@tiptap/core'
+import { KE_VERSION, withFrontmatter } from '../ke'
 
 /** 该节点是否为「空块级公式」（latex 为空或仅空白） */
 export function isEmptyMathBlock(node: { type: { name: string }; attrs?: Record<string, unknown> }): boolean {
@@ -55,4 +56,22 @@ export function pruneEmptyMathBlocks(editor: Editor | null | undefined, keepId?:
   if (!tr.docChanged) return false
   view.dispatch(tr)
   return true
+}
+
+/**
+ * task-61（漏网路径）：**保存载荷**统一入口 —— 先清空块，再套 frontmatter。
+ *
+ * 为什么保存时必须 `keepId = null`（不保留"正在弹窗编辑"的那个）：
+ * 弹窗打开期间仍会发生保存（用户按 Ctrl+S、或自动保存到期、或切档 flush）。
+ * 旧实现为「用户还没决定」而保留该空节点 → 空 `$$\n\n$$`（列表项内则是缩进版）
+ * 照样进文件，主理人在沙箱真机复现到了这条路径。
+ * 用户"决定"由**弹窗确认时**表达：那时若目标节点已被清掉，`applyMathInsertCursor`
+ * 会按确认的 latex **新插入**节点 —— 既不写空块，也不丢用户输入。
+ */
+export function markdownForSave(editor: Editor | null | undefined): string | null {
+  const ed = editor as Editor | null | undefined
+  // 与旧实现同口径：只要能序列化就返回载荷（测试替身只提供 getMarkdown() 时也必须工作）。
+  if (!ed || typeof ed.getMarkdown !== 'function') return null
+  pruneEmptyMathBlocks(ed, null) // 内部自带防御：替身/已销毁实例 → 无事发生
+  return withFrontmatter(ed.getMarkdown(), KE_VERSION)
 }

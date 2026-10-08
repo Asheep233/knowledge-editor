@@ -27,8 +27,8 @@ import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
 import { slugForDownload } from '../../editor/import-export'
 import { applyDocTraits, captureDocTraits, frontmatterBlockOf, KE_VERSION, newId, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
-import { applyMathDeleteCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
-import { pruneEmptyMathBlocks } from '../../editor/math/emptyBlocks'
+import { applyMathDeleteCursor, applyMathInsertCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
+import { markdownForSave, pruneEmptyMathBlocks } from '../../editor/math/emptyBlocks'
 import { MATH_CONVERT_EVENT, convertBlockToInline, convertInlineToBlock, type ConvertRequest } from '../../editor/math/convert'
 import { getAutosaveIntervalMs } from '../../settings'
 import { cancelPending, enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
@@ -107,12 +107,6 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const [historyOpen, setHistoryOpen] = useState(false)
   // v1.1.7 M2：全屏公式模态（编辑器根持有——PM 事务从根组件发起，nodeview 根会 #300）
   const [mathEdit, setMathEdit] = useState<(MathEditRequest & { open: boolean }) | null>(null)
-  // task-61：当前正在弹窗编辑的公式 id —— 保存前清理空 mathBlock 时**必须保留**它
-  // （用户还没决定要不要填内容，不能替他删）；其余空块一律不写进文件。
-  const mathEditIdRef = useRef<string | null>(null)
-  useEffect(() => {
-    mathEditIdRef.current = mathEdit?.open ? mathEdit.id : null
-  }, [mathEdit])
   const [versions, setVersions] = useState<HistoryVersion[]>([])
   // P2-8：历史加载失败不再是「空列表」，而是明确错误提示
   const [historyError, setHistoryError] = useState('')
@@ -383,13 +377,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         // 只有编辑器仍载着 docId 时才允许实时序列化；否则必须用切档快照；
         // 无快照 → resolveSaveContent 返回 null → 放弃本次保存（不 save、不登记恢复点）。
         const editorDocId = editorDocIdRef.current
-        if (ed && editorDocId === docId) {
-          // task-61：空 mathBlock（Mod-m 插入后未填内容 / 用户清空）**不得写进文件**——
-          // 否则序列化成 `$$\n\n$$`，下次打开退化为两行字面 `$$`（主理人文件的事故指纹）。
-          pruneEmptyMathBlocks(ed, mathEditIdRef.current)
-        }
-        const editorMarkdown =
-          ed && editorDocId === docId ? withFrontmatter(ed.getMarkdown(), KE_VERSION) : null
+        // task-61（含漏网路径）：保存载荷统一走 markdownForSave —— 它在序列化前清掉**全部**空
+        // mathBlock（**不保留"正在弹窗编辑"的那个**：弹窗开着时的 Ctrl+S / 自动保存同样不得写空块）。
+        // 用户的输入不会因此丢失：确认弹窗时若目标节点已被清掉，走 applyMathInsertCursor 新插入。
+        const editorMarkdown = ed && editorDocId === docId ? markdownForSave(ed) : null
         const md = resolveSaveContent({
           docId,
           currentDocId: editorDocId,
@@ -1328,6 +1319,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                       ed.chain()
                         .command(({ tr }) => applyMathSaveCursor(tr, target, mathEdit.isBlock, v))
                         .focus() // 焦点交还编辑器（光标落点由事务内 setSelection 决定）
+                        .run()
+                    } else {
+                      // task-61：目标节点已不存在（原本是空块、已在保存前被清理）→ **新插入**，
+                      // 用户确认的内容绝不静默丢失。
+                      const newId = crypto.randomUUID?.() ?? `m${Date.now()}`
+                      ed.chain()
+                        .command(({ tr }) => applyMathInsertCursor(tr, mathEdit.pos, mathEdit.isBlock, v, newId))
+                        .focus()
                         .run()
                     }
                   }

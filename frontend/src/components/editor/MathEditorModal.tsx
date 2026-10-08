@@ -14,6 +14,7 @@ import { MATH_TEMPLATES } from '../../editor/math/templates'
 import { completions } from '../../editor/math/completions'
 import { stripSlots, nextSlot, insertAt } from '../../editor/math/slots'
 import { getCachedSettings } from '../../settings'
+import { askConfirm } from '../common/PromptDialog'
 
 
 interface Props {
@@ -29,7 +30,9 @@ interface Props {
 
 export default function MathEditorModal({ open, initialValue, isBlock, onSave, onDeleteEmpty, onClose }: Props) {
   const [latex, setLatex] = useState(initialValue)
-  const [mode, setMode] = useState<'latex' | 'mathlive'>('latex')
+  // task-61：`mathlive` 可视化编辑从未实现（src 全仓无 mathlive import）→
+  // 删除死按钮与 mode 状态，避免用户以为存在可视化编辑；公式编辑恒为 LaTeX 源码 + 预览。
+  const mode = 'latex' as const
   const [suggOpen, setSuggOpen] = useState(false)
   const [suggIdx, setSuggIdx] = useState(0)
   // v1.1.7 ② 设置：公式自动补全开关（Tab 补全仅当开启；模板面板/槽位跳转不受影响）
@@ -80,22 +83,31 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
   if (!open) return null
 
   const close = (save: boolean) => {
-    onClose()
-    if (save) {
-      const cleaned = stripSlots(latex).trim()
-      // double-rAF：等 NodeView 根与 Editor 根（跨根渲染）全部落定后，再发起 PM 事务——
-      // 模态（portal，独立 React 根）内直接触发 PM 更新会撞 #300 update-during-render
-      const op = window.requestAnimationFrame(() =>
-        window.requestAnimationFrame(() => {
-          if (cleaned === '') {
-            onDeleteEmpty()
-          } else {
-            onSave(cleaned)
-          }
-        }),
-      )
-      return () => window.cancelAnimationFrame(op)
+    if (!save) {
+      onClose()
+      return
     }
+    const cleaned = stripSlots(latex).trim()
+    // double-rAF：等 NodeView 根与 Editor 根（跨根渲染）全部落定后，再发起 PM 事务——
+    // 模态（portal，独立 React 根）内直接触发 PM 更新会撞 #300 update-during-render
+    const commit = (fn: () => void) => {
+      onClose()
+      window.requestAnimationFrame(() => window.requestAnimationFrame(fn))
+    }
+    if (cleaned !== '') {
+      commit(() => onSave(cleaned))
+      return
+    }
+    // task-61：**清空一条本来有内容的公式 = 破坏性操作**，不得静默删除。
+    // 先确认（删除本身走单个 PM 事务，Ctrl+Z 可撤销）；
+    // 若本来就是新建的空公式（initialValue 为空）则无内容可丢，直接删除（保持既有语义）。
+    if (initialValue.trim() === '') {
+      commit(() => onDeleteEmpty())
+      return
+    }
+    void askConfirm('清空后将删除这条公式（可用 Ctrl+Z 撤销），是否继续？').then((ok) => {
+      if (ok) commit(() => onDeleteEmpty())
+    })
   }
 
   /** 光标当前 `\` 前缀（供 Tab 选择） */
@@ -237,13 +249,6 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
           <span className="text-[14px] font-semibold text-foreground">{isBlock ? '块级公式' : '行内公式'}</span>
           <span className="text-[12px] text-muted-foreground">Enter=换行 · Esc=保存（空=删除）· Tab=补全/跳槽</span>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMode((m) => (m === 'latex' ? 'mathlive' : 'latex'))}
-              className="rounded-md border border-border bg-muted px-2.5 py-1 text-[12px] text-foreground/80 hover:text-foreground"
-            >
-              {mode === 'latex' ? '可视化编辑' : '源码编辑'}
-            </button>
             <button
               type="button"
               onClick={() => close(true)}

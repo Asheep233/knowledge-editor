@@ -13,7 +13,9 @@ import { Icon } from '../icons'
 import { MATH_TEMPLATES } from '../../editor/math/templates'
 import { completions } from '../../editor/math/completions'
 import { stripSlots, nextSlot, insertAt } from '../../editor/math/slots'
+import { budgetNotice, fallbackDisplayText, mathBudgetVerdict } from '../../editor/math/budget'
 import { getCachedSettings } from '../../settings'
+import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { askConfirm } from '../common/PromptDialog'
 
 
@@ -44,18 +46,38 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
   // 计算当前补全候选：光标前的 `\` 前缀
   const suggestions = useMemo(() => {
     const t = textareaRef.current
-    if (!t || mode !== 'latex') return []
+    if (!t || mode !== 'latex' || !completionsEnabled) return []
     const before = t.value.slice(0, t.selectionStart ?? 0)
     const m = /\\[a-zA-Z]+$/.exec(before)
     if (!m) return []
     return completions(m[0])
   }, [latex, mode, suggOpen, completionsEnabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 候选菜单**可见**的判定（渲染 / Tab / Esc 三处同源）：suggOpen 但无匹配项时不显示菜单，
+  // 此时 Esc 应走既有「保存」语义，而不是"关一个用户看不见的菜单"
+  const menuOpen = suggOpen && suggestions.length > 0
+
+  // task-63 A08：补全开关关闭时，**不得**残留已打开的候选（用户在设置里关掉开关、
+  // 或开关在模态打开期间被改掉，都不应还能看到/使用候选）
+  useEffect(() => {
+    if (!completionsEnabled) setSuggOpen(false)
+  }, [completionsEnabled])
+
   // 预览渲染
+  // task-63 A10：预览必须与显示节点**共用同一预算**（`editor/math/budget.ts`）。
+  // 超预算时**不调用 KaTeX**，改给明确提示 —— 修复前 12,001 字符会在模态里全量渲染
+  // （审查实测 1.92MB HTML / 36,005 span / ~1.2s），保存后才由节点回退成纯文本。
+  const budget = useMemo(() => mathBudgetVerdict(latex), [latex])
+  const overBudget = !budget.ok
   const [previewHtml, setPreviewHtml] = useState('')
   const [renderFailed, setRenderFailed] = useState(false)
   useEffect(() => {
     if (mode !== 'latex') return
+    if (overBudget) {
+      setPreviewHtml('')
+      setRenderFailed(false)
+      return
+    }
     try {
       setPreviewHtml(
         katex.renderToString(latex || '\\;', { displayMode: isBlock, throwOnError: false }),
@@ -64,7 +86,7 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     } catch {
       setRenderFailed(true)
     }
-  }, [latex, mode, isBlock])
+  }, [latex, mode, isBlock, overBudget])
 
   useEffect(() => {
     if (!open) return
@@ -178,7 +200,7 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     const t = textareaRef.current
     if (e.key === 'Tab') {
       e.preventDefault()
-      if (suggOpen && currentPrefix()) {
+      if (menuOpen && currentPrefix()) {
         const items = suggestions
         if (items.length) {
           applyCompletion(items[suggIdx % items.length].insert)
@@ -193,7 +215,17 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
       return
     }
     if (e.key === 'Escape') {
+      // 审查补充发现（IME 组合态 Esc 仍提交公式）：组词中按 Esc 是**输入法取消候选**，
+      // 不得被当成「保存并退出」。守卫复用仓库既有口径（state/shortcuts），不另创一套。
+      if (shouldIgnoreReactKeyEvent(e)) return
       e.preventDefault()
+      // task-63 A09（Lead 裁决：选项 1）：候选打开时 Esc **只关候选** —— 不保存、不退出。
+      // 修复前这里直接 close(true)，会把半截 `\fr` 当公式写进文档（审查 MATH_CANDIDATE_ESC 实测）。
+      // 候选未打开时 Esc 行为逐字不变（Esc=保存 / 空=删除）。
+      if (menuOpen) {
+        setSuggOpen(false)
+        return
+      }
       close(true)
       return
     }
@@ -283,11 +315,13 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
                     const t = textareaRef.current
                     if (t) {
                       const before = t.value.slice(0, t.selectionStart ?? 0)
-                      setSuggOpen(/\\[a-zA-Z]+$/.test(before))
+                      // task-63 A08：必须**同时**查开关 —— 修复前这里只判前缀，
+                      // 于是「关掉自动补全 → 焦点移到完成再回来」候选照样弹出、Tab 照样补全
+                      setSuggOpen(completionsEnabled && /\\[a-zA-Z]+$/.test(before))
                     }
                   }}
                 />
-                {suggOpen && suggestions.length > 0 && (
+                {menuOpen && (
                   <div className="absolute left-2 top-full z-10 mt-1 max-h-56 w-[340px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-lg">
                     <div className="border-b border-border px-3 py-1 text-[11px] text-muted-foreground">
                       ↑↓ 切换 · <span className="font-medium">Tab</span> 插入 · Esc 关闭
@@ -323,11 +357,27 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
             )}
             <div className="min-h-[60px] flex-1 rounded-lg border border-border bg-background/60 p-3">
               <div className="mb-1 text-[12px] text-muted-foreground">渲染预览</div>
-              <div
-                className="overflow-x-auto text-center"
-                style={{ color: renderFailed ? '#f87171' : 'var(--foreground)', fontSize: isBlock ? 20 : 16 }}
-                dangerouslySetInnerHTML={{ __html: renderFailed ? '（无效公式）' : previewHtml }}
-              />
+              {overBudget ? (
+                /* task-63 A10：超预算**不渲染**，给明确提示 + 原文以纯文本呈现（React 文本节点，
+                   不经 innerHTML）。提示里说明「内容仍会原样保存」，避免用户以为会被截断。 */
+                <div data-ke-math-budget-notice="" className="text-left">
+                  <div className="mb-1 text-[12px]" style={{ color: '#d97706' }}>
+                    {budgetNotice(latex)}
+                  </div>
+                  <div
+                    className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[12px]"
+                    style={{ color: 'var(--muted-foreground)' }}
+                  >
+                    {fallbackDisplayText(latex)}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="overflow-x-auto text-center"
+                  style={{ color: renderFailed ? '#f87171' : 'var(--foreground)', fontSize: isBlock ? 20 : 16 }}
+                  dangerouslySetInnerHTML={{ __html: renderFailed ? '（无效公式）' : previewHtml }}
+                />
+              )}
             </div>
           </div>
           {/* 模板面板（常驻右栏） */}

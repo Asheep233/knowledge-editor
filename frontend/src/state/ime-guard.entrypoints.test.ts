@@ -22,9 +22,11 @@
  * 本轮（task-55 F5）已修：PromptDialog.tsx（Enter/Escape）、RightPanel.tsx（标签输入 Enter/Backspace）。
  * task-58 F5 续修：EditorArea.tsx（window Ctrl+S、页眉标题 Enter/Escape）、
  *   LeftSidebar.tsx（window Ctrl+K、搜索框 Enter）——已从 KNOWN_GAPS 删除（清单同步）。
+ * task-63 A09 续修：MathEditorModal.tsx（Escape 分支加 shouldIgnoreReactKeyEvent 守卫，
+ *   顺带覆盖审查补充发现「IME 组合态 Esc 仍提交公式」）——已从 KNOWN_GAPS 删除（清单同步）。
  * 仍待修（超出本子任务写入边界）：EditorArea.tsx（window Ctrl+S、页眉标题 Enter）、
  *   LeftSidebar.tsx（window Ctrl+K、搜索框 Enter）、desktop.ts（Ctrl+Q/R 兜底）、
- *   MathEditorModal.tsx、FootnoteNodeView.tsx、FootnotesNodeView.tsx、ImageLightbox.tsx、
+ *   FootnoteNodeView.tsx、FootnotesNodeView.tsx、ImageLightbox.tsx、
  *   WorkspacePicker.tsx、SettingsPanel.tsx。
  */
 import { readFileSync } from 'node:fs'
@@ -218,7 +220,6 @@ function details(): string {
  * ③ 修好后必须同步清单（否则本用例失败并打印实测明细）。
  */
 const KNOWN_GAPS: Record<string, number> = {
-  'components/editor/MathEditorModal.tsx': 1,
   'components/editor/nodeviews/FootnoteNodeView.tsx': 1,
   'components/editor/nodeviews/FootnotesNodeView.tsx': 1,
   'components/editor/nodeviews/ImageLightbox.tsx': 1,

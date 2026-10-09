@@ -13,6 +13,12 @@ import { Extension } from '@tiptap/core'
 import type { JSONContent } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from '@tiptap/markdown'
+// task-67（I2「往返必须字节等价」）：接管 @tiptap/markdown 的**文本转义策略** ——
+// 上游对非代码文本无差别转义 `\`*_[\]~`，会把普通段落的词内下划线改写成 `\_`
+// （`SOURCE_BASELINE_OLD` → `SOURCE\_BASELINE\_OLD`）→ 打开一次就改写用户字节。
+// 本模块只把「词内 `_`」（CommonMark 里既不能开也不能闭强调）放行，其余转义保持不变。
+// 副作用导入：加载即安装（幂等）；实现与判定依据见 markdown-escape.ts。
+import './markdown-escape'
 import { history } from '@tiptap/pm/history'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'

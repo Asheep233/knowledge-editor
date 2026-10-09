@@ -219,7 +219,21 @@ export const footnoteTokenizer = {
 export const tableTokenizer = {
   name: 'ke_table',
   level: 'block' as const,
-  start: (src: string) => (/^[^\n]*\|/.test(src) ? 0 : -1),
+  // task-66（v1.2.10 用户实测「文档逐字一行」的根因）：`start` 在 marked 里**不是**
+  // 「要不要试这个 tokenizer」的开关 —— `Lexer.blockTokens` 把它当**段落截断提示**：
+  //     const a = e.slice(1)
+  //     startBlock.forEach(l => { const o = l(a); if (o >= 0) s = Math.min(s, o) })
+  //     if (s < Infinity && s >= 0) i = e.substring(0, s + 1)   // ← 段落被截到 s+1 个字符
+  // 原实现 `(src) => (/^[^\n]*\|/.test(src) ? 0 : -1)` 对**任何含 `|` 的行**都返回 0
+  // → 该段落被截成 **1 个字符**，循环推进后再次命中 → 整段被逐字符拆成多个 paragraph
+  // token，`@tiptap/markdown` 又并成**一个含 `\n` 的文本节点**；正文 `white-space:
+  // break-spaces` 把每个 `\n` 当换行 → **一字一行**（用户截图 `由/于/满/足/题/意/的`）。
+  // 更糟：`getMarkdown()` 会把这种逐字形态**写回磁盘** —— 打开一次就改坏用户的文档。
+  // 命中条件极常见：`$|\mathbb{Q}|=\aleph_0$` 这类**含 `|` 的行内公式**所在段落全都中招。
+  // 与 keFallbackTokenizer（见文件下方 S-2 注释）是同一个坑，修法同款：
+  // **start 恒返回 -1**（不抢块起点），是否成表完全交给 tokenize 判定 ——
+  // tokenize 已严格要求「表头行 + 分隔行」，孤立的 `|` 行自然退回普通段落（GFM 口径）。
+  start: () => -1,
   tokenize(src: string): MarkdownToken | undefined {
     const lines = src.split('\n')
     const header = parseTableRow(lines[0])

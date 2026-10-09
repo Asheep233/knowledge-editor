@@ -197,6 +197,22 @@ describe('task-55 R06-2. 异常回退：DOM 里不得出现外部注入元素（
     expect(src).toMatch(/if\s*\(withinBudget\)/)
   })
 
+  it('2-5 task-66/I4 回退容器必须声明正常排版（不得逐字一行/宽度塌陷）', async () => {
+    await mount(`$${XSS_PAYLOAD}$`)
+    const fb = document.querySelector('[data-ke-math-fallback]') as HTMLElement
+    expect(fb).toBeTruthy()
+    const s = fb.style
+    expect(s.display, '回退容器显式块级').toBe('block')
+    expect(s.maxWidth, '不得溢出正文列').toBe('100%')
+    expect(s.whiteSpace, '保留原文换行').toBe('pre-wrap')
+    expect(s.wordBreak).toBe('break-word')
+    expect(s.overflowWrap, '极长无空格片段任意位置断开').toBe('anywhere')
+    // 回退文本不得逐字插入换行（逐字一行在 DOM 层的形态就是"每个字符后跟 \n"）
+    const t = fb.textContent ?? ''
+    expect(t.length).toBeGreaterThan(1)
+    expect(/\S\n\S\n\S/.test(t), `文本被逐字拆行：${JSON.stringify(t.slice(0, 30))}`).toBe(false)
+  })
+
   it('2-4 超预算 + 超长原文：title 自身也被截断（不把 12KB 原文塞进属性）', async () => {
     await mount(`$${XSS_PAYLOAD}$`)
     const fallback = document.querySelector('[data-ke-math-fallback]') as HTMLElement

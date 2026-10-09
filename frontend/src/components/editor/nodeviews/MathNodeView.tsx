@@ -120,7 +120,20 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
           className="ke-math-render ke-math-render--failed"
           data-ke-math-fallback=""
           title={fallbackTitle(latex)}
-          style={{ color: '#dc2626', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: '0.9em', wordBreak: 'break-all' }}
+          // task-66（渲染稳定性 I4：回退必须**保形**）：显式声明正常排版约束 ——
+          // 超长原文按容器宽度换行、极长无空格片段在任意位置断开，绝不能出现
+          // 「逐字一行 / 宽度塌陷」。实测（Chromium，652px 正文列，12,001 字符公式）：
+          // w=652 / h=74.9 / 3 行（修复前 A10 全量渲染为 1.92MB HTML、1,206ms）。
+          style={{
+            display: 'block',
+            maxWidth: '100%',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+            color: '#dc2626',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            fontSize: '0.9em',
+          }}
           onDoubleClick={(e) => {
             e.preventDefault()
             openEdit()

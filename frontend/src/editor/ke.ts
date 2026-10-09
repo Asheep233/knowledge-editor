@@ -164,15 +164,23 @@ export function withFrontmatter(
     return `---\n${KE_FRONTMATTER_KEY}: ${version}\n---\n\n${md}`
   }
   // 已有 frontmatter：保留全部字段，仅更新/新增 ke_version 键。
+  // A07：重建定界符时**沿用原文档换行风格**（CRLF 文档不得被写成 LF，否则字节不稳定）。
+  const nl = md.slice(0, fm.blockEnd).includes('\r\n') ? '\r\n' : '\n'
   // `inner` 末尾换行归一到与旧实现一致（不含闭合定界符前那一行换行）。
   const body = fm.inner.replace(/\r?\n$/, '')
-  const versionRe = new RegExp(`^\\s*${KE_FRONTMATTER_KEY}\\s*:\\s*\\d+\\s*$`, 'm')
+  // A07：原实现用 `^\s*…\s*$` —— `\s` 含换行，CRLF 文档里会把 `\r` 后面的 `\n` 一起吃掉
+  // （`custom: keep-me\r\nke_version: 1` → `custom: keep-me\rke_version: 1`，丢一个 LF）。
+  // 改为「只吃水平空白 + 行尾 `\r` 用零宽前瞻」：不跨行、不吞换行。
+  const versionRe = new RegExp(
+    `^[ \\t]*${KE_FRONTMATTER_KEY}[ \\t]*:[ \\t]*\\d+[ \\t]*(?=\\r?$)`,
+    'm',
+  )
   const newBody = versionRe.test(body)
     ? body.replace(versionRe, `${KE_FRONTMATTER_KEY}: ${version}`)
     : body.trim() === ''
       ? `${KE_FRONTMATTER_KEY}: ${version}` // 空块（EDGE-1）：只写 ke_version，不产生双区块
-      : `${KE_FRONTMATTER_KEY}: ${version}\n${body}`
-  return `---\n${newBody}\n---\n\n${md.slice(fm.blockEnd)}`
+      : `${KE_FRONTMATTER_KEY}: ${version}${nl}${body}`
+  return `---${nl}${newBody}${nl}---${nl}${nl}${md.slice(fm.blockEnd)}`
 }
 
 const KE_KIND_RE = KE_KINDS.join('|')

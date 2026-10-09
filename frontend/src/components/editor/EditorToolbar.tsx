@@ -291,6 +291,17 @@ function moduleLabel(p: string): string {
   return p.replace(/^Modules\//, '').replace(/\.md$/, '')
 }
 
+/**
+ * A12（第三份审查 P1）：异步上传的**文档身份 + 代次**。
+ * 发起上传时捕获；`await` 返回后若文档已变化 → 结果不得插入当前编辑器。
+ */
+export interface UploadTarget {
+  docId: string
+  title: string
+  /** 文档装载代次（切档/外部重载递增） */
+  gen: number
+}
+
 export interface EditorToolbarProps {
   /** task-41：当前视图通道（源码模式切换按钮的 `aria-pressed` 态） */
   viewMode?: 'wysiwyg' | 'source'
@@ -298,6 +309,15 @@ export interface EditorToolbarProps {
   onToggleViewMode?: () => void
   /** task-41：不可切换时的原因（无文档/只读/版本预览）→ 按钮禁用并以此作为提示文案 */
   viewModeDisabledReason?: string
+  /**
+   * A12：上传的文档身份守卫（宿主注入）。
+   * 上传发起时 `capture()`，`await` 后 `stillValid()` 不成立 → 调 `onLost()` 且**不插入**。
+   */
+  uploadGuard?: {
+    capture: () => UploadTarget | null
+    stillValid: (t: UploadTarget | null) => boolean
+    onLost: (fileName: string, t: UploadTarget | null) => void
+  }
   /** 右侧保存状态文字（如「已保存」）；为空则不显示 */
   saveLabel?: ReactNode
   /** 历史快照按钮 */
@@ -316,6 +336,7 @@ export default function EditorToolbar({
   viewMode = 'wysiwyg',
   onToggleViewMode,
   viewModeDisabledReason,
+  uploadGuard,
 }: EditorToolbarProps = {}) {
   const { editor } = useCurrentEditor()
   // 编辑器状态快照（激活态实时更新）
@@ -393,8 +414,15 @@ export default function EditorToolbar({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    // A12：上传是异步的（大文件 POST 秒级）——发起时记录文档身份/代次
+    const target = uploadGuard?.capture() ?? null
     try {
       const res = await uploadAttachment(file)
+      // A12：文档已变化（切档/重载）→ 结果**不得**插入当前编辑器（否则串入另一篇并落盘）
+      if (uploadGuard && !uploadGuard.stillValid(target)) {
+        uploadGuard.onLost(file.name, target)
+        return
+      }
       // 视频统一使用 video 节点（spec 3.4 ke-video）；attach 仅承载 image/file
       // 节点构建与拖拽添加共用（src/editor/upload.ts），保证两种入口行为一致
       const node = attachmentNode(editor.schema, res, file.name)
@@ -468,6 +496,14 @@ export default function EditorToolbar({
 
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
 
+      {/* A01：源码态下正文命令整体禁用 —— setEditable(false) 挡不住程序命令，
+          必须从入口关闭（隐藏 PM 若被改写会用旧正文覆盖源码编辑） */}
+      <fieldset
+        disabled={viewMode === 'source'}
+        className="contents"
+        data-testid="body-commands"
+        aria-label="正文命令"
+      >
       <ToolIcon title="加粗" active={st.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
         <Icon name="bold" className="size-4" />
       </ToolIcon>
@@ -628,6 +664,8 @@ export default function EditorToolbar({
       </ToolIcon>
 
       {/* 右侧：保存 + 保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
+      </fieldset>
+
       <div className="ml-auto flex shrink-0 items-center gap-1.5">
         {/* task-41：视图通道切换（正文 ⇄ 源码）。只读/版本预览/无文档时禁用并给出原因 */}
         {onToggleViewMode ? (

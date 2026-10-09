@@ -435,6 +435,15 @@ export default function App() {
         const doc = await restoreRecovery(item.doc_path)
         setRecoveryModal((prev) => (prev ? prev.filter((i) => i.doc_path !== item.doc_path) : null))
         setTreeRefresh((n) => n + 1)
+        // A13（第三份审查 P1「恢复成功的草稿被旧界面再次保存覆盖」）：
+        // 恢复接口已把草稿写回磁盘，而界面两条编辑通道（PM / 源码）仍停在**恢复前**的旧正文，
+        // 且装载 effect 只依赖文档 id/reloadToken —— 同一 id 恢复不会重载。若不处理：
+        //  ① requestOpenArticle 的前置 flush 会先用旧界面内容 PUT；
+        //  ② 恢复后用户点保存同样用旧正文覆盖恢复结果。
+        // 因此：作废该文档的未决/在途保存（abort）→ **推进装载代次**强制 EditorArea 从磁盘
+        // 重载（正文 + 源码通道 + frontmatter/traits 基线）。
+        discardPending(doc.id)
+        setReloadToken((n) => n + 1)
         await requestOpenArticle(doc.id)
       } catch (e) {
         window.alert(`恢复失败：${e instanceof Error ? e.message : String(e)}`)

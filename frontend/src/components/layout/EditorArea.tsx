@@ -52,13 +52,32 @@ import type { ArticleMeta, HistoryVersion } from '../../types'
 import { Icon } from '../icons'
 import MathEditorModal from '../editor/MathEditorModal'
 import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathNodeView'
-import EditorToolbar, { stripModuleTitle } from '../editor/EditorToolbar'
+import EditorToolbar, { stripModuleTitle, type UploadTarget } from '../editor/EditorToolbar'
 import { TabBarSlot } from './TabBar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
 
 /** 文件特征缺省值：UTF-8 无 BOM + LF（磁盘原文未捕获到时使用，等价于既有行为） */
 const DEFAULT_DOC_TRAITS: DocTraits = { bom: false, eol: '\n' }
+
+/**
+ * A01（第三份审查 P1）：源码态下**正文命令**不得分派。
+ * 工具栏程序命令（如「信息块」）与快捷键都会走 `editor.chain()` 改写**隐藏的** ProseMirror 文档；
+ * `setEditable(false)` 只挡输入，挡不住程序命令。这里在命令入口统一守卫（保存通道另有一道守卫）。
+ */
+export function guardBodyCommands(handlers: Record<string, () => void>): Record<string, () => void> {
+  return Object.fromEntries(
+    Object.entries(handlers).map(([id, fn]) => [
+      id,
+      id.startsWith('editor.')
+        ? () => {
+            if (getViewMode() !== 'wysiwyg') return
+            fn()
+          }
+        : fn,
+    ]),
+  )
+}
 
 /**
  * F-5 接线：保存后「对齐比较」前的归一化 —— 去 BOM、CRLF→LF（规范 document-format.md §2.6）。
@@ -178,6 +197,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const sourceUnknownDeclinedRef = useRef<string | null>(null)
   /** 最近一次「已保存」的磁盘原文（源码初值取保存后的内容，而非旧盘面） */
   const lastSavedRawRef = useRef(new Map<string, string>())
+  /** A12（第三份审查 P1）：文档**装载代次** —— 切档/外部重载时递增。
+   * 异步上传在 await 后据此判断「发起时的文档是否仍是当前文档」。 */
+  const docLoadGenRef = useRef(0)
   // F-S1-2：编辑器**此刻实际载入**的文档 id（实时内容的可信域）。切档快照的守卫必须用它，
   // 而不是 articleRef —— 后者的同步 effect 声明更早，切档 effect 跑到时它已指向新文档，
   // 导致 `articleRef.current?.id === prevId` 恒假、快照从未写入（旧文档最后 <3s 编辑静默丢弃）。
@@ -364,6 +386,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const buildSaveFn = useCallback(
     (docId: string): SaveFn => {
       return async (signal?: AbortSignal) => {
+        // A01 双重校验之二（保存通道）：源码态下该文档的正文通道已让位 ——
+        // 任何在切视图前入队、切视图后才执行的 PM 保存一律作废，绝不写回隐藏 PM 的旧正文。
+        if (getViewMode() === 'source' && articleRef.current?.id === docId) return
         const ed = editorRef.current
         const seq = docSeq(docId)
         // UI-2：await 之后**必须重读实时态**——保存启动时的快照若在 await 后仍用作门控，
@@ -459,6 +484,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   )
 
   const handleUpdate = useCallback(() => {
+    // A01（第三份审查 P1）：源码态下 ProseMirror **不是**可写通道 —— 隐藏文档的 update
+    // （工具栏程序命令、快捷键命令都能触发）**不得**入队 PM 保存，否则会用旧正文覆盖源码编辑。
+    if (getViewMode() === 'source') return
     if (!articleRef.current) return
     const docId = articleRef.current.id
     bumpSeq(docId)
@@ -671,6 +699,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   // R2：reloadToken 变化（同一文档的外部版本重载）也触发重载，但跳过 flush
   // （id 未变，无「上一文档」；未决保存已由 App.handleReloadExternal 取消）。
   useEffect(() => {
+    // A12：每次装载（切档 / 外部重载 / 恢复后强制重载）推进代次 —— 异步结果据此失效
+    docLoadGenRef.current += 1
     const newId = article?.id ?? null
     const prevId = prevArticleIdRef.current
     if (prevId && prevId !== newId) {
@@ -767,6 +797,33 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     const next = !!article && viewMode !== 'source'
     if (editor.isEditable !== next) editor.setEditable(next, false)
   }, [editor, article, viewMode])
+
+  // ---------- A12（第三份审查 P1）：异步上传的文档身份/代次守卫 ----------
+  /** 上传发起时捕获文档身份与装载代次 */
+  const captureUploadTarget = useCallback((): UploadTarget | null => {
+    const doc = articleRef.current
+    if (!doc) return null
+    return { docId: doc.id, title: doc.title, gen: docLoadGenRef.current }
+  }, [])
+
+  /** await 之后校验：文档 id 与装载代次都必须未变（且编辑器仍载着该文档） */
+  const isUploadTargetCurrent = useCallback((t: UploadTarget | null): boolean => {
+    if (!t) return false
+    return (
+      articleRef.current?.id === t.docId &&
+      editorDocIdRef.current === t.docId &&
+      docLoadGenRef.current === t.gen
+    )
+  }, [])
+
+  /** 目标已失效：明确告诉用户上传已成功、但未插入，给出回到发起文档处理的路径 */
+  const notifyUploadTargetLost = useCallback((fileName: string, t: UploadTarget | null): void => {
+    const label = t?.title ?? '原文档'
+    window.alert(
+      `附件「${fileName}」已上传到「${label}」，但你已切换到其他文档，未插入当前正文。\n` +
+        `请回到「${label}」后在工具栏重新插入（附件已在附件库中）。`,
+    )
+  }, [])
 
   // Ctrl+S / 保存按钮：立即保存（覆盖未决防抖，经 saveQueue 串行化）
   const saveNow = useCallback(async () => {
@@ -931,9 +988,16 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         const file = input.files?.[0]
         cleanup()
         if (!file) return
+        // A12（第三份审查 P1）：上传是异步的（大文件 POST 秒级）——发起时记录文档身份/代次，
+        // await 后若已切档，**绝不**把结果插进当前编辑器（否则串入另一篇并落盘）。
+        const target = captureUploadTarget()
         void (async () => {
           try {
             const res = await uploadAttachment(file)
+            if (!isUploadTargetCurrent(target)) {
+              notifyUploadTargetLost(file.name, target)
+              return
+            }
             const node = attachmentNode(editor.schema, res, file.name)
             editor.chain().focus().insertContent(node).run()
           } catch (err) {
@@ -982,7 +1046,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       }
     }
 
-    const off = registerActionHandlers({
+    const handlers: Record<string, () => void> = {
       'editor.bold': () => { editor.chain().focus().toggleBold().run() },
       'editor.italic': () => { editor.chain().focus().toggleItalic().run() },
       'editor.underline': () => { editor.chain().focus().toggleUnderline().run() },
@@ -1008,7 +1072,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       'editor.redo': () => { editor.chain().focus().redo().run() },
       'doc.save': () => { void saveNow() },
       'app.history.open': () => handleOpenHistory(),
-    })
+    }
+    const off = registerActionHandlers(guardBodyCommands(handlers))
     return off
   }, [editor, saveNow, handleOpenHistory])
 
@@ -1199,6 +1264,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             viewMode={viewMode}
             onToggleViewMode={article ? toggleViewMode : undefined}
             viewModeDisabledReason={!article ? '打开文档后可切换到源码模式' : undefined}
+            // A12（第三份审查 P1）：异步上传的文档身份守卫（发起时捕获 → await 后校验）
+            uploadGuard={{
+              capture: captureUploadTarget,
+              stillValid: isUploadTargetCurrent,
+              onLost: notifyUploadTargetLost,
+            }}
           />
           <TableBubbleMenu />
           <div

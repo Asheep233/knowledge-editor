@@ -500,7 +500,8 @@ describe('task-35 收口 — 真实 handler 闭包 + doc.close + 无 DOM 兜底'
     expect(app).toMatch(/registerActionHandlers\(/)
     expect(app).toMatch(/registerActionHandler\('doc\.next'/)
     expect(app).toMatch(/registerActionHandler\('doc\.prev'/)
-    expect(editorArea).toMatch(/registerActionHandlers\(\{/)
+    // task-64 A01：正文命令经 guardBodyCommands 包装后注册（源码态不分派）
+    expect(editorArea).toMatch(/registerActionHandlers\(/)
     expect(leftSidebar).toMatch(/'app\.search\.focus'/)
     expect(leftSidebar).toMatch(/'app\.trash\.open'/)
     // K10/K11：两条导出路径都必须把源 frontmatter 区块拼回（zip 路径修前只写 ke_version）
@@ -517,10 +518,11 @@ describe('task-35 收口 — 真实 handler 闭包 + doc.close + 无 DOM 兜底'
   it('task-35 C + task-44 B4：App 全部「放弃」分支都调用共享 discardPending', () => {
     const app = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8')
     expect(app).toContain('discardPending')
-    // 5 个调用点（import 行不含括号，故统计 `discardPending(` 即为调用次数）：
+    // 6 个调用点（import 行不含括号，故统计 `discardPending(` 即为调用次数）：
     //   ① requestOpenArticle ② closeTabById（task-35 C）
     //   ③ switchWorkspace ④ handleCloseWorkspace ⑤ handleNewArticle（task-44 B4，工作区级三处）
-    expect((app.match(/discardPending\(/g) ?? []).length).toBe(5)
+    //   ⑥ handleRecoveryRestore（task-64 A13：草稿恢复后作废旧界面未决写入）
+    expect((app.match(/discardPending\(/g) ?? []).length).toBe(6)
     expect(app).toContain("askConfirm('当前有未保存修改，切换将放弃这些修改，是否继续？')")
     expect(app).toContain("askConfirm('当前有未保存修改，关闭标签将放弃这些修改，是否继续？')")
     expect(app).toContain("askConfirm('当前文档有未保存修改，切换工作区将放弃这些修改，是否继续？')")

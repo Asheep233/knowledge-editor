@@ -13,6 +13,7 @@ import { ReactNodeViewRenderer } from '@tiptap/react'
 import { Fragment } from 'prosemirror-model'
 import NoteNodeView from '../../components/editor/nodeviews/NoteNodeView'
 import { KE_FIELD_ORDER, keJson, keStableId, newId } from '../ke'
+import { renderBlockChildren, type RenderHelpers } from './KeBlockJoin'
 import { keNoteTokenizer } from '../tokenizers'
 
 export interface NoteAttrs {
@@ -228,7 +229,14 @@ export const NoteExtension = Node.create({
       updated: a.updated ?? '',
     }
     const head = `<!-- ke-note: ${keJson(payload, 'note', KE_FIELD_ORDER.note)} -->`
-    const inner = content && content.length ? helpers.renderChildren(content) : ''
+    // A02（第三份审查 P1）：信息块内部是**块级**子节点，必须建立块级分隔 ——
+    // 旧实现 `helpers.renderChildren(content)`（separator 默认 ''）会把「段落/列表/引用」
+    // 首尾直接粘在一起 → 再导入时段落合并、列表首项混入正文、引用变成列表尾文本。
+    // 复用 KeBlockJoin 的口径：块间 `\n\n`，相邻混排列表之间 `\n`（与 Document/Blockquote 一致）。
+    const inner =
+      content && content.length
+        ? renderBlockChildren({ content }, helpers as unknown as RenderHelpers)
+        : ''
     // R3：空内容也必须输出闭合标记 `<!-- /ke-note -->`——否则产出与旧自闭合
     // 格式不可区分，重开时 keNoteTokenizer 会在文档剩余全文寻找结束标记，
     // 把下一个信息块的头标记与内容吞进空信息块，破坏 ke-note 包裹格式不变量。

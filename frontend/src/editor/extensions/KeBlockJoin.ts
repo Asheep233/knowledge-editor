@@ -48,7 +48,7 @@ function compactJoin(prev: BlockNode | undefined, next: BlockNode | undefined): 
   return LIST_BLOCK_TYPES.has(a) && LIST_BLOCK_TYPES.has(b) && (a === 'taskList' || b === 'taskList')
 }
 
-interface RenderHelpers {
+export interface RenderHelpers {
   renderChildren?: (nodes: unknown, separator?: string) => string
   renderChild?: (node: unknown, index: number) => string
 }
@@ -58,8 +58,14 @@ function renderOne(helpers: RenderHelpers, child: BlockNode, index: number): str
   return helpers.renderChildren ? helpers.renderChildren([child], '') : ''
 }
 
-/** 以「相邻混排列表紧凑」规则渲染块级子节点 */
-function renderBlockChildren(node: { content?: unknown }, helpers: RenderHelpers): string {
+/**
+ * 以「相邻混排列表紧凑」规则渲染块级子节点。
+ *
+ * A02：**导出**给信息块（`NoteExtension.renderMarkdown`）复用 —— 信息块内部同样是块级子节点，
+ * 必须与 Document/Blockquote 用同一套块级分隔（块间 `\n\n`、相邻混排列表 `\n`），
+ * 否则「两段正文 + 列表 + 引用」会被渲染成 `段一段二- 列表> 引用` 而丢失块级边界。
+ */
+export function renderBlockChildren(node: { content?: unknown }, helpers: RenderHelpers): string {
   const children = childNodes(node)
   return children
     .map((child, i) => {

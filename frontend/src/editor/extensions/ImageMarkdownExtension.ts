@@ -17,15 +17,15 @@ import ImageNodeView from '../../components/editor/nodeviews/ImageNodeView'
  *    普通目标则转义 `\` 与圆括号；
  *  - title 用双引号包裹：内部的 `"` 与 `\` 需转义。
  */
-function escapeAlt(alt: string): string {
+export function escapeAlt(alt: string): string {
   return alt.replace(/([\\[\]])/g, '\\$1')
 }
 
-function escapeTitle(title: string): string {
+export function escapeTitle(title: string): string {
   return title.replace(/([\\"])/g, '\\$1')
 }
 
-function formatTarget(src: string): string {
+export function formatTarget(src: string): string {
   if (/[\s()]/.test(src) || /[<>]/.test(src)) {
     return `<${src.replace(/([\\<>])/g, '\\$1')}>`
   }

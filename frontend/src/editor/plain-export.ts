@@ -12,6 +12,7 @@
 
 import type { ArticleMeta } from '../types'
 import { scanFrontmatter } from './ke'
+import { escapeAlt, formatTarget } from './extensions/ImageMarkdownExtension'
 
 const BOM = '\ufeff'
 
@@ -266,20 +267,111 @@ function downgradeKeComment(kind: string, attrs: Record<string, unknown>): strin
       const caption = typeof attrs.caption === 'string' && attrs.caption.trim() ? attrs.caption.trim() : ''
       const label = title || basename(src)
       if (type === 'image') {
+        // A06：目标含空格/圆括号时必须用 <…> 保护、说明文字转义 —— 与 A03 的
+        // ImageMarkdownExtension（formatTarget/escapeAlt）同口径，保证全仓一致。
         const alt = title || caption || basename(src)
-        const imgLine = src ? `![${alt}](${src})` : `![${alt}]()`
+        const imgLine = src ? `![${escapeAlt(alt)}](${formatTarget(src)})` : `![${escapeAlt(alt)}]()`
         return caption && caption !== alt ? `${imgLine}\n\n${caption}` : imgLine
       }
-      return src ? `[${label}](${src})` : `[${label}]()`
+      return src ? `[${escapeAlt(label)}](${formatTarget(src)})` : `[${escapeAlt(label)}]()`
     }
     case 'ke-video': {
       const title = typeof attrs.title === 'string' && attrs.title.trim() ? attrs.title.trim() : ''
       const label = title || basename(src)
-      return src ? `[${label}](${src})` : `[${label}]()`
+      // A06：与附件/图片同一转义口径
+      return src ? `[${escapeAlt(label)}](${formatTarget(src)})` : `[${escapeAlt(label)}]()`
     }
     default:
       return null
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// A04（第三份审查 P1）：代码区域屏蔽
+// ---------------------------------------------------------------------------
+
+/**
+ * 把 Markdown 中的**代码区域**（围栏代码 / 缩进代码 / 行内代码）替换为占位符，
+ * 返回屏蔽后的文本与还原函数。普通导出的 ke-* 降级只应作用于**真实节点**：
+ * 代码里的字面 KE 示例（`<!-- ke-note: … -->`、`![x](y)`、`[^1]` 等）必须逐字节保留。
+ *
+ * 为什么是「语法级」而不是例外正则：
+ *  - 围栏代码由**开栏/闭栏**决定范围（支持 ``` 与 ~~~、闭栏长度 >= 开栏、未闭合到文末）；
+ *  - 缩进代码只在**新的块上下文**（前一行是空行/文首）成立，避免误伤段落的续行；
+ *  - 行内代码按 CommonMark 的**等长反引号串**配对，未配对的反引号按字面处理。
+ * 占位符不含任何 `ke-`/`<!--`，因此不会被后续规则命中；还原按**位置**替换，行内位置得以保留
+ * （信息块降级会给整行加 `> ` 前缀，占位符同样被加前缀后再还原，块引用结构不丢）。
+ */
+export function maskProtectedRegions(md: string): { masked: string; restore: (s: string) => string } {
+  const saved: string[] = []
+  const token = (text: string): string => {
+    saved.push(text)
+    return `\u0001${saved.length - 1}\u0001`
+  }
+  const maskInlineCode = (line: string): string => {
+    let out = ''
+    let i = 0
+    while (i < line.length) {
+      if (line[i] === '`') {
+        let run = 0
+        while (line[i + run] === '`') run += 1
+        const fence = '`'.repeat(run)
+        const closeAt = line.indexOf(fence, i + run)
+        if (closeAt >= 0 && line[closeAt + run] !== '`') {
+          out += token(line.slice(i, closeAt + run))
+          i = closeAt + run
+          continue
+        }
+      }
+      out += line[i]
+      i += 1
+    }
+    return out
+  }
+
+  const lines = md.split('\n')
+  const out: string[] = []
+  let fence: { ch: string; len: number } | null = null
+  let indentedRun = false
+  let prevBlank = true
+  for (const line of lines) {
+    if (fence) {
+      out.push(token(line))
+      const closeRe = new RegExp(`^ {0,3}\\${fence.ch}{${fence.len},}\\s*$`)
+      if (closeRe.test(line)) fence = null
+      prevBlank = line.trim() === ''
+      continue
+    }
+    const open = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line)
+    if (open) {
+      fence = { ch: open[1][0], len: open[1].length }
+      out.push(token(line))
+      prevBlank = false
+      continue
+    }
+    const blank = line.trim() === ''
+    const indented = /^(?: {4}|\t)\S/.test(line)
+    if (indented && (prevBlank || indentedRun)) {
+      out.push(token(line))
+      indentedRun = true
+      prevBlank = false
+      continue
+    }
+    if (blank) {
+      out.push(indentedRun ? token(line) : line)
+      prevBlank = true
+      continue
+    }
+    indentedRun = false
+    out.push(maskInlineCode(line))
+    prevBlank = false
+  }
+
+  const masked = out.join('\n')
+  const restore = (s: string): string =>
+    s.replace(/\u0001(\d+)\u0001/g, (_m, d: string) => saved[Number(d)] ?? '')
+  return { masked, restore }
 }
 
 /**
@@ -295,6 +387,13 @@ function downgradeKeComment(kind: string, attrs: Record<string, unknown>): strin
  * - 未知/损坏的 ke-*（含大小写变体 ke-NOTE）→ 原样保留。
  */
 export function downgradeKeNodes(md: string): string {
+  // A04：先屏蔽代码区域（围栏/缩进/行内），只转换真实节点，最后按位置原样还原
+  const { masked, restore } = maskProtectedRegions(md)
+  return restore(downgradeKeNodesInner(masked))
+}
+
+/** 降级主流程（输入已屏蔽代码区域） */
+function downgradeKeNodesInner(md: string): string {
   let out = md
 
   // 1) 脚注区域 → 定义行（一次性，提升为文档级）

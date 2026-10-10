@@ -42,6 +42,8 @@ import {
   TableCell,
   TableHeader,
 } from './extensions/TableMarkdownExtension'
+// task-68 M02：默认 `table` token 的生产 handler（安全网）
+import { GfmTableFallbackExtension } from './extensions/GfmTableFallbackExtension'
 import { GenericFallbackExtension, GenericFallbackInlineExtension } from './extensions/GenericFallbackExtension'
 import { HtmlPassthroughExtension, HtmlPassthroughInlineExtension } from './extensions/HtmlPassthroughExtension'
 import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
@@ -205,6 +207,7 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       // Phase 3：脚注独立块级节点（footnotes）+ 表格（GFM 往返）
       FootnotesExtension,
       TableMarkdownExtension,
+      GfmTableFallbackExtension,
       TableRow,
       TableCell,
       TableHeader,

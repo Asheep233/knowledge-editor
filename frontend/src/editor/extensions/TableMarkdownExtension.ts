@@ -26,6 +26,30 @@ function renderCellContent(cell: JSONContent | undefined, helpers: { renderChild
   return helpers.renderChildren(inline, '').replace(/\n/g, ' ')
 }
 
+/**
+ * 规范 GFM 表格渲染（`| a | b |` + `| --- | --- |`）。
+ * task-68 M02：抽成可复用函数 —— 安全网扩展（`GfmTableFallbackExtension`）必须**同时**提供
+ * 渲染器：只声明 `markdownTokenName: 'table'` 而不提供 `renderMarkdown` 会被序列化器选中，
+ * 导致 `getMarkdown()` 直接返回空串（实测）。
+ */
+export function renderGfmTable(
+  node: JSONContent,
+  helpers: { renderChildren: (nodes: JSONContent | JSONContent[], separator?: string) => string },
+): string {
+  const rows = node.content ?? []
+  const lines: string[] = []
+  rows.forEach((row, ri) => {
+    const cells = (row.content ?? []).map((c) => renderCellContent(c, helpers))
+    // 序列化端统一把单元格内的字面量 `|` 转义为 `\|`，保证往返列数不变（P1-4）
+    const pad = cells.length ? cells.map((c) => c.replace(/\|/g, '\\|')) : []
+    lines.push(`| ${pad.join(' | ')} |`)
+    if (ri === 0) {
+      lines.push(`| ${pad.map(() => '---').join(' | ')} |`)
+    }
+  })
+  return lines.length ? `\n${lines.join('\n')}\n` : ''
+}
+
 export const TableMarkdownExtension = Table.extend({
   markdownTokenName: 'ke_table',
   markdownTokenizer: tableTokenizer,
@@ -59,20 +83,7 @@ export const TableMarkdownExtension = Table.extend({
       ],
     }
   },
-  renderMarkdown: ({ content }: JSONContent, helpers) => {
-    const rows = content ?? []
-    const lines: string[] = []
-    rows.forEach((row, ri) => {
-      const cells = (row.content ?? []).map((c) => renderCellContent(c, helpers))
-      // 序列化端统一把单元格内的字面量 `|` 转义为 `\|`，保证往返列数不变（P1-4）
-      const pad = cells.length ? cells.map((c) => c.replace(/\|/g, '\\|')) : []
-      lines.push(`| ${pad.join(' | ')} |`)
-      if (ri === 0) {
-        lines.push(`| ${pad.map(() => '---').join(' | ')} |`)
-      }
-    })
-    return lines.length ? `\n${lines.join('\n')}\n` : ''
-  },
+  renderMarkdown: (node: JSONContent, helpers) => renderGfmTable(node, helpers),
   // P1-4c：v1 的 Markdown（GFM）往返不保留 colspan/rowspan，合并后的单元格
   // 在「打开→保存」后会退化（跨列内容被拍平）。因此在扩展层禁用合并/拆分单元格：
   // 让 `can().mergeCells()` / `can().splitCell()` 返回 false，TableBubbleMenu 的

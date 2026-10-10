@@ -238,8 +238,11 @@ export const tableTokenizer = {
     const lines = src.split('\n')
     const header = parseTableRow(lines[0])
     if (!header || header.length === 0) return undefined
+    // 单行输入（无 EOF 换行）→ lines[1] 为 undefined，必须安全返回 undefined（不得抛错）
     const sep = parseTableRow(lines[1])
-    if (!sep || sep.some((c) => !/^:?-{3,}:?$/.test(c.trim()))) return undefined
+    // GFM：分隔线单元格为 `:?-+:?`（**至少一个** `-`），列数须与表头一致
+    if (!sep || sep.length !== header.length) return undefined
+    if (sep.some((c) => !/^:?-+:?$/.test(c.trim()))) return undefined
     const rows: string[][] = []
     let i = 2
     while (i < lines.length) {
@@ -247,7 +250,8 @@ export const tableTokenizer = {
       if (!line.trim()) break
       const r = parseTableRow(line)
       if (!r) break
-      rows.push(r)
+      // GFM：数据行列数不足补空、超出截断（与表头对齐，避免下游越界/丢列）
+      rows.push(Array.from({ length: header.length }, (_v, ci) => r[ci] ?? ''))
       i++
     }
     const raw = lines.slice(0, i).join('\n')
@@ -265,10 +269,20 @@ export const tableTokenizer = {
  * 注意：`\|` 在解析时被还原为 `|`（文本节点内容是真正的 `|`），
  * 序列化端再统一把 `|` 转义回 `\|`，保证往返列数不变。
  */
-function parseTableRow(line: string): string[] | null {
+function parseTableRow(line: string | undefined): string[] | null {
+  if (typeof line !== 'string') return null
+  // CommonMark：**缩进 ≥4 空格或以 Tab 开头**的行是缩进代码，绝不可能是表格行
+  // （task-68 复审 case-table-tabs / case-table-four-space-indent：必须保持缩进代码、不得误判成表）
+  if (/^(?: {4}|\t)/.test(line)) return null
   const t = line.trim()
-  if (!t.startsWith('|') || !t.endsWith('|')) return null
-  const inner = t.slice(1, -1)
+  // task-68 M02：GFM 表格的**首尾管道是可选的**（`a | b` 合法、`| a | b` 也合法、
+  // 混合写法同样合法）。旧实现要求首尾都有 `|` → 无/混合首尾管道的合法表格不被认领 →
+  // 落到 marked 默认 `table` token（此前无 handler）→ 整表变空段落、文字全丢。
+  if (!t.includes('|')) return null
+  const hasLead = t.startsWith('|')
+  // 末尾的 `\|` 是单元格内的字面量管道，不算尾管道
+  const hasTrail = t.length > (hasLead ? 1 : 0) + 1 && t.endsWith('|') && !t.endsWith('\\|')
+  const inner = t.slice(hasLead ? 1 : 0, hasTrail ? -1 : undefined)
   const cells: string[] = []
   let cur = ''
   for (let i = 0; i < inner.length; i++) {

@@ -28,8 +28,41 @@
  */
 import { MarkdownManager } from '@tiptap/markdown'
 
-/** 需要反斜杠转义的 Markdown 行内语法字符（与上游同一集合） */
-const ESCAPE_CHARS = /([\\`*_[\]~])/g
+/**
+ * 需要反斜杠转义的 Markdown 行内语法字符。
+ * 上游集合为 `[\\`*_[\]~]`；本仓**额外处理 `$`**（task-69 M04），但**不是无差别转义**：
+ * 只有「真的会被重新解析成行内公式」的 `$` 才转义（见 {@link inlineMathPairOffsets}）。
+ * 理由：字面 `$$`（空块，task-61 契约）与孤立 `$`（`价格 $5`）**本就不会激活**，
+ * 转义它们只会白白改写用户字节（违反 I2）——实测：无差别转义会让
+ * `正文\n\n$$\n\n$$\n\n结尾` 变成 `\$\$`，把 `empty-math-block.test.tsx` 打红。
+ */
+const ESCAPE_CHARS = /([\\`*_[\]~$])/g
+
+/**
+ * 行内公式「可激活形态」——与 `mathInlineTokenizer`（`tokenizers.ts`）**同源**正则：
+ * 开 `$` 后非 `$`、LaTeX 非空且以非「反斜杠/空白/`$`」结尾。
+ * 用于判定文本节点里的 `$` 是否真的会变成公式（只有这些需要转义）。
+ */
+const INLINE_MATH_ACTIVATING = /^\$(?!\$)([\s\S]*?[^\\\s$])\$(?=\$[^$]|[^$]|$)/
+
+/** 文本里所有「可激活行内公式」的 `$` 偏移（两端各一个） */
+function inlineMathPairOffsets(text: string): Set<number> {
+  const offsets = new Set<number>()
+  let i = 0
+  while (i < text.length) {
+    if (text[i] === '$') {
+      const m = INLINE_MATH_ACTIVATING.exec(text.slice(i))
+      if (m && m[1].trim()) {
+        offsets.add(i)
+        offsets.add(i + m[0].length - 1)
+        i += m[0].length
+        continue
+      }
+    }
+    i++
+  }
+  return offsets
+}
 
 /** 是否为「词字符」（字母/数字，含 CJK）——用于判定 `_` 是否处于词内 */
 function isWordChar(ch: string | undefined): boolean {
@@ -43,11 +76,15 @@ function isIntraWordUnderscore(text: string, offset: number): boolean {
 
 /**
  * 文本节点 → Markdown（转义策略）。
- * 除「词内 `_`」外与上游 `escapeMarkdownSyntax` 完全一致（其余字符照旧转义）。
+ * 与上游 `escapeMarkdownSyntax` 的差异仅两处（都是为了「该转义的才转义」）：
+ *  1. **词内 `_`** 放行（task-67）；
+ *  2. **不能激活公式的 `$`** 放行（task-69 M04；能激活的仍转义，防往返被激活）。
  */
 export function keEscapeMarkdownSyntax(text: string): string {
+  const mathDollars = inlineMathPairOffsets(text)
   return text.replace(ESCAPE_CHARS, (match, ch: string, offset: number) => {
     if (ch === '_' && isIntraWordUnderscore(text, offset)) return match
+    if (ch === '$' && !mathDollars.has(offset)) return match
     return `\\${ch}`
   })
 }

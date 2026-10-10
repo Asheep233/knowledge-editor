@@ -23,8 +23,17 @@ import { describe, expect, it } from 'vitest'
 import { Markdown } from '@tiptap/markdown'
 // 导入本模块即接管转义策略（与生产同构：editor/index.ts 静态 import 它）
 import { isKeTextEscapeInstalled, keEscapeMarkdownSyntax } from './markdown-escape'
+import { MathExtension } from './extensions/MathExtension'
+import { MathBlockExtension } from './extensions/MathBlockExtension'
 
 const EXT = [StarterKit, Markdown.configure({ indentation: { style: 'space', size: 2 } })]
+/** 真实管线（含公式扩展）：用于「`$…$` 是节点而非文本」的用例（task-69 M04 修订 T4b） */
+const EXT_MATH = [
+  StarterKit,
+  MathExtension,
+  MathBlockExtension,
+  Markdown.configure({ indentation: { style: 'space', size: 2 } }),
+]
 
 /** 生产等价往返：读入 → getMarkdown()（编辑器把首尾空行规范化，故比较 trim 后的正文） */
 function roundtrip(md: string): string {
@@ -60,10 +69,28 @@ describe('task-67 T1–T4：词内下划线必须字节原样（I2）', () => {
     expect(roundtrip(md)).toBe(md.trim())
   })
 
-  it('T4b 长数学段落 + 行内公式相邻，逐字节一致', () => {
+  it('T4b 长数学段落 + 行内公式相邻，逐字节一致（**带 MathExtension 的真实管线**）', () => {
+    // task-69 M04 修订：本用例原先用的是「无 MathExtension」的管线，`$a_0$` 其实是**字面文本**，
+    // 那时把 `$` 转义才是正确行为（防激活）。真实管线里 `$…$` 是 math 节点 →
+    // 节点产出 `$…$`（不走文本转义）→ 必须字节一致。这里改用真实管线，意图更严格。
     const md = '设$a_0$与$a_1$，则$S_a$满足$a_n=b_i+c_j$，其中$d_k$为常数。\n'
-    expect(roundtrip(md)).toBe(md.trim())
+    const ed = new Editor({ extensions: EXT_MATH, content: md, contentType: 'markdown' })
+    const math: number[] = []
+    ed.state.doc.descendants((n) => {
+      if (n.type.name === 'math') math.push(1)
+      return true
+    })
+    const back = ed.getMarkdown()
+    ed.destroy()
+    expect(math.length, '五个行内公式都应成为 math 节点').toBe(5)
+    expect(back).toBe(md.trim())
   })
+
+  // 注：曾另加 "无 MathExtension 管线里字面 `$…$` 会被转义" 的用例，已删 ——
+  // `@tiptap/markdown` 的 marked 扩展是**进程级全局注册**，同文件里先建过带 MathExtension 的
+  // 编辑器后，`$…$` 在任何后续编辑器里都仍会被 math tokenizer 认领（无 math 节点的 schema
+  // 会把它丢掉，文本变 `设与`），用例因此**依赖执行顺序**。字面 `$` 的转义已由
+  // `literal-dollar-roundtrip.test.ts` 的 T2/T3/T7 用真实管线覆盖。
 })
 
 describe('task-67 T5–T8：契约守护 —— 该转义的仍然转义、语义不变', () => {

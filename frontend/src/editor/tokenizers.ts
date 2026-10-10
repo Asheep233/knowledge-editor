@@ -302,6 +302,49 @@ function parseTableRow(line: string | undefined): string[] | null {
 }
 
 /**
+ * task-69 M05（外部复审 case-drift-13，**丢内容**）：找脚注区域的**结构结束标记** ——
+ * 必须跳过「JSON 字符串内部」的同名字面量。
+ *
+ * 原实现 `src.indexOf(endTag)` 会命中条目文本里的那一处，例如
+ * `<!-- ke-footnote-item: {"id":"f1","n":1,"text":"X<!-- ke-footnotes:end -->Y"} -->`
+ * —— 区域在 JSON 中途闭合：条目丢失（`footnotes(items=[])`）、`Y"} -->` 外泄为正文。
+ *
+ * 判定顺序（保守，绝不因"找不到"而丢区域）：
+ *  1. **不在 JSON 字符串内、且位于行首**的标记（序列化器总是独占一行输出）；
+ *  2. 不在 JSON 字符串内的第一处；
+ *  3. 回退旧的 `indexOf`（兼容历史上非独占一行的写法）。
+ * 引号感知：JSON 字符串内的 `"` 需处理 `\"` 转义。
+ */
+function findFootnotesRegionEnd(src: string, endTag: string): number {
+  const scan = (requireLineStart: boolean): number => {
+    let inString = false
+    let escaped = false
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i]
+      if (inString) {
+        if (escaped) escaped = false
+        else if (ch === '\\') escaped = true
+        else if (ch === '"') inString = false
+        continue
+      }
+      if (ch === '"') {
+        inString = true
+        continue
+      }
+      if (src.startsWith(endTag, i)) {
+        if (!requireLineStart || i === 0 || src[i - 1] === '\n') return i
+      }
+    }
+    return -1
+  }
+  const atLineStart = scan(true)
+  if (atLineStart >= 0) return atLineStart
+  const outsideString = scan(false)
+  if (outsideString >= 0) return outsideString
+  return src.indexOf(endTag)
+}
+
+/**
  * 脚注区域 tokenizer（块级）：
  * <!-- ke-footnotes:start -->
  * <!-- ke-footnote-item: {"id":"..","n":1,"text":".."} -->
@@ -317,7 +360,7 @@ export const footnotesBlockTokenizer = {
   tokenize(src: string): MarkdownToken | undefined {
     if (!/^<!--\s*ke-footnotes:start\s*-->/.test(src)) return undefined
     const endTag = '<!-- ke-footnotes:end -->'
-    const endIdx = src.indexOf(endTag)
+    const endIdx = findFootnotesRegionEnd(src, endTag)
     if (endIdx < 0) return undefined
     const raw = src.slice(0, endIdx + endTag.length)
     const inner = raw.slice(raw.indexOf('-->') + 3, raw.lastIndexOf(endTag))
@@ -394,6 +437,11 @@ function parseFootnoteItem(src: string, start: number): { obj: Record<string, un
  *   确保任意标记可保留。
  */
 // 行内兜底：匹配任意 ke-* 注释（含已知 kind + footnote + 大小写变体）。
+// task-69 M06：加 `i` 标志 —— 大写前缀（`KE-future:`）此前两条路都不接
+// （fallback 无 `i` 不认领；htmlPassthrough 的 isPlainHtmlComment 已用 `/i` 把它排除在
+// 「普通 HTML 注释」之外）→ 落到 marked 默认 html token → DOMParser **整块丢弃**（内容丢失）。
+// 加 `i` 后：**未知**前缀大小写一律原样保留；**已知**标记的语义不放宽（大写 `KE-NOTE:`
+// 仍走本 fallback 而非 note 节点，因为具体 tokenizer 的 pattern 仍是大小写敏感的）。
 const KE_INLINE_CATCH_PATTERN = `^<!--\\s*ke-[a-zA-Z][a-zA-Z0-9-]*:`
 // 块级兜底：不排除 footnote 系（F06，见上）；note/module/attach/video 等
 // 块级已知 kind 仍允许命中，用于「块级已知 kind + 损坏 JSON」的兜底保留。
@@ -420,7 +468,7 @@ export const keFallbackTokenizer = {
     // 让位给段落规则 + inline tokenizer（正规脚注解析为 footnote 节点）；
     // 仅当注释独占一行（其后只有空白/行尾）时才作为块级 fallback 原样保留。
     // 其余 case（已知块级 kind 损坏 JSON / 未知 kind / 大小写变体）照旧保留。
-    const m0 = new RegExp(KE_BLOCK_CATCH_PATTERN).exec(src)
+    const m0 = new RegExp(KE_BLOCK_CATCH_PATTERN, 'i').exec(src) // task-69 M06：大写 KE- 也要被兜底认领
     if (!m0) return undefined
     const after = src.slice(m0[0].length)
     const commentEnd = after.indexOf('-->')
@@ -455,7 +503,7 @@ export const keFallbackTokenizer = {
     }
     // 非贪婪匹配到行尾的 -->（独占行）。已知块级 kind 已由各自 tokenizer 消费，
     // 能走到这里说明 kind 未知或 JSON 损坏：保留原始文本。
-    const m = new RegExp(`${KE_BLOCK_CATCH_PATTERN}[\\s\\S]*?-->\\s*(?:\\n|$)`).exec(src)
+    const m = new RegExp(`${KE_BLOCK_CATCH_PATTERN}[\\s\\S]*?-->\\s*(?:\\n|$)`, 'i').exec(src) // task-69 M06
     if (!m) return undefined
     return { type: 'ke_fallback', raw: m[0].replace(/\s*$/, '') }
   },
@@ -469,7 +517,7 @@ export const keFallbackInlineTokenizer = {
   tokenize(src: string): MarkdownToken | undefined {
     // 非贪婪匹配到第一个 -->。行内已知 kind（ke-footnote）由具体 tokenizer 先执行，
     // 能走到这里说明是未知 kind 或已知 kind + 损坏 JSON：按原文保留。
-    const m = new RegExp(`${KE_INLINE_CATCH_PATTERN}[\\s\\S]*?-->`).exec(src)
+    const m = new RegExp(`${KE_INLINE_CATCH_PATTERN}[\\s\\S]*?-->`, 'i').exec(src) // task-69 M06
     if (!m) return undefined
     return { type: 'ke_fallback_inline', raw: m[0] }
   },
@@ -609,6 +657,32 @@ function hasRenderableText(tokens: Array<{ type?: string; text?: unknown; tokens
  *
  * @returns token 或 undefined（= 不接管，交回既有路径）
  */
+/**
+ * task-69 M07：按**深度配平**找同名结束标签（只改解析侧，不动序列化口径）。
+ *
+ * 原实现 `new RegExp(`</${rawName}\\s*>`, 'i').exec(rest)` 取的是**第一个**同名结束标签；
+ * 遇到同名嵌套（`<em>A <em><span>KEEP</span></em> B</em>`）时命中的是**内层** `</em>`，
+ * 于是外层 wrapper 在中途被截断，剩下的 ` B</em> 后` 里尾文**失去 italic**
+ * （实测真实 Chromium + 真实编辑器栈：PM ` B 后`[] 无 italic、DOM font-style=normal、
+ * MD `前 *A* <span>*KEEP*</span> B 后`；对照普通嵌套 `<em>A <span>K</span> B</em>` 正常）。
+ *
+ * 这里对同名开/闭标签计深度，返回**深度归零**处的那一个；大小写不敏感（与解析侧一致）。
+ */
+function findMatchingCloseTag(rest: string, rawName: string): { index: number; length: number } | null {
+  const re = new RegExp(`<${rawName}\\b[^>]*>|</${rawName}\\s*>`, 'gi')
+  let depth = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(rest))) {
+    if (m[0].startsWith('</')) {
+      if (depth === 0) return { index: m.index, length: m[0].length }
+      depth--
+    } else {
+      depth++
+    }
+  }
+  return null
+}
+
 function claimStandardWrapper(
   src: string,
   openTag: string,
@@ -620,11 +694,11 @@ function claimStandardWrapper(
   const rawName = /^<([a-zA-Z][a-zA-Z0-9-]*)/.exec(openTag)?.[1]
   if (!rawName) return undefined
   const rest = src.slice(openTag.length)
-  const close = new RegExp(`</${rawName}\\s*>`, 'i').exec(rest)
+  const close = findMatchingCloseTag(rest, rawName)
   if (!close) return undefined
   const inner = rest.slice(0, close.index)
   if (!hasUnknownInlineTag(inner)) return undefined
-  const whole = src.slice(0, openTag.length + close.index + close[0].length)
+  const whole = src.slice(0, openTag.length + close.index + close.length)
   if (tokenType === 'codespan') {
     // `<code>` 内部按字面文本处理（HTML 语义即如此）
     return { type: 'codespan', raw: whole, text: inner }

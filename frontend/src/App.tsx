@@ -440,11 +440,17 @@ export default function App() {
         // 且装载 effect 只依赖文档 id/reloadToken —— 同一 id 恢复不会重载。若不处理：
         //  ① requestOpenArticle 的前置 flush 会先用旧界面内容 PUT；
         //  ② 恢复后用户点保存同样用旧正文覆盖恢复结果。
-        // 因此：作废该文档的未决/在途保存（abort）→ **推进装载代次**强制 EditorArea 从磁盘
-        // 重载（正文 + 源码通道 + frontmatter/traits 基线）。
+        // 因此：作废该文档的未决/在途保存（abort）→ 重新拉盘 → **再**推进装载代次，
+        // 强制 EditorArea 用**恢复后**的 article 重载（正文 + 源码通道 + frontmatter/traits 基线）。
+        //
+        // ⚠️ U01（复审 2026-10-10）顺序陷阱：若**先** `setReloadToken` 再 `requestOpenArticle`，
+        // 装载 effect 会先用**旧 article（基线）**重载一次；等 `setArticle(恢复内容)` 落地时，
+        // 文档 id 未变、reloadToken 也未再变 → effect **不会重跑** → 编辑器永远停在旧正文
+        // （审计实测「restored UI retains old content」，两条通道均复现）。
+        // 必须**先换成恢复后的 article，再推进代次**，让 effect 那一次就跑在新内容上。
         discardPending(doc.id)
-        setReloadToken((n) => n + 1)
         await requestOpenArticle(doc.id)
+        setReloadToken((n) => n + 1)
       } catch (e) {
         window.alert(`恢复失败：${e instanceof Error ? e.message : String(e)}`)
         // 记录可能已清除，刷新弹窗列表

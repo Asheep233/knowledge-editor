@@ -17,6 +17,9 @@ const CS = vi.hoisted(() => ({
   menuHandlers: new Map<string, (e?: unknown) => void>(),
   callOrder: [] as string[],
   recovered: `---\nke_version: 1\ntitle: a\n---\n\n恢复校验正文甲乙\n`,
+  baseline: `---\nke_version: 1\ntitle: a\n---\n\nRECOVERY_BASELINE\n`,
+  /** 磁盘当前内容（启动时 = 基线；restoreRecovery 后 = 恢复内容）——忠实复现审计时序 */
+  diskContent: `---\nke_version: 1\ntitle: a\n---\n\nRECOVERY_BASELINE\n`,
   editorProps: [] as Array<{ reloadToken?: number; articleId?: string | null; content?: string | null }>,
 }))
 
@@ -44,11 +47,12 @@ vi.mock('./api/client', async () => {
     }),
     restoreRecovery: async (docPath: string) => {
       CS.callOrder.push('restoreRecovery')
+      CS.diskContent = CS.recovered // 恢复接口把草稿写回磁盘
       return meta(CS.recovered, docPath)
     },
     getArticle: async (id: string) => {
       CS.callOrder.push('getArticle')
-      return meta(CS.recovered, id) // 恢复后磁盘 = 恢复内容
+      return meta(CS.diskContent, id) // 读盘：启动时是基线，恢复后是恢复内容
     },
     saveArticle: async (id: string, content: string) => {
       CS.callOrder.push('saveArticle')
@@ -97,7 +101,8 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 vi.mock('./settings', () => ({
   loadSettings: async () => ({
-    startup: { restoreLastState: false, autoOpenRecentWorkspace: false },
+    // 审计时序：启动 restoreLastState → 自动打开上次文档（基线），再点「恢复」
+    startup: { restoreLastState: true, autoOpenRecentWorkspace: false },
     ui: { theme: 'system' },
     editor: {},
   }),
@@ -128,6 +133,12 @@ beforeEach(async () => {
   CS.menuHandlers = new Map()
   CS.callOrder = []
   CS.editorProps = []
+  CS.diskContent = CS.baseline
+  try {
+    localStorage.setItem('ke.lastArticleId', 'Articles/a.md')
+  } catch {
+    /* ignore */
+  }
   ;(globalThis as { fetch: unknown }).fetch = vi.fn(async () => ({
     ok: true,
     status: 200,
@@ -158,7 +169,12 @@ afterEach(async () => {
 
 describe('task-64 A13：草稿恢复后界面必须重载，且不得被旧界面覆盖', () => {
   it('A13-① 恢复：作废未决保存 + 推进装载代次 + 从磁盘重新拉取恢复内容', async () => {
-    // 恢复前：该文档存在未决保存（模拟「最后输入仍在防抖窗口内」）
+    // 前置①：启动 restoreLastState 已把**基线**文档载入界面（审计时序）
+    expect(
+      CS.editorProps.some((p) => String(p.content ?? '').includes('RECOVERY_BASELINE')),
+      `启动未载入基线文档：${JSON.stringify(CS.editorProps)}`,
+    ).toBe(true)
+    // 前置②：该文档存在未决保存（模拟「最后输入仍在防抖窗口内」）
     enqueueSave('Articles/a.md', async () => undefined, DEFAULT_DEBOUNCE_MS)
     expect(hasPending('Articles/a.md'), '前置：确有未决保存').toBe(true)
 
@@ -181,8 +197,27 @@ describe('task-64 A13：草稿恢复后界面必须重载，且不得被旧界�
     expect(reloadAfter, '恢复必须推进 reloadToken 强制重载').toBeGreaterThan(reloadBefore)
 
     // ③ 界面拿到的是**恢复后**的磁盘内容（而不是恢复前的旧正文）
-    expect(CS.callOrder.slice(0, 2), '先恢复、再拉盘').toEqual(['restoreRecovery', 'getArticle'])
+    const restoreAt = CS.callOrder.indexOf('restoreRecovery')
+    expect(restoreAt, '未调用恢复接口').toBeGreaterThanOrEqual(0)
+    expect(
+      CS.callOrder.slice(restoreAt),
+      '恢复之后必须重新拉盘（getArticle）',
+    ).toContain('getArticle')
     expect(String(CS.editorProps.at(-1)?.content ?? ''), '编辑器必须被喂入恢复后的正文').toContain('恢复校验正文甲乙')
+
+    // ④ U01 竞态判据：**不得**出现「装载代次已推进、但 article 还是旧正文」的中间态 ——
+    // 那一次 effect 会用旧正文重载编辑器；随后 setArticle 落地时文档 id 未变、reloadToken 也未再变，
+    // 装载 effect 不会重跑 → 编辑器永远停在旧正文（审计 U01「restored UI retains old content」）。
+    const bad = CS.editorProps.filter(
+      (p) =>
+        (p.reloadToken ?? 0) > reloadBefore &&
+        p.articleId === 'Articles/a.md' &&
+        !String(p.content ?? '').includes('恢复校验正文甲乙'),
+    )
+    expect(
+      bad,
+      `存在「代次已推进但 article 仍旧文」的中间态（UI 会停在旧正文）：${JSON.stringify(bad)}`,
+    ).toEqual([])
   })
 
   it('A13-② 反例（断言非空）：恢复内容确实与恢复前不同 —— 未重载时界面会停在旧正文', async () => {

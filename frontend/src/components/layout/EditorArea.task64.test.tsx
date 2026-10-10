@@ -61,7 +61,9 @@ vi.mock('../../editor', () => ({
     }
   },
   setKeContent: (_ed: unknown, md: string) => {
+    // 真实实现会把正文载入编辑器（此后 getMarkdown() 返回该正文）——mock 必须等价
     CS.setKeContentCalls.push(md)
+    CS.md = md
   },
 }))
 vi.mock('../../settings', () => ({ getAutosaveIntervalMs: () => CS.autosaveMs }))
@@ -350,5 +352,104 @@ describe('task-64 A12：异步上传期间切档，结果不得插入另一篇',
     await settle(50)
     expect(CS.insertCalls.length, '同文档上传应正常插入').toBe(1)
     expect(CS.alerts).toEqual([])
+  })
+})
+
+describe('task-68 U01：启动恢复的同档重载契约（App 先换 article、再推进 reloadToken）', () => {
+  const BASELINE = `---\nke_version: 1\ntitle: a\n---\n\nRECOVERY_BASELINE\n`
+  const RECOVERED = `---\nke_version: 1\ntitle: a\n---\n\nRECOVERY_NEW_normal\n`
+
+  it('U01-① 正文通道：重载后编辑器内容 = 恢复正文；Ctrl+S 的 PUT 载荷也是恢复正文（不回退基线）', async () => {
+    await render(article('Articles/a.md', 'a', BASELINE))
+    expect(CS.setKeContentCalls.join('\n')).toContain('RECOVERY_BASELINE')
+    CS.setKeContentCalls = []
+    CS.requests = []
+
+    // App 修复后的顺序：先把 article 换成恢复后内容（磁盘已恢复），再推进装载代次
+    await act(async () => {
+      root!.render(
+        <EditorArea
+          article={article('Articles/a.md', 'a', RECOVERED)}
+          loading={false}
+          onNewArticle={() => undefined}
+          onSaved={() => undefined}
+          reloadToken={1}
+        />,
+      )
+    })
+    await settle()
+    expect(CS.setKeContentCalls.join('\n'), '编辑器必须重载为恢复正文').toContain('RECOVERY_NEW_normal')
+
+    // 「恢复 → 不编辑 → 保存」：PUT 必须是恢复正文
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }))
+    })
+    await settle(50)
+    const last = contents().at(-1) ?? ''
+    expect(last, '保存不得把恢复结果覆盖回基线').toContain('RECOVERY_NEW_normal')
+    expect(last).not.toContain('RECOVERY_BASELINE')
+  })
+
+  it('U01-③ 反例（证明顺序判据非空）：先推进代次、后换 article → 编辑器停在基线（旧实现时序）', async () => {
+    await render(article('Articles/a.md', 'a', BASELINE))
+    CS.setKeContentCalls = []
+    // 旧时序第一步：代次先推进，article 仍是基线
+    await act(async () => {
+      root!.render(
+        <EditorArea
+          article={article('Articles/a.md', 'a', BASELINE)}
+          loading={false}
+          onNewArticle={() => undefined}
+          onSaved={() => undefined}
+          reloadToken={1}
+        />,
+      )
+    })
+    await settle()
+    // 旧时序第二步：article 换成恢复内容，但 id 未变、代次也未再变 → effect 不重跑
+    await act(async () => {
+      root!.render(
+        <EditorArea
+          article={article('Articles/a.md', 'a', RECOVERED)}
+          loading={false}
+          onNewArticle={() => undefined}
+          onSaved={() => undefined}
+          reloadToken={1}
+        />,
+      )
+    })
+    await settle()
+    const reloaded = CS.setKeContentCalls.join('\n')
+    expect(reloaded, '旧时序：重载用的是基线').toContain('RECOVERY_BASELINE')
+    expect(reloaded, '旧时序：恢复正文永远不会载入编辑器（= 审计 restored UI retains old content）').not.toContain(
+      'RECOVERY_NEW_normal',
+    )
+  })
+
+  it('U01-② 源码通道：重载后 textarea = 恢复正文；源码保存的 PUT 也是恢复正文', async () => {
+    __resetViewModeForTest('source')
+    await render(article('Articles/a.md', 'a', BASELINE))
+    expect(textarea().value).toContain('RECOVERY_BASELINE')
+    CS.requests = []
+
+    await act(async () => {
+      root!.render(
+        <EditorArea
+          article={article('Articles/a.md', 'a', RECOVERED)}
+          loading={false}
+          onNewArticle={() => undefined}
+          onSaved={() => undefined}
+          reloadToken={1}
+        />,
+      )
+    })
+    await settle()
+    expect(textarea().value, '源码 textarea 必须重载为恢复正文').toContain('RECOVERY_NEW_normal')
+
+    await typeInSource(`${textarea().value}续写一行\n`)
+    await settle(50)
+    const last = contents().at(-1) ?? ''
+    expect(last, '源码保存不得把恢复结果覆盖回基线').toContain('RECOVERY_NEW_normal')
+    expect(last).not.toContain('RECOVERY_BASELINE')
   })
 })

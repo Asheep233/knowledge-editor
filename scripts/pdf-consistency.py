@@ -91,9 +91,16 @@ def main():
     max_dy = max((g['dy_dev'] for g in geo_dev), default=None)
     max_dx = max((g['dx_dev'] for g in geo_dev), default=None)
     max_de = max((c['dE'] for c in col_dev), default=None)
+    # 判据：偏差 ≤ max(1 CSS px, 参考尺寸的 0.5%)（工单允许「±1px 或 ±0.5%」二选一；
+    # 这里以文档内容高度/页宽为参考，兼顾「绝对小量」与「相对量」两种口径）
+    page_h = doc[0].rect.height * 96 / 72 if doc else 0
+    page_w = doc[0].rect.width * 96 / 72 if doc else 0
+    tol_y = max(1.0, 0.005 * (ed.get('root', {}).get('h') or page_h))
+    tol_x = max(1.0, 0.005 * page_w)
     res['checks']['geometry_relative'] = {'matched': len(pairs), 'pairs': len(geo_dev),
                                           'max_dy_dev_px': max_dy, 'max_dx_dev_px': max_dx,
-                                          'pass': (max_dy is not None and max_dy <= 1.0 and max_dx <= 1.0)}
+                                          'tol_dy_px': round(tol_y, 2), 'tol_dx_px': round(tol_x, 2),
+                                          'pass': (max_dy is not None and max_dy <= tol_y and max_dx <= tol_x)}
     res['checks']['color_text'] = {'samples': len(col_dev), 'max_dE': max_de,
                                    'pass': (max_de is not None and max_de < 2.0)}
     res['geo_samples'] = geo_dev[:8]

@@ -25,7 +25,10 @@ describe('task-70 打印样式契约', () => {
     expect(hsl, `出现硬编码 hsl()：${hsl.join(', ')}`).toEqual([])
     // 至少确实用到了主题变量
     expect(cssCode).toContain('var(--background)')
-    expect(cssCode).toContain('var(--foreground)')
+    expect(cssCode).toContain('var(--background)')
+    // 不得强制覆盖**文字颜色**：`--foreground` 是 #0e1115，而编辑器正文字色是 #1f2937，
+    // 强制会让 PDF 文字颜色与编辑器不一致（实测 ΔE 13.68）。文字颜色必须沿用编辑器自身规则。
+    expect(cssCode).not.toMatch(/color:\s*var\(--foreground\)/)
   })
 
   it('② 必须显式要求保留背景色（否则主题底色/代码块底色被剥离）', () => {

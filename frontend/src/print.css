@@ -23,7 +23,8 @@
   body {
     /* 主题底色铺满整页（含页边距区域） */
     background: var(--background) !important;
-    color: var(--foreground) !important;
+    /* 注意：**不得**在这里强制 color —— `--foreground` 是 #0e1115，而编辑器正文字色是 #1f2937；
+       强制会改变文字颜色（实测 ΔE 13.68），与「完全一致」相悖。文字颜色一律沿用编辑器自身规则。 */
     /* 保留背景色/前景色，不做打印管线的“省墨”替换 */
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
@@ -109,7 +110,7 @@
     padding: 16mm 14mm !important; /* 页边距归零后由这里提供可视边距 */
     overflow: visible !important;
     background: transparent !important; /* 底色已在 html/body，避免叠两层 */
-    color: var(--foreground) !important;
+    /* 不覆盖 color：文字颜色必须与编辑器一致（见上） */
     /* CJK：沿用编辑器字体栈（不新引入字体文件），避免字形/字宽回退导致不一致 */
     font-family: inherit !important;
   }
@@ -155,14 +156,9 @@
   .ke-editor-prose pre,
   .ke-editor-prose code {
     background: var(--muted) !important;
-    color: var(--foreground) !important;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
-  /* 链接：打印不追加 URL，保持与编辑器一致 */
-  .ke-editor-prose a {
-    color: inherit !important;
-    text-decoration: inherit !important;
-  }
+  /* 链接：**不覆盖**颜色与下划线 —— 编辑器里是什么样，PDF 就是什么样（原规则会把链接色改成继承色，属偏差） */
 }

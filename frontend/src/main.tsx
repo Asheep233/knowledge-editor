@@ -8,6 +8,7 @@ import '@fontsource/dm-sans/400.css'
 import '@fontsource/dm-sans/500.css'
 import '@fontsource/dm-sans/700.css'
 import './index.css'
+import './print.css'
 import App from './App'
 import { applyTheme, loadSettings } from './settings'
 

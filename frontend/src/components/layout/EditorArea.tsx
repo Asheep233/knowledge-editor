@@ -848,6 +848,19 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     return () => window.removeEventListener('keydown', onKey)
   }, [saveNow])
 
+  // 导出 PDF（task-70）：调用**宿主自身引擎**打印（WebView2 → 系统「另存为 PDF」），
+  // 保证与编辑器渲染完全一致（含当前主题的颜色，见 frontend/src/print.css）。
+  // 安全（主理人要求「别把文件写坏」）：**只读 DOM** —— 不调用保存/flush/getMarkdown()，
+  // 不写任何文件、不改写编辑器 DOM；源码模式不参与导出（PDF 永远是渲染后的正文）。
+  const handleExportPdf = useCallback(() => {
+    if (!editor || !article) return
+    if (viewModeRef.current === 'source') {
+      window.alert('源码模式不支持导出 PDF：PDF 导出的是渲染后的正文，请先切回正文视图。')
+      return
+    }
+    window.print()
+  }, [editor, article])
+
   // 导出 Markdown 单文件（内容来自 Markdown Serializer，不修改原文件）
   const handleExportMarkdown = useCallback(() => {
     if (!editor || !article) return
@@ -1199,6 +1212,16 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             >
               导出文档包 (.zip)
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExportOpen(false)
+                handleExportPdf()
+              }}
+              className="block w-full px-3 py-1.5 text-left text-[12px] text-foreground/80 hover:bg-accent"
+            >
+              导出 PDF（打印为 PDF）
+            </button>
           </div>
         </>
       ) : null}
@@ -1255,6 +1278,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           >
             <TabBarSlot />
           </div>
+          {/* task-70：打印时必须隐藏工具栏（它在 <main> 内，没有语义标签可依赖）
+              —— 用 `display: contents` 包装，屏幕态零布局影响，打印态由 print.css 隐藏 */}
+          <div data-ke-toolbar="" className="contents">
           <EditorToolbar
             saveLabel={saveLabel}
             onSave={() => void saveNow()}
@@ -1271,6 +1297,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               onLost: notifyUploadTargetLost,
             }}
           />
+          </div>
           <TableBubbleMenu />
           <div
             className="ke-scroll relative flex-1 overflow-y-auto"

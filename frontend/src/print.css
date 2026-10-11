@@ -1,0 +1,168 @@
+/**
+ * 打印 / 导出 PDF 样式（task-70 第 1 步：样式层）。
+ *
+ * 目标：宿主引擎（WebView2）打印出来的页面与编辑器渲染**完全一致**。
+ * 硬约束：
+ *  1) **只用 `index.css` 的 CSS 变量**，绝不硬编码颜色 —— 否则主题漂移（深色主题导出成浅色）；
+ *  2) `print-color-adjust: exact` —— 否则打印管线剥离背景色（主题底色 + 代码块底色全没）；
+ *  3) 主题底色画在 `html/body` 上并 `@page margin: 0` —— canvas 背景会传播到整页（含页边距）；
+ *  4) 隐藏外壳，只留正文；正文宽 = 纸张内容宽；
+ *  5) 分页：公式/表格/图片/信息块不跨页腰斩，标题不与后文分离；
+ *  6) CJK 字体**沿用编辑器字体栈**（`inherit`），不新引入字体文件。
+ *
+ * 本文件所有规则都必须包在 `@media print` 内（`frontend/src/print-css.test.ts` 有契约断言）。
+ */
+
+@media print {
+  /* ---- 页面与整页着色 ---- */
+  @page {
+    margin: 0; /* 页边距归零：底色才能铺满整页；正文内边距由下面的容器补 */
+  }
+
+  html,
+  body {
+    /* 主题底色铺满整页（含页边距区域） */
+    background: var(--background) !important;
+    color: var(--foreground) !important;
+    /* 保留背景色/前景色，不做打印管线的“省墨”替换 */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 应用外壳：滚动容器不要裁切，打印时按内容自然流动 */
+  html,
+  body,
+  #root {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* ---- 隐藏外壳：工具栏 / 侧栏 / 状态栏 / 悬浮按钮 / 滚动条 ----
+   * task-70 选择器核对（真实 DOM，2026-10-12）：
+   *  - 左栏 / 右栏 = `AppShell` 的 `<aside>` ✓（下面用 aside 命中）
+   *  - **状态栏** = `StatusBar` 的普通 `<div>`（无稳定类名）；顶栏槽位 = 一个隐藏 `<input>`
+   *    → 统一用「外壳里除含 `<main>` 的那一列之外全部隐藏」覆盖
+   *  - **工具栏**在 `<main>`（编辑器列）**内部**，不在任何 `<header>` 里
+   *    → 由 EditorArea 提供稳定钩子 `[data-ke-toolbar]`
+   *  （原稿的 `.ke-status-bar` / `.ke-sidebar` / `.ke-toolbar` 三个类名在真实 DOM 中**不存在**，
+   *    等于工具栏与状态栏会被打进 PDF —— 这里按真实结构改正。）
+   */
+  :is(
+      header,
+      aside,
+      nav,
+      footer,
+      fieldset,
+      [role='status'],
+      [data-ke-hover-tools],
+      [data-ke-math-tools],
+      .ke-math-tools,
+      [data-ke-toolbar]
+    ) {
+    display: none !important;
+  }
+
+  /* 外壳：只保留含 `<main>`（编辑器列）的那一列 —— 状态栏 / 顶栏 / 隐藏文件输入等兄弟节点全部隐藏 */
+  #root > div > *:not(:has(main)) {
+    display: none !important;
+  }
+
+  /* 滚动条不参与打印 */
+  * {
+    scrollbar-width: none;
+  }
+
+  /* ---- 主机制：只显示正文（**不依赖外壳类名**，避免选择器猜错导致外壳残留/正文被误隐藏） ----
+     visibility 保留布局盒，只用一层"隐藏全部 + 只显示正文"，比 display:none 更稳。 */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .ke-editor-prose,
+  .ke-editor-prose * {
+    visibility: visible !important;
+  }
+
+  /* 打印无滚动语义：解除所有裁剪/限高，防止绝对定位的正文被滚动容器裁掉 */
+  #root,
+  #root * {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* 正文脱离文档流占据整页宽度（页边距由 .ke-editor-prose 的 padding 提供） */
+  .ke-editor-prose {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+  }
+
+  /* ---- 正文：宽度 = 纸张内容宽，去掉屏幕态的滚动/限宽 ---- */
+  .ke-editor-prose {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 16mm 14mm !important; /* 页边距归零后由这里提供可视边距 */
+    overflow: visible !important;
+    background: transparent !important; /* 底色已在 html/body，避免叠两层 */
+    color: var(--foreground) !important;
+    /* CJK：沿用编辑器字体栈（不新引入字体文件），避免字形/字宽回退导致不一致 */
+    font-family: inherit !important;
+  }
+
+  .ke-editor-prose * {
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  /* 正文内的交互控件（按钮等）不属于内容 */
+  .ke-editor-prose button {
+    display: none !important;
+  }
+
+  /* ---- 分页规则 ---- */
+  /* 公式块（含 $$ 行间公式）：不得被跨页腰斩 */
+  .ke-math--block,
+  .ke-editor-prose .katex-display {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 表格 / 图片 / 引用 / 代码块 / 信息块：整体不跨页 */
+  /* task-70：信息块的真实钩子是 NoteNodeView 上的 `[data-ke-note]`（`.ke-note` 类名不存在） */
+  .ke-editor-prose :is(table, figure, img, blockquote, pre, [data-ke-note]) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 表格行也不腰斩 */
+  .ke-editor-prose :is(tr, li) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 标题不得与后文分离 */
+  .ke-editor-prose :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* 代码块保留底色（主题变量，绝不硬编码） */
+  .ke-editor-prose pre,
+  .ke-editor-prose code {
+    background: var(--muted) !important;
+    color: var(--foreground) !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* 链接：打印不追加 URL，保持与编辑器一致 */
+  .ke-editor-prose a {
+    color: inherit !important;
+    text-decoration: inherit !important;
+  }
+}

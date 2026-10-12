@@ -518,8 +518,10 @@ describe('C 源码级不变量与回归面', () => {
     expect(taWin, 'textarea 必须与页眉同左内边距（32px）').toContain('px-[32px]')
 
     // 同一列宽的宿主侧锚点：EditorArea 的正文页眉（三者对齐的来源）
+    // 注：只锚定 className 里的「列宽 + 内边距」，允许该标签追加其它属性
+    //（例如 task-70 给页眉加的 `data-ke-doc-header`，打印时用于隐藏它）。
     const area = readFileSync('src/components/layout/EditorArea.tsx', 'utf8')
-    const headerIdx = area.indexOf('<article className="mx-auto w-full max-w-[780px] px-[32px]')
+    const headerIdx = area.indexOf('className="mx-auto w-full max-w-[780px] px-[32px]')
     expect(headerIdx, 'EditorArea 页眉未使用同一列宽（780px/32px）→ 源码与标题会错位').toBeGreaterThan(-1)
   })
 })

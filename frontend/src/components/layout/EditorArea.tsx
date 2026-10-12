@@ -1328,7 +1328,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             )}
             {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown）
                 与 EditorContent 的 ke-editor-prose 同一列宽/内边距（780px / 32px），保证标题与正文对齐 */}
-            <article className="mx-auto w-full max-w-[780px] px-[32px] pb-2 pt-10">
+            <article data-ke-doc-header className="mx-auto w-full max-w-[780px] px-[32px] pb-2 pt-10">
               <div className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>
                 <Icon name="folder" className="size-3.5" />
                 {breadcrumb.map((seg, i) => (
@@ -1387,6 +1387,24 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 </div>
               ) : null}
             </article>
+            {/* task-70：打印/导出 PDF 专用页眉（屏幕态 display:none，见 print.css）
+                目的：**PDF 里必须有标题**（与编辑器页眉同排版：28px 粗体标题 + 13px 元信息行）。
+                只读展示，不参与序列化、不改文档内容、不触发保存。 */}
+            <div className="ke-print-header mx-auto w-full max-w-[780px] px-[32px] pt-10" data-ke-print-header>
+              <h1 className="text-[28px] font-bold leading-[1.25]" style={{ color: 'var(--foreground)' }}>
+                {article?.title ?? ''}
+              </h1>
+              {docMeta ? (
+                <div className="mt-3 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+                  {docMeta.updatedAt ? <span>更新于 {formatTime(docMeta.updatedAt)} · </span> : null}
+                  <span>{docMeta.words}</span>
+                  <span> · KE v{KE_VERSION}</span>
+                  {docMeta.tags.map((t) => (
+                    <span key={t}> · #{t}</span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             {/* task-41：单视图排他 —— 源码态渲染 textarea（唯一可写通道），正文态渲染 ProseMirror */}
             {viewMode === 'source' && article ? (
               <SourceModeView

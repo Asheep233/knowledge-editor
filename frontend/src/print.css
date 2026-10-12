@@ -13,7 +13,30 @@
  * 本文件所有规则都必须包在 `@media print` 内（`frontend/src/print-css.test.ts` 有契约断言）。
  */
 
+/* 打印专用页眉：屏幕态完全不显示（不影响编辑器布局） */
+.ke-print-header {
+  display: none;
+}
+
 @media print {
+  /* 打印专用页眉：显示，并与正文同列宽/内边距 */
+  .ke-print-header {
+    display: block !important;
+    visibility: visible !important;
+    margin: 0 auto !important;
+    padding: 14mm 14mm 0 !important;
+    max-width: none !important;
+  }
+
+  .ke-print-header * {
+    visibility: visible !important;
+  }
+
+  /* 屏幕态页眉（面包屑 + 可编辑标题 + 元信息）在打印时隐藏，避免与打印页眉重复 */
+  [data-ke-doc-header] {
+    display: none !important;
+  }
+
   /* ---- 页面与整页着色 ---- */
   @page {
     margin: 0; /* 页边距归零：底色才能铺满整页；正文内边距由下面的容器补 */
@@ -71,6 +94,11 @@
     display: none !important;
   }
 
+  /* 已知外壳直接不渲染（visibility 仍会占位 → 会在首页顶部留下大片空白） */
+  :is([data-ke-toolbar], aside, nav, [role='status'], [data-ke-math-tools], .ke-math-tools) {
+    display: none !important;
+  }
+
   /* 滚动条不参与打印 */
   * {
     scrollbar-width: none;
@@ -94,12 +122,9 @@
     max-height: none !important;
   }
 
-  /* 正文脱离文档流占据整页宽度（页边距由 .ke-editor-prose 的 padding 提供） */
+  /* 正文保持正常流：打印页眉（标题/元信息）在它上方，页边距由各自 padding 提供 */
   .ke-editor-prose {
-    position: absolute !important;
-    left: 0 !important;
-    right: 0 !important;
-    top: 0 !important;
+    position: static !important;
   }
 
   /* ---- 正文：宽度 = 纸张内容宽，去掉屏幕态的滚动/限宽 ---- */

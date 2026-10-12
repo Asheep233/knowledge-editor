@@ -71,7 +71,10 @@ describe('task-70 打印样式契约', () => {
     }
     expect(end, '@media print 块未闭合').toBeGreaterThan(0)
     const outside = (cssCode.slice(0, first) + cssCode.slice(end + 1)).replace(/\s|;/g, '')
-    expect(outside, `@media print 之外还有规则：${outside.slice(0, 120)}`).toBe('')
+    // 唯一允许出现在 @media print 之外的规则：隐藏「打印专用页眉」（屏幕态必须不显示它）。
+    // 除它以外，本文件不得影响屏幕渲染。
+    const ALLOWED = '.ke-print-header{display:none}'
+    expect(outside.replace(ALLOWED, ''), `@media print 之外还有规则：${outside.slice(0, 120)}`).toBe('')
     // 隐藏外壳 + 正文宽度也必须在 print 块里
     expect(cssCode).toMatch(/\.ke-editor-prose\s*\{[^}]*max-width:\s*none/s)
   })

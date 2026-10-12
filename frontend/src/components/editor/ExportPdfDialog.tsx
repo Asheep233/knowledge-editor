@@ -299,6 +299,9 @@ export default function ExportPdfDialog({
               className="ke-print-surface shadow-lg"
               style={{
                 ...previewVars,
+                // 直接落 backgroundColor：`.ke-print-surface` 的 `background: var(--background)`
+                // 在预览上下文里会被主题底色抢先（实测预览恒为主题色），显式内联才与导出真正一致
+                backgroundColor: previewVars['--background'] ?? 'var(--background)',
                 // 文字色：自定义优先，否则用编辑器实际文字色（与 PDF 一致；不强制 --foreground）
                 color: opts.foreground !== 'theme' ? opts.foreground : editorTextColor,
                 width: '210mm',

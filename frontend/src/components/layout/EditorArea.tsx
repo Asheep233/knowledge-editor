@@ -22,6 +22,7 @@ import {
   uploadAttachment,
 } from '../../api/client'
 import { openMathEditorById, setKeContent, useKeEditor } from '../../editor'
+import { isDesktop } from '../../desktop'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
 import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
 import { slugForDownload } from '../../editor/import-export'
@@ -858,6 +859,33 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       window.alert('源码模式不支持导出 PDF：PDF 导出的是渲染后的正文，请先切回正文视图。')
       return
     }
+    // 桌面态：**静默导出**（Rust 侧 WebView2 `PrintToPdf`，点一下即落盘，不弹系统打印对话框）
+    // 输出目录由 Rust 决定：`%USERPROFILE%\Documents\AstraNota Exports\`（工作区之外，重名不覆盖）
+    if (isDesktop()) {
+      void (async () => {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core')
+          // 传「编辑器正文内容宽」：让 PDF 页宽与编辑器一致 → 换行位置一致
+          const el = document.querySelector('.ke-editor-prose') as HTMLElement | null
+          let contentWidth: number | undefined
+          if (el) {
+            const cs = getComputedStyle(el)
+            const inner =
+              el.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
+            if (Number.isFinite(inner) && inner > 200) contentWidth = Math.round(inner)
+          }
+          const saved = await invoke<string>('export_pdf', {
+            filename: `${slugForDownload(article.title)}.pdf`,
+            contentWidth,
+          })
+          window.alert(`已导出 PDF：\n${saved}`)
+        } catch (e) {
+          window.alert(`导出 PDF 失败：${e instanceof Error ? e.message : String(e)}`)
+        }
+      })()
+      return
+    }
+    // 浏览器态兜底：走系统打印（用户选"另存为 PDF"），渲染结果一致
     window.print()
   }, [editor, article])
 

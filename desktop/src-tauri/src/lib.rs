@@ -3,6 +3,7 @@
 // setup 中启动 Sidecar Manager（拉起 backend 侧车 → health 握手 → 写 runtime.json）；
 // 窗口关闭/菜单退出均先走 flush 握手（`begin_close_handshake`），前端 flush 后二次 close 才真正清理退出（有界强杀，见 sidecar.rs）。
 
+mod print;
 mod menu;
 mod settings;
 mod sidecar;
@@ -139,6 +140,7 @@ pub fn run() {
         })
         .on_menu_event(|app, event| menu::handle_event(app, event))
         .invoke_handler(tauri::generate_handler![
+            print::export_pdf,
             menu::reload_main_window,
             menu::app_request_exit,
             menu::app_request_reload,

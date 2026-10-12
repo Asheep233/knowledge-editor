@@ -23,6 +23,13 @@ const CS = vi.hoisted(() => ({
   autosaveMs: 1,
 }))
 
+// 浏览器态：isDesktop()=false → 走 window.print() 兜底（桌面静默导出路径见文件末尾的用例）
+vi.mock('../../desktop', () => ({
+  isDesktop: () => false,
+  onCloseRequested: () => () => {},
+  flushPendingAll: async () => undefined,
+  installDesktopFlush: () => () => {},
+}))
 vi.mock('@tiptap/react', () => ({
   EditorContext: { Provider: (props: { children?: unknown }) => props.children },
   EditorContent: () => null,

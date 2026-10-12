@@ -48,6 +48,8 @@ vi.mock('../../editor', () => ({
       },
       isFocused: false,
       schema: {},
+      // task-72：对话框预览调用 getHTML()（只读快照）
+      getHTML: () => '<p>正文</p>',
       commands: { focus: () => undefined, setContent: () => undefined, command: () => undefined },
       chain: () => {
         const c = { focus: () => c, insertContent: () => c, run: () => true }
@@ -168,7 +170,15 @@ describe('task-70 ❶ 导出 PDF 入口（只读 DOM）', () => {
     })
     await settle()
 
-    expect(CS.printCalls, '必须调用 window.print()').toBe(1)
+    // task-72：入口改为先开对话框（选项 + A4 预览），确认后才导出
+    expect(container.querySelector('[data-testid="export-pdf-dialog"]'), '必须打开导出对话框').toBeTruthy()
+    expect(CS.printCalls, '仅打开对话框时不得打印').toBe(0)
+    await act(async () => {
+      ;(container.querySelector('[data-testid="pdf-export"]') as HTMLButtonElement).click()
+    })
+    await settle()
+
+    expect(CS.printCalls, '确认后（浏览器态）调用 window.print()').toBe(1)
     expect(CS.getMarkdownCalls, '导出 PDF 不得序列化正文（不碰 PM）').toBe(mdBefore)
     expect(
       CS.requests.filter((r) => r.method !== 'GET').length,

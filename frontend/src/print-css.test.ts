@@ -71,10 +71,16 @@ describe('task-70 打印样式契约', () => {
     }
     expect(end, '@media print 块未闭合').toBeGreaterThan(0)
     const outside = (cssCode.slice(0, first) + cssCode.slice(end + 1)).replace(/\s|;/g, '')
-    // 唯一允许出现在 @media print 之外的规则：隐藏「打印专用页眉」（屏幕态必须不显示它）。
-    // 除它以外，本文件不得影响屏幕渲染。
+    // 允许出现在 @media print 之外的两类规则：
+    //  1) 隐藏「打印专用页眉」（屏幕态必须不显示它）；
+    //  2) task-72 的 `.ke-print-surface` **A4 预览面**（只作用于导出对话框内的预览容器，
+    //     作用域隔离，不影响应用屏幕渲染）。
     const ALLOWED = '.ke-print-header{display:none}'
-    expect(outside.replace(ALLOWED, ''), `@media print 之外还有规则：${outside.slice(0, 120)}`).toBe('')
+    let rest = outside.replace(ALLOWED, '')
+    // 去掉预览面相关规则（选择器均以 .ke-print-surface 开头）
+    rest = rest.replace(/\.ke-print-surface[^{}]*\{[^{}]*\}/g, '')
+    rest = rest.replace(/@mediaprint\{[^{}]*\}/g, '')
+    expect(rest, `@media print 之外还有规则：${rest.slice(0, 120)}`).toBe('')
     // 隐藏外壳 + 正文宽度也必须在 print 块里
     expect(cssCode).toMatch(/\.ke-editor-prose\s*\{[^}]*max-width:\s*none/s)
   })

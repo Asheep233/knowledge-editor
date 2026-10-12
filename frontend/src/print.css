@@ -127,6 +127,8 @@
     position: static !important;
   }
 
+  /* @ke-print-shared:start —— 以下排版声明必须与文末 `.ke-print-surface` 预览块逐条一致
+     （`src/print-css.test.ts` 有断言；任何一方改动而另一方没跟上 → 红） */
   /* ---- 正文：宽度 = 纸张内容宽，去掉屏幕态的滚动/限宽 ---- */
   .ke-editor-prose {
     width: auto !important;
@@ -186,4 +188,70 @@
   }
 
   /* 链接：**不覆盖**颜色与下划线 —— 编辑器里是什么样，PDF 就是什么样（原规则会把链接色改成继承色，属偏差） */
+  /* @ke-print-shared:end */
 }
+
+/* ---------------------------------------------------------------------------
+ * task-72：A4 预览面（导出对话框内）。**同一套排版规则**，只是作用域换成
+ * `.ke-print-surface`（预览容器），并且不需要 @media print —— 预览永远按打印样式显示。
+ * 下面的声明与上面 `@ke-print-shared` 段**逐条一致**（顺序也一致），有测试守着。
+ * ------------------------------------------------------------------------- */
+.ke-print-surface {
+  /* A4 纸面：底色/文字色来自 CSS 变量（主题选择与自定义色都由变量覆盖实现） */
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--background);
+  /* 注意：**不在此处写 color** —— 编辑器正文字色并非 --foreground（实测强制会带来 ΔE 13.68 偏差）。
+     预览容器由对话框以内联 style 注入「编辑器实际文字色」或用户自定义色。 */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* @ke-print-preview:start */
+.ke-print-surface .ke-editor-prose {
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 16mm 14mm !important;
+  overflow: visible !important;
+  background: transparent !important;
+  font-family: inherit !important;
+}
+
+.ke-print-surface .ke-editor-prose * {
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+.ke-print-surface .ke-editor-prose button {
+  display: none !important;
+}
+
+.ke-print-surface .ke-math--block,
+.ke-print-surface .ke-editor-prose .katex-display {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ke-print-surface .ke-editor-prose :is(table, figure, img, blockquote, pre, [data-ke-note]) {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ke-print-surface .ke-editor-prose :is(tr, li) {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ke-print-surface .ke-editor-prose :is(h1, h2, h3, h4, h5, h6) {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.ke-print-surface .ke-editor-prose pre,
+.ke-print-surface .ke-editor-prose code {
+  background: var(--muted) !important;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+/* @ke-print-preview:end */

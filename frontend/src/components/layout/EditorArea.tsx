@@ -47,6 +47,7 @@ import {
   type ViewMode,
 } from '../../state/viewMode'
 import SourceModeView from '../editor/SourceModeView'
+import ExportPdfDialog, { exportPdfWithOverrides, type PdfExportOptions } from '../editor/ExportPdfDialog'
 import { registerActionHandlers, shouldIgnoreKeyEvent, shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
@@ -849,6 +850,72 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     return () => window.removeEventListener('keydown', onKey)
   }, [saveNow])
 
+  // task-72：导出 PDF 对话框（选项 + A4 预览）
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+
+  /** 读取指定主题下的令牌实际值（临时切换根属性后在同一帧内还原，不产生可见闪烁） */
+  const readThemeTokens = useCallback((theme: 'light' | 'dark') => {
+    const root = document.documentElement
+    const prev = root.dataset.theme
+    try {
+      if (theme === 'dark') root.dataset.theme = 'dark'
+      else delete root.dataset.theme
+      const cs = getComputedStyle(root)
+      return {
+        background: cs.getPropertyValue('--background').trim() || '#ffffff',
+        foreground: cs.getPropertyValue('--foreground').trim() || '#111111',
+      }
+    } finally {
+      if (prev === undefined) delete root.dataset.theme
+      else root.dataset.theme = prev
+    }
+  }, [])
+
+  /** 当前主题下的令牌（预览/导出的「跟随当前」基线） */
+  const currentThemeTokens = useMemo(() => {
+    if (typeof document === 'undefined') return { background: '#ffffff', foreground: '#111111' }
+    const cs = getComputedStyle(document.documentElement)
+    return {
+      background: cs.getPropertyValue('--background').trim() || '#ffffff',
+      foreground: cs.getPropertyValue('--foreground').trim() || '#111111',
+    }
+  }, [pdfDialogOpen])
+
+  /**
+   * 导出 PDF（task-72）：临时写 `#ke-print-overrides`（颜色覆盖）→ 走既有导出路径
+   * （桌面态 Tauri 静默落盘 / 浏览器态 window.print()）→ **成功失败都立即移除**，不留副作用。
+   * 红线：只读 DOM —— 不调用保存/flush/getMarkdown()、不写工作区文件。
+   */
+  const runPdfExport = useCallback(
+    async (opts: PdfExportOptions) => {
+      const doc = articleRef.current
+      if (!doc) return
+      await exportPdfWithOverrides(opts, async () => {
+        if (isDesktop()) {
+          const { invoke } = await import('@tauri-apps/api/core')
+          const el = document.querySelector('.ke-editor-prose') as HTMLElement | null
+          let contentWidth: number | undefined
+          if (el) {
+            const cs = getComputedStyle(el)
+            const inner = el.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
+            if (Number.isFinite(inner) && inner > 200) contentWidth = Math.round(inner)
+          }
+          const saved = await invoke<string>('export_pdf', {
+            filename: `${slugForDownload(doc.title)}.pdf`,
+            contentWidth,
+          })
+          window.alert(`已导出 PDF：\n${saved}`)
+        } else {
+          window.print()
+        }
+      }).catch((e: unknown) => {
+        window.alert(`导出 PDF 失败：${e instanceof Error ? e.message : String(e)}`)
+      })
+      setPdfDialogOpen(false)
+    },
+    [],
+  )
+
   // 导出 PDF（task-70）：调用**宿主自身引擎**打印（WebView2 → 系统「另存为 PDF」），
   // 保证与编辑器渲染完全一致（含当前主题的颜色，见 frontend/src/print.css）。
   // 安全（主理人要求「别把文件写坏」）：**只读 DOM** —— 不调用保存/flush/getMarkdown()，
@@ -859,34 +926,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       window.alert('源码模式不支持导出 PDF：PDF 导出的是渲染后的正文，请先切回正文视图。')
       return
     }
-    // 桌面态：**静默导出**（Rust 侧 WebView2 `PrintToPdf`，点一下即落盘，不弹系统打印对话框）
-    // 输出目录由 Rust 决定：`%USERPROFILE%\Documents\AstraNota Exports\`（工作区之外，重名不覆盖）
-    if (isDesktop()) {
-      void (async () => {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core')
-          // 传「编辑器正文内容宽」：让 PDF 页宽与编辑器一致 → 换行位置一致
-          const el = document.querySelector('.ke-editor-prose') as HTMLElement | null
-          let contentWidth: number | undefined
-          if (el) {
-            const cs = getComputedStyle(el)
-            const inner =
-              el.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
-            if (Number.isFinite(inner) && inner > 200) contentWidth = Math.round(inner)
-          }
-          const saved = await invoke<string>('export_pdf', {
-            filename: `${slugForDownload(article.title)}.pdf`,
-            contentWidth,
-          })
-          window.alert(`已导出 PDF：\n${saved}`)
-        } catch (e) {
-          window.alert(`导出 PDF 失败：${e instanceof Error ? e.message : String(e)}`)
-        }
-      })()
-      return
-    }
-    // 浏览器态兜底：走系统打印（用户选"另存为 PDF"），渲染结果一致
-    window.print()
+    // task-72：先开对话框（选项 + A4 预览），确认后才落盘（导出逻辑在 runPdfExport）
+    setPdfDialogOpen(true)
   }, [editor, article])
 
   // 导出 Markdown 单文件（内容来自 Markdown Serializer，不修改原文件）
@@ -1444,7 +1485,23 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             ) : (
               <EditorContent editor={editor} />
             )}
-            {/* v1.1.7 M2：全屏公式模态（编辑器根——PM 事务安全；nodeview 独立 React 根会 #300） */}
+            {/* task-72：导出 PDF 对话框（选项 + A4 缩略预览；预览用独立容器渲染 getHTML 快照） */}
+      <ExportPdfDialog
+        open={pdfDialogOpen}
+        onClose={() => setPdfDialogOpen(false)}
+        editor={editor}
+        themeVars={currentThemeTokens}
+        editorTextColor={
+          typeof document !== 'undefined'
+            ? getComputedStyle(document.querySelector('.ke-editor-prose') ?? document.documentElement).color ||
+              '#1f2937'
+            : '#1f2937'
+        }
+        themeVarsByChoice={{ light: readThemeTokens('light'), dark: readThemeTokens('dark') }}
+        onExport={runPdfExport}
+      />
+
+      {/* v1.1.7 M2：全屏公式模态（编辑器根——PM 事务安全；nodeview 独立 React 根会 #300） */}
             {mathEdit?.open && (
               <MathEditorModal
                 open={mathEdit.open}

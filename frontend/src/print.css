@@ -255,3 +255,14 @@
   -webkit-print-color-adjust: exact;
 }
 /* @ke-print-preview:end */
+
+/* task-72 强调色（仅当对话框传入自定义强调色时生效；默认不影响任何颜色） */
+.ke-print-surface[data-ke-pdf-accent] .ke-editor-prose :is(h1, h2, h3, h4, h5, h6),
+.ke-print-surface[data-ke-pdf-accent] .ke-editor-prose a {
+  color: var(--ke-pdf-accent, inherit);
+}
+
+.ke-print-surface[data-ke-pdf-accent] .ke-editor-prose blockquote {
+  border-left-color: var(--ke-pdf-accent, currentColor);
+}
+

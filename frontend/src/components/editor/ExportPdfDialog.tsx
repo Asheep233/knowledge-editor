@@ -21,6 +21,8 @@ export interface PdfExportOptions {
   theme: PdfThemeChoice
   background: PdfColorChoice
   foreground: PdfColorChoice
+  /** 强调色（标题 / 链接 / 引用条） */
+  accent: PdfColorChoice
   /** 记住我的选择（localStorage） */
   remember: boolean
 }
@@ -32,6 +34,7 @@ export const DEFAULT_PDF_OPTIONS: PdfExportOptions = {
   theme: 'current',
   background: 'theme',
   foreground: 'theme',
+  accent: 'theme',
   remember: true,
 }
 
@@ -49,6 +52,7 @@ export function normalizePdfOptions(raw: unknown): PdfExportOptions {
     theme,
     background: sanitizeColor(o.background),
     foreground: sanitizeColor(o.foreground),
+    accent: sanitizeColor(o.accent),
     remember: o.remember !== false,
   }
 }
@@ -76,6 +80,7 @@ export function cssVarsOf(opts: PdfExportOptions): Record<string, string> {
   const vars: Record<string, string> = {}
   if (opts.background !== 'theme') vars['--background'] = opts.background
   if (opts.foreground !== 'theme') vars['--foreground'] = opts.foreground
+  if (opts.accent !== 'theme') vars['--ke-pdf-accent'] = opts.accent
   return vars
 }
 
@@ -93,8 +98,14 @@ export function buildPrintOverrideCss(opts: PdfExportOptions): string {
   // 自定义文字色必须写成真实 `color` 声明：编辑器正文自身有更高的优先级，仅改变量不生效
   const fgRule =
     opts.foreground !== 'theme' ? `.ke-editor-prose, .ke-editor-prose * { color: ${opts.foreground} !important; }` : ''
-  if (!body && !themeRule && !fgRule) return ''
-  return `@media print { ${themeRule} html, body { ${body} } ${fgRule} }`
+  // 强调色：标题 / 链接 / 引用条（仅在自定义时生效；默认不改变任何颜色）
+  const accent = opts.accent !== 'theme' ? opts.accent : ''
+  const accentRule = accent
+    ? `.ke-editor-prose :is(h1,h2,h3,h4,h5,h6), .ke-editor-prose a { color: ${accent} !important; }` +
+      ` .ke-editor-prose blockquote { border-left-color: ${accent} !important; }`
+    : ''
+  if (!body && !themeRule && !fgRule && !accentRule) return ''
+  return `@media print { ${themeRule} html, body { ${body} } ${fgRule} ${accentRule} }`
 }
 
 /** 写入/移除导出覆盖样式（幂等；导出结束必须移除） */
@@ -239,6 +250,40 @@ export default function ExportPdfDialog({
           </div>
 
           <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+            强调色（标题 / 链接 / 引用条）
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="pdf-accent"
+                  data-testid="pdf-accent-theme"
+                  checked={opts.accent === 'theme'}
+                  onChange={() => update({ accent: 'theme' })}
+                />
+                主题默认
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="pdf-accent"
+                  data-testid="pdf-accent-custom"
+                  checked={opts.accent !== 'theme'}
+                  onChange={() => update({ accent: opts.accent === 'theme' ? '#2563eb' : opts.accent })}
+                />
+                自定义
+              </label>
+              <input
+                type="color"
+                aria-label="强调色"
+                data-testid="pdf-accent-color"
+                className="h-6 w-10 rounded border border-border bg-transparent"
+                value={opts.accent === 'theme' ? previewVars['--primary'] ?? '#2563eb' : opts.accent}
+                onChange={(e) => update({ accent: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
             正文文字色
             <div className="flex items-center gap-2">
               <label className="flex items-center gap-1">
@@ -297,6 +342,7 @@ export default function ExportPdfDialog({
             <div
               data-testid="pdf-preview-page"
               className="ke-print-surface shadow-lg"
+              {...(opts.accent !== 'theme' ? { 'data-ke-pdf-accent': '' } : {})}
               style={{
                 ...previewVars,
                 // 直接落 backgroundColor：`.ke-print-surface` 的 `background: var(--background)`

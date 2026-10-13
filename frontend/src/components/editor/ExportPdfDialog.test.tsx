@@ -83,7 +83,18 @@ describe('task-72 ① 选项 → 覆盖样式内容', () => {
   })
 
   it('深色主题 + 自定义底色 → @media print 内覆盖 --background 与 color-scheme', () => {
-    const css = buildPrintOverrideCss({ theme: 'dark', background: '#123456', foreground: 'theme', remember: true })
+    const css = buildPrintOverrideCss({  theme: 'dark', background: '#123456', foreground: 'theme', remember: true , accent: 'theme' })
+    // 自定义强调色 → 生成标题/链接/引用条三类规则，且变量写入
+    const cssAccent = buildPrintOverrideCss({
+      theme: 'current', background: 'theme', foreground: 'theme', accent: '#ff00aa', remember: true,
+    })
+    expect(cssAccent).toContain('--ke-pdf-accent: #ff00aa')
+    expect(cssAccent).toContain(':is(h1,h2,h3,h4,h5,h6)')
+    expect(cssAccent).toContain('.ke-editor-prose a')
+    expect(cssAccent).toContain('blockquote { border-left-color: #ff00aa !important; }')
+    // 强调色未自定义时，不得出现任何强调色规则（默认零影响）
+    expect(css).not.toContain('--ke-pdf-accent')
+    expect(css).not.toContain('border-left-color')
     expect(css).toContain('@media print')
     expect(css).toContain('--background: #123456 !important;')
     expect(css).toContain('color-scheme: dark')
@@ -91,7 +102,7 @@ describe('task-72 ① 选项 → 覆盖样式内容', () => {
   })
 
   it('自定义文字色 → 必须写真实 color 声明（仅改变量对编辑器正文不生效）', () => {
-    const css = buildPrintOverrideCss({ theme: 'current', background: 'theme', foreground: '#ff0000', remember: true })
+    const css = buildPrintOverrideCss({  theme: 'current', background: 'theme', foreground: '#ff0000', remember: true , accent: 'theme' })
     expect(css).toContain('.ke-editor-prose')
     expect(css).toContain('color: #ff0000 !important')
   })
@@ -154,7 +165,7 @@ describe('task-72 ③ 导出后 overrides 必须移除（含失败路径）', ()
 
 describe('task-72 ④ localStorage 记忆与恢复', () => {
   it('记住开启 → 往返一致；关闭 → 清除记忆', () => {
-    const opts = { theme: 'dark' as const, background: '#101010', foreground: 'theme' as const, remember: true }
+    const opts = { theme: 'dark' as const, background: '#101010', foreground: 'theme' as const, accent: 'theme' as const, remember: true }
     savePdfOptions(opts)
     expect(loadPdfOptions()).toEqual(opts)
     savePdfOptions({ ...opts, remember: false })

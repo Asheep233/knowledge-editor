@@ -43,6 +43,9 @@ pub async fn export_pdf(
 
     // with_webview 的闭包必须返回 ()（错误经这个槽带回）
     let err_slot: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    // WebView2 完成回调是否报告成功（用于区分「回调失败」与「回调成功但文件没出现」）
+    let ok_slot: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+    let ok_slot_in = Arc::clone(&ok_slot);
     let err_slot_in = Arc::clone(&err_slot);
     let path_for_closure = target.clone();
 
@@ -100,6 +103,9 @@ pub async fn export_pdf(
                         }),
                         Box::new(move |result, is_successful| {
                             if is_successful {
+                                if let Ok(mut o) = ok_slot_in.lock() {
+                                    *o = true;
+                                }
                                 Ok(())
                             } else {
                                 result
@@ -121,10 +127,23 @@ pub async fn export_pdf(
     if let Some(e) = err_slot.lock().ok().and_then(|mut s| s.take()) {
         return Err(e);
     }
-    if !target.exists() {
-        return Err("打印流程已结束，但目标 PDF 未生成（可能被安全软件拦截）".to_string());
+    // 有些环境下文件落盘比完成回调稍晚 → 轮询等待最多 ~3s，并核对非空
+    let mut waited = 0u32;
+    while waited < 30 {
+        if let Ok(meta) = std::fs::metadata(&target) {
+            if meta.len() > 0 {
+                return Ok(target.to_string_lossy().to_string());
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        waited += 1;
     }
-    Ok(target.to_string_lossy().to_string())
+    let reported_ok = ok_slot.lock().map(|v| *v).unwrap_or(false);
+    Err(format!(
+        "打印流程已结束，但目标 PDF 未出现：{}（WebView2 报告{}；请检查该目录是否存在/可写，或被安全软件拦截）",
+        target.display(),
+        if reported_ok { "成功" } else { "失败" }
+    ))
 }
 
 /// 解析导出目标：`%USERPROFILE%\Documents\AstraNota Exports\<filename>.pdf`（**工作区之外**）。

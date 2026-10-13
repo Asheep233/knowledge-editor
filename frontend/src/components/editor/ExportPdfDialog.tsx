@@ -352,8 +352,9 @@ export default function ExportPdfDialog({
                 color: opts.foreground !== 'theme' ? opts.foreground : editorTextColor,
                 width: '210mm',
                 minHeight: '297mm',
-                transform: 'scale(0.52)',
-                transformOrigin: 'top center',
+                // 用 `zoom` 而非 `transform: scale()`：Chromium 的 zoom 会**按缩放后尺寸重新排版/栅格化**，
+                // 文字保持清晰；transform 缩放会让小字号预览发虚（主理人反馈「糊」）。
+                zoom: 0.52,
               }}
               inert
             >

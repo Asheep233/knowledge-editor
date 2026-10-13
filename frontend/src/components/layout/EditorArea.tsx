@@ -900,11 +900,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             const inner = el.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
             if (Number.isFinite(inner) && inner > 200) contentWidth = Math.round(inner)
           }
-          const saved = await invoke<string>('export_pdf', {
-            filename: `${slugForDownload(doc.title)}.pdf`,
-            contentWidth,
-          })
-          window.alert(`已导出 PDF：\n${saved}`)
+          try {
+            const saved = await invoke<string>('export_pdf', {
+              filename: `${slugForDownload(doc.title)}.pdf`,
+              contentWidth,
+            })
+            window.alert(`已导出 PDF：\n${saved}`)
+          } catch (err) {
+            // 静默导出失败时**不让用户卡死**：退回系统打印（另存为 PDF），渲染结果一致。
+            const reason = err instanceof Error ? err.message : String(err)
+            window.alert(`静默导出失败：\n${reason}\n\n已改为打开系统打印对话框，请在打印机里选择「Microsoft Print to PDF / 另存为 PDF」。`)
+            window.print()
+          }
         } else {
           window.print()
         }

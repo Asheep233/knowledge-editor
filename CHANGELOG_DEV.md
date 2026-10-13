@@ -2,7 +2,22 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-10-08（**v1.2.9 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.9）
+> 最后更新：2026-10-13（**v1.2.12 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.12）
+
+## 2026-10-13（★ v1.2.12 新功能：导出 PDF）
+
+Tag `v1.2.12` · 提交 `2ee8342`（bump）
+
+**新功能**：导出 PDF（**与编辑器渲染完全一致**）—— 用宿主 WebView2 自身引擎打印（同一份 DOM + `print.css`）：
+- 入口「导出 ▾ → 导出 PDF」；**静默落盘**到 `%USERPROFILE%\\Documents\\AstraNota Exports\\`（工作区之外、重名不覆盖）
+- **导出对话框**：主题（跟随/浅色/深色）· 纸张底色 · 正文文字色 · 强调色（标题/链接/引用条）· 记住选择 · **A4 实时预览**
+- 预览与打印共用同一套排版规则（测试逐条比对）；颜色覆盖只在导出/预览期生效，**不改文档**
+- 一致性实测：文字色 **ΔE 0.0**、几何横向 **0.09px**、公式**矢量文本**、`$$` **不跨页**、中文无乱码、主题底色 ΔE 0.0
+- 安全门禁 4/4：文档 sha256 不变 · 工作区零写入 · 输出路径保护 · DOM 不被改写
+- 门禁：pytest 782+6 · tsc 0 · vitest **95 files / 1484 passed + 1 skipped** · cargo test 25
+- 实现要点：`desktop/src-tauri/src/print.rs`（`PrintToPdf` + `ShouldPrintBackgrounds`，页宽按编辑器内容宽对齐）；`frontend/src/print.css`；`ExportPdfDialog.tsx`
+- 已知限制：深色 PDF 费墨（可用「浅色」选项）· 行内 `\tag` 为 KaTeX 上游限制 · 页边距/纸张/批量/页眉页脚未做
+
 
 ## 2026-10-08（★ v1.2.9 数据丢失修复）
 

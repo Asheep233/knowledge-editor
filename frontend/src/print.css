@@ -123,9 +123,12 @@
     visibility: visible !important;
   }
 
-  /* 打印无滚动语义：解除所有裁剪/限高，防止绝对定位的正文被滚动容器裁掉 */
+  /* 打印无滚动语义：解除所有裁剪/限高，防止绝对定位的正文被滚动容器裁掉。
+     task-75 线索 B（修正版）：**必须排除 `.katex` 子树** —— KaTeX 的伸缩根号依赖
+     `.hide-tail`/`.svg-align` 等元素的 `overflow: hidden` 来**裁剪**高大的 √ 字形与上横线；
+     把整棵子树的 `overflow` 改成 `visible` 会让横线**向右无限延伸**（主理人放大截图症状）。 */
   #root,
-  #root * {
+  #root *:not(.katex):not(.katex *) {
     overflow: visible !important;
     max-height: none !important;
   }
@@ -150,7 +153,9 @@
     font-family: inherit !important;
   }
 
-  .ke-editor-prose * {
+  /* task-75：**排除 `.katex` 子树** —— KaTeX 的根号/分式依赖内部测量的宽度与溢出行为，
+     全量覆盖 `max-width/overflow` 会改变其测量前提（真机表现为「根号横线拉满页宽」）。 */
+  .ke-editor-prose *:not(.katex):not(.katex *) {
     max-width: none !important;
     overflow: visible !important;
   }
@@ -226,7 +231,8 @@
   font-family: inherit !important;
 }
 
-.ke-print-surface .ke-editor-prose * {
+/* task-75：与打印块同口径 —— 排除 `.katex` 子树（布局类声明绝不覆盖 KaTeX 内部） */
+.ke-print-surface .ke-editor-prose *:not(.katex):not(.katex *) {
   max-width: none !important;
   overflow: visible !important;
 }

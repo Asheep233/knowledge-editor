@@ -871,6 +871,16 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     }
   }, [])
 
+  /** task-75：量取编辑器正文**内容宽**（与导出参数同源：clientWidth − 左右 padding） */
+  const measureEditorContentWidth = useCallback((): number | null => {
+    if (typeof document === 'undefined') return null
+    const el = document.querySelector('.ke-editor-prose') as HTMLElement | null
+    if (!el) return null
+    const cs = getComputedStyle(el)
+    const inner = el.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
+    return Number.isFinite(inner) && inner > 200 ? Math.round(inner) : null
+  }, [])
+
   /** 当前主题下的令牌（预览/导出的「跟随当前」基线） */
   const currentThemeTokens = useMemo(() => {
     if (typeof document === 'undefined') return { background: '#ffffff', foreground: '#111111' }
@@ -898,13 +908,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       await exportPdfWithOverrides(opts, async () => {
         if (isDesktop()) {
           const { invoke } = await import('@tauri-apps/api/core')
-          const el = document.querySelector('.ke-editor-prose') as HTMLElement | null
-          let contentWidth: number | undefined
-          if (el) {
-            const cs = getComputedStyle(el)
-            const inner = el.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
-            if (Number.isFinite(inner) && inner > 200) contentWidth = Math.round(inner)
-          }
+          const contentWidth = measureEditorContentWidth() ?? undefined
           try {
             const saved = await invoke<string>('export_pdf', {
               filename: `${slugForDownload(doc.title)}.pdf`,
@@ -925,7 +929,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       })
       setPdfDialogOpen(false)
     },
-    [],
+    [measureEditorContentWidth],
   )
 
   // 导出 PDF（task-70）：调用**宿主自身引擎**打印（WebView2 → 系统「另存为 PDF」），
@@ -1503,6 +1507,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         onClose={() => setPdfDialogOpen(false)}
         editor={editor}
         themeVars={currentThemeTokens}
+        contentWidthPx={measureEditorContentWidth()}
         editorTextColor={
           typeof document !== 'undefined'
             ? getComputedStyle(document.querySelector('.ke-editor-prose') ?? document.documentElement).color ||

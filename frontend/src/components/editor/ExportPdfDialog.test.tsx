@@ -7,6 +7,7 @@ import { resolve } from 'node:path'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, type Root } from 'react-dom/client'
+import { computePageSize, pageWidthCss } from '../../editor/pdfPage'
 import ExportPdfDialog, {
   A4_PAGE_HEIGHT_PX,
   buildPrintOverrideCss,
@@ -45,7 +46,10 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-async function renderDialog(onExport = vi.fn()): Promise<{ onClose: ReturnType<typeof vi.fn> }> {
+async function renderDialog(
+  onExport = vi.fn(),
+  contentWidthPx?: number | null,
+): Promise<{ onClose: ReturnType<typeof vi.fn> }> {
   const onClose = vi.fn()
   root = createRoot(container)
   await act(async () => {
@@ -55,6 +59,7 @@ async function renderDialog(onExport = vi.fn()): Promise<{ onClose: ReturnType<t
         onClose={onClose}
         editor={fakeEditor}
         editorTextColor="#1f2937"
+        contentWidthPx={contentWidthPx}
         themeVars={VARS}
         themeVarsByChoice={{ light: VARS, dark: { background: '#14161a', foreground: '#e6e6e6' } }}
         onExport={onExport}
@@ -223,7 +228,7 @@ describe('task-73 预览分页 / 滚动 / 只读', () => {
     expect(container.querySelector('[data-testid="pdf-page-label-3"]')?.textContent).toContain('第 4 / 4 页')
     // 页内位移：第 i 页 translateY(-i × 页高 mm)
     const shifted = (pages[2] as HTMLElement).querySelector('div[style*="translateY"]') as HTMLElement
-    expect(shifted.style.transform).toBe('translateY(-594mm)')
+    expect(shifted.style.transform).toBe(`translateY(-${computePageSize(null).heightMm * 2}mm)`)
     for (const page of Array.from(pages)) {
       expect((page as HTMLElement).style.overflow).toBe('hidden')
     }
@@ -345,5 +350,22 @@ describe('task-73 追加：首屏即正确 / 深色残留清零 / 关闭无残�
     } finally {
       src.remove()
     }
+  })
+})
+
+describe('task-75 A：预览页框宽度与导出同源', () => {
+  it('给定内容宽 716px → 页框宽 = computePageSize 结果（不再硬编码 210mm）', async () => {
+    await renderDialog(vi.fn(), 716)
+    const page = container.querySelector('[data-testid="pdf-preview-page"]') as HTMLElement
+    expect(page.style.width, '页框宽必须与 Rust 打印参数同源').toBe(pageWidthCss(716))
+    expect(page.style.width).not.toBe('210mm')
+    const measure = container.querySelector('[data-testid="pdf-measure"]') as HTMLElement
+    expect(measure.style.width, '测量容器必须用同一页宽').toBe(pageWidthCss(716))
+  })
+
+  it('未提供内容宽 → 退回 A4 宽（8.27in）', async () => {
+    await renderDialog(vi.fn(), null)
+    const page = container.querySelector('[data-testid="pdf-preview-page"]') as HTMLElement
+    expect(page.style.width).toBe(pageWidthCss(null))
   })
 })

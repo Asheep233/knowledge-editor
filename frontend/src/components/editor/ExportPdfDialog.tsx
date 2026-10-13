@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Icon } from '../icons'
+import { computePageSize, pageHeightCss, pageWidthCss, PAGE_HEIGHT_PX, waitForPrintFonts } from '../../editor/pdfPage'
 
 export type PdfThemeChoice = 'current' | 'light' | 'dark'
 /** 颜色项：'theme' = 用主题默认值；否则为具体色值（#rgb/#rrggbb） */
@@ -31,7 +32,8 @@ export interface PdfExportOptions {
 export const A4_WIDTH_MM = 210
 export const A4_HEIGHT_MM = 297
 export const MM_TO_PX = 96 / 25.4
-export const A4_PAGE_HEIGHT_PX = A4_HEIGHT_MM * MM_TO_PX
+/** task-75：页高改用共享模块（与 Rust 11.69in 同源） */
+export const A4_PAGE_HEIGHT_PX = PAGE_HEIGHT_PX
 
 /**
  * task-73 ①：按内容总高算页数（`ceil(总高/页高)`，至少 1 页）。
@@ -146,6 +148,9 @@ export async function exportPdfWithOverrides(
 ): Promise<void> {
   const remove = applyPrintOverrides(buildPrintOverrideCss(opts))
   try {
+    // task-75 线索 B：导出前必须等字体就绪（KaTeX `\sqrt` 的高字形/横线来自 Size1..4；
+    // 未就绪就打印会退化成「只剩一条长横线」）。字体 API 不可用时不阻塞。
+    await waitForPrintFonts()
     await run()
   } finally {
     remove()
@@ -161,6 +166,11 @@ export interface ExportPdfDialogProps {
   themeVars: { background: string; foreground: string }
   /** 编辑器正文**实际**文字色（默认文字色基线；不得用 --foreground 代替） */
   editorTextColor: string
+  /**
+   * 编辑器正文**内容宽**（px）—— 与导出参数同源（task-75 线索 A）：
+   * 预览页框宽度 = `computePageSize(contentWidthPx)`，不再硬编码 210mm。
+   */
+  contentWidthPx?: number | null
   /** 深色/浅色主题下的有效变量（用于预览切换） */
   themeVarsByChoice: { light: { background: string; foreground: string }; dark: { background: string; foreground: string } }
   /** 执行导出（宿主负责：写 overrides → invoke/window.print → 移除 overrides） */
@@ -173,6 +183,7 @@ export default function ExportPdfDialog({
   editor,
   themeVars,
   editorTextColor,
+  contentWidthPx,
   themeVarsByChoice,
   onExport,
 }: ExportPdfDialogProps) {
@@ -454,7 +465,8 @@ export default function ExportPdfDialog({
                 position: 'absolute',
                 left: '-10000px',
                 top: 0,
-                width: `${A4_WIDTH_MM}mm`,
+                // 与导出同源：测量宽 = 真实页宽（含 14mm×2 内边距）
+                width: pageWidthCss(contentWidthPx),
                 minHeight: 0,
                 visibility: 'hidden',
               }}
@@ -488,8 +500,9 @@ export default function ExportPdfDialog({
                     backgroundColor: previewVars['--background'] ?? 'var(--background)',
                     // 文字色：自定义优先，否则用编辑器实际文字色（与 PDF 一致；不强制 --foreground）
                     color: opts.foreground !== 'theme' ? opts.foreground : editorTextColor,
-                    width: `${A4_WIDTH_MM}mm`,
-                    height: `${A4_HEIGHT_MM}mm`,
+                    // task-75：页框尺寸与 Rust 打印参数同源（此前硬编码 210mm → 分页对不上）
+                    width: pageWidthCss(contentWidthPx),
+                    height: pageHeightCss(),
                     overflow: 'hidden',
                     // 用 `zoom` 而非 `transform: scale()`：Chromium 的 zoom 会**按缩放后尺寸重新排版/栅格化**，
                     // 文字保持清晰；transform 缩放会让小字号预览发虚（主理人反馈「糊」）。
@@ -497,7 +510,7 @@ export default function ExportPdfDialog({
                   }}
                   inert
                 >
-                  <div style={{ transform: `translateY(-${i * A4_HEIGHT_MM}mm)` }}>
+                  <div style={{ transform: `translateY(-${i * computePageSize(contentWidthPx).heightMm}mm)` }}>
                     {/* eslint-disable-next-line react/no-danger */}
                     <div
                       className="ke-editor-prose"

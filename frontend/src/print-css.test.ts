@@ -85,6 +85,30 @@ describe('task-70 打印样式契约', () => {
     expect(cssCode).toMatch(/\.ke-editor-prose\s*\{[^}]*max-width:\s*none/s)
   })
 
+  it('⑦ task-75：布局类声明绝不覆盖 `.katex` 子树（根号上横线过长的根因）', () => {
+    // KaTeX 的伸缩根号依赖 .hide-tail / .svg-align 的 overflow:hidden 裁剪高大字形与横线；
+    // 通配规则若把整棵子树的 overflow/max-width 等改成 visible/none → 横线被拉长。
+    const code = cssCode.replace(/\/\*[\s\S]*?\*\//g, '')
+    const rules: Array<{ sel: string; decls: string }> = []
+    const re = /([^{}]+)\{([^{}]*)\}/g
+    let m: RegExpExecArray | null
+    while ((m = re.exec(code))) rules.push({ sel: m[1].trim(), decls: m[2] })
+    const LAYOUT = /(overflow|max-width|max-height|white-space|display|zoom)\s*:/
+    const bad = rules.filter(
+      (r) =>
+        /[^\s>]\s+\*/.test(r.sel) && // **后代通配**（`X *`）才可能命中编辑器内容；`> *` 子代选择器不算
+        !r.sel.includes(':not(.katex)') && // 未排除 KaTeX 子树
+        LAYOUT.test(r.decls),
+    )
+    expect(
+      bad.map((r) => `${r.sel} { ${r.decls.trim()} }`),
+      '有通配规则在未排除 .katex 的情况下覆盖布局类声明',
+    ).toEqual([])
+    // 两个关键通配必须显式排除
+    expect(code).toContain('#root *:not(.katex):not(.katex *)')
+    expect(code).toContain('.ke-editor-prose *:not(.katex):not(.katex *)')
+  })
+
   it('⑥ main.tsx 已在 index.css 之后引入 print.css（顺序影响变量解析）', () => {
     const i = mainTsx.indexOf("import './index.css'")
     const p = mainTsx.indexOf("import './print.css'")

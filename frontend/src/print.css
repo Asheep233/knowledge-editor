@@ -202,6 +202,34 @@
 
   /* 链接：**不覆盖**颜色与下划线 —— 编辑器里是什么样，PDF 就是什么样（原规则会把链接色改成继承色，属偏差） */
   /* @ke-print-shared:end */
+
+  /* ---------------------------------------------------------------------------
+   * task-75 线索 B（真机取证后订正）：根号**上横线过长**的真因不在通配规则，而在
+   * KaTeX `.hide-tail` 的裁剪在**打印路径**里没有生效 ——
+   * 实测（Lead 沙箱，PyMuPDF `get_drawings()`）：横线宽 ≈ 5208pt ≈ 页宽的 8.8 倍，
+   * 与 `.hide-tail` 内 `<svg width="400em" preserveAspectRatio="xMinYMin slice">` 同量级
+   * → 打印态 svg 画满 400em、未被父级 `overflow: hidden` 裁掉（屏幕态正常）。
+   *
+   * 以下三条是**候选修法**（按硬度递增），全部只在打印态生效：
+   *  ① 显式恢复 `.hide-tail` 的裁剪（防止任何优先级更高的规则把它改成 visible）；
+   *  ② `clip-path: inset(0)` —— 对「引擎不认 overflow 裁剪」的场景更硬；
+   *  ③ `contain: paint` —— 建立包含块，强制裁剪绘制。
+   * 真机判定：修复后「横线宽 / 被开方内容宽」应 ≈ 1.0–1.5（当前 17.2），且 < 页宽。
+   * 若三者都无效 → 说明是 WebView2 打印管线对 svg slice 的差异，需改走「打印前替换 svg 尾巴」，
+   * 那一步要动 print.rs / 前端注入，**先回报 Lead**。
+   * ------------------------------------------------------------------------- */
+  .ke-editor-prose .katex .hide-tail,
+  .katex .hide-tail {
+    overflow: hidden !important;
+    clip-path: inset(0) !important;
+    contain: paint !important;
+  }
+
+  /* 内部 svg 的 slice 语义必须成立：宽 400em 由父级裁剪，绝不因打印态被放大成整页宽 */
+  .ke-editor-prose .katex .hide-tail > svg,
+  .katex .hide-tail > svg {
+    max-width: 400em !important;
+  }
 }
 
 /* ---------------------------------------------------------------------------

@@ -85,6 +85,21 @@ describe('task-70 打印样式契约', () => {
     expect(cssCode).toMatch(/\.ke-editor-prose\s*\{[^}]*max-width:\s*none/s)
   })
 
+  it('⑧ task-75 B（订正）：打印态必须对 `.hide-tail` 显式恢复裁剪（根号横线 5208pt 的候选修法）', () => {
+    const code = cssCode.replace(/\/\*[\s\S]*?\*\//g, '')
+    // 三条候选修法必须都在（真机判定：横线宽/被开方内容宽 ≈ 1.0–1.5）
+    const hideTail = /\.katex \.hide-tail[^{]*\{([^}]*)\}/.exec(code)
+    expect(hideTail, '缺少 .hide-tail 打印态规则').toBeTruthy()
+    const decls = hideTail![1]
+    expect(decls, '必须显式 overflow:hidden').toMatch(/overflow:\s*hidden/)
+    expect(decls, '需要 clip-path 硬裁剪（引擎不认 overflow 时的兜底）').toMatch(/clip-path:\s*inset\(0\)/)
+    expect(decls, '需要 contain:paint（强制裁剪绘制）').toMatch(/contain:\s*paint/)
+    expect(code, '内部 svg 的 slice 宽度上限').toMatch(/\.hide-tail > svg[^{]*\{[^}]*max-width:\s*400em/s)
+    // 这些规则必须在 @media print 内（不得影响屏幕态）
+    const first = code.indexOf('@media print')
+    expect(code.indexOf('.katex .hide-tail')).toBeGreaterThan(first)
+  })
+
   it('⑦ task-75：布局类声明绝不覆盖 `.katex` 子树（根号上横线过长的根因）', () => {
     // KaTeX 的伸缩根号依赖 .hide-tail / .svg-align 的 overflow:hidden 裁剪高大字形与横线；
     // 通配规则若把整棵子树的 overflow/max-width 等改成 visible/none → 横线被拉长。

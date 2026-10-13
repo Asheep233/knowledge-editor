@@ -173,7 +173,20 @@ export default function ExportPdfDialog({
   }, [])
 
   /** 预览只读快照：内容在打开时取一次（预览期间正文不会变，且绝不改动真实节点） */
-  const previewHtml = useMemo(() => (open && editor ? editor.getHTML() : ''), [open, editor])
+  // 预览内容：**优先克隆编辑器已渲染的 DOM**，而不是 `editor.getHTML()`。
+  // 原因：数学节点（`math` / `mathBlock`）是 React NodeView，其 KaTeX 渲染结果**不在** getHTML() 里
+  //（getHTML 只序列化出 `<span data-ke-math data-latex=…>原样 latex</span>` 占位）→ 用 getHTML 预览会
+  // 把公式显示成原始 LaTeX 文本（实测预览内 `.katex` 数量为 0）。克隆实时 DOM 则与编辑器**逐字一致**。
+  const previewHtml = useMemo(() => {
+    if (!open || !editor) return ''
+    const src = typeof document !== 'undefined' ? document.querySelector('.ke-editor-prose') : null
+    if (!src) return editor.getHTML() // 兜底：拿不到实时 DOM 时退回序列化（公式会退化为原文）
+    const clone = src.cloneNode(true) as HTMLElement
+    // 去掉交互件（悬浮工具条/按钮），并让克隆体只读
+    clone.querySelectorAll('.ke-math-tools, [data-ke-hover-tools], button').forEach((el) => el.remove())
+    clone.querySelectorAll('[contenteditable]').forEach((el) => el.setAttribute('contenteditable', 'false'))
+    return clone.innerHTML
+  }, [open, editor])
 
   const previewVars = useMemo(() => {
     const base =

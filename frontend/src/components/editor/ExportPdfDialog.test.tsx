@@ -8,6 +8,7 @@ import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, type Root } from 'react-dom/client'
 import { computePageSize, pageWidthCss } from '../../editor/pdfPage'
+import { patchSqrtTails } from '../../editor/pdfPage'
 import ExportPdfDialog, {
   A4_PAGE_HEIGHT_PX,
   buildPrintOverrideCss,
@@ -367,5 +368,85 @@ describe('task-75 A：预览页框宽度与导出同源', () => {
     await renderDialog(vi.fn(), null)
     const page = container.querySelector('[data-testid="pdf-preview-page"]') as HTMLElement
     expect(page.style.width).toBe(pageWidthCss(null))
+  })
+})
+
+describe('task-75 B fallback：根号尾巴 svg 的窗口期替换与还原（Lead 批准方案）', () => {
+  /** 构造 KaTeX 形态的根号（含 400em slice svg 尾巴 + √ 字形文本） */
+  function makeSqrtFixture(): { wrapper: HTMLElement; tail: HTMLElement; svg: Element } {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'ke-editor-prose'
+    wrapper.innerHTML =
+      '<span class="katex"><span class="katex-html">' +
+      '<span class="sqrt"><span class="root">√</span>' +
+      '<span class="hide-tail" style="position:relative">' +
+      '<svg width="400em" height="1.08em" viewBox="0 0 400000 2592" preserveAspectRatio="xMinYMin slice"><path d="M0 0h400000v2592H0z"/></svg>' +
+      '</span></span></span></span><p data-latex="v = \\sqrt{x}">正文文本</p>'
+    document.body.appendChild(wrapper)
+    const tail = wrapper.querySelector('.hide-tail') as HTMLElement
+    const svg = wrapper.querySelector('.hide-tail > svg') as Element
+    return { wrapper, tail, svg }
+  }
+
+  it('① 替换→还原：`.ke-editor-prose` 的 outerHTML 逐字符一致', () => {
+    const { wrapper, tail, svg } = makeSqrtFixture()
+    const before = wrapper.outerHTML
+    const handle = patchSqrtTails(document)
+    expect(handle.patched, '应替换 1 条根号尾巴').toBe(1)
+    // 替换后：svg 被隐藏、盒内出现等宽上横线
+    expect((svg as SVGElement).style.display, '装饰性 svg 应隐藏').toBe('none')
+    const bar = tail.querySelector('[data-ke-pdf-sqrt-bar]') as HTMLElement
+    expect(bar, '必须补一条上横线').toBeTruthy()
+    expect(bar.style.borderTop).toContain('solid')
+    expect(['100%', `${Math.round(tail.getBoundingClientRect().width)}px`]).toContain(bar.style.width)
+    // √ 字形与文本节点不得被动
+    expect(wrapper.querySelector('.root')?.textContent).toBe('√')
+    expect(wrapper.querySelector('[data-latex]')).toBeTruthy()
+    // 还原
+    handle.restore()
+    expect(wrapper.outerHTML, '还原后必须逐字符一致').toBe(before)
+    expect(wrapper.querySelector('[data-ke-pdf-sqrt-bar]')).toBeNull()
+    handle.restore() // 幂等
+    expect(wrapper.outerHTML).toBe(before)
+    wrapper.remove()
+  })
+
+  it('② 失败路径：导出抛错也必须还原（DOM 逐字符一致）', async () => {
+    const { wrapper } = makeSqrtFixture()
+    const before = wrapper.outerHTML
+    await expect(
+      exportPdfWithOverrides(DEFAULT_PDF_OPTIONS, () => {
+        throw new Error('invoke failed')
+      }),
+    ).rejects.toThrow('invoke failed')
+    expect(wrapper.outerHTML, '失败后必须还原').toBe(before)
+    wrapper.remove()
+  })
+
+  it('③ 导出窗口期确实处于替换态（run 内可见：无可见 400em svg、有等宽线）', async () => {
+    const { wrapper, tail } = makeSqrtFixture()
+    let seen: { hidden: boolean; hasBar: boolean } | null = null
+    await exportPdfWithOverrides(DEFAULT_PDF_OPTIONS, () => {
+      const svg = tail.querySelector('svg') as SVGElement
+      seen = { hidden: svg.style.display === 'none', hasBar: !!tail.querySelector('[data-ke-pdf-sqrt-bar]') }
+    })
+    expect(seen, 'run 内必须处于替换态').toEqual({ hidden: true, hasBar: true })
+    expect(tail.querySelector('[data-ke-pdf-sqrt-bar]'), '导出后线必须移除').toBeNull()
+    wrapper.remove()
+  })
+
+  it('④ 只替换装饰性 svg：文本节点 / data-latex / 其它属性在替换期间不变', async () => {
+    const { wrapper } = makeSqrtFixture()
+    const textsBefore = wrapper.textContent
+    const latexBefore = wrapper.querySelector('[data-latex]')?.getAttribute('data-latex')
+    await exportPdfWithOverrides(DEFAULT_PDF_OPTIONS, () => {
+      expect(wrapper.textContent, '替换期间不得改动任何文本节点').toBe(textsBefore)
+      expect(wrapper.querySelector('[data-latex]')?.getAttribute('data-latex'), '不得改 data-latex').toBe(latexBefore)
+      // 只有装饰性 svg 的显示态被改
+      const svg = wrapper.querySelector('.hide-tail > svg') as SVGElement
+      expect(svg.style.display).toBe('none')
+      expect(svg.getAttribute('width'), 'svg 自身属性不得被改写').toBe('400em')
+    })
+    wrapper.remove()
   })
 })

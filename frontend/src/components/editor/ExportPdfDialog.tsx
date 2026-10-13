@@ -17,7 +17,6 @@ import {
   pageHeightCss,
   pageWidthCss,
   PAGE_HEIGHT_PX,
-  patchSqrtTails,
   waitForPrintFonts,
 } from '../../editor/pdfPage'
 
@@ -154,7 +153,6 @@ export async function exportPdfWithOverrides(
   run: () => Promise<void> | void,
 ): Promise<void> {
   const remove = applyPrintOverrides(buildPrintOverrideCss(opts))
-  let sqrtPatch: ReturnType<typeof patchSqrtTails> | undefined
   try {
     // task-75 线索 B：导出前必须等字体就绪（KaTeX `\sqrt` 的高字形/横线来自 Size1..4；
     // 未就绪就打印会退化成「只剩一条长横线」）。字体 API 不可用时不阻塞。
@@ -163,10 +161,8 @@ export async function exportPdfWithOverrides(
     // 400em svg 整条画出来（A/B 实测横线 5208pt ≈ 页宽 8.8 倍；overflow/clip-path/contain/
     // max-width/width 五连 CSS 全部无效）→ 仅在**导出窗口期**把装饰性尾巴 svg 换成等宽上横线；
     // finally 无条件还原（还原后 `.ke-editor-prose` 的 outerHTML 逐字符一致）。
-    sqrtPatch = patchSqrtTails()
     await run()
   } finally {
-    sqrtPatch?.restore()
     remove()
   }
 }

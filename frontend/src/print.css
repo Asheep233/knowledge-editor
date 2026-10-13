@@ -94,6 +94,14 @@
     display: none !important;
   }
 
+  /* task-73：打印时必须整块移除**导出对话框/预览面** ——
+     预览内部也含 `.ke-editor-prose`，而打印规则只把 `.ke-editor-prose` 设为可见，
+     于是预览内容会叠加到页面上（症状：幽灵文字 + 深色块）。 */
+  [data-testid='export-pdf-dialog'],
+  .ke-print-surface {
+    display: none !important;
+  }
+
   /* 已知外壳直接不渲染（visibility 仍会占位 → 会在首页顶部留下大片空白） */
   :is([data-ke-toolbar], aside, nav, [role='status'], [data-ke-math-tools], .ke-math-tools) {
     display: none !important;

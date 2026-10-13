@@ -890,6 +890,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     async (opts: PdfExportOptions) => {
       const doc = articleRef.current
       if (!doc) return
+      // 关键：**先卸载对话框**（含 A4 预览面）再打印/导出。
+      // 预览内部也是 `.ke-editor-prose`，对话框若仍在挂载状态，其内容会被打印规则判为可见，
+      // 叠加到页面上 → 症状「幽灵文字 + 深色块」（主理人实测截图）。等一帧确保 React 卸载 + 浏览器重排。
+      setPdfDialogOpen(false)
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
       await exportPdfWithOverrides(opts, async () => {
         if (isDesktop()) {
           const { invoke } = await import('@tauri-apps/api/core')

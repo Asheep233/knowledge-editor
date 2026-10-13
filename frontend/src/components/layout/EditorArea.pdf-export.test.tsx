@@ -101,6 +101,9 @@ async function settle(ms = 0): Promise<void> {
     vi.advanceTimersByTime(ms)
     await Promise.resolve()
     await Promise.resolve()
+    // 导出流程会**先卸载对话框再等一个 0ms 定时器**才真正调用导出 ——
+    // advanceTimersByTime 已覆盖该定时器，这里再多让一个微任务落地即可。
+    await Promise.resolve()
   })
 }
 

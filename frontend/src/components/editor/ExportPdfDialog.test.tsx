@@ -394,7 +394,9 @@ describe('task-75 B fallback：根号尾巴 svg 的窗口期替换与还原（Le
     const handle = patchSqrtTails(document)
     expect(handle.patched, '应替换 1 条根号尾巴').toBe(1)
     // 替换后：svg 被隐藏、盒内出现等宽上横线
-    expect((svg as SVGElement).style.display, '装饰性 svg 应隐藏').toBe('none')
+    // v2：**不隐藏** svg（√ 字形就在里面）；无排版信息时不动它，只补横线
+    expect((svg as SVGElement).style.display, '√ 字形在 svg 内，绝不能隐藏').not.toBe('none')
+    expect(svg.getAttribute('viewBox'), '无排版信息时不得改 viewBox').toBe('0 0 400000 2592')
     const bar = tail.querySelector('[data-ke-pdf-sqrt-bar]') as HTMLElement
     expect(bar, '必须补一条上横线').toBeTruthy()
     expect(bar.style.borderTop).toContain('solid')
@@ -430,7 +432,7 @@ describe('task-75 B fallback：根号尾巴 svg 的窗口期替换与还原（Le
       const svg = tail.querySelector('svg') as SVGElement
       seen = { hidden: svg.style.display === 'none', hasBar: !!tail.querySelector('[data-ke-pdf-sqrt-bar]') }
     })
-    expect(seen, 'run 内必须处于替换态').toEqual({ hidden: true, hasBar: true })
+    expect(seen, 'run 内：svg 保留（√ 可见）+ 上横线已补').toEqual({ hidden: false, hasBar: true })
     expect(tail.querySelector('[data-ke-pdf-sqrt-bar]'), '导出后线必须移除').toBeNull()
     wrapper.remove()
   })
@@ -444,9 +446,58 @@ describe('task-75 B fallback：根号尾巴 svg 的窗口期替换与还原（Le
       expect(wrapper.querySelector('[data-latex]')?.getAttribute('data-latex'), '不得改 data-latex').toBe(latexBefore)
       // 只有装饰性 svg 的显示态被改
       const svg = wrapper.querySelector('.hide-tail > svg') as SVGElement
-      expect(svg.style.display).toBe('none')
-      expect(svg.getAttribute('width'), 'svg 自身属性不得被改写').toBe('400em')
+      expect(svg.style.display, '不得隐藏（√ 在 svg 内）').not.toBe('none')
+      expect(svg.getAttribute('width'), 'svg 自身 width 属性不得被改写').toBe('400em')
     })
     wrapper.remove()
+  })
+})
+
+describe('task-75 B fallback v2：**保留 √ 字形**，只砍掉 svg 里的长尾巴（viewBox 裁剪）', () => {
+  function makeSqrt(): { wrapper: HTMLElement; tail: HTMLElement; svg: SVGSVGElement } {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'ke-editor-prose'
+    wrapper.innerHTML =
+      '<span class="katex"><span class="katex-html"><span class="sqrt"><span class="root">√</span>' +
+      '<span class="hide-tail" style="position:relative;display:inline-block">' +
+      '<svg width="400em" height="1.08em" viewBox="0 0 400000 2592" preserveAspectRatio="xMinYMin slice"><path d="M0 0h400000v2592H0z"/></svg>' +
+      '</span></span></span></span>'
+    document.body.appendChild(wrapper)
+    return {
+      wrapper,
+      tail: wrapper.querySelector('.hide-tail') as HTMLElement,
+      svg: wrapper.querySelector('.hide-tail > svg') as SVGSVGElement,
+    }
+  }
+
+  it('⑤ 有排版信息时：viewBox 按「盒宽/svg 渲染宽」成比例收窄 + 宽度设为盒宽；√ 仍可见；还原逐字符一致', () => {
+    const { wrapper, tail, svg } = makeSqrt()
+    // 造排版信息：盒宽 51px（屏幕态实测），svg 渲染宽 6400px（400em）
+    tail.getBoundingClientRect = () => ({ width: 51, height: 20, top: 0, left: 0, right: 51, bottom: 20, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+    svg.getBoundingClientRect = () => ({ width: 6400, height: 20, top: 0, left: 0, right: 6400, bottom: 20, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+    const before = wrapper.outerHTML
+
+    const handle = patchSqrtTails(document)
+    expect(handle.patched).toBe(1)
+    expect(handle.cropped, '应走 viewBox 裁剪分支').toBe(1)
+    // 400000 × (51/6400) ≈ 3188
+    const vb = (svg.getAttribute('viewBox') ?? '').split(/\s+/).map(Number)
+    expect(vb[2], 'viewBox 宽度应收窄到可见段').toBe(Math.round(400000 * (51 / 6400)))
+    expect(vb[2]).toBeLessThan(400000)
+    expect(svg.style.width, 'svg 渲染宽 = 盒宽').toBe('51px')
+    expect(svg.style.display, '√ 字形必须保留（不得隐藏）').not.toBe('none')
+    expect(wrapper.querySelector('.root')?.textContent).toBe('√')
+    const bar = tail.querySelector('[data-ke-pdf-sqrt-bar]') as HTMLElement
+    expect(bar.style.width, '上横线宽 = 盒宽（≈ 被开方内容宽）').toBe('51px')
+
+    handle.restore()
+    expect(wrapper.outerHTML, '还原后必须逐字符一致（含 viewBox/style 属性）').toBe(before)
+    wrapper.remove()
+  })
+
+  it('⑥ 回归守门：实现里不得再出现「隐藏 svg」的写法（v1 曾把 √ 一起隐藏）', async () => {
+    const src = readFileSync(resolve(process.cwd(), 'src/editor/pdfPage.ts'), 'utf8')
+    expect(src, '不得把 svg 设为 display:none').not.toMatch(/svg[^\n]*style\.display\s*=\s*'none'/)
+    expect(src, '必须有 viewBox 裁剪分支').toContain("setAttribute('viewBox'")
   })
 })

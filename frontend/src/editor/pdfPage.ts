@@ -115,31 +115,48 @@ export async function waitForPrintFonts(doc: Document | undefined = typeof docum
 const SQRT_BAR_ATTR = 'data-ke-pdf-sqrt-bar'
 
 export interface SqrtPatchHandle {
-  /** 实际替换的尾巴数量 */
+  /** 实际处理的根号尾巴数量 */
   patched: number
+  /** 成功收窄 viewBox 的数量（保留 √ 字形、只砍掉长尾巴） */
+  cropped: number
   /** 还原（幂等；成功/失败/异常都必须调用） */
   restore: () => void
 }
 
 interface SqrtPatchRecord {
   svg: Element
-  tail: Element
   bar: Element
   /** 原 style 属性；null = 原本没有 style 属性（还原时必须 removeAttribute，保证 outerHTML 逐字符一致） */
   originalStyle: string | null
+  /** 原 viewBox 属性；null = 原本没有 */
+  originalViewBox: string | null
 }
 
-/** 替换 KaTeX 根号「可延伸上横线」的 svg 尾巴（装饰性）；返回还原句柄 */
-export function patchSqrtTails(root: ParentNode | undefined = typeof document !== 'undefined' ? document : undefined): SqrtPatchHandle {
+/**
+ * 打印/导出窗口期修补 KaTeX 根号（Lead 批准方案 · 第二版）。
+ *
+ * 真机事实（Lead 沙箱）：① Chromium/WebView2 的 PDF 后端会把 `.hide-tail` 内 `<svg width="400em"
+ * preserveAspectRatio="xMinYMin slice">` 整条画出来（5208.3pt ≈ 页宽 8.8 倍），且五种 CSS 兜底全部无效；
+ * ② 该 svg **同时承载 √ 字形**，因此**不能隐藏**（隐藏会把 √ 一起带走）。
+ *
+ * 修法：**裁剪 viewBox** 到「屏幕上本来就可见的那一段」（= `.hide-tail` 盒宽对应的 viewBox 区间），
+ * 并把 svg 宽度设为盒宽 —— √ 保留、长尾巴被砍掉；上横线由我们在盒内补的 `border-top` 负责。
+ * 无排版信息（测试/隐藏态）时**不动 svg**，只补横线（宁可多一条尾巴也不要丢 √）。
+ */
+export function patchSqrtTails(
+  root: ParentNode | undefined = typeof document !== 'undefined' ? document : undefined,
+): SqrtPatchHandle {
   const records: SqrtPatchRecord[] = []
+  let cropped = 0
   const tails = root?.querySelectorAll?.('.katex .hide-tail') ?? []
   tails.forEach((tail) => {
     const svg = tail.querySelector(':scope > svg')
     if (!svg) return
-    // 盒宽：优先布局值；无排版环境（测试/隐藏）时退回 100%
-    const rect = (tail as HTMLElement).getBoundingClientRect?.()
-    const boxWidth = Math.round(rect?.width ?? 0) || (tail as HTMLElement).clientWidth || 0
-    const bar = (tail.ownerDocument ?? document).createElement('span')
+    const doc = tail.ownerDocument ?? (typeof document !== 'undefined' ? document : undefined)
+    if (!doc) return
+    const el = tail as HTMLElement
+    const boxWidth = Math.round(el.getBoundingClientRect?.().width ?? 0) || el.clientWidth || 0
+    const bar = doc.createElement('span')
     bar.setAttribute(SQRT_BAR_ATTR, '')
     bar.setAttribute(
       'style',
@@ -153,15 +170,28 @@ export function patchSqrtTails(root: ParentNode | undefined = typeof document !=
         'pointer-events:none',
       ].join(';'),
     )
+
     const originalStyle = svg.getAttribute('style')
-    ;(svg as HTMLElement).style.display = 'none'
+    const originalViewBox = svg.getAttribute('viewBox')
+    // 裁剪 viewBox：只保留屏幕上可见的一段（比例 = 盒宽 / svg 实际渲染宽）
+    const svgRect = (svg as SVGGraphicsElement).getBoundingClientRect?.()
+    const svgRendered = Math.round(svgRect?.width ?? 0) || Number.parseFloat(getComputedStyle?.(svg as Element)?.width ?? '') || 0
+    const vb = (originalViewBox ?? '').trim().split(/\s+/).map(Number)
+    if (boxWidth > 0 && svgRendered > 0 && vb.length === 4 && Number.isFinite(vb[2]) && vb[2] > 0) {
+      const newW = Math.max(1, Math.round(vb[2] * (boxWidth / svgRendered)))
+      svg.setAttribute('viewBox', `${vb[0]} ${vb[1]} ${newW} ${vb[3]}`)
+      ;(svg as SVGElement).style.width = `${boxWidth}px`
+      ;(svg as SVGElement).style.maxWidth = 'none'
+      cropped += 1
+    }
     tail.appendChild(bar)
-    records.push({ svg, tail, bar, originalStyle })
+    records.push({ svg, bar, originalStyle, originalViewBox })
   })
 
   let done = false
   return {
     patched: records.length,
+    cropped,
     restore: () => {
       if (done) return
       done = true
@@ -169,6 +199,8 @@ export function patchSqrtTails(root: ParentNode | undefined = typeof document !=
         r.bar.remove()
         if (r.originalStyle === null) r.svg.removeAttribute('style')
         else r.svg.setAttribute('style', r.originalStyle)
+        if (r.originalViewBox === null) r.svg.removeAttribute('viewBox')
+        else r.svg.setAttribute('viewBox', r.originalViewBox)
       }
     },
   }

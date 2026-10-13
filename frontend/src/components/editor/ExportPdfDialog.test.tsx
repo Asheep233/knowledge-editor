@@ -8,7 +8,9 @@ import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, type Root } from 'react-dom/client'
 import ExportPdfDialog, {
+  A4_PAGE_HEIGHT_PX,
   buildPrintOverrideCss,
+  computePageCount,
   exportPdfWithOverrides,
   loadPdfOptions,
   normalizePdfOptions,
@@ -195,5 +197,153 @@ describe('task-72 ⑤ 取消零写盘', () => {
     expect(onExport).not.toHaveBeenCalled()
     expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID)).toBeNull()
     expect(localStorage.getItem(PDF_OPTIONS_STORAGE_KEY)).toBeNull()
+  })
+})
+
+describe('task-73 预览分页 / 滚动 / 只读', () => {
+  it('① 页数 = ceil(内容总高/页高)（纯函数）', () => {
+    expect(computePageCount(0)).toBe(1)
+    expect(computePageCount(A4_PAGE_HEIGHT_PX * 0.2)).toBe(1)
+    expect(computePageCount(A4_PAGE_HEIGHT_PX)).toBe(1)
+    expect(computePageCount(A4_PAGE_HEIGHT_PX * 1.01)).toBe(2)
+    expect(computePageCount(A4_PAGE_HEIGHT_PX * 3.4)).toBe(4)
+    expect(computePageCount(Number.NaN)).toBe(1)
+  })
+
+  it('① 长文档 → 预览渲染出多张 A4 页（每页 overflow:hidden，页内位移递增）', async () => {
+    await renderDialog()
+    const measure = container.querySelector('[data-testid="pdf-measure"]') as HTMLElement
+    // happy-dom 无排版：直接给定实测总高（3.4 页）→ 切选项触发重新测量
+    Object.defineProperty(measure, 'scrollHeight', { value: A4_PAGE_HEIGHT_PX * 3.4, configurable: true })
+    setValue(container.querySelector('[data-testid="pdf-theme"]') as HTMLSelectElement, 'dark')
+
+    const pages = container.querySelectorAll('[data-testid="pdf-preview-page"]')
+    expect(pages.length, '长文档必须分页').toBe(4)
+    expect(container.querySelector('[data-testid="pdf-page-label-0"]')?.textContent).toContain('第 1 / 4 页')
+    expect(container.querySelector('[data-testid="pdf-page-label-3"]')?.textContent).toContain('第 4 / 4 页')
+    // 页内位移：第 i 页 translateY(-i × 页高 mm)
+    const shifted = (pages[2] as HTMLElement).querySelector('div[style*="translateY"]') as HTMLElement
+    expect(shifted.style.transform).toBe('translateY(-594mm)')
+    for (const page of Array.from(pages)) {
+      expect((page as HTMLElement).style.overflow).toBe('hidden')
+    }
+  })
+
+  it('② 打开/切换选项后预览滚动位置归零', async () => {
+    await renderDialog()
+    const scroll = container.querySelector('[data-testid="pdf-preview-scroll"]') as HTMLElement
+    scroll.scrollTop = 500
+    setValue(container.querySelector('[data-testid="pdf-theme"]') as HTMLSelectElement, 'dark')
+    expect(scroll.scrollTop, '切换选项后必须回到顶部').toBe(0)
+    scroll.scrollTop = 300
+    // 换纸张底色（color input 的 change 一定触发选项更新）
+    setValue(container.querySelector('[data-testid="pdf-bg-color"]') as HTMLInputElement, '#112233')
+    expect(scroll.scrollTop, '切换颜色后也必须回到顶部').toBe(0)
+  })
+
+  it('③④ 预览含 KaTeX（克隆实时 DOM）且不改动真实编辑器节点', async () => {
+    // 造一个「真实编辑器」节点（含 KaTeX 与 contenteditable）
+    const src = document.createElement('div')
+    src.className = 'ke-editor-prose'
+    src.innerHTML =
+      '<p>正文<span class="katex"><span class="katex-html">x</span></span></p><p contenteditable="true">可编辑</p><button>工具栏按钮</button>'
+    document.body.appendChild(src)
+    const before = src.outerHTML
+
+    try {
+      await renderDialog()
+      expect(container.querySelectorAll('.katex').length, '预览必须保留 KaTeX 渲染（.katex > 0）').toBeGreaterThan(0)
+      expect(container.querySelectorAll('[contenteditable="false"]').length, '克隆体应只读').toBeGreaterThan(0)
+      expect(container.querySelectorAll('.ke-editor-prose button').length, '交互按钮不该进预览').toBe(0)
+      expect(src.outerHTML, '预览绝不得改动真实编辑器 DOM').toBe(before)
+    } finally {
+      src.remove()
+    }
+  })
+})
+
+describe('task-73 追加：首屏即正确 / 深色残留清零 / 关闭无残留', () => {
+  it('① 首屏即正确（不做任何切换）：打开哪一刻就按真实内容高分页', async () => {
+    // 模拟「布局已稳定」：在渲染前给定测量高度（2.2 页 → 3 页）
+    const proto = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight')
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.dataset?.testid === 'pdf-measure' ? A4_PAGE_HEIGHT_PX * 2.2 : 0
+      },
+    })
+    try {
+      await renderDialog()
+      expect(
+        container.querySelectorAll('[data-testid="pdf-preview-page"]').length,
+        '首屏（未切换任何选项）就必须是多页，而不是靠切换主题复位',
+      ).toBe(3)
+      expect(container.querySelector('[data-testid="pdf-page-label-2"]')?.textContent).toContain('第 3 / 3 页')
+    } finally {
+      if (proto) Object.defineProperty(HTMLElement.prototype, 'scrollHeight', proto)
+    }
+  })
+
+  it('② 浅色首屏：预览整体浅色、无任何深色残留', async () => {
+    localStorage.setItem(
+      PDF_OPTIONS_STORAGE_KEY,
+      JSON.stringify({ theme: 'light', background: 'theme', foreground: 'theme', accent: 'theme', remember: true }),
+    )
+    await renderDialog()
+    const page = container.querySelector('[data-testid="pdf-preview-page"]') as HTMLElement
+    expect(page, '未渲染预览页').toBeTruthy()
+    expect(page.style.backgroundColor, '浅色首屏底色必须是浅色令牌').toBe(VARS.background)
+    expect(page.style.backgroundColor).not.toBe('#14161a')
+    // 预览树里不得出现深色值（残留覆盖层的最小可测形式）
+    const html = container.innerHTML
+    expect(html, '预览树里出现深色底色残留').not.toContain('#14161a')
+    expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID), '首屏不得有导出覆盖样式').toBeNull()
+  })
+
+  it('③ 切换主题时旧预览面必须**卸载**（钉死「旧面未卸载」路径）', async () => {
+    await renderDialog()
+    const oldPage = container.querySelector('[data-testid="pdf-preview-page"]') as HTMLElement
+    expect(oldPage.isConnected).toBe(true)
+    setValue(container.querySelector('[data-testid="pdf-theme"]') as HTMLSelectElement, 'dark')
+    expect(oldPage.isConnected, '切换主题后旧预览面必须已卸载（key 重挂）').toBe(false)
+    const fresh = container.querySelector('[data-testid="pdf-preview-page"]') as HTMLElement
+    expect(fresh).toBeTruthy()
+    expect(fresh.isConnected).toBe(true)
+  })
+
+  it('④ 关闭对话框后无残留：对话框/预览/覆盖样式全部移除，真实编辑器未被改动', async () => {
+    const src = document.createElement('div')
+    src.className = 'ke-editor-prose'
+    src.innerHTML = '<p>正文</p>'
+    document.body.appendChild(src)
+    const before = src.outerHTML
+    try {
+      const onClose = vi.fn()
+      root = createRoot(container)
+      const tree = (open: boolean) => (
+        <ExportPdfDialog
+          open={open}
+          onClose={onClose}
+          editor={fakeEditor}
+          editorTextColor="#1f2937"
+          themeVars={VARS}
+          themeVarsByChoice={{ light: VARS, dark: { background: '#14161a', foreground: '#e6e6e6' } }}
+          onExport={vi.fn()}
+        />
+      )
+      await act(async () => {
+        root!.render(tree(true))
+      })
+      expect(container.querySelector('[data-testid="export-pdf-dialog"]')).toBeTruthy()
+      await act(async () => {
+        root!.render(tree(false))
+      })
+      expect(container.querySelector('[data-testid="export-pdf-dialog"]'), '对话框必须卸载').toBeNull()
+      expect(container.querySelectorAll('[data-ke-pdf-preview]').length, '预览面必须移除').toBe(0)
+      expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID), '不得残留覆盖样式').toBeNull()
+      expect(src.outerHTML, '真实编辑器 DOM 未被改动').toBe(before)
+    } finally {
+      src.remove()
+    }
   })
 })

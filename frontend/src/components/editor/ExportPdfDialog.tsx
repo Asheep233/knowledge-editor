@@ -9,7 +9,7 @@
  *    并在结束（成功/失败）后**立即移除**；
  *  - 不碰保存链、不调 `getMarkdown()`、不写工作区文件。
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Icon } from '../icons'
 
@@ -25,6 +25,22 @@ export interface PdfExportOptions {
   accent: PdfColorChoice
   /** 记住我的选择（localStorage） */
   remember: boolean
+}
+
+/** A4 尺寸与 mm→px（96dpi）；分页预览与真机打印各按自己的引擎分页，常量只用于预览测量 */
+export const A4_WIDTH_MM = 210
+export const A4_HEIGHT_MM = 297
+export const MM_TO_PX = 96 / 25.4
+export const A4_PAGE_HEIGHT_PX = A4_HEIGHT_MM * MM_TO_PX
+
+/**
+ * task-73 ①：按内容总高算页数（`ceil(总高/页高)`，至少 1 页）。
+ * 内容高度由隐藏容器按 210mm 宽实测（zoom 无关）；纯函数便于单测。
+ */
+export function computePageCount(totalHeightPx: number, pageHeightPx: number = A4_PAGE_HEIGHT_PX): number {
+  if (!Number.isFinite(totalHeightPx) || totalHeightPx <= 0) return 1
+  if (!Number.isFinite(pageHeightPx) || pageHeightPx <= 0) return 1
+  return Math.max(1, Math.ceil(totalHeightPx / pageHeightPx))
 }
 
 export const PDF_OPTIONS_STORAGE_KEY = 'ke.exportPdf.options'
@@ -162,6 +178,10 @@ export default function ExportPdfDialog({
 }: ExportPdfDialogProps) {
   const [opts, setOpts] = useState<PdfExportOptions>(() => loadPdfOptions())
   const [busy, setBusy] = useState(false)
+  /** task-73：预览分页页数（由隐藏容器实测内容总高得出） */
+  const [pageCount, setPageCount] = useState(1)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const measureRef = useRef<HTMLDivElement | null>(null)
 
   // 每次打开重新读取（含记忆开关关闭后的重置）
   useEffect(() => {
@@ -179,7 +199,11 @@ export default function ExportPdfDialog({
   // 把公式显示成原始 LaTeX 文本（实测预览内 `.katex` 数量为 0）。克隆实时 DOM 则与编辑器**逐字一致**。
   const previewHtml = useMemo(() => {
     if (!open || !editor) return ''
-    const src = typeof document !== 'undefined' ? document.querySelector('.ke-editor-prose') : null
+    // 排除预览自身的容器（否则「再次打开」时会克隆到上一次的预览而不是编辑器）
+    const src =
+      typeof document !== 'undefined'
+        ? document.querySelector('.ke-editor-prose:not([data-ke-pdf-preview])')
+        : null
     if (!src) return editor.getHTML() // 兜底：拿不到实时 DOM 时退回序列化（公式会退化为原文）
     const clone = src.cloneNode(true) as HTMLElement
     // 去掉交互件（悬浮工具条/按钮），并让克隆体只读
@@ -188,12 +212,72 @@ export default function ExportPdfDialog({
     return clone.innerHTML
   }, [open, editor])
 
+  /**
+   * 主题令牌 → CSS 变量名（`background` → `--background`）。
+   * ⚠️ 实测根因（task-73 追加②「浅色下仍有深色块」）：令牌曾以**裸名**传入却按 `--*` 消费 →
+   * `previewVars['--background']` 恒为 undefined → 预览页底色回退成 `var(--background)`
+   * （= **当前应用主题**底色）→ 应用是深色而选浅色时，预览就是「一整块深色」，切换主题才偶然复位。
+   * 这里统一把两种写法都归一成 `--*`。
+   */
+  const toVarSet = (v: Record<string, string> | undefined): Record<string, string> => {
+    const out: Record<string, string> = {}
+    for (const [k, val] of Object.entries(v ?? {})) out[k.startsWith('--') ? k : `--${k}`] = val
+    return out
+  }
+
   const previewVars = useMemo(() => {
-    const base =
-      opts.theme === 'light' ? themeVarsByChoice.light : opts.theme === 'dark' ? themeVarsByChoice.dark : themeVars
-    const vars: Record<string, string> = { ...base, ...cssVarsOf(opts) }
-    return vars as Record<string, string>
+    const base = toVarSet(
+      opts.theme === 'light' ? themeVarsByChoice.light : opts.theme === 'dark' ? themeVarsByChoice.dark : themeVars,
+    )
+    return { ...base, ...cssVarsOf(opts) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts, themeVars, themeVarsByChoice])
+
+  /** 影响排版的选项（换底/换字色/换主题/换强调色都可能改变换行与总高） */
+  const layoutKey = `${opts.theme}|${opts.background}|${opts.foreground}|${opts.accent}`
+  /**
+   * task-73 追加（主理人实测「先切深色再切浅色黑块就没了」）：
+   * 预览面必须以 `key` **整块重挂**（内容 + 选项共同决定），而不是原地 patch ——
+   * 否则首屏可能沿用旧布局/旧内联变量，出现「一大块深色底 / 幽灵覆盖层」，切换一次才复位。
+   */
+  const previewKey = `${layoutKey}|${previewHtml.length}|${previewHtml.slice(0, 24)}`
+
+  // task-73 ①②：内容或选项变化 → 滚动归零 + 重新测量页数
+  useEffect(() => {
+    if (!open) return
+    const el = scrollRef.current
+    if (el) el.scrollTop = 0
+  }, [open, previewHtml, layoutKey, previewKey])
+
+  // task-73 追加②：分页测量必须**等布局稳定**（字体就绪 / zoom 生效）。
+  // 首帧测量 + rAF 复测 + `document.fonts.ready` 复测 + ResizeObserver 复测，**以后测为准**，
+  // 避免「页高/内容高算错 → 页框过大」这类首屏错误。
+  useEffect(() => {
+    if (!open) return
+    const m = measureRef.current
+    if (!m) return
+    let cancelled = false
+    let raf = 0
+    let ro: ResizeObserver | undefined
+    const measure = (): void => {
+      if (cancelled) return
+      const h = m.scrollHeight || m.getBoundingClientRect().height || 0
+      setPageCount(computePageCount(h))
+    }
+    measure()
+    if (typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(measure)
+    const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts
+    void fonts?.ready?.then(() => measure()).catch(() => undefined)
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => measure())
+      ro.observe(m)
+    }
+    return () => {
+      cancelled = true
+      if (raf) cancelAnimationFrame(raf)
+      ro?.disconnect()
+    }
+  }, [open, previewHtml, layoutKey, previewKey])
 
   const handleExport = useCallback(async () => {
     savePdfOptions(opts)
@@ -351,28 +435,79 @@ export default function ExportPdfDialog({
             <span>A4 预览（按纸张比例缩放）</span>
             <span className="opacity-70">所见即所得</span>
           </div>
-          <div className="ke-scroll flex min-h-0 flex-1 justify-center overflow-auto p-4">
+          <div
+            ref={scrollRef}
+            data-testid="pdf-preview-scroll"
+            className="ke-scroll flex min-h-0 flex-1 flex-col items-center gap-4 overflow-auto p-4"
+          >
+            {/* task-73：隐藏测量容器 —— 按 210mm 宽实测「内容总高」，据此决定页数
+                （visibility:hidden 保留布局盒；绝对定位不影响可见布局；zoom=1 量的是真实排版高度） */}
             <div
-              data-testid="pdf-preview-page"
-              className="ke-print-surface shadow-lg"
-              {...(opts.accent !== 'theme' ? { 'data-ke-pdf-accent': '' } : {})}
+              ref={measureRef}
+              data-testid="pdf-measure"
+              aria-hidden="true"
+              className="ke-print-surface"
               style={{
                 ...previewVars,
-                // 直接落 backgroundColor：`.ke-print-surface` 的 `background: var(--background)`
-                // 在预览上下文里会被主题底色抢先（实测预览恒为主题色），显式内联才与导出真正一致
                 backgroundColor: previewVars['--background'] ?? 'var(--background)',
-                // 文字色：自定义优先，否则用编辑器实际文字色（与 PDF 一致；不强制 --foreground）
                 color: opts.foreground !== 'theme' ? opts.foreground : editorTextColor,
-                width: '210mm',
-                minHeight: '297mm',
-                // 用 `zoom` 而非 `transform: scale()`：Chromium 的 zoom 会**按缩放后尺寸重新排版/栅格化**，
-                // 文字保持清晰；transform 缩放会让小字号预览发虚（主理人反馈「糊」）。
-                zoom: 0.52,
+                position: 'absolute',
+                left: '-10000px',
+                top: 0,
+                width: `${A4_WIDTH_MM}mm`,
+                minHeight: 0,
+                visibility: 'hidden',
               }}
-              inert
             >
               {/* eslint-disable-next-line react/no-danger */}
-              <div className="ke-editor-prose" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              <div
+                className="ke-editor-prose"
+                data-ke-pdf-preview=""
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
+            </div>
+
+            {/* 每页 = 一张 A4（210×297mm，overflow:hidden），页内用 translateY 位移同一份内容。
+                task-73 追加：整块以 `previewKey` 重挂 —— 选项/内容变化时旧预览面**整体卸载**，
+                杜绝「深色残留 / 旧布局沿用」只靠切换才复位的现象。 */}
+            <div key={previewKey} data-testid="pdf-pages" className="flex flex-col items-center gap-4">
+            {Array.from({ length: pageCount }, (_v, i) => (
+              <div key={i} className="flex shrink-0 flex-col items-center gap-1">
+                <span className="text-[10px] text-muted-foreground" data-testid={`pdf-page-label-${i}`}>
+                  第 {i + 1} / {pageCount} 页
+                </span>
+                <div
+                  data-testid="pdf-preview-page"
+                  data-page-index={i}
+                  className="ke-print-surface shadow-lg"
+                  {...(opts.accent !== 'theme' ? { 'data-ke-pdf-accent': '' } : {})}
+                  style={{
+                    ...previewVars,
+                    // 直接落 backgroundColor：`.ke-print-surface` 的 `background: var(--background)`
+                    // 在预览上下文里会被主题底色抢先（实测预览恒为主题色），显式内联才与导出真正一致
+                    backgroundColor: previewVars['--background'] ?? 'var(--background)',
+                    // 文字色：自定义优先，否则用编辑器实际文字色（与 PDF 一致；不强制 --foreground）
+                    color: opts.foreground !== 'theme' ? opts.foreground : editorTextColor,
+                    width: `${A4_WIDTH_MM}mm`,
+                    height: `${A4_HEIGHT_MM}mm`,
+                    overflow: 'hidden',
+                    // 用 `zoom` 而非 `transform: scale()`：Chromium 的 zoom 会**按缩放后尺寸重新排版/栅格化**，
+                    // 文字保持清晰；transform 缩放会让小字号预览发虚（主理人反馈「糊」）。
+                    zoom: 0.52,
+                  }}
+                  inert
+                >
+                  <div style={{ transform: `translateY(-${i * A4_HEIGHT_MM}mm)` }}>
+                    {/* eslint-disable-next-line react/no-danger */}
+                    <div
+                      className="ke-editor-prose"
+                      data-ke-pdf-preview=""
+                      dangerouslySetInnerHTML={{ __html: previewHtml }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
             </div>
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">

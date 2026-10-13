@@ -1951,7 +1951,7 @@ dependencies = [
 
 [[package]]
 name = "knowledgeeditor"
-version = "1.2.12-dev.1"
+version = "1.2.12"
 dependencies = [
  "serde",
  "serde_json",

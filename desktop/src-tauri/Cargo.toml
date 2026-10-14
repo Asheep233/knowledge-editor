@@ -15,7 +15,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 webview2-com = "0.38"
 windows = { version = "0.61", features = ["Win32_Foundation"] }
-tauri = { version = "2", features = ["custom-protocol", "image-png"] }
+tauri = { version = "2", features = ["custom-protocol", "image-png", "protocol-asset"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 # P1-12：多实例互斥。第二次启动只聚焦已有主窗口后立即退出，避免双开互杀后端。

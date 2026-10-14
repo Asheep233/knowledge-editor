@@ -37,6 +37,51 @@ pub async fn export_pdf(
         return Err(format!("目标文件已存在，拒绝覆盖：{}", target.display()));
     }
 
+    render_pdf_to(app, target, content_width).await
+}
+
+/// task-76：**预览模式** —— 把同一份渲染结果写到系统 temp（`%TEMP%\AstraNota-preview\<唯一名>.pdf`）
+/// 并返回绝对路径，供对话框内嵌显示。
+///
+/// 约束（与正常导出**行为隔离**）：
+/// - **只写系统 temp**，绝不写工作区、绝不写 `Documents\AstraNota Exports`；
+/// - 仍走同一套打印设置（`ShouldPrintBackgrounds=true` + 页宽按编辑器内容宽对齐）—— **未改动**；
+/// - 失败返回可读错误，不 panic；
+/// - 用后由前端调 `discard_preview_pdf` 删除（并做目录白名单校验）。
+#[tauri::command]
+pub async fn preview_pdf(app: AppHandle, content_width: Option<f64>) -> Result<String, String> {
+    let target = resolve_preview_target()?;
+    render_pdf_to(app, target, content_width).await
+}
+
+/// task-76：删除预览临时文件。**只允许删除预览目录内的文件**（防越权删除）。
+#[tauri::command]
+pub fn discard_preview_pdf(path: String) -> Result<(), String> {
+    let dir = preview_dir()?;
+    let target = PathBuf::from(&path);
+    // 目录白名单：必须位于预览目录内（逐段比较，避免 `..` 穿越）
+    let parent = target
+        .parent()
+        .ok_or_else(|| "非法预览路径".to_string())?
+        .to_path_buf();
+    if parent != dir {
+        return Err(format!(
+            "拒绝删除预览目录之外的文件：{}",
+            target.display()
+        ));
+    }
+    if target.exists() {
+        std::fs::remove_file(&target).map_err(|e| format!("删除预览文件失败：{e}"))?;
+    }
+    Ok(())
+}
+
+/// 共用渲染体：把主窗口打印到 `target`（成功返回路径；失败返回可读错误）。
+async fn render_pdf_to(
+    app: AppHandle,
+    target: PathBuf,
+    content_width: Option<f64>,
+) -> Result<String, String> {
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "找不到主窗口，无法导出 PDF".to_string())?;
@@ -146,6 +191,26 @@ pub async fn export_pdf(
     ))
 }
 
+/// 预览目录：`%TEMP%\AstraNota-preview`（系统临时目录，**绝不位于工作区**）
+fn preview_dir() -> Result<PathBuf, String> {
+    let temp = std::env::var("TEMP")
+        .or_else(|_| std::env::var("TMP"))
+        .map_err(|_| "无法确定系统临时目录（TEMP 未设置）".to_string())?;
+    let dir = PathBuf::from(temp).join("AstraNota-preview");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建预览目录失败：{e}"))?;
+    Ok(dir)
+}
+
+/// 预览目标路径：唯一名（进程 id + 纳秒时间戳），同名不冲突、无需覆盖询问
+fn resolve_preview_target() -> Result<PathBuf, String> {
+    let dir = preview_dir()?;
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    Ok(dir.join(format!("preview-{}-{stamp}.pdf", std::process::id())))
+}
+
 /// 解析导出目标：`%USERPROFILE%\Documents\AstraNota Exports\<filename>.pdf`（**工作区之外**）。
 ///
 /// - 文件名做最小净化（去掉路径分隔符与控制字符），避免越出导出目录
@@ -178,4 +243,52 @@ fn resolve_target(filename: &str) -> Result<PathBuf, String> {
         }
     }
     Ok(target)
+}
+
+#[cfg(test)]
+mod preview_tests {
+    use super::*;
+
+    /// task-76 ①：预览**只写系统 temp 的专用子目录**（绝不落进工作区 / Documents 导出目录）
+    #[test]
+    fn preview_target_is_inside_temp_preview_dir() {
+        let dir = preview_dir().expect("TEMP 应可用");
+        let target = resolve_preview_target().expect("应能解析预览目标");
+        assert_eq!(target.parent().unwrap(), dir, "预览文件必须直接位于预览目录内");
+        assert!(
+            dir.file_name().unwrap().to_string_lossy().contains("AstraNota-preview"),
+            "预览目录名必须可辨识：{}",
+            dir.display()
+        );
+        let docs_export = dir.to_string_lossy().to_lowercase();
+        assert!(!docs_export.contains("astra nota exports"), "预览绝不写导出目录");
+        assert!(!docs_export.contains("documents"), "预览绝不写 Documents");
+    }
+
+    /// 唯一名：连续两次解析不相等（同名不冲突、无需覆盖询问）
+    #[test]
+    fn preview_targets_are_unique() {
+        let a = resolve_preview_target().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        let b = resolve_preview_target().unwrap();
+        assert_ne!(a, b, "预览目标必须唯一");
+    }
+
+    /// task-76 ②：删除命令**只允许**删预览目录内的文件（越权路径必须被拒）
+    #[test]
+    fn discard_refuses_paths_outside_preview_dir() {
+        let outside = std::env::temp_dir().join("not-a-preview-file.pdf");
+        let err = discard_preview_pdf(outside.to_string_lossy().to_string()).unwrap_err();
+        assert!(err.contains("拒绝删除"), "越权删除必须被拒：{err}");
+    }
+
+    /// 预览目录内的临时文件可被删除（正常路径）
+    #[test]
+    fn discard_removes_file_inside_preview_dir() {
+        let dir = preview_dir().unwrap();
+        let f = dir.join(format!("preview-unit-{}.pdf", std::process::id()));
+        std::fs::write(&f, b"%PDF-1.4 test").unwrap();
+        discard_preview_pdf(f.to_string_lossy().to_string()).unwrap();
+        assert!(!f.exists(), "预览文件应已删除");
+    }
 }

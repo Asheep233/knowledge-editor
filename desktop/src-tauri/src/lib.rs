@@ -141,6 +141,8 @@ pub fn run() {
         .on_menu_event(|app, event| menu::handle_event(app, event))
         .invoke_handler(tauri::generate_handler![
             print::export_pdf,
+            print::preview_pdf,
+            print::discard_preview_pdf,
             menu::reload_main_window,
             menu::app_request_exit,
             menu::app_request_reload,

@@ -14,6 +14,7 @@ import {
   listHistory,
   listModules,
   previewHistory,
+  getTree,
   registerRecovery,
   renameDoc,
   restoreHistory,
@@ -48,6 +49,9 @@ import {
 } from '../../state/viewMode'
 import SourceModeView from '../editor/SourceModeView'
 import ExportPdfDialog, { exportPdfWithOverrides, type PdfExportOptions } from '../editor/ExportPdfDialog'
+// task-74：微分斜体 d → 正体 \mathrm{d}（差异预览 + 勾选 → 另存同目录新文件；原件绝不改动）
+import UprightDDialog from '../editor/UprightDDialog'
+import { type MathDocNode } from '../../editor/upright-d'
 import { registerActionHandlers, shouldIgnoreKeyEvent, shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { filenameFromTitle } from '../../utils/slug'
 import type { ArticleMeta, HistoryVersion } from '../../types'
@@ -852,6 +856,36 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
 
   // task-72：导出 PDF 对话框（选项 + A4 预览）
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+  /** task-74：微分 d 转正体对话框；打开瞬间**取一次快照**（已保存正文 + 当前文档 JSON），
+   *  之后不再读编辑器 → 不触发序列化、不与保存链耦合、不改动当前文档。 */
+  const [uprightDCtx, setUprightDCtx] = useState<{
+    markdown: string
+    doc: MathDocNode
+    fileName: string
+    existingNames: string[]
+  } | null>(null)
+
+  /** 打开「微分 d 转正体」预览：正文取**已保存**的磁盘原文（不调 getMarkdown → 不触发序列化） */
+  const openUprightD = useCallback(async () => {
+    const ed = editorRef.current
+    const doc = articleRef.current
+    if (!ed || !doc) return
+    const raw = lastSavedRawRef.current.get(doc.id) ?? doc.content
+    if (typeof raw !== 'string' || raw.length === 0) return
+    const fileName = doc.id.split('/').pop() || doc.title || 'untitled.md'
+    const dir = doc.id.includes('/') ? doc.id.slice(0, doc.id.lastIndexOf('/')) : ''
+    let existingNames: string[] = []
+    try {
+      const tree = await getTree()
+      existingNames = tree.articles
+        .filter((p) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '') === dir)
+        .map((p) => p.split('/').pop() ?? '')
+        .filter(Boolean)
+    } catch {
+      // 取不到同目录清单不致命：重名交由后端 409 + 对话框自动顺延序号兜底
+    }
+    setUprightDCtx({ markdown: raw, doc: ed.getJSON() as unknown as MathDocNode, fileName, existingNames })
+  }, [])
 
   /** 读取指定主题下的令牌实际值（临时切换根属性后在同一帧内还原，不产生可见闪烁） */
   const readThemeTokens = useCallback((theme: 'light' | 'dark') => {
@@ -1370,6 +1404,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             saveLabel={saveLabel}
             onSave={() => void saveNow()}
             onOpenHistory={handleOpenHistory}
+            // task-74：有文档才渲染按钮（无文档/只读时不给入口）
+            onOpenUprightD={article ? () => void openUprightD() : undefined}
             exportButton={exportButton}
             // task-41：视图通道切换（只读/无文档时禁用并给出原因，规范 §6.2-8）
             viewMode={viewMode}
@@ -1502,6 +1538,19 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               <EditorContent editor={editor} />
             )}
             {/* task-72：导出 PDF 对话框（选项 + A4 缩略预览；预览用独立容器渲染 getHTML 快照） */}
+      {uprightDCtx && (
+        <UprightDDialog
+          open
+          markdown={uprightDCtx.markdown}
+          doc={uprightDCtx.doc}
+          fileName={uprightDCtx.fileName}
+          existingNames={uprightDCtx.existingNames}
+          onClose={() => setUprightDCtx(null)}
+          onSaved={() => {
+            /* 只提示，不打开新文件、不改当前文档与标签（提示在对话框内展示） */
+          }}
+        />
+      )}
       <ExportPdfDialog
         open={pdfDialogOpen}
         onClose={() => setPdfDialogOpen(false)}

@@ -326,6 +326,11 @@ export interface EditorToolbarProps {
   exportButton?: ReactNode
   /** 立即保存（显式「保存」图标按钮） */
   onSave?: () => void
+  /**
+   * task-74：打开「微分 d 转正体」预览对话框（未传 = 不渲染按钮）。
+   * 只读当前已保存正文 + 当前文档公式节点；另存为新文件，**不改动当前文档**。
+   */
+  onOpenUprightD?: () => void
 }
 
 export default function EditorToolbar({
@@ -337,6 +342,7 @@ export default function EditorToolbar({
   onToggleViewMode,
   viewModeDisabledReason,
   uploadGuard,
+  onOpenUprightD,
 }: EditorToolbarProps = {}) {
   const { editor } = useCurrentEditor()
   // 编辑器状态快照（激活态实时更新）
@@ -700,6 +706,11 @@ export default function EditorToolbar({
         ) : null}
         {saveLabel ? (
           <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
+        ) : null}
+        {onOpenUprightD ? (
+          <ToolIcon title="微分 d 转正体（另存为新文件）" onClick={onOpenUprightD}>
+            <Icon name="formula" className="size-4" />
+          </ToolIcon>
         ) : null}
         {onOpenHistory ? (
           <ToolIcon title="历史快照" onClick={onOpenHistory}>

@@ -51,6 +51,9 @@ export function computePageCount(totalHeightPx: number, pageHeightPx: number = A
   return Math.max(1, Math.ceil(totalHeightPx / pageHeightPx))
 }
 
+/** task-76：选项/文档变化后的预览重生成防抖（同一时刻只留一个 in-flight） */
+export const PDF_PREVIEW_DEBOUNCE_MS = 400
+
 export const PDF_OPTIONS_STORAGE_KEY = 'ke.exportPdf.options'
 export const PRINT_OVERRIDES_STYLE_ID = 'ke-print-overrides'
 
@@ -181,6 +184,13 @@ export interface ExportPdfDialogProps {
    * 预览页框宽度 = `computePageSize(contentWidthPx)`，不再硬编码 210mm。
    */
   contentWidthPx?: number | null
+  /**
+   * task-76：桌面态用**真 PDF 预览**（`preview_pdf` → temp 文件 → `convertFileSrc` + `<iframe>`）。
+   * 非桌面 / invoke 失败 → 回退既有 DOM 预览（不白屏）。
+   * 未传时**运行时探测**（`window.__TAURI_INTERNALS__`）—— 避免在渲染路径里 import `isDesktop`
+   * （那会把 `isTauri` 依赖拖进测试替身，且浏览器态本就不该走 Tauri 分支）。
+   */
+  desktopPreview?: boolean
   /** 深色/浅色主题下的有效变量（用于预览切换） */
   themeVarsByChoice: { light: { background: string; foreground: string }; dark: { background: string; foreground: string } }
   /** 执行导出（宿主负责：写 overrides → invoke/window.print → 移除 overrides） */
@@ -194,9 +204,13 @@ export default function ExportPdfDialog({
   themeVars,
   editorTextColor,
   contentWidthPx,
+  desktopPreview,
   themeVarsByChoice,
   onExport,
 }: ExportPdfDialogProps) {
+  /** 是否可走 Tauri 真 PDF 预览：显式 prop 优先，否则运行时探测 */
+  const realPdfEnabled =
+    desktopPreview ?? (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window)
   const [opts, setOpts] = useState<PdfExportOptions>(() => loadPdfOptions())
   const [busy, setBusy] = useState(false)
   /** task-73：预览分页页数（由隐藏容器实测内容总高得出） */
@@ -299,6 +313,84 @@ export default function ExportPdfDialog({
       ro?.disconnect()
     }
   }, [open, previewHtml, layoutKey, previewKey])
+
+  // ---------------- task-76：真 PDF 预览（桌面态） ----------------
+  /** 预览 PDF 的绝对路径（用于关闭时删除）；null = 尚未生成 */
+  const previewAbsPathRef = useRef<string | null>(null)
+  /** 已生成预览的可显示 URL（asset 协议；含 #toolbar=0&navpanes=0 收敛查看器工具栏） */
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewBusy, setPreviewBusy] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  /** 单飞 + 旧结果作废：仅最后一次请求可提交 */
+  const previewSeqRef = useRef(0)
+
+  /** 删除临时预览文件（尽力而为；越权路径由后端拒绝） */
+  const discardPreview = useCallback(async (abs: string | null) => {
+    if (!abs) return
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('discard_preview_pdf', { path: abs })
+    } catch {
+      /* 清理失败不阻塞关闭 */
+    }
+  }, [])
+
+  // 打开 + 选项/文档变化 → 防抖 400ms 重新生成；关闭/卸载 → 删除 temp 文件
+  useEffect(() => {
+    if (!open || !realPdfEnabled) return
+    const seq = ++previewSeqRef.current
+    setPreviewBusy(true)
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let disposed = false
+    const generate = async () => {
+      try {
+        const { invoke, convertFileSrc } = await import('@tauri-apps/api/core')
+        const path = await invoke<string>('preview_pdf', {
+          contentWidth: typeof contentWidthPx === 'number' ? contentWidthPx : undefined,
+        })
+        // 旧结果作废：既不是最新请求、或对话框已关闭 → 立刻删掉这份 temp，不提交
+        if (disposed || seq !== previewSeqRef.current) {
+          await discardPreview(path)
+          return
+        }
+        // 上一份仍是当前显示时先删旧文件，避免 temp 残留
+        if (previewAbsPathRef.current && previewAbsPathRef.current !== path) {
+          await discardPreview(previewAbsPathRef.current)
+        }
+        previewAbsPathRef.current = path
+        setPreviewUrl(`${convertFileSrc(path)}#toolbar=0&navpanes=0`)
+        setPreviewError(null)
+      } catch (e) {
+        if (!disposed && seq === previewSeqRef.current) {
+          setPreviewError(e instanceof Error ? e.message : String(e))
+        }
+      } finally {
+        if (!disposed && seq === previewSeqRef.current) setPreviewBusy(false)
+      }
+    }
+    timer = setTimeout(() => void generate(), PDF_PREVIEW_DEBOUNCE_MS)
+    return () => {
+      disposed = true
+      if (timer) clearTimeout(timer)
+      // 关闭/参数变化：删除这一轮已落盘的 temp 文件（并清空显示）
+      const abs = previewAbsPathRef.current
+      previewAbsPathRef.current = null
+      setPreviewUrl(null)
+      void discardPreview(abs)
+    }
+    // 依赖：开关、选项（layoutKey）、内容变化（previewHtml）、内容宽、桌面态
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, realPdfEnabled, layoutKey, previewHtml, contentWidthPx])
+
+  // 组件卸载兜底清理（对话框被直接卸载时也要删 temp）
+  useEffect(
+    () => () => {
+      const abs = previewAbsPathRef.current
+      previewAbsPathRef.current = null
+      void discardPreview(abs)
+    },
+    [discardPreview],
+  )
 
   const handleExport = useCallback(async () => {
     savePdfOptions(opts)
@@ -450,12 +542,39 @@ export default function ExportPdfDialog({
           </p>
         </div>
 
-        {/* 右：A4 缩略预览（独立渲染容器，绝不移动真实节点） */}
+        {/* 右：预览区 —— 桌面态显示**真 PDF**（task-76）；否则/失败时回退 DOM 预览 */}
         <div className="flex min-w-0 flex-1 flex-col bg-muted/40">
           <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1.5 text-[11px] text-muted-foreground">
             <span>A4 预览（按纸张比例缩放）</span>
             <span className="opacity-70">所见即所得</span>
           </div>
+          {previewUrl ? (
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <iframe
+                title="PDF 预览"
+                data-testid="pdf-preview-frame"
+                src={previewUrl}
+                className="min-h-0 flex-1 border-0 bg-white"
+              />
+              {previewBusy ? (
+                <span
+                  data-testid="pdf-preview-busy"
+                  className="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-[11px] text-white"
+                >
+                  正在生成预览…
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {previewError ? (
+            <p
+              data-testid="pdf-preview-error"
+              className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700"
+            >
+              真 PDF 预览不可用（{previewError}），已回退为 DOM 预览
+            </p>
+          ) : null}
+          {previewUrl ? null : (
           <div
             ref={scrollRef}
             data-testid="pdf-preview-scroll"
@@ -533,6 +652,7 @@ export default function ExportPdfDialog({
             ))}
             </div>
           </div>
+          )}
           <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
             <button
               type="button"

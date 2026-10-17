@@ -110,6 +110,11 @@ interface Props {
   /** R2：外部版本重载令牌。App 调 handleReloadExternal 后 +1，同一文档 id
    * 下强制编辑器重载磁盘内容（id 变化之外的显式 reload 触发源）。 */
   reloadToken?: number
+  /** M-10（2026-10-17 审查）：外部修改冲突弹窗打开期间暂停自动保存 ——
+   * 否则下一次防抖保存会在用户看到提示前覆盖外部版本（提示形同虚设）。 */
+  autosavePaused?: boolean
+  /** M-10：「保留本地」被选择时 App +1 → 立即把本地版本落盘（用户明确选择覆盖外部） */
+  flushToken?: number
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -122,8 +127,11 @@ const SAVE_LABEL: Record<SaveState, { text: string; cls: string; kind: SaveState
   error: { text: '保存失败', cls: 'text-rose-600 font-medium', kind: 'error' },
 }
 
-export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0 }: Props) {
+export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0, autosavePaused = false, flushToken = 0 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  /** M-10：外部修改冲突弹窗期间暂停自动保存（读取用 ref，避免 handleUpdate 闭包陈旧） */
+  const autosavePausedRef = useRef(false)
+  autosavePausedRef.current = autosavePaused
   const [exportOpen, setExportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   // 拖拽附件悬停遮罩（实际插入由 editorProps.handleDrop 完成）
@@ -510,6 +518,10 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     const docId = articleRef.current.id
     bumpSeq(docId)
     setSaveState('dirty')
+    // M-10：外部修改冲突弹窗期间**不自动保存**（继续输入也不落盘）：否则下一次
+    // 防抖保存会覆盖外部版本，用户还没看到提示内容就已经丢失。「保留本地」路径由
+    // App 递增 flushToken 显式触发立即保存。
+    if (autosavePausedRef.current) return
     // M3：自动保存间隔由应用设置驱动（默认 3000ms）。统一走 saveQueue：
     // 同一 doc 防抖合并；在途时 latest-wins；完成后若有新内容再补一次。
     enqueueSave(docId, buildSaveFn(docId), getAutosaveIntervalMs())
@@ -610,11 +622,24 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       sourceDirtyRef.current = true
       bumpSeq(docId)
       setSaveState('dirty')
+      // M-10：外部冲突弹窗期间同样暂停源码通道自动保存（与 PM 通道一致）
+      if (autosavePausedRef.current) return
       enqueueSave(docId, buildSourceSaveFn(docId), getAutosaveIntervalMs())
       ensureDraftReg().touch()
     },
     [buildSourceSaveFn, bumpSeq, ensureDraftReg],
   )
+
+  // M-10（2026-10-17 审查）：外部冲突弹窗选择「保留本地」时，App 递增 flushToken →
+  // 立即把当前本地内容落盘（覆盖外部版本是用户的明确选择；不再等待 3s 防抖）。
+  useEffect(() => {
+    if (!flushToken) return
+    const docId = articleRef.current?.id
+    if (!docId) return
+    if (getViewMode() === 'source') enqueueSave(docId, buildSourceSaveFn(docId), 0)
+    else enqueueSave(docId, buildSaveFn(docId), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flushToken])
 
   /** 进入源码模式：切视图前先 flush（§6.2-2），失败给确认；初值 = **保存后**的磁盘原文 */
   const enterSourceMode = useCallback(async () => {
@@ -1443,7 +1468,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           </div>
           <TableBubbleMenu />
           <div
-            className="ke-scroll relative flex-1 overflow-y-auto"
+            className="ke-scroll relative flex-1 overflow-y-auto overflow-x-hidden"
             onDragOver={(e) => {
               // 必须 preventDefault 才允许 drop；遮罩仅作视觉反馈，
               // 实际文件插入由 editorProps.handleDrop（PM 层）完成

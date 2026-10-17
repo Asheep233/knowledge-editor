@@ -240,4 +240,33 @@ describe('F4 — 外部元信息更新 vs 未提交编辑', () => {
     await settle()
     expect(container!.textContent).toContain('#新标签')
   })
+
+  it('M-11：onDirtyChange 上报未提交状态（输入→true；保存成功→false）', async () => {
+    vi.mocked(api.updateArticleMeta).mockResolvedValue({ ...mkArticle(), title: '我改的标题' })
+    const onDirtyChange = vi.fn()
+    await render({ onDirtyChange })
+
+    await typeTitle('我改的标题')
+    expect(onDirtyChange, '输入后应上报 dirty=true').toHaveBeenLastCalledWith(true)
+
+    await click(findByText('保存属性')!)
+    expect(onDirtyChange, '保存成功后应上报 dirty=false').toHaveBeenLastCalledWith(false)
+  })
+
+  it('M-11：切档前自动提交旧文档的标题（不再静默丢弃右栏编辑）', async () => {
+    vi.mocked(api.updateArticleMeta).mockResolvedValue({ ...mkArticle(), title: '未保存的标题' })
+    await render()
+    await typeTitle('未保存的标题')
+    await rerenderArticle({
+      ...mkArticle(),
+      id: 'Articles/另一篇.md',
+      path: 'Articles/另一篇.md',
+      title: '另一篇',
+    })
+    await settle()
+
+    expect(vi.mocked(api.updateArticleMeta), '切档前未自动提交右栏编辑').toHaveBeenCalledTimes(1)
+    expect(vi.mocked(api.updateArticleMeta).mock.calls[0][0]).toBe('Articles/主文档.md')
+    expect(vi.mocked(api.updateArticleMeta).mock.calls[0][1]).toMatchObject({ title: '未保存的标题' })
+  })
 })

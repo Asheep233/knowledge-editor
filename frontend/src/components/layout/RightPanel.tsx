@@ -24,6 +24,8 @@ interface Props {
   onOpenHistory?: () => void
   /** 最近快照时间（参考稿展示；缺省用 article.updated_at 兜底） */
   lastSnapshotAt?: string
+  /** M-11（2026-10-17 审查）：右栏未提交编辑上报 App（纳入全局未保存语义） */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 function fmtTime(iso?: string): string {
@@ -44,7 +46,7 @@ function sameTags(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i])
 }
 
-export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHistory, lastSnapshotAt }: Props) {
+export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHistory, lastSnapshotAt, onDirtyChange }: Props) {
   // 参考稿无 tab：三卡堆叠（属性 / 大纲[可折叠] / 历史快照）
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [title, setTitle] = useState('')
@@ -52,6 +54,14 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
   const [tagInput, setTagInput] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  /** M-11：统一 dirty 变更出口（本地状态 + 上报 App） */
+  const markDirty = useCallback(
+    (next: boolean) => {
+      setDirty(next)
+      onDirtyChange?.(next)
+    },
+    [onDirtyChange],
+  )
 
   // P4-13：大纲（解析 #/##/### 标题，点击展开/收缩 + 定位）
   const [collapseDepth, setCollapseDepth] = useState(0) // 0 = 全部展开
@@ -100,10 +110,24 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
     if (!idChanged && !metaChanged) return
 
     if (idChanged) {
+      // M-11（2026-10-17 审查）：切档前**自动提交**右栏未保存的标题/标签 ——
+      // 旧实现切档直接重置表单，用户未点「保存属性」的编辑静默丢失且不在
+      // 未保存保护范围内。这里用切档前的用户输入对**旧文档**补一次 meta PUT。
+      if (dirtyRef.current && prev.id) {
+        const prevId = prev.id
+        const nextTitle = title.trim() || prev.title
+        void (async () => {
+          try {
+            await updateArticleMeta(prevId, { title: nextTitle, tags })
+          } catch (e) {
+            console.warn('切档前自动保存文档属性失败（编辑未落盘）', e)
+          }
+        })()
+      }
       setTitle(next.title)
       setTags(next.tags)
       setTagInput('')
-      setDirty(false)
+      markDirty(false)
       setExternalUpdate(false)
       return
     }
@@ -116,16 +140,16 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
     setTags(next.tags)
     setTagInput('')
     setExternalUpdate(false)
-  }, [article?.id, article?.title, article?.tags])
+  }, [article?.id, article?.title, article?.tags, title, tags, markDirty])
 
   /** F4：「放弃并刷新」= 丢弃本地未提交编辑，采用外部最新元信息 */
   const discardLocalMeta = useCallback(() => {
     setTitle(article?.title ?? '')
     setTags(article?.tags ?? [])
     setTagInput('')
-    setDirty(false)
+    markDirty(false)
     setExternalUpdate(false)
-  }, [article?.title, article?.tags])
+  }, [article?.title, article?.tags, markDirty])
 
   // ---------- 属性保存（Phase 4.6：标题/标签写入 frontmatter，由后端 set_meta 完成） ----------
   const handleSaveMeta = useCallback(async () => {
@@ -137,27 +161,27 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
         tags,
       })
       onMetaUpdate?.(doc)
-      setDirty(false)
+      markDirty(false)
     } catch (e) {
       window.alert(`保存属性失败：${e instanceof Error ? e.message : String(e)}`)
     } finally {
       setSaving(false)
     }
-  }, [article, title, tags, onMetaUpdate])
+  }, [article, title, tags, onMetaUpdate, markDirty])
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, '')
     if (!t) return
     if (!tags.includes(t)) {
       setTags([...tags, t])
-      setDirty(true)
+      markDirty(true)
     }
     setTagInput('')
   }
 
   const removeTag = (t: string) => {
     setTags(tags.filter((x) => x !== t))
-    setDirty(true)
+    markDirty(true)
   }
 
   return (
@@ -188,7 +212,7 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
                 <div className="text-[12px]" style={{ color: 'var(--muted-foreground)' }}>标题</div>
                 <input
                   value={title}
-                  onChange={(e) => { setTitle(e.target.value); setDirty(true) }}
+                  onChange={(e) => { setTitle(e.target.value); markDirty(true) }}
                   className="mt-0.5 w-full bg-transparent text-[13px] outline-none"
                   style={{ color: 'var(--foreground)' }}
                 />

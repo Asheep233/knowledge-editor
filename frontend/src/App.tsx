@@ -146,7 +146,14 @@ export default function App() {
   // P2-7：启动时读取的设置快照（供 restoreLastState / autoOpenRecentWorkspace 接线）
   const settingsRef = useRef<AppSettings | null>(null)
 
-  const hasUnsaved = saveState === 'dirty' || saveState === 'saving' || saveState === 'error'
+  /** M-11（2026-10-17 审查）：右栏属性面板存在未提交编辑 —— 纳入全局「未保存」语义
+   * （切档前由 RightPanel 自动提交；关窗 beforeunload 提示；标签脏标记）。 */
+  const [metaDirty, setMetaDirty] = useState(false)
+  /** M-10：外部修改冲突选择「保留本地」→ +1，通知编辑器立即显式落盘本地版本 */
+  const [keepLocalFlushToken, setKeepLocalFlushToken] = useState(0)
+
+  const hasUnsaved =
+    saveState === 'dirty' || saveState === 'saving' || saveState === 'error' || metaDirty
   /** Tab 栏脏标记：与 `saveState` 同源（不另建第二套 dirty 状态），只标记激活标签 */
   const dirtyTabId = hasUnsaved ? (article?.id ?? null) : null
   const saveStateLabel =
@@ -375,6 +382,9 @@ export default function App() {
       treeRefreshTimer.current = window.setTimeout(() => setTreeRefresh((n) => n + 1), 300)
     }
     if (decision.surface === 'modified') {
+      // M-10：外部修改到达即取消该文档尚未触发的防抖保存（内容仍在编辑器内，
+      // 由弹窗让用户选择）；弹窗期间 EditorArea 暂停自动保存，避免静默覆盖外部版本。
+      cancelPending(ev.rel)
       setExtModal(ev)
     } else if (decision.surface === 'deleted') {
       // P3-7 + UI-4 + H-2：当前文档（或其父文件夹）被外部删除 → 按前缀清理标签 +
@@ -575,14 +585,18 @@ export default function App() {
   //    （id 相同导致 [article?.id] effect 不触发的旧缺陷）。
   const handleReloadExternal = useCallback(async () => {
     const rel = extModal?.rel
-    setExtModal(null)
     if (!rel) return
     // UI-5：弹窗可能是在另一份文档上弹出的（跨档滞留）——只处理仍属当前文档的事件，
     // 否则会把用户切回旧文档并可能丢弃当前编辑。
-    if (rel !== articleIdRef.current) return
+    if (rel !== articleIdRef.current) {
+      setExtModal(null)
+      return
+    }
+    // M-10：确认期间保持弹窗与「暂停自动保存」；用户取消 → 本地编辑继续受保护
     if (hasUnsaved && !(await askConfirm('当前有未保存修改，重新加载将丢失这些修改，是否继续？'))) {
       return
     }
+    setExtModal(null)
     abortPending(rel)
     await flushPending(rel)
     await openArticle(rel)
@@ -591,6 +605,8 @@ export default function App() {
 
   const handleKeepLocal = useCallback(() => {
     setExtModal(null)
+    // M-10：用户明确选择「保留本地」→ 触发立即落盘（暂停期间未自动保存）
+    setKeepLocalFlushToken((t) => t + 1)
   }, [])
 
   const applyWorkspace = useCallback((state: WorkspaceState) => {
@@ -1062,6 +1078,10 @@ export default function App() {
           article={article}
           loading={loading}
           reloadToken={reloadToken}
+          // M-10：外部修改冲突弹窗（针对当前文档）期间暂停自动保存
+          autosavePaused={!!extModal && extModal.rel === article?.id}
+          // M-10：「保留本地」→ 立即落盘本地版本
+          flushToken={keepLocalFlushToken}
           onNewArticle={handleNewArticle}
           onSaveStateChange={setSaveState}
           onSaved={handleSaved}
@@ -1079,6 +1099,8 @@ export default function App() {
           <RightPanel
             article={article}
             onMetaUpdate={setArticle}
+            // M-11：右栏未提交编辑上报 App（纳入未保存语义；切档前自动提交）
+            onDirtyChange={setMetaDirty}
             onOpenArticle={requestOpenArticle}
             onCollapse={() => toggleRight(false)}
             onOpenHistory={() => window.dispatchEvent(new CustomEvent('ke:open-history'))}

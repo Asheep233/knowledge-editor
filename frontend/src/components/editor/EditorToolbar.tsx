@@ -470,7 +470,7 @@ export default function EditorToolbar({
   }
 
   return (
-    <div className="flex h-10 shrink-0 items-center gap-0.5 border-b border-border bg-card px-2">
+    <div className="ke-scroll flex h-10 min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-card px-2">
 
       {/* 样式下拉：正文 / 标题1~6（参考稿「正文 ▾」第一段；单行纯图标 → 文字下拉） */}
       <Dropdown

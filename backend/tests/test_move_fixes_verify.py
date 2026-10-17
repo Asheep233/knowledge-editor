@@ -283,7 +283,14 @@ _F9C_SANITIZE_CASES = [
     pytest.param("Articles/问号?.md", "question"),
     pytest.param("Articles/竖线|名.md", "pipe"),
     pytest.param('Articles/引号"名.md', "quote"),
-    pytest.param("Articles/反斜杠\\名.md", "backslash"),
+    pytest.param(
+        "Articles/反斜杠\\名.md",
+        "backslash",
+        marks=pytest.mark.skipif(
+            os.name == "nt",
+            reason="Windows 下 '\\' 是路径分隔符而非可净化字符（目标父目录不存在 → 400 正确）",
+        ),
+    ),
     pytest.param("Articles/CON.md", "reserved-con"),
     pytest.param("Articles/NUL.md", "reserved-nul"),
     pytest.param("Articles/PRN.md", "reserved-prn"),
@@ -303,7 +310,14 @@ _F9C_SANITIZE_CASES = [
     pytest.param("Articles/制表\t符.md", "tab"),
     pytest.param("Articles/换\n行.md", "newline"),
     pytest.param("Articles/....md", "only-dots-ext"),
-    pytest.param("Articles/...", "all-dots-no-ext"),
+    pytest.param(
+        "Articles/...",
+        "all-dots-no-ext",
+        marks=pytest.mark.skipif(
+            os.name == "nt",
+            reason="Windows 会把 '...' 归一化为目录语义（'目标必须位于业务目录下' 400 正确）",
+        ),
+    ),
     pytest.param("Articles/.md", "hidden-md-only"),
     pytest.param("Articles/..md", "dotdot-md"),
     pytest.param("Articles/.. .md", "dot-space-dot-md"),
@@ -371,6 +385,7 @@ def test_f9c_nul_in_src_must_not_500(client):
     assert r.status_code < 500, f"NUL src → {r.status_code}: {_detail(r)}"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows 文件名不允许 ':'，无法创建该目录夹具")
 def test_f9c_does_not_sanitize_directory_segments(client):
     """只净化末段：目录名含 `:`（Linux 合法）时不得被改写，否则目标目录不存在。"""
     ws = _ws(client)

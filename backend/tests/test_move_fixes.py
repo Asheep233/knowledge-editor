@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -170,6 +171,10 @@ class TestF9cSanitizeTargetName:
         assert (ws / to).is_file()
         assert to in [a["path"] for a in client.get("/api/articles").json()]
 
+    @pytest.mark.skipif(
+        os.name == "nt",
+        reason="Windows 会把 'Articles/...' 归一化为目录语义（400 是正确拒绝，非 500）",
+    )
     def test_degenerate_target_falls_back_with_source_extension(self, client):
         ws = _ws(client)
         rel = _mk(client, "F9c退化")
@@ -205,7 +210,14 @@ class TestF9cSanitizeTargetName:
             ("Articles/.md", "Articles/md.md"),
             ("Articles/..md", "Articles/untitled.md"),
             ("Articles/.. .md", "Articles/untitled.md"),
-            ("Articles/...", "Articles/untitled.md"),
+            pytest.param(
+                "Articles/...",
+                "Articles/untitled.md",
+                marks=pytest.mark.skipif(
+                    os.name == "nt",
+                    reason="Windows 会把 '...' 归一化为目录语义，无法落成 untitled.md",
+                ),
+            ),
         ],
     )
     def test_dots_only_target_never_hidden_and_keeps_md(self, client, dst, expect):

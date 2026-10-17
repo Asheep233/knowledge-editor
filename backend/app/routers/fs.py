@@ -48,6 +48,36 @@ _BUSINESS_TOP_LOWER = {d.lower() for d in _BUSINESS_TOP}
 _DOC_EXTS = {".md", ".markdown"}
 
 
+# ---------- 防御性文件系统探测（F9c-2：超长名在 Python<3.13 会抛 ENAMETOOLONG）----------
+
+def _is_dir_quiet(p: Path) -> bool:
+    """`Path.is_dir()` 的静默版：ENAMETOOLONG 等 OSError 按 false 处理。
+
+    F9c 用例在开发机（Python 3.14）通过、在 CI（3.10）500 的真因：pathlib 在
+    Python < 3.13 只忽略 ENOENT/ENOTDIR/EBADF/ELOOP/EINVAL，**不忽略
+    ENAMETOOLONG** —— 用户输入超长目标名时 `dst.is_dir()` 抛 OSError → 500。
+    存在性探测只是前置提示，不该把可净化的 4xx 变成 500。
+    """
+    try:
+        return p.is_dir()
+    except OSError:
+        return False
+
+
+def _is_file_quiet(p: Path) -> bool:
+    try:
+        return p.is_file()
+    except OSError:
+        return False
+
+
+def _exists_quiet(p: Path) -> bool:
+    try:
+        return p.exists()
+    except OSError:
+        return False
+
+
 # ---------- models ----------
 
 class DirCreate(BaseModel):
@@ -276,7 +306,7 @@ def create_dir(request: Request, body: DirCreate) -> dict:
     full = _guard_rel(root, rel)
     _require_business_top(root, full)
     # 同名目录显式报错（原来 exist_ok=True 静默成功→用户无感知）
-    if full.exists():
+    if _exists_quiet(full):
         raise HTTPException(status_code=409, detail=f"文件夹已存在：{rel}")
     full.mkdir(parents=True, exist_ok=False)
     return {"path": rel, "created": True}
@@ -287,7 +317,7 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     root = _require_ws(request)
     rel = body.path.strip("/")
     full = _guard_rel(root, rel)
-    if not full.is_dir():
+    if not _is_dir_quiet(full):
         raise HTTPException(status_code=404, detail="目录不存在")
     _require_business_top(root, full)
     # ★ R09：重命名/移动含**在用附件**的目录必须与 delete_dir/move_path 同一引用
@@ -311,7 +341,7 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     target = full.parent / new_name
     # ★ B3：拼接后再做一次解析级包含性断言，不依赖单一字符串校验
     _guard_rename_target(root, target)
-    if target.exists():
+    if _exists_quiet(target):
         raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
     old_rel = full.relative_to(root).as_posix()
     try:
@@ -330,7 +360,7 @@ def delete_dir(request: Request, path: str = Query(...)):
     root = _require_ws(request)
     rel = path.strip("/")
     full = _guard_rel(root, rel)
-    if not full.is_dir():
+    if not _is_dir_quiet(full):
         raise HTTPException(status_code=404, detail="目录不存在")
     _require_business_top(root, full)
     # P2-15：目录内含被引用的附件时拒绝删除（与 DELETE /api/attachments 保护一致）
@@ -447,7 +477,7 @@ def create_doc(request: Request, body: DocCreate) -> dict:
     if not markdown_io.is_doc_rel(full.relative_to(root).as_posix()):
         raise HTTPException(status_code=400, detail="文档只能创建在 Articles 或 Modules 下")
     rel = full.relative_to(root).as_posix()
-    if full.exists():
+    if _exists_quiet(full):
         raise HTTPException(status_code=409, detail=f"已存在同名文档: {slug}.md")
     # P3-12/dual-title 对齐：新建文档正文不生成 `# {title}`（标题由编辑器页眉承载、
     # 同步 frontmatter），与 /api/articles 创建路径保持一致
@@ -464,7 +494,7 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
     root = _require_ws(request)
     rel = body.path.strip("/")
     full = _guard_rel(root, rel)
-    if not full.is_file():
+    if not _is_file_quiet(full):
         raise HTTPException(status_code=404, detail="文档不存在")
     # ★ M1：顶层判定必须用**归一化后**的路径（F8 对齐）。原实现用未归一化的
     #   原始串 `_top_of(rel)`：`Articles/../Attachments/images/x.png` 会被误判为
@@ -478,7 +508,7 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
         new_name = f"{new_name}{full.suffix}"
     target = full.parent / new_name
     _guard_rename_target(root, target)
-    if target.exists():
+    if _exists_quiet(target):
         raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
     old_rel = full.relative_to(root).as_posix()
     try:
@@ -508,7 +538,7 @@ def move_path(request: Request, body: MoveBody) -> dict:
     src_rel = src.relative_to(root).as_posix()
     dst_rel = dst.relative_to(root).as_posix()
 
-    if src.is_dir():
+    if _is_dir_quiet(src):
         # P0-3：目录形态同样禁止顶层目录或其路径归一化伪装
         _require_business_top(root, src)
         # P2-15：目录内附件被引用时不可移出（外部引用路径由身份相对性决定，
@@ -522,7 +552,7 @@ def move_path(request: Request, body: MoveBody) -> dict:
                     status_code=409,
                     detail=f"目录内 {len(refs)} 个附件被 {total} 个文档引用，不可移动",
                 )
-    elif src.is_file():
+    elif _is_file_quiet(src):
         if _top_of(src_rel) not in (config.DIR_ARTICLES, config.DIR_MODULES, config.DIR_ATTACHMENTS):
             raise HTTPException(status_code=400, detail="不支持移动该类型文件")
         # P2-15：被引用的附件文件不可移动/重命名（引用会失效）
@@ -547,14 +577,14 @@ def move_path(request: Request, body: MoveBody) -> dict:
     #   必须先于 F9c 扩展名收口判断：否则 "Articles/子目录" 会被补成 "子目录.md"，
     #   悄悄成功落盘而绕过「目标是文件夹」的可操作提示（用户只是漏写文件名）。
     #   置于顶层/同区校验之后："Articles/." 这类路径仍按 F8 语义返回 400。
-    if dst.is_dir():
+    if _is_dir_quiet(dst):
         raise HTTPException(status_code=409, detail=_existing_dir_detail(dst_rel))
 
     # ★ F9c：目标**文件名**走 v1.1.8 统一命名净化（不是驳回）——与创建/改名路径
     #   策略一致；只净化最后一段，目录段不动。净化后重新 _guard_rel +
     #   _require_business_top / 同顶层校验，确保清洗不会把路径移出业务目录或跨区。
     #   目录移动不适用（目录名清洗不在本任务范围）。
-    if src.is_file():
+    if _is_file_quiet(src):
         cleaned = _sanitize_move_target(dst_rel, Path(src_rel).suffix)
         if cleaned != dst_rel:
             dst_rel = cleaned
@@ -566,16 +596,16 @@ def move_path(request: Request, body: MoveBody) -> dict:
 
     # ★ F9b：净化/扩展名收口后若撞上已存在目录，同样给出明确文案；
     #   dst 是已存在文件时保持原 409（含路径）。
-    if dst.is_dir():
+    if _is_dir_quiet(dst):
         raise HTTPException(status_code=409, detail=_existing_dir_detail(dst_rel))
-    if dst.exists():
+    if _exists_quiet(dst):
         raise HTTPException(status_code=409, detail=f"目标已存在: {dst_rel}")
     # 目录不得移入自身子树（否则 rename 抛 OSError → 500，且会造成不可达路径）
-    if src.is_dir() and (dst == src or src in dst.parents):
+    if _is_dir_quiet(src) and (dst == src or src in dst.parents):
         raise HTTPException(status_code=400, detail="不能把文件夹移动到自身或其子目录内")
     # ★ F9：目标父目录不存在 / 名称含非法字符时，原实现让 OSError 冒泡成 500。
     #   这里给出明确 4xx（UI 的错误提示才有意义）。
-    if not dst.parent.is_dir():
+    if not _is_dir_quiet(dst.parent):
         raise HTTPException(
             status_code=400,
             detail=f"目标文件夹不存在: {dst.parent.relative_to(root).as_posix()}",

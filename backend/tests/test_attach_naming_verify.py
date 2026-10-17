@@ -26,6 +26,7 @@ import hashlib
 import io
 import os
 import re
+import tempfile
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -107,6 +108,19 @@ def _expected_category(raw_name: str) -> str:
     return "files"
 
 
+def _strip_ext_prefix(p: Path) -> Path:
+    """去掉 Windows `\\\\?\\` 扩展长度前缀。
+
+    Win32 在路径接近 MAX_PATH 时由 `Path.resolve()` 返回带 `\\\\?\\` 前缀的
+    形式；它和同目录下不带前缀的路径做 `relative_to` 会抛 ValueError → 造成
+    「越界写入」误报（本机 Windows 复跑已实测）。
+    """
+    s = str(p)
+    if s.startswith("\\\\?\\"):
+        return Path(s[4:])
+    return p
+
+
 def _naive_escape_targets(ws: Path, filename: str) -> list[Path]:
     """「朴素拼接实现」在收到该 filename 时会写到的**越界**目标路径集合（resolve 后）。
 
@@ -119,11 +133,11 @@ def _naive_escape_targets(ws: Path, filename: str) -> list[Path]:
     落盘位置，不应被当作越界；「落在 Attachments/ 但目录层级不对」的情况由
     用例中的 category 前缀断言覆盖。
     """
-    att = (ws / _ATT).resolve()
+    att = _strip_ext_prefix((ws / _ATT).resolve())
     targets: list[Path] = []
     for base in (ws / _ATT / "files", ws / _ATT, ws):
         try:
-            t = (base / filename).resolve()
+            t = _strip_ext_prefix((base / filename).resolve())
         except (OSError, ValueError, RuntimeError):
             # 含 NUL / 超长等无法 resolve 的输入：跳过（其写入必然抛错）
             continue
@@ -232,7 +246,7 @@ def _mk_doc(client, title: str, content: str = "") -> str:
 
 @pytest.fixture()
 def canary(client, tmp_path):
-    """工作区之外的越界写入金丝雀（root 的父目录 + /tmp + HOME）。"""
+    """工作区之外的越界写入金丝雀（root 的父目录 + 系统临时目录 + HOME）。"""
     ws = _ws(client)
     base = ws.parent
     outside_dir = base / "OUTSIDE-canary"
@@ -240,7 +254,8 @@ def canary(client, tmp_path):
     outside = outside_dir / "canary.txt"
     outside.write_text("CANARY-OUTSIDE-WORKSPACE", encoding="utf-8")
 
-    tmp_file = Path("/tmp") / f"ke-verify-tmp-canary-{uuid.uuid4().hex}.txt"
+    # 可移植性：Windows CI 没有 /tmp；用系统临时目录（同样在工作区之外）
+    tmp_file = Path(tempfile.gettempdir()) / f"ke-verify-tmp-canary-{uuid.uuid4().hex}.txt"
     tmp_file.write_text("CANARY-TMP", encoding="utf-8")
 
     home_probe = Path.home() / f".ke-verify-should-never-exist-{uuid.uuid4().hex}.pdf"
@@ -272,6 +287,9 @@ def _assert_canaries(canary: dict) -> None:
 # ===========================================================================
 # S-3 高危面一：路径穿越 / 绝对路径 / 盘符 / UNC / 编码变体
 # ===========================================================================
+#: 可移植性：Windows CI 没有 /tmp；「工作区外绝对路径」用系统临时目录表达
+_SYS_TMP = Path(tempfile.gettempdir())
+
 _TRAVERSAL_TEMPLATES = [
     pytest.param("../../evil.pdf", id="rel-up2"),
     pytest.param("..\\..\\evil.pdf", id="win-backslash-up2"),
@@ -284,7 +302,7 @@ _TRAVERSAL_TEMPLATES = [
     pytest.param("../../evil.md", id="rel-up2-md"),
     pytest.param("..\\..\\evil.md", id="win-up2-md"),
     pytest.param("/etc/passwd", id="abs-etc-passwd"),
-    pytest.param("/tmp/ke-verify-{u}.pdf", id="abs-tmp"),
+    pytest.param(str(_SYS_TMP / "ke-verify-{u}.pdf"), id="abs-tmp"),
     pytest.param("C:\\Windows\\evil.pdf", id="win-drive-backslash"),
     pytest.param("C:/Windows/evil.pdf", id="win-drive-slash"),
     pytest.param("C:evil.pdf", id="win-drive-relative"),
@@ -847,11 +865,14 @@ def test_s3_preexisting_symlink_not_followed(client, canary):
     outside_file = canary["base"] / "symlink-target-outside.txt"
     outside_file.write_text("OUTSIDE-ORIGINAL", encoding="utf-8")
     link = files_dir / "link.pdf"
-    link.symlink_to(outside_file)
 
     dangling_target = canary["base"] / "dangling-target.pdf"
     dangling = files_dir / "dangling.pdf"
-    dangling.symlink_to(dangling_target)
+    try:
+        link.symlink_to(outside_file)
+        dangling.symlink_to(dangling_target)
+    except OSError as exc:  # pragma: no cover - Windows 非管理员/未开开发者模式
+        pytest.skip(f"需要符号链接创建权限（Windows 需开发者模式/管理员）：{exc}")
 
     observed = []
     for upload_name, symlink_obj in (("link.pdf", link), ("dangling.pdf", dangling)):
@@ -871,7 +892,10 @@ def test_s3_preexisting_symlink_not_followed(client, canary):
     outside_dir = canary["base"] / "symlink-dir-outside"
     outside_dir.mkdir(exist_ok=True)
     dir_link = files_dir / "dir.pdf"
-    dir_link.symlink_to(outside_dir, target_is_directory=True)
+    try:
+        dir_link.symlink_to(outside_dir, target_is_directory=True)
+    except OSError as exc:  # pragma: no cover - 同上
+        pytest.skip(f"需要符号链接创建权限：{exc}")
     r3, e3 = _upload(client, "dir.pdf", b"KE-DIRLINK")
     assert r3 is not None, f"{e3!r}"
     observed.append(("dir.pdf", r3.status_code))
@@ -957,7 +981,7 @@ def test_s3_independent_marker_scan_outside_workspace(client, canary):
     payloads = [
         f"../../evil-{marker}.pdf",
         f"../../../../../../evil-{marker}.pdf",
-        f"/tmp/evil-{marker}.pdf",
+        f"{_SYS_TMP}/evil-{marker}.pdf",
         f"~/.ke-verify-{marker}.pdf",
         f"Attachments/../../../evil-{marker}.pdf",
     ]
@@ -977,8 +1001,8 @@ def test_s3_independent_marker_scan_outside_workspace(client, canary):
         hits.extend(p for p in ws.rglob(f"*{marker}*"))
     except OSError:
         pass
-    # /tmp 浅层递归（深度 ≤ 2），覆盖深层遍历落点
-    tmp = Path("/tmp")
+    # 系统临时目录浅层递归（深度 ≤ 2），覆盖深层遍历落点（可移植：Windows 无 /tmp）
+    tmp = _SYS_TMP
     stack: list[tuple[Path, int]] = [(tmp, 0)]
     seen = 0
     while stack and seen < 20000:

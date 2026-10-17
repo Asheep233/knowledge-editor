@@ -18,13 +18,15 @@ def _fs_path(client, rel: str) -> Path:
 
 
 def _write(client, rel: str, content: str) -> None:
+    # 逐字节写（不让平台换行转换介入）：Windows 下 write_text 会把 LF 转 CRLF，
+    # 而模块读取 API 返回磁盘原文、用例期望 LF —— 平台无关地按 UTF-8 字节写。
     p = _fs_path(client, rel)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content, encoding="utf-8")
+    p.write_bytes(content.encode("utf-8"))
 
 
 def _read(client, rel: str) -> str:
-    return _fs_path(client, rel).read_text(encoding="utf-8")
+    return _fs_path(client, rel).read_bytes().decode("utf-8")
 
 
 def _mk_article(client, title: str, content: str) -> str:

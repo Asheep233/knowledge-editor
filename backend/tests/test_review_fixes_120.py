@@ -25,6 +25,10 @@ from pathlib import Path
 import pytest
 
 _win_only = pytest.mark.skipif(sys.platform != "win32", reason="Windows 路径语义专属（Linux 给等价证据）")
+_posix_only = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX 字面反斜杠文件名在 Windows 上不可能存在（'\\' 是路径分隔符）",
+)
 
 BOM = "\ufeff"
 
@@ -200,13 +204,14 @@ def test_b1_mixed_eol_records_actual_behavior():
     assert "正文（编辑后）" in out, "新正文丢失"
 
 
-def test_b1_read_text_byte_exact_and_atomic_write_roundtrip():
+def test_b1_read_text_byte_exact_and_atomic_write_roundtrip(tmp_path):
     """B1 第二根因：read_text 必须逐字节（不折 CRLF/BOM），且可原样写回。"""
     import shutil
 
     from app.services import markdown_io
 
-    root = Path(os.environ.get("KE_WORKSPACE", "/tmp")) / "ke-b1-probe"
+    # 可移植性：原实现用 KE_WORKSPACE 或 /tmp，Windows CI 无 /tmp → 用 pytest tmp_path
+    root = tmp_path / "ke-b1-probe"
     raw = (BOM + "---\r\ntitle: 逐字节\r\n---\r\n\r\n正文\r\n").encode("utf-8")
     try:
         p = _write_bytes(root, "bom_crlf.md", raw)
@@ -385,6 +390,7 @@ def test_b3_business_top_rename_still_rejected(client):
     assert (ws / "Articles").is_dir()
 
 
+@_posix_only
 def test_b3_existing_backslash_name_can_be_renamed_to_legal_name(client):
     r"""边界如实记录：拒绝的是「**新名称**含 `\`」，不是「源路径含 `\`」。
 
@@ -504,7 +510,10 @@ def test_m3_delete_dir_case_variant_top_windows(client):
     """Windows 真机：`attachments/...` 与被引用附件同库时删除应 409。"""
     att = _upload(client, "大小写.pdf")
     _write_bytes(_ws(client), "Articles/引用2.md", f'# 引用\n\n![x]({att})\n'.encode("utf-8"))
-    lowered = f"attachments/{att.split('/', 1)[1]}"
+    # 大小写变体的**分类目录**（att = Attachments/files/xxx.pdf → attachments/files）；
+    # 原实现把文件路径当目录删 → Windows 上必然 404，测不到保护逻辑。
+    category = att.split("/", 1)[1].split("/", 1)[0]
+    lowered = f"attachments/{category}"
     r = client.delete("/api/fs/dir", params={"path": lowered})
     assert r.status_code == 409, f"大小写变体目录删除未触发保护: {r.status_code}"
 
@@ -712,6 +721,10 @@ def test_m8_dir_delete_snapshots_each_doc_and_restorable(client):
         assert (ws / rel).read_bytes() == original, f"{rel} 恢复内容与原文不一致"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="用 chmod 0555 注入删除失败；Windows 上 chmod 对目录无效，无法构造失败夹具",
+)
 def test_m8_per_file_failure_continues_and_reports(client):
     """单个文件删除失败（真实权限错误）→ 其余继续删、响应含失败清单、失败文件保留。"""
     ws = _ws(client)

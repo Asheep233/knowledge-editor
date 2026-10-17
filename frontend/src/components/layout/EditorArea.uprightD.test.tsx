@@ -9,6 +9,9 @@
 import { act } from 'react'
 import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// 挂载 EditorArea 较重：全量并行时 5s 默认超时偶发不够（CI 全量曾超时 1 次），此处放宽到 20s。
+vi.setConfig({ testTimeout: 20000 })
 import { createRoot, type Root } from 'react-dom/client'
 import type { ArticleMeta } from '../../types'
 

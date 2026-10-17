@@ -335,9 +335,19 @@ export function maskProtectedRegions(md: string): { masked: string; restore: (s:
   let fence: { ch: string; len: number } | null = null
   let indentedRun = false
   let prevBlank = true
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    // A04-CRLF（2026-10-17 独立审查 FE-06）：按 \n 分行后行尾可能残留 \r
+    // （Windows 用户文档 / Windows checkout 均常见）。所有语法判定必须在
+    // **去掉行尾 \r** 的文本上做 —— JS 的 `.` 与 `$` 不把 \r 当普通字符，
+    // 旧实现识别不出 "```markdown\r" 这一开栏 → 代码区未屏蔽 → 代码里的
+    // 字面 ke-* 示例被降级改写。输出时把 \r 原样补回，非代码内容逐字节不变。
+    const hadCR = rawLine.endsWith('\r')
+    const line = hadCR ? rawLine.slice(0, -1) : rawLine
+    const emit = (s: string): void => {
+      out.push(hadCR ? `${s}\r` : s)
+    }
     if (fence) {
-      out.push(token(line))
+      emit(token(line))
       const closeRe = new RegExp(`^ {0,3}\\${fence.ch}{${fence.len},}\\s*$`)
       if (closeRe.test(line)) fence = null
       prevBlank = line.trim() === ''
@@ -346,25 +356,25 @@ export function maskProtectedRegions(md: string): { masked: string; restore: (s:
     const open = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line)
     if (open) {
       fence = { ch: open[1][0], len: open[1].length }
-      out.push(token(line))
+      emit(token(line))
       prevBlank = false
       continue
     }
     const blank = line.trim() === ''
     const indented = /^(?: {4}|\t)\S/.test(line)
     if (indented && (prevBlank || indentedRun)) {
-      out.push(token(line))
+      emit(token(line))
       indentedRun = true
       prevBlank = false
       continue
     }
     if (blank) {
-      out.push(indentedRun ? token(line) : line)
+      emit(indentedRun ? token(line) : line)
       prevBlank = true
       continue
     }
     indentedRun = false
-    out.push(maskInlineCode(line))
+    emit(maskInlineCode(line))
     prevBlank = false
   }
 

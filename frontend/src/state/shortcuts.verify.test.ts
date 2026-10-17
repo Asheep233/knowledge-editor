@@ -152,8 +152,13 @@ function objectPaths(value: unknown, prefix = ''): string[] {
 
 /** settings.rs `from_value_lenient` 的白名单字段路径（顶层 + 一层子键） */
 function rustWhitelistPaths(src: string, leavesOnly = true): string[] {
-  const start = src.indexOf('fn from_value_lenient')
-  const body = src.slice(start, src.indexOf('\n}\n', start))
+  // 可移植性：Windows checkout（git autocrlf）下 Rust 源码是 CRLF，旧实现
+  // `indexOf('\n}\n')` 找不到函数体结束位置 → 白名单解析错位，把真实存在的
+  // `maintenance` 判成缺失（Linux 通过、Windows CI 误报）。先归一化换行再扫。
+  const normalized = src.replace(/\r\n/g, '\n')
+  const start = normalized.indexOf('fn from_value_lenient')
+  const end = normalized.indexOf('\n}\n', start)
+  const body = normalized.slice(start, end >= 0 ? end : undefined)
   const paths: string[] = []
   let top: string | null = null
   for (const line of body.split('\n')) {

@@ -707,6 +707,7 @@ describe('C. 抢占', () => {
     }
   })
 
+  // 性能门自身阈值 30s；显式放宽用例超时（Windows CI 慢 runner 上默认 5s 会先超时）
   it('C24 唯一标签规模 2000 时规范化不发生超线性爆炸（性能门）', () => {
     const lines: string[] = []
     for (let i = 0; i < 2000; i++) lines.push(`正文引用[^L${i}] 结束。`)
@@ -718,7 +719,7 @@ describe('C. 抢占', () => {
     const dt = performance.now() - t0
     expect(footnoteItems(ed)).toHaveLength(2000)
     expect(dt, `2000 脚注解析耗时 ${dt.toFixed(0)}ms`).toBeLessThan(30000)
-  })
+  }, 40_000)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

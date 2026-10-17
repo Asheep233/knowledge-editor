@@ -1,4 +1,4 @@
-﻿# KnowledgeEditor 构建与测试脚本
+# KnowledgeEditor 构建与测试脚本
 # 用法: .\scripts\build.ps1 [-SkipSidecar]
 # 功能: backend 单元测试 + sidecar 源码构建（可跳过）+ frontend 生产构建
 #       + 产物校验（exe 版本与源码一致）+ hash manifest（versions.json + manifest.sha256）；
@@ -67,7 +67,21 @@ function Test-SidecarVersionConsistency {
         Write-Host '==> [校验] 未发现 sidecar exe（构建期产物缺失，仅生成 manifest）。' -ForegroundColor Yellow
         return
     }
-    $version = (& $python -c "from app import __version__; print(__version__)").Trim()
+    # M-14（2026-10-17 审查）：原实现未设 PYTHONPATH/CD —— 从仓库根运行时
+    # `from app import` 抛 ModuleNotFoundError → stdout 为空 → `$null.Trim()`
+    # 在 $ErrorActionPreference='Stop' 下中止脚本（manifest/签名步骤不执行）。
+    # 显式把 backend 加入 PYTHONPATH，并对空输出给可读错误。
+    $backendDir = Join-Path $root 'backend'
+    $oldPythonPath = $env:PYTHONPATH
+    $env:PYTHONPATH = if ($oldPythonPath) { "$backendDir;$oldPythonPath" } else { "$backendDir" }
+    try {
+        $version = (& $python -c "from app import __version__; print(__version__)").Trim()
+    } finally {
+        $env:PYTHONPATH = $oldPythonPath
+    }
+    if (-not $version) {
+        throw '无法读取 backend 源码版本（app.__version__）；请确认 Python 环境与 backend/requirements.txt 已就绪'
+    }
     $port = Get-Random -Minimum 20000 -Maximum 50000
     $oldPort = $env:KE_PORT
     $env:KE_PORT = "$port"

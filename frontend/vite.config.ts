@@ -51,5 +51,8 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // 2026-10-18：修复 prosemirror-view DOMObserver 在环境 teardown 后 20ms 定时器
+    // 访问 document 导致的 CI「Unhandled Error」（详见 src/test-setup.ts）。
+    setupFiles: ['src/test-setup.ts'],
   },
 })

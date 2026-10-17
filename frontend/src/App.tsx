@@ -598,6 +598,9 @@ export default function App() {
     openSeqRef.current.next()
     setWorkspace(state)
     setArticle(null)
+    // M-8（2026-10-17 审查）：切换/关闭工作区必须清空旧工作区标签 —— 否则在新
+    // 工作区打开文档后，点旧标签会按同相对路径打开**错误文档**或 404。
+    setTabs([])
     setSaveState('idle')
     setTreeRefresh((n) => n + 1)
     eventCursor.current = 0
@@ -795,7 +798,12 @@ export default function App() {
     if (!affected) return true
     const flushed = await flushWithTimeout(curId)
     if (!flushed) {
-      return (await askConfirm('当前文档有未保存修改，此操作将放弃这些修改，是否继续？'))
+      const ok = await askConfirm('当前文档有未保存修改，此操作将放弃这些修改，是否继续？')
+      if (!ok) return false
+      // M-9（2026-10-17 审查）：确认放弃后必须 discardPending（B4 修复的第 6 处入口遗漏）。
+      // 否则未决/在途保存仍残留：改名成功后切档会再次弹同一确认，且 pendingDocIds()
+      // 永久非空使 beforeunload 持续拦截。
+      discardPending(curId)
     }
     return true
   }, [])

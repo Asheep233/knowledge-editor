@@ -12,6 +12,7 @@ import {
   openWorkspace,
 } from '../../api/client'
 import { isDesktop, pickDirectory } from '../../desktop'
+import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
 import { APP_VERSION } from '../../version'
@@ -186,7 +187,12 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
                 placeholder="工作区目录路径，例如 D:\MyKnowledge"
                 value={path}
                 onChange={(e) => { setPath(e.target.value); setError('') }}
-                onKeyDown={(e) => e.key === 'Enter' && void create()}
+                onKeyDown={(e) => {
+                  // M-13（2026-10-17 审查）：中文输入法组词回车 = 上屏候选词，
+                  // 不能当成「确认 → 创建知识库目录」（会按半截路径建库，写盘副作用）。
+                  if (shouldIgnoreReactKeyEvent(e)) return
+                  if (e.key === 'Enter') void create()
+                }}
                 className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
               />
               {isDesktop() && (

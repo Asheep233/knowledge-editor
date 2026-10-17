@@ -10,6 +10,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { computePageSize, pageWidthCss } from '../../editor/pdfPage'
 import ExportPdfDialog, {
   A4_PAGE_HEIGHT_PX,
+  applyPrintContext,
   buildPrintOverrideCss,
   computePageCount,
   exportPdfWithOverrides,
@@ -167,6 +168,48 @@ describe('task-72 ③ 导出后 overrides 必须移除（含失败路径）', ()
   it('默认选项（无覆盖）不写样式元素', async () => {
     await exportPdfWithOverrides(DEFAULT_PDF_OPTIONS, () => undefined)
     expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID)).toBeNull()
+  })
+})
+
+describe('SD-03/SD-04（2026-10-17 审查）：覆盖上下文与显式浅深主题', () => {
+  afterEach(() => {
+    delete document.documentElement.dataset.theme
+  })
+
+  it('显式 light 主题：导出窗口内切换 data-theme，结束后恢复原主题', async () => {
+    document.documentElement.dataset.theme = 'dark'
+    let seenTheme = ''
+    let seenCss: string | null = null
+    await exportPdfWithOverrides({ ...DEFAULT_PDF_OPTIONS, theme: 'light', background: '#ffeeaa' }, () => {
+      seenTheme = document.documentElement.dataset.theme ?? ''
+      seenCss = document.getElementById(PRINT_OVERRIDES_STYLE_ID)?.textContent ?? null
+    })
+    expect(seenTheme, '显式主题必须在打印窗口期真正切换').toBe('light')
+    expect(seenCss, '颜色覆盖必须进入打印上下文').toContain('--background: #ffeeaa')
+    expect(document.documentElement.dataset.theme, '结束后必须恢复原主题').toBe('dark')
+    expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID)).toBeNull()
+  })
+
+  it('跟随当前主题（current）：不改变 data-theme，仅写颜色覆盖', async () => {
+    document.documentElement.dataset.theme = 'dark'
+    let seenTheme = ''
+    await exportPdfWithOverrides({ ...DEFAULT_PDF_OPTIONS, foreground: '#112233' }, () => {
+      seenTheme = document.documentElement.dataset.theme ?? ''
+    })
+    expect(seenTheme).toBe('dark')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
+  it('applyPrintContext：清理函数可重复调用且不残留副作用（预览/导出共用）', () => {
+    document.documentElement.dataset.theme = 'dark'
+    const restore = applyPrintContext({ ...DEFAULT_PDF_OPTIONS, theme: 'light', accent: '#00ff00' })
+    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID)?.textContent).toContain('--ke-pdf-accent')
+    restore()
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.getElementById(PRINT_OVERRIDES_STYLE_ID)).toBeNull()
+    restore() // 幂等
+    expect(document.documentElement.dataset.theme).toBe('dark')
   })
 })
 

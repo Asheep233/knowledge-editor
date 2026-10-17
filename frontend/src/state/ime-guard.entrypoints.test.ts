@@ -220,10 +220,7 @@ function details(): string {
  * ③ 修好后必须同步清单（否则本用例失败并打印实测明细）。
  */
 const KNOWN_GAPS: Record<string, number> = {
-  'components/editor/nodeviews/FootnoteNodeView.tsx': 1,
-  'components/editor/nodeviews/FootnotesNodeView.tsx': 1,
   'components/editor/nodeviews/ImageLightbox.tsx': 1,
-  'components/layout/WorkspacePicker.tsx': 1,
   'components/settings/SettingsPanel.tsx': 2,
   'desktop.ts': 1,
 }

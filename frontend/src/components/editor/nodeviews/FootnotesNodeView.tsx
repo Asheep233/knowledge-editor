@@ -15,6 +15,7 @@
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { useRef } from 'react'
 import type { FootnoteItem } from '../../../editor/extensions/FootnotesExtension'
+import { shouldIgnoreReactKeyEvent } from '../../../state/shortcuts'
 import { Icon } from '../../icons'
 
 export default function FootnotesNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
@@ -62,6 +63,8 @@ export default function FootnotesNodeView({ node, updateAttributes, deleteNode }
                 className="min-w-0 flex-1 whitespace-pre-wrap outline-none focus:ring-0"
                 onBlur={() => commit(idx)}
                 onKeyDown={(e) => {
+                  // M-13（2026-10-17 审查）：IME 组词回车 = 上屏候选词，不得提交并失焦
+                  if (shouldIgnoreReactKeyEvent(e)) return
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     commit(idx)

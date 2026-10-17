@@ -6,6 +6,7 @@
  */
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { useEffect, useRef, useState } from 'react'
+import { shouldIgnoreReactKeyEvent } from '../../../state/shortcuts'
 
 /**
  * 解析上标编号：仅接受正整数；空串/非数字/非正整数返回 null。
@@ -59,6 +60,8 @@ export default function FootnoteNodeView({ node, editor, getPos }: NodeViewProps
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => {
+            // M-13（2026-10-17 审查）：IME 组词回车 = 上屏候选词，不得提交/失焦
+            if (shouldIgnoreReactKeyEvent(e)) return
             if (e.key === 'Enter') {
               e.preventDefault()
               commit()

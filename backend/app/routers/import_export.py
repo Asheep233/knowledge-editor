@@ -542,8 +542,23 @@ async def import_package(request: Request, file: UploadFile = File(...)) -> dict
             raise HTTPException(status_code=400, detail="文件不是有效的 zip 压缩包")
 
         pkg_dir = tmp_dir / "pkg"
-        with zipfile.ZipFile(zip_path) as zf:
-            _extract_zip_safe(zf, pkg_dir)
+        # L-8（41F）：畸形/损坏 zip（有 magic、坏中央目录/CRC/加密）会让
+        # zipfile 抛 BadZipFile/RuntimeError/NotImplementedError → 未捕获 500。
+        # 统一映射为可读 400。
+        try:
+            with zipfile.ZipFile(zip_path) as zf:
+                _extract_zip_safe(zf, pkg_dir)
+        except HTTPException:
+            raise
+        except (zipfile.BadZipFile, RuntimeError, NotImplementedError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"文档包 zip 无法解压（可能已损坏或加密）: {exc}",
+            ) from exc
+        except OSError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"文档包解压失败：{exc.strerror or exc}"
+            ) from exc
 
         # 1) 校验：定位文档 + UTF-8 可读 + ke-* 节点可处理 + 附件引用安全
         doc = _find_doc(pkg_dir)

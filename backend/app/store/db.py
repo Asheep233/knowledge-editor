@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import functools
 import json
+import re
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -308,8 +309,11 @@ class IndexStore:
             where.append("kind = ?")
             params.append(kind)
         if prefix:
-            where.append("(rel_path = ? OR rel_path LIKE ?)")
-            params.extend([prefix, f"{prefix}/%"])
+            # BE-06/M-2（2026-10-17 审查）：prefix 直接拼进 LIKE 时 `_`/`%` 会被
+            # SQLite 当通配符 —— 目录改名把 `a_b` 的更新范围误扩到 `aXb`，兄弟目录
+            # 整棵子树的索引被删且不自愈。转义 + ESCAPE 后按字面前缀匹配。
+            where.append("(rel_path = ? OR rel_path LIKE ? ESCAPE '\\')")
+            params.extend([prefix, f"{_escape_like(prefix)}/%"])
         sql = "SELECT * FROM files"
         if where:
             sql += " WHERE " + " AND ".join(where)
@@ -340,21 +344,56 @@ class IndexStore:
 
     # ---------- search ----------
 
+    def _search_like_all_tokens(
+        self, tokens: list[str], limit: int
+    ) -> list[dict[str, Any]]:
+        """多词查询的 LIKE 交集降级（M-3）。
+
+        为什么需要：FTS5 trigram 对 **<3 字** 的词元（中文两字词极常见）没有索引，
+        `"公式 渲染"` 这类自然输入被当两个 token 做 MATCH → 恒 0 结果（静默
+        假阴性）。此路径对每个词元在 content/title/rel_path/tags 任一列做转义
+        LIKE，取全部词元的交集；调用方必须已持有 `_lock`（本方法不加锁）。
+        """
+        assert self.conn is not None
+        where: list[str] = []
+        params: list[Any] = []
+        for token in tokens:
+            pattern = f"%{_escape_like(token)}%"
+            where.append(
+                "(content LIKE ? ESCAPE '\\' OR title LIKE ? ESCAPE '\\'"
+                " OR rel_path LIKE ? ESCAPE '\\' OR tags LIKE ? ESCAPE '\\')"
+            )
+            params.extend([pattern, pattern, pattern, pattern])
+        try:
+            rows = self.conn.execute(
+                "SELECT id, rel_path, kind, title, updated_at,"
+                " substr(content, 1, 160) AS snippet FROM files WHERE "
+                + " AND ".join(where)
+                + " ORDER BY updated_at DESC LIMIT ?",
+                (*params, limit),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
+
     @_locked
     def search(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
         """搜索（决策点 3：SQLite FTS5 集中索引；Phase 4.4 扩展字段）。
 
         索引列：title / rel_path / tags / meta / content。
-        - 查询词 >= 3 字符：FTS5 trigram 跨全部索引列（文件名、路径、标签、
-          frontmatter 元信息、正文均可命中），按 bm25 排序；
-        - 查询词 < 3 字符：trigram 不命中短 token，降级为 LIKE 全表扫描
-          （P3-6：LIKE 通配符转义，支持 2 字中文子串）；
-        - 非法查询语法依次尝试短语引号包裹，仍失败则返回空结果，不抛异常。
+        - 单词查询 >= 3 字符：FTS5 trigram 跨全部索引列，按 bm25 排序；
+        - 单词查询 < 3 字符：trigram 不命中短 token，降级 LIKE（P3-6：转义）；
+        - **多词查询（M-3）**：任一词元 <3 字（中文两字词常见）→ 直接走 LIKE
+          交集；FTS 返回空也回退 LIKE 交集，避免「公式 渲染」这类自然输入恒 0；
+        - 非法查询语法依次尝试短语引号包裹，仍失败则回退/返回空，不抛异常。
         """
         assert self.conn is not None
         q = query.strip()
         if not q:
             return []
+        tokens = [t for t in re.split(r"\s+", q) if t]
+        if len(tokens) > 1 and any(len(t) < 3 for t in tokens):
+            return self._search_like_all_tokens(tokens, limit)
         if len(q) < 3:
             pattern = f"%{_escape_like(q)}%"
             try:
@@ -373,6 +412,7 @@ class IndexStore:
             except sqlite3.OperationalError:
                 return []
             return [dict(r) for r in rows]
+        rows: list[Any] = []
         for attempt in (q, f'"{q}"'):
             try:
                 rows = self.conn.execute(
@@ -387,9 +427,14 @@ class IndexStore:
                     """,
                     (attempt, limit),
                 ).fetchall()
-                return [dict(r) for r in rows]
+                break
             except sqlite3.OperationalError:
                 continue
+        if rows:
+            return [dict(r) for r in rows]
+        if len(tokens) > 1:
+            # M-3：多词 FTS 空结果 → LIKE 交集兜底（全角/标点等导致的 token 差异）
+            return self._search_like_all_tokens(tokens, limit)
         return []
 
     @_locked

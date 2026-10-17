@@ -12,6 +12,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import secrets
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -76,6 +78,68 @@ def _exists_quiet(p: Path) -> bool:
         return p.exists()
     except OSError:
         return False
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    """M-7：a、b 是否指向磁盘上同一个对象（Windows 大小写不敏感 FS 的 case-only）。
+
+    `Path.exists()` 在「只改大小写」时对目标返回 True（同一个文件/目录），旧实现
+    因此直接 409「目标已存在」；必须先区分「同一个对象」与「另一个已存在文件」。
+    """
+    try:
+        return bool(b.exists()) and os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _norm_rel_text(rel: str) -> str:
+    """请求里的相对路径做**字面归一化**（去 ./、..、重复斜杠），不折叠大小写。
+
+    用于区分「同一路径的等价写法」（src/dst 归一后相同 → 仍是同一目标，应 409）
+    与「仅大小写不同」（case-only 改名/移动 → 应允许）。
+    """
+    parts: list[str] = []
+    for seg in rel.replace("\\", "/").split("/"):
+        if seg in ("", "."):
+            continue
+        if seg == "..":
+            if parts:
+                parts.pop()
+            continue
+        parts.append(seg)
+    return "/".join(parts)
+
+
+def _is_case_only_rename(src: Path, dst: Path, requested: str) -> bool:
+    """M-7：是否为「同一个对象、仅改大小写」的改名/移动请求。
+
+    `requested` 是请求里的目标相对路径或新名称；必须同时满足：
+    1) 目标是磁盘上同一个对象（samefile）；
+    2) 请求写法与源名称**字面**不同（否则 "./Articles/x.md" → "Articles/./x.md"
+       这类等价写法归一后仍是同一路径，应继续按「目标已存在」409）。
+    """
+    if not _same_file(src, dst):
+        return False
+    requested_name = _norm_rel_text(requested).split("/")[-1]
+    return requested_name != src.name
+
+
+def _rename_two_step(src: Path, dst: Path) -> None:
+    """M-7：大小写不敏感 FS 上的 case-only rename（先临时名、再目标名）。
+
+    Windows 上直接 `os.rename(a, A)` 会被系统按「目标已存在」拒绝；两步 rename
+    绕过该限制。第二步失败时尽力回滚到原名，再把异常抛给调用方映射 4xx。
+    """
+    tmp = src.with_name(f"{src.name}.ke-case-{secrets.token_hex(3)}")
+    src.rename(tmp)
+    try:
+        tmp.rename(dst)
+    except OSError:
+        try:
+            tmp.rename(src)
+        except OSError:
+            pass
+        raise
 
 
 # ---------- models ----------
@@ -341,11 +405,17 @@ def rename_dir(request: Request, body: RenameBody) -> dict:
     target = full.parent / new_name
     # ★ B3：拼接后再做一次解析级包含性断言，不依赖单一字符串校验
     _guard_rename_target(root, target)
-    if _exists_quiet(target):
+    # M-7（2026-10-17 审查）：仅改大小写时 target.exists() 为真，但那是**同一个
+    # 目录**（Windows 大小写不敏感 FS），不是冲突 → 两步 rename。
+    case_only = _is_case_only_rename(full, target, new_name)
+    if _exists_quiet(target) and not case_only:
         raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
     old_rel = full.relative_to(root).as_posix()
     try:
-        full.rename(target)
+        if case_only:
+            _rename_two_step(full, target)
+        else:
+            full.rename(target)
     except OSError as e:
         # ★ B3：Windows 保留名 / 尾点尾空格 / 文件占用等 → 明确 400（对齐 move_path）
         raise HTTPException(status_code=400, detail=f"重命名失败：{e.strerror or e}")
@@ -508,11 +578,16 @@ def rename_doc(request: Request, body: RenameBody) -> dict:
         new_name = f"{new_name}{full.suffix}"
     target = full.parent / new_name
     _guard_rename_target(root, target)
-    if _exists_quiet(target):
+    # M-7：仅改大小写时目标是**同一个文件**（Windows）→ 两步 rename，不是 409
+    case_only = _is_case_only_rename(full, target, new_name)
+    if _exists_quiet(target) and not case_only:
         raise HTTPException(status_code=409, detail=f"目标已存在: {new_name}")
     old_rel = full.relative_to(root).as_posix()
     try:
-        full.rename(target)
+        if case_only:
+            _rename_two_step(full, target)
+        else:
+            full.rename(target)
     except OSError as e:
         # ★ B3：Windows 保留名 / 尾点尾空格 / 文件占用等 → 明确 400
         raise HTTPException(status_code=400, detail=f"重命名失败：{e.strerror or e}")
@@ -577,7 +652,11 @@ def move_path(request: Request, body: MoveBody) -> dict:
     #   必须先于 F9c 扩展名收口判断：否则 "Articles/子目录" 会被补成 "子目录.md"，
     #   悄悄成功落盘而绕过「目标是文件夹」的可操作提示（用户只是漏写文件名）。
     #   置于顶层/同区校验之后："Articles/." 这类路径仍按 F8 语义返回 400。
-    if _is_dir_quiet(dst):
+    # M-7（2026-10-17 审查）：同一顶层内「只改大小写」的移动/改名 —— dst.exists()
+    # 为真但那是同一个文件/目录（Windows 大小写不敏感 FS），不是冲突；
+    # 用请求字符串做字面归一化区分「等价写法」（应 409）与「仅大小写不同」（允许）。
+    case_only = _is_case_only_rename(src, dst, body.dst)
+    if _is_dir_quiet(dst) and not case_only:
         raise HTTPException(status_code=409, detail=_existing_dir_detail(dst_rel))
 
     # ★ F9c：目标**文件名**走 v1.1.8 统一命名净化（不是驳回）——与创建/改名路径
@@ -596,12 +675,12 @@ def move_path(request: Request, body: MoveBody) -> dict:
 
     # ★ F9b：净化/扩展名收口后若撞上已存在目录，同样给出明确文案；
     #   dst 是已存在文件时保持原 409（含路径）。
-    if _is_dir_quiet(dst):
+    if _is_dir_quiet(dst) and not case_only:
         raise HTTPException(status_code=409, detail=_existing_dir_detail(dst_rel))
-    if _exists_quiet(dst):
+    if _exists_quiet(dst) and not case_only:
         raise HTTPException(status_code=409, detail=f"目标已存在: {dst_rel}")
     # 目录不得移入自身子树（否则 rename 抛 OSError → 500，且会造成不可达路径）
-    if _is_dir_quiet(src) and (dst == src or src in dst.parents):
+    if _is_dir_quiet(src) and not case_only and (dst == src or src in dst.parents):
         raise HTTPException(status_code=400, detail="不能把文件夹移动到自身或其子目录内")
     # ★ F9：目标父目录不存在 / 名称含非法字符时，原实现让 OSError 冒泡成 500。
     #   这里给出明确 4xx（UI 的错误提示才有意义）。
@@ -611,11 +690,21 @@ def move_path(request: Request, body: MoveBody) -> dict:
             detail=f"目标文件夹不存在: {dst.parent.relative_to(root).as_posix()}",
         )
     try:
-        src.rename(dst)
+        if case_only:
+            _rename_two_step(src, dst)
+        else:
+            src.rename(dst)
     except OSError as e:
         raise HTTPException(status_code=400, detail=f"移动失败：{e.strerror or e}")
-    _sync_after_move(request, src_rel, dst_rel)
-    return {"from": src_rel, "to": dst_rel}
+    # M-7：大小写不敏感 FS 上 resolve 会把请求大小写折叠回旧名 —— 响应与索引同步
+    # 必须使用**请求里的写法**（最终落盘名），否则 UI/索引仍显示旧大小写。
+    to_rel = dst_rel
+    if case_only:
+        requested = _norm_rel_text(body.dst)
+        if requested.lower() == dst_rel.lower():
+            to_rel = requested
+    _sync_after_move(request, src_rel, to_rel)
+    return {"from": src_rel, "to": to_rel}
 
 
 # ---------- fs events (Phase 4.3) ----------

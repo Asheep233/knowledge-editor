@@ -111,3 +111,42 @@ describe('Phase 3E：filenameFromDisposition', () => {
     expect(filenameFromDisposition(null, 'f.zip')).toBe('f.zip')
   })
 })
+
+describe('FE-05（2026-10-17 审查）：含空格/括号/编码的附件引用必须进导出包', () => {
+  it('角括号目标（含空格）', () => {
+    expect(extractAttachmentRefs('![p](<Attachments/images/my pic.png>)')).toEqual([
+      'Attachments/images/my pic.png',
+    ])
+  })
+
+  it('平衡圆括号目标（pic(1).png）', () => {
+    expect(extractAttachmentRefs('![p](Attachments/images/pic(1).png)')).toEqual([
+      'Attachments/images/pic(1).png',
+    ])
+  })
+
+  it('URI 编码目标解码为磁盘真实路径', () => {
+    expect(extractAttachmentRefs('![p](Attachments/images/my%20pic.png)')).toEqual([
+      'Attachments/images/my pic.png',
+    ])
+  })
+
+  it('普通链接与带 title 的图片都收集；URL 仍忽略', () => {
+    const md = [
+      '[报告](Attachments/files/report.pdf)',
+      '![p](<Attachments/images/new pic.png> "标题")',
+      '[web](https://example.com/Attachments/fake.png)',
+    ].join('\n')
+    expect(extractAttachmentRefs(md)).toEqual([
+      'Attachments/files/report.pdf',
+      'Attachments/images/new pic.png',
+    ])
+  })
+
+  it('代码块中的角括号/括号引用仍不收集（P3-14 不回归）', () => {
+    const md =
+      '```md\n![p](<Attachments/images/code pic.png>)\n```\n\n' +
+      '![real](Attachments/images/real(1).png)'
+    expect(extractAttachmentRefs(md)).toEqual(['Attachments/images/real(1).png'])
+  })
+})

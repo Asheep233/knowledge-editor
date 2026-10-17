@@ -27,41 +27,103 @@ export function extractAttachmentRefs(md: string): string[] {
   const add = (src: string | undefined) => {
     if (!src) return
     let s = src.trim()
+    if (s.startsWith('<') && s.endsWith('>')) s = s.slice(1, -1).trim()
+    // URI 编码目标（%20 等）→ 解码为真实磁盘路径（与后端 normalize_attachment_ref 同口径）
+    try {
+      s = decodeURIComponent(s)
+    } catch {
+      /* 非法 % 序列按原文处理 */
+    }
     if (s.startsWith('./')) s = s.slice(2)
     // 仅收集 workspace 附件：Attachments/ 开头且非网络协议
     if (!s.startsWith('Attachments/')) return
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return
     refs.add(s)
   }
-  // 单遍扫描（保持文档顺序）：ke-attach/video 头标记（JSON 用括号平衡匹配，
-  // F07：title/caption 含 `}` 不截断）+ 标准图片 ![alt](src "title")
-  const re =
-    /<!--\s*ke-(?:attach|video):\s*|!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+"[^"]*")?\s*\)/g
+  // ① ke-attach/video 头标记（JSON 用括号平衡匹配；F07：title/caption 含 `}` 不截断）
+  // ② Markdown 链接/图片目标（支持角括号/平衡括号/编码/尾随 title；FE-05）
+  // 两路候选按**文档位置**排序后统一去重，保持原有「按出现顺序」契约。
+  const keRe = /<!--\s*ke-(?:attach|video):\s*/g
+  const candidates: Array<{ pos: number; src: string | undefined }> = []
   let m: RegExpExecArray | null
-  while ((m = re.exec(md))) {
-    if (m[0].startsWith('<!--')) {
-      // ke-* 分支：跨 JSON 推进 lastIndex 到头标记整体结束（不重扫中间内容）
-      const bodyStart = m.index + m[0].length
-      if (md[bodyStart] === '{') {
-        const parsed = scanBalancedJson(md, bodyStart)
-        if (parsed !== null) {
-          const jsonEnd = bodyStart + parsed.length
-          const close = /^\s*-->/.exec(md.slice(jsonEnd))
-          if (close) {
-            re.lastIndex = jsonEnd + close[0].length
-            try {
-              add((JSON.parse(parsed) as { src?: string }).src)
-            } catch {
-              /* 非法 JSON 忽略，由 GenericFallback 原样保留 */
-            }
-          }
-        }
-      }
-    } else {
-      add(m[1])
+  while ((m = keRe.exec(md))) {
+    const bodyStart = m.index + m[0].length
+    if (md[bodyStart] !== '{') continue
+    const parsed = scanBalancedJson(md, bodyStart)
+    if (parsed === null) continue
+    const jsonEnd = bodyStart + parsed.length
+    const close = /^\s*-->/.exec(md.slice(jsonEnd))
+    if (!close) continue
+    keRe.lastIndex = jsonEnd + close[0].length
+    try {
+      candidates.push({ pos: m.index, src: (JSON.parse(parsed) as { src?: string }).src })
+    } catch {
+      /* 非法 JSON 忽略，由 GenericFallback 原样保留 */
     }
   }
+  for (const t of scanMdLinkTargets(md)) candidates.push({ pos: t.pos, src: t.src })
+  candidates.sort((a, b) => a.pos - b.pos)
+  for (const c of candidates) add(c.src)
   return [...refs]
+}
+
+/**
+ * 扫描 Markdown 链接/图片目标（`[..](target)` / `![..](target)`），返回
+ * `{ src, pos }`（pos 用于恢复文档顺序）。
+ *
+ * 支持：角括号 `<…>`（允许空格/圆括号）、裸目标（含**平衡圆括号**，如
+ * `pic(1).png`）、可选尾随 title；不跨行。与后端
+ * `markdown_io.md_link_target_spans` 同口径（导出收集与导入改写一致）。
+ */
+function scanMdLinkTargets(md: string): Array<{ src: string; pos: number }> {
+  const out: Array<{ src: string; pos: number }> = []
+  const labelRe = /\]\(/g
+  let m: RegExpExecArray | null
+  while ((m = labelRe.exec(md))) {
+    let p = m.index + m[0].length
+    while (p < md.length && (md[p] === ' ' || md[p] === '\t')) p += 1
+    if (p >= md.length) continue
+    if (md[p] === '<') {
+      const q = md.indexOf('>', p + 1)
+      if (q < 0) continue
+      const target = md.slice(p + 1, q).trim()
+      const rest = md.slice(q + 1)
+      if (!/^\s*(?:"[^"]*"|'[^']*')?\s*\)/.test(rest)) continue
+      if (target) out.push({ src: target, pos: m.index })
+      labelRe.lastIndex = q + 1
+      continue
+    }
+    let depth = 0
+    let i = p
+    let close = -1
+    while (i < md.length) {
+      const ch = md[i]
+      if (ch === '\\') {
+        i += 2
+        continue
+      }
+      if (ch === '\n') break
+      if (ch === '(') depth += 1
+      else if (ch === ')') {
+        if (depth === 0) {
+          close = i
+          break
+        }
+        depth -= 1
+      }
+      i += 1
+    }
+    if (close < 0) continue
+    const segment = md.slice(p, close)
+    const raw = segment.trim()
+    if (raw) {
+      // 尾随 title（"…" / '…' / (…)）不属于目标
+      const stripped = raw.replace(/\s+(?:"[^"]*"|'[^']*'|\([^)]*\))\s*$/, '').trim()
+      if (stripped) out.push({ src: stripped, pos: m.index })
+    }
+    labelRe.lastIndex = close + 1
+  }
+  return out
 }
 
 /** 从 src[start]（须为 '{'）做括号平衡匹配，返回完整 JSON 字符串（F07）。 */

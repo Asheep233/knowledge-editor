@@ -144,13 +144,20 @@ app.add_middleware(
 #     预检 401 + 前端不发头 + sidecar 不生成 → 前端/测试/脚本全断）。
 #   · 带 Origin 且不在受信任集合 → 403，副作用不会发生。
 #
-# 受信任集合 = 固定本地来源（Tauri WebView + 默认 dev 端口）
+# 受信任集合 = 固定本地来源（Tauri WebView）
+#            ∪ 固定 dev 端口（**仅开发模式**，见 config.IS_PRODUCTION_ORIGINS）
 #            ∪ config.CORS_ORIGINS（sidecar 按实际 dev 端口注入）
 #            ∪ 请求自身同源（后端直接提供页面时的同源调用）
 _TRUSTED_ORIGINS_FIXED = frozenset(
     {
         "http://tauri.localhost",
         "https://tauri.localhost",
+    }
+)
+#: 开发期固定端口：仅在**未显式注入** KE_CORS_ORIGINS 时信任（61sol SD-R01）。
+#: 桌面 release 由 Rust sidecar 注入 tauri 来源 → 生产模式下 dev 端口自动失效。
+_DEV_ORIGINS_FIXED = frozenset(
+    {
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     }
@@ -161,8 +168,10 @@ _R07_EXEMPT_PATHS = ("/api/health",)
 
 
 def _trusted_origins(request: Request) -> set[str]:
-    """受信任来源集合（固定项 + CORS 配置项 + 请求自身同源）"""
+    """受信任来源集合（固定项 + 开发模式 dev 端口 + CORS 配置项 + 请求自身同源）"""
     allowed = set(_TRUSTED_ORIGINS_FIXED)
+    if not config.IS_PRODUCTION_ORIGINS:
+        allowed |= _DEV_ORIGINS_FIXED
     allowed.update(config.CORS_ORIGINS)
     host = request.headers.get("host")
     if host:

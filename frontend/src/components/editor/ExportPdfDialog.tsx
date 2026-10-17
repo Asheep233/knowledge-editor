@@ -148,6 +148,32 @@ export function applyPrintOverrides(css: string): () => void {
 }
 
 /**
+ * SD-03/SD-04（2026-10-17 审查）：应用「选项覆盖样式 + 显式浅深主题」到打印上下文。
+ *
+ * - SD-03：真 PDF 预览打印的是**当前主 WebView**，旧预览路径只传 contentWidth，
+ *   用户所选颜色从未进入打印上下文 → 预览与正式导出不一致。导出与预览统一走本函数。
+ * - SD-04：显式 light/dark 旧实现只生成 `color-scheme`，实际主题变量由
+ *   `[data-theme]` 选择器决定 → 只改 color-scheme 不会切换变量。这里在
+ *   **打印窗口期**临时切换 `document.documentElement.dataset.theme`，结束恢复。
+ *
+ * 返回清理函数（必须无条件调用；不残留样式/主题副作用）。
+ */
+export function applyPrintContext(opts: PdfExportOptions): () => void {
+  const removeCss = applyPrintOverrides(buildPrintOverrideCss(opts))
+  const root = typeof document !== 'undefined' ? document.documentElement : null
+  const explicitTheme = opts.theme === 'light' || opts.theme === 'dark'
+  const prevTheme = root?.dataset.theme
+  if (root && explicitTheme) root.dataset.theme = opts.theme
+  return () => {
+    removeCss()
+    if (root && explicitTheme) {
+      if (prevTheme === undefined) delete root.dataset.theme
+      else root.dataset.theme = prevTheme
+    }
+  }
+}
+
+/**
  * 导出执行器：**写 overrides → 执行导出 → 无论成功/失败立即移除**。
  * 产品路径（EditorArea::runPdfExport）直接调用本函数，保证「不留副作用」这条是被测单元。
  */
@@ -155,7 +181,7 @@ export async function exportPdfWithOverrides(
   opts: PdfExportOptions,
   run: () => Promise<void> | void,
 ): Promise<void> {
-  const remove = applyPrintOverrides(buildPrintOverrideCss(opts))
+  const restore = applyPrintContext(opts)
   try {
     // task-75 线索 B：导出前必须等字体就绪（KaTeX `\sqrt` 的高字形/横线来自 Size1..4；
     // 未就绪就打印会退化成「只剩一条长横线」）。字体 API 不可用时不阻塞。
@@ -166,7 +192,7 @@ export async function exportPdfWithOverrides(
     // finally 无条件还原（还原后 `.ke-editor-prose` 的 outerHTML 逐字符一致）。
     await run()
   } finally {
-    remove()
+    restore()
   }
 }
 
@@ -343,8 +369,13 @@ export default function ExportPdfDialog({
     let timer: ReturnType<typeof setTimeout> | null = null
     let disposed = false
     const generate = async () => {
+      let restoreContext: (() => void) | null = null
       try {
         const { invoke, convertFileSrc } = await import('@tauri-apps/api/core')
+        // SD-03/SD-04（2026-10-17 审查）：真 PDF 预览打印的是当前主 WebView ——
+        // 必须与正式导出共用同一套覆盖样式与显式主题，否则预览颜色/浅深主题与
+        // 导出结果不一致。生成结束后（finally）无条件还原。
+        restoreContext = applyPrintContext(opts)
         const path = await invoke<string>('preview_pdf', {
           contentWidth: typeof contentWidthPx === 'number' ? contentWidthPx : undefined,
         })
@@ -365,6 +396,7 @@ export default function ExportPdfDialog({
           setPreviewError(e instanceof Error ? e.message : String(e))
         }
       } finally {
+        if (restoreContext) restoreContext()
         if (!disposed && seq === previewSeqRef.current) setPreviewBusy(false)
       }
     }

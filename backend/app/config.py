@@ -49,13 +49,21 @@ PORT = int(os.environ.get("KE_PORT", "8000"))
 #   · 新的写操作来源校验在 main.py::verify_request_origin（Origin 白名单，无 token）。
 API_TOKEN = os.environ.get("KE_API_TOKEN", "")
 
+_CORS_ENV_RAW = os.environ.get("KE_CORS_ORIGINS")
 CORS_ORIGINS = [
     o.strip()
-    for o in os.environ.get(
-        "KE_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    for o in (
+        _CORS_ENV_RAW
+        if _CORS_ENV_RAW is not None
+        else "http://localhost:5173,http://127.0.0.1:5173"
     ).split(",")
     if o.strip()
 ]
+#: 是否由分发方（桌面 release sidecar / 部署环境）显式注入 CORS 来源。
+#: 注入即视为「生产/桌面模式」：main.py 的 Origin 受信任集合不再额外信任固定
+#: dev 端口（61sol SD-R01：release 下 localhost:5173 曾被无条件信任，仅靠
+#: 「需本机恶意页面」限定利用条件，属部署边界风险）。
+IS_PRODUCTION_ORIGINS = bool(_CORS_ENV_RAW and _CORS_ENV_RAW.strip())
 
 # 目录约定（相对 workspace 根）
 DIR_ARTICLES = "Articles"

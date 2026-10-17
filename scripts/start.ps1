@@ -1,4 +1,4 @@
-﻿# KnowledgeEditor 一键启动脚本（Phase 5E）
+# KnowledgeEditor 一键启动脚本（Phase 5E）
 # 用法: 必须在项目根目录执行  .\scripts\start.ps1
 # 功能: 环境检查 -> 旧进程检测清理 -> 启动 backend -> health 握手 -> 启动 frontend -> 写入进程记录
 $ErrorActionPreference = 'Stop'
@@ -155,7 +155,9 @@ Write-Host '    端口 8000 / 5173 可用' -ForegroundColor Green
 
 # ---------- 3) 版本读取与源码级一致性提示 ----------
 $backendSrcVersion = $null
-$m = Select-String -Path (Join-Path $root 'backend\app\__init__.py') -Pattern '__version__\s*=\s*"([^"]+)"' -ErrorAction SilentlyContinue
+# M-16（2026-10-17 审查）：bump 脚本固定写**单引号**，原正则只匹配双引号 →
+# 永远读不到后端版本 → 前后端版本不一致警告与 runtime.json project_version 静默失效。
+$m = Select-String -Path (Join-Path $root 'backend\app\__init__.py') -Pattern '__version__\s*=\s*[''"]([^''"]+)[''"]' -ErrorAction SilentlyContinue
 if ($m) { $backendSrcVersion = $m.Matches[0].Groups[1].Value }
 
 $frontendSrcVersion = $null

@@ -29,7 +29,8 @@ def _doc_path_or_400(root, doc_path: str) -> Path:
     """P1-10：历史端点仅允许 Articles/Modules 下的 .md/.markdown。"""
     if not markdown_io.is_doc_rel(doc_path):
         raise HTTPException(status_code=400, detail="非法路径")
-    full = markdown_io.safe_rel_path(root, doc_path)
+    # M-1：resolve 后必须仍在 Articles/Modules（挡 symlink/junction 越层）
+    full = markdown_io.safe_rel_path(root, doc_path, allowed_tops=markdown_io.DOC_TOPS)
     if full is None:
         raise HTTPException(status_code=400, detail="非法路径")
     return full

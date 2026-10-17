@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .. import config
+from ..services import markdown_io
 from ..services import workspace as ws_service
 from ..services.history_store import HistoryStore
 from ..services.indexer import WorkspaceIndexer
@@ -36,6 +38,14 @@ def _app_config(request: Request):
     return request.app.state.app_config
 
 
+def _activate_or_409(app, target: Path) -> dict:
+    """激活工作区；布局不安全（BE-01）时映射为可读 409，不进 500。"""
+    try:
+        return activate_workspace(app, target)
+    except ws_service.UnsafeWorkspaceError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 def _open_index(root: Path) -> tuple[IndexStore, WorkspaceIndexer, dict]:
     """打开索引并（按需）重建；索引损坏（sqlite malformed / not a database 等，
     均属 sqlite3.DatabaseError）时丢弃损坏文件重建——索引是派生数据，
@@ -45,6 +55,19 @@ def _open_index(root: Path) -> tuple[IndexStore, WorkspaceIndexer, dict]:
     只有签名变化才重建，避免每次启动/切库全量重灌。
     """
     db_path = root / config.DIR_INTERNAL / "index.db"
+    # M-6：索引路径必须是普通文件。index.db 是目录/链接时 sqlite 抛
+    # OperationalError（DatabaseError 子类）→ 落入下面的清理分支却删不掉，
+    # 最终 500/启动崩溃。这里提前给可读 409，用户可手动清理。
+    if os.path.lexists(db_path):
+        if markdown_io.is_reparse_point(db_path):
+            raise ws_service.UnsafeWorkspaceError(
+                f"索引文件是符号链接，拒绝打开：{db_path}"
+            )
+        if not db_path.is_file():
+            raise ws_service.UnsafeWorkspaceError(
+                f"索引路径不是普通文件（{config.DIR_INTERNAL}/index.db），"
+                "请手动清理该路径后重试"
+            )
     store: IndexStore | None = None
     try:
         store = IndexStore(db_path).connect()
@@ -61,12 +84,20 @@ def _open_index(root: Path) -> tuple[IndexStore, WorkspaceIndexer, dict]:
         for suffix in ("", "-wal", "-shm"):
             try:
                 db_path.with_name(db_path.name + suffix).unlink(missing_ok=True)
-            except OSError:
-                pass
-        store = IndexStore(db_path).connect()
-        indexer = WorkspaceIndexer(store, root)
-        stats = indexer.rebuild()
-        return store, indexer, stats
+            except OSError as exc:
+                raise ws_service.UnsafeWorkspaceError(
+                    f"索引已损坏但无法清理（{exc.strerror or exc}），"
+                    "请关闭占用后重试，或手动删除 .knowledgeeditor/index.db"
+                ) from exc
+        try:
+            store = IndexStore(db_path).connect()
+            indexer = WorkspaceIndexer(store, root)
+            stats = indexer.rebuild()
+            return store, indexer, stats
+        except sqlite3.DatabaseError as exc:
+            raise ws_service.UnsafeWorkspaceError(
+                f"索引无法重建（{exc}），请手动删除 .knowledgeeditor/index.db 后重试"
+            ) from exc
 
 
 def activate_workspace(app, root: Path) -> dict:
@@ -109,7 +140,10 @@ def close_workspace(app) -> None:
 def workspace_init(request: Request) -> dict:
     """兼容旧接口：仅确保默认工作区结构存在，不切换当前工作区。"""
     root = getattr(request.app.state, "workspace_root", None) or config.WORKSPACE_ROOT
-    root = ws_service.ensure_workspace_structure(root)
+    try:
+        root = ws_service.ensure_workspace_structure(root)
+    except ws_service.UnsafeWorkspaceError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"root": str(root), "initialized": True}
 
 
@@ -137,7 +171,7 @@ def workspace_create(request: Request, body: PathBody) -> dict:
         raise HTTPException(status_code=400, detail="目标不是目录")
     if target.exists() and any(target.iterdir()):
         raise HTTPException(status_code=409, detail="目标目录非空，请使用「打开」")
-    state = activate_workspace(request.app, target)
+    state = _activate_or_409(request.app, target)
     _app_config(request).add_recent_workspace(target)
     return {"open": True, **state}
 
@@ -147,7 +181,7 @@ def workspace_open(request: Request, body: PathBody) -> dict:
     target = Path(body.path).expanduser().resolve()
     if not target.is_dir():
         raise HTTPException(status_code=404, detail="工作区目录不存在")
-    state = activate_workspace(request.app, target)
+    state = _activate_or_409(request.app, target)
     _app_config(request).add_recent_workspace(target)
     return {"open": True, **state}
 

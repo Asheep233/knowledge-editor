@@ -260,13 +260,20 @@ def count_backup_orphans(root: Path) -> tuple[int, list[str]]:
     return len(orphans), orphans
 
 
-def cleanup_stale_tmp_files(workspace: Path) -> int:
+def cleanup_stale_tmp_files(workspace: Path | None) -> int:
     """清理 `atomic_write` 残留的 `.tmp-*.md`（写入中断产物）。
 
     只在**启动时**执行：此刻本进程尚无写入在飞，单实例保证没有别的实例在写，
     因此工作区里存在的 `.tmp-*` 必然是历史残留。返回清理数量。
+
+    修正：原 main.py 传入的是 `routers.workspace` **模块对象**（参数类型是 Path），
+    `walk_entries` 立刻抛异常被本函数吞掉 → 启动清理永远不生效。现在要求传
+    工作区根（未打开时为 None，直接返回 0）。
     """
     from . import markdown_io  # 局部导入，避免循环依赖
+
+    if workspace is None:
+        return 0
 
     removed = 0
     try:

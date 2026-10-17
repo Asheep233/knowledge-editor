@@ -29,6 +29,24 @@ _SKIP_NAMES = {".gitkeep"}
 _SIGNATURE_KEY = "index_scan_signature"
 
 
+def _scan_base(root: Path, rel: str) -> Path | None:
+    """扫描起点校验（BE-01 纵深防御）：起点必须是工作区内的真实目录。
+
+    `walk_files` 只跳过**起点之下**的链接；若顶层 `Articles/` 本身是指向区外的
+    junction，旧实现会把区外文档读入索引、并让创建写入区外。激活期已拒绝这类
+    布局；这里对直接调用索引器的路径（测试/自愈/未来新入口）再兜一层。
+    """
+    base = root / rel
+    try:
+        if markdown_io.is_reparse_point(base) or not base.is_dir():
+            return None
+        if Path(root).resolve() not in base.resolve().parents:
+            return None
+    except (OSError, RuntimeError, ValueError):
+        return None
+    return base
+
+
 def _title_of(rel_path: str, meta: dict, content: str) -> str:
     # 防御：frontmatter title 可能为数字/非字符串（YAML 数字字面量），统一转字符串
     raw_title = meta.get("title")
@@ -54,8 +72,8 @@ def _disk_scan_snapshot(root: Path) -> dict[str, tuple[int, int, str]]:
     """
     snap: dict[str, tuple[int, int, str]] = {}
     for rel, _kind in _SCAN_DIRS.items():
-        base = root / rel
-        if not base.exists():
+        base = _scan_base(root, rel)
+        if base is None:
             continue
         for p in markdown_io.walk_files(base):
             try:
@@ -78,8 +96,8 @@ def _signature(snap: dict[str, tuple[int, int, str]]) -> str:
 
 def _scan(root: Path, rel: str, kind: str) -> list[dict]:
     """扫描单个顶层目录，返回待 upsert 的记录（P1-17：跳过符号链接/Junction）。"""
-    base = root / rel
-    if not base.exists():
+    base = _scan_base(root, rel)
+    if base is None:
         return []
     records = []
     for p in sorted(markdown_io.walk_files(base)):

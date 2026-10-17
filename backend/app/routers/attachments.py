@@ -218,7 +218,9 @@ def _guard_attachment_rel(request: Request, rel_path: str) -> Path:
     root = request.app.state.workspace_root
     if not markdown_io.is_attachment_rel(rel_path):
         raise HTTPException(status_code=400, detail="非法路径")
-    full = markdown_io.safe_rel_path(root, rel_path)
+    # M-1：resolve 后必须仍位于 Attachments/ —— 挡住 symlink/junction 指向
+    # .knowledgeeditor/settings.json 等受保护文件（读/写/删三条路径共用本守卫）。
+    full = markdown_io.safe_rel_path(root, rel_path, allowed_tops=markdown_io.ATTACHMENT_TOPS)
     if full is None:
         raise HTTPException(status_code=400, detail="非法路径")
     return full

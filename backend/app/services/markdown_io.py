@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import stat
 import tempfile
 import unicodedata
 from pathlib import Path
@@ -613,19 +614,81 @@ def read_text(path: Path) -> str:
         return f.read()
 
 
-def safe_rel_path(root: Path, rel: str) -> Optional[Path]:
-    """校验相对路径不越界（防目录穿越），返回解析后的绝对路径。
+#: 业务顶层白名单（文档端点）：只允许 Articles/Modules 下的文档
+DOC_TOPS: tuple[str, ...] = (config.DIR_ARTICLES, config.DIR_MODULES)
+#: 业务顶层白名单（附件端点）：只允许 Attachments/ 下的附件
+ATTACHMENT_TOPS: tuple[str, ...] = (config.DIR_ATTACHMENTS,)
+#: 受保护顶层：内部数据（索引/设置）/草稿/回收站，业务端点一律禁止触达
+PROTECTED_TOPS: tuple[str, ...] = (
+    config.DIR_INTERNAL,
+    config.DIR_DRAFTS,
+    config.DIR_TRASH,
+)
+
+
+def is_reparse_point(path: Path) -> bool:
+    """**不跟随**地判断路径本体是否符号链接 / Windows junction（reparse point）。
+
+    用于工作区布局与端点路径的链接防护。CI 的 Python 3.10 没有
+    `os.path.isjunction`，Windows 上退化为 lstat 的
+    `FILE_ATTRIBUTE_REPARSE_POINT` 判定（junction 与符号链接都会带该属性）；
+    Linux 上用 `is_symlink()`。
+    """
+    p = Path(path)
+    try:
+        if p.is_symlink():
+            return True
+        st = p.lstat()
+    except OSError:
+        return False
+    if os.name == "nt":
+        attrs = getattr(st, "st_file_attributes", 0)
+        return bool(attrs & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
+    return False
+
+
+def safe_rel_path(
+    root: Path,
+    rel: str,
+    *,
+    allowed_tops: tuple[str, ...] | None = None,
+    forbidden_tops: tuple[str, ...] | None = None,
+) -> Optional[Path]:
+    """校验相对路径不越界，返回解析后的绝对路径；不合法返回 None。
 
     P0-3：显式拒绝 candidate == root（"."" / 空串 / "/" 等根路径等价输入），
     调用方拿到的永远是 root 的严格子路径，杜绝整库删除/根目录改名。
+
+    M-1 加固：安全模型从「看请求字符串」改为「**看 resolve 后的真实归属**」。
+    工作区内若存在 symlink/junction（如 `Articles/x.md -> ../.knowledgeeditor/
+    settings.json`），resolve 后顶层变成 `.knowledgeeditor` —— 仅靠字符串白名单
+    （is_doc_rel）挡不住，必须在这里按解析后的顶层判定。
+
+    - `allowed_tops`：解析后顶层必须落在其一内（业务端点传 DOC_TOPS /
+      ATTACHMENT_TOPS；None = 只做 root 包含性校验，供文件树/索引等全库操作）。
+    - `forbidden_tops`：解析后顶层命中即拒绝（可选，fs 路由已有同口径复查）。
+    - 超长文件名（ENAMETOOLONG）、非法字符、symlink 环等解析异常一律返回 None，
+      由调用方映射 4xx —— Python < 3.13 的 pathlib 不会忽略 ENAMETOOLONG，
+      而 CI/打包运行时是 3.10/3.12，不能让它冒泡成 500。
     """
-    root = Path(root).resolve()
-    candidate = (root / rel).resolve()
+    try:
+        root = Path(root).resolve()
+        candidate = (root / rel).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return None
     if candidate == root:
         return None
-    if root in candidate.parents:
-        return candidate
-    return None
+    if root not in candidate.parents:
+        return None
+    parts = candidate.relative_to(root).parts
+    if not parts:
+        return None
+    top = parts[0].lower()
+    if forbidden_tops is not None and top in {t.lower() for t in forbidden_tops}:
+        return None
+    if allowed_tops is not None and top not in {t.lower() for t in allowed_tops}:
+        return None
+    return candidate
 
 
 def is_doc_rel(rel: str) -> bool:

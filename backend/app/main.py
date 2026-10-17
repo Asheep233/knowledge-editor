@@ -42,6 +42,7 @@ from .routers.workspace import activate_workspace as _activate_workspace_impl
 from .services import self_heal
 from .services.app_config import AppConfig
 from .services.fs_watch import FsWatcher
+from .services.workspace import UnsafeWorkspaceError as _UnsafeWorkspaceError
 
 logger = logging.getLogger(__name__)
 
@@ -72,15 +73,18 @@ async def lifespan(app: FastAPI):
 
     try:
         _activate_workspace_impl(app, config.WORKSPACE_ROOT)
-    except OSError:
-        # 默认工作区不可用时保持「未打开」状态，由前端引导创建/打开
-        pass
+    except (OSError, _UnsafeWorkspaceError) as exc:
+        # 默认工作区不可用/布局不安全（BE-01：链接/越界）时保持「未打开」状态，
+        # 由前端引导创建/打开——绝不能让 sidecar 因此起不来。
+        logger.warning("默认工作区未激活（保持未打开）：%s", exc)
 
     # K3-I2 方案 A：启动自愈（恢复草稿重挂 + 历史快照孤儿只统计）。
     # 调用点纵深防御：即使入口整体被替换成抛异常函数（或将来重构出 try 之外
     # 的异常），也绝不阻断启动。
     try:
-        cleaned = self_heal.cleanup_stale_tmp_files(workspace)
+        cleaned = self_heal.cleanup_stale_tmp_files(
+            getattr(app.state, "workspace_root", None)
+        )
         if cleaned:
             logger.info("启动自愈：清理 %d 个原子写残留临时文件（.tmp-*）", cleaned)
         self_heal.run_startup_self_heal(

@@ -70,7 +70,9 @@ def _article_path(request: Request, article_id: str) -> Path:
     # 永久拒绝 .knowledgeeditor、Drafts 与任意其他位置文件
     if not markdown_io.is_doc_rel(article_id):
         raise HTTPException(status_code=400, detail="非法路径")
-    full = markdown_io.safe_rel_path(root, article_id)
+    # M-1：resolve 后必须仍位于 Articles/Modules —— 挡住工作区内 symlink/junction
+    # 指向 .knowledgeeditor/settings.json 等受保护文件（字符串白名单挡不住）。
+    full = markdown_io.safe_rel_path(root, article_id, allowed_tops=markdown_io.DOC_TOPS)
     if full is None:
         raise HTTPException(status_code=400, detail="非法路径")
     return full
@@ -105,7 +107,9 @@ def _maybe_snapshot(request: Request, rel: str, new_content: str) -> None:
     hist = getattr(request.app.state, "history", None)
     if hist is None:
         return
-    full = markdown_io.safe_rel_path(request.app.state.workspace_root, rel)
+    full = markdown_io.safe_rel_path(
+        request.app.state.workspace_root, rel, allowed_tops=markdown_io.DOC_TOPS
+    )
     if full is None or not full.is_file():
         return
     try:

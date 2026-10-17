@@ -47,6 +47,30 @@ export function closeTab(
   return { tabs: next, activeId: next[ni].id }
 }
 
+/**
+ * H-2（2026-10-17 审查）：按**前缀**关闭标签（删除文件夹时使用）。
+ *
+ * 文件树删除「文件夹」的上报只有文件夹 rel（不含内部文件），旧实现按精确 id
+ * 匹配 → 文件夹内已打开的标签全部残留，编辑器停在已删路径，后续自动保存
+ * PUT 404。激活项命中前缀时与 `closeTab` 同款「左邻优先」激活剩余标签。
+ */
+export function closeTabPrefix(
+  tabs: TabItem[],
+  prefix: string,
+  activeId: string | null,
+): { tabs: TabItem[]; activeId: string | null } {
+  if (!prefix) return { tabs, activeId }
+  const under = (id: string) => id === prefix || id.startsWith(prefix + '/')
+  const firstRemoved = tabs.findIndex((t) => under(t.id))
+  if (firstRemoved < 0) return { tabs, activeId }
+  const next = tabs.filter((t) => !under(t.id))
+  if (activeId === null || !under(activeId)) return { tabs: next, activeId }
+  if (next.length === 0) return { tabs: next, activeId: null }
+  const before = tabs.slice(0, firstRemoved).filter((t) => !under(t.id)).length
+  const ni = before - 1 >= 0 ? before - 1 : 0
+  return { tabs: next, activeId: next[ni].id }
+}
+
 /** 重命名/移动：原位替换 tab id（保持顺序），标题可一并更新。 */
 export function replaceTab(tabs: TabItem[], fromId: string, toId: string, title?: string): TabItem[] {
   const i = tabs.findIndex((t) => t.id === fromId)

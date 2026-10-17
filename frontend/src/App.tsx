@@ -31,6 +31,7 @@ import {
   TabsContext,
   adjacentTabId,
   closeTab as closeTabState,
+  closeTabPrefix,
   openTab,
   replaceTab,
   replaceTabPrefix,
@@ -51,7 +52,8 @@ import { PromptRoot, askConfirm, askPrompt } from './components/common/PromptDia
 import { classifyFsEvent } from './state/fsEvent'
 import { createRequestSeq, openWithSeq, shouldAcceptSave } from './state/requestSeq'
 import { recoveryCheckShouldRun } from './state/recovery'
-import { abortPending, discardPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
+import { abortPending, cancelPending, discardPending, flushPending, flushPendingAll, flushWithTimeout, pendingDocIds } from './state/saveQueue'
+import { decideWorkspaceReconcile } from './state/workspaceReconcile'
 import { planStartup } from './state/settingsGates'
 import { APP_VERSION } from './version'
 import type { ArticleMeta, FsEvent, HealthInfo, RecoveryItem, WorkspaceState } from './types'
@@ -116,6 +118,14 @@ export default function App() {
   useEffect(() => {
     articleIdRef.current = article?.id ?? null
   }, [article?.id])
+  // SD-01：UI 期望的工作区 root（供健康轮询/重启对齐读最新，规避 stale closure）
+  const workspaceRootRef = useRef<string | null>(null)
+  useEffect(() => {
+    workspaceRootRef.current = workspace?.root ?? null
+  }, [workspace?.root])
+  /** SD-01：后端最近一次 ping 是否不可用（用于识别「重启后首次恢复」） */
+  const backendWasDownRef = useRef(false)
+  const reconcilingWorkspaceRef = useRef(false)
   // Tab 栏：供异步回调 / 快捷键 handler 读最新标签集合（规避 stale closure）
   const tabsRef = useRef<TabItem[]>([])
   useEffect(() => {
@@ -151,6 +161,33 @@ export default function App() {
             : ''
 
   // ---------- 后端健康检查 ----------
+  /**
+   * SD-01（2026-10-17 审查）：后端 sidecar 自动重启后会回到启动时的工作区（A），
+   * 而 UI 仍是用户切换到的 B —— 之后所有保存都会按相对路径写进 A（跨库串写）。
+   * 恢复后首次健康 ping 时核对后端当前 root：不一致则先取消未触发的防抖保存，
+   * 再用 UI 期望 root 重新打开后端工作区，确保后续保存落到正确的库。
+   */
+  const reconcileWorkspaceAfterRestart = useCallback(async () => {
+    if (reconcilingWorkspaceRef.current) return
+    const desired = workspaceRootRef.current
+    if (!desired) return
+    reconcilingWorkspaceRef.current = true
+    try {
+      const current = await getWorkspaceCurrent()
+      if (decideWorkspaceReconcile(desired, current) === 'none') return
+      // 冻结未触发的防抖保存：重启后的后端此刻可能停在另一个工作区
+      for (const id of pendingDocIds()) cancelPending(id)
+      await openWorkspace(desired)
+      setTreeRefresh((n) => n + 1)
+      window.alert('后端服务已重启并回到其它工作区，已自动重新打开当前工作区；请确认最近内容完整。')
+    } catch {
+      window.alert('后端服务重启后工作区不一致，已暂停保存。请重新打开工作区后继续编辑。')
+      setBackendDown(true)
+    } finally {
+      reconcilingWorkspaceRef.current = false
+    }
+  }, [])
+
   useEffect(() => {
     let alive = true
     const ping = () => {
@@ -161,8 +198,16 @@ export default function App() {
           setBackendDown(false)
           // Phase 5E 版本一致性：与本地前端版本比对，不一致仅警告
           setVersionMismatch(h.version !== APP_VERSION)
+          // SD-01：从「断连」恢复 → 核对后端工作区是否被重启动回默认库
+          const recovered = backendWasDownRef.current
+          backendWasDownRef.current = false
+          if (recovered) void reconcileWorkspaceAfterRestart()
         })
-        .catch(() => alive && setBackendDown(true))
+        .catch(() => {
+          if (!alive) return
+          backendWasDownRef.current = true
+          setBackendDown(true)
+        })
     }
     ping()
     const timer = setInterval(ping, 10000)
@@ -170,7 +215,7 @@ export default function App() {
       alive = false
       clearInterval(timer)
     }
-  }, [])
+  }, [reconcileWorkspaceAfterRestart])
 
   // ---------- 启动：应用设置（Phase 7 M3，加载即应用主题） ----------
   useEffect(() => {
@@ -299,6 +344,26 @@ export default function App() {
     [],
   )
 
+  /**
+   * H-2（2026-10-17 审查）：删除的是「当前文档」**或它所在的文件夹**时，清理该
+   * 路径（文件夹按前缀）下的全部标签并激活相邻。否则编辑器会停在已删路径上，
+   * 后续自动保存 PUT 全部 404（用户以为已保存）。
+   */
+  const closeDeletedAndActivateAdjacent = useCallback(
+    async (deletedId: string) => {
+      const curId = articleIdRef.current
+      lastDeletedIdRef.current = deletedId
+      const after = closeTabPrefix(tabsRef.current, deletedId, curId)
+      setTabs(after.tabs)
+      setArticle(null)
+      setSaveState('idle')
+      const isFolder = !!curId && curId !== deletedId
+      window.alert(isFolder ? '当前文档所在文件夹已被删除' : '当前文档已被删除')
+      if (after.activeId) await openArticleRef.current(after.activeId)
+    },
+    [],
+  )
+
   const handleFsEvent = useCallback((ev: FsEvent) => {
     // 读最新 id 而非闭包捕获的旧 article（P1-8 stale closure）
     const currentId = articleIdRef.current
@@ -312,10 +377,11 @@ export default function App() {
     if (decision.surface === 'modified') {
       setExtModal(ev)
     } else if (decision.surface === 'deleted') {
-      // P3-7 + UI-4：当前文档被外部删除 → 清理标签 + 激活相邻（与内部删除同款），并提示
-      void closeActiveAndActivateAdjacent(ev.rel, '当前文档已被外部删除')
+      // P3-7 + UI-4 + H-2：当前文档（或其父文件夹）被外部删除 → 按前缀清理标签 +
+      // 激活相邻（与内部删除同款），并提示
+      void closeDeletedAndActivateAdjacent(ev.rel)
     }
-  }, [closeActiveAndActivateAdjacent])
+  }, [closeDeletedAndActivateAdjacent])
 
   const openArticle = useCallback(async (id: string) => {
     loadingCountRef.current += 1
@@ -691,12 +757,18 @@ export default function App() {
     async (m: FsMutation) => {
       setTreeRefresh((n) => n + 1)
       if (!article) return
-      if (m.type === 'delete' && m.from === article.id) {
-        // task-30 + UI-4：激活标签被删除 → 标签移除 + 激活相邻（左优先；无邻则回空态）
-        await closeActiveAndActivateAdjacent(m.from, '当前文档已被删除')
-      } else if (m.type === 'delete' && m.from) {
-        // 非激活文档被删除：仅移除对应标签，激活项不变（关闭标签不产生删除请求，反向亦然）
-        setTabs(closeTabState(tabsRef.current, articleIdRef.current, m.from).tabs)
+      if (m.type === 'delete' && m.from) {
+        const deleted = m.from
+        const curId = articleIdRef.current
+        const affectsCurrent = !!curId && (curId === deleted || curId.startsWith(deleted + '/'))
+        if (affectsCurrent) {
+          // H-2：删除当前文档或其所在文件夹 → 按前缀清理标签 + 激活相邻
+          await closeDeletedAndActivateAdjacent(deleted)
+        } else {
+          // 非激活路径被删除：按前缀移除相关标签，激活项不变（关闭标签不产生删除
+          // 请求，反向亦然）
+          setTabs(closeTabPrefix(tabsRef.current, deleted, null).tabs)
+        }
       } else if ((m.type === 'rename' || m.type === 'move') && m.from && m.to) {
         // UI-1：文件夹 rename/move → **前缀替换**（子文档标签同步；原来的精确匹配
         // 只更新文件夹自身，子文档标签与激活路径留在旧前缀 → 自动保存 PUT 404）
@@ -709,7 +781,7 @@ export default function App() {
         }
       }
     },
-    [article, closeActiveAndActivateAdjacent, requestOpenArticle],
+    [article, closeActiveAndActivateAdjacent, closeDeletedAndActivateAdjacent, requestOpenArticle],
   )
 
   // R1-B：文件树重命名/移动/删除当前文档（或其所在目录）前，先 flush 未决保存。

@@ -33,7 +33,7 @@ import { applyMathDeleteCursor, applyMathInsertCursor, applyMathSaveCursor, isMa
 import { markdownForSave, pruneEmptyMathBlocks } from '../../editor/math/emptyBlocks'
 import { MATH_CONVERT_EVENT, convertBlockToInline, convertInlineToBlock, type ConvertRequest } from '../../editor/math/convert'
 import { getAutosaveIntervalMs } from '../../settings'
-import { cancelPending, enqueueSave, flushPending, flushWithTimeout, type SaveFn } from '../../state/saveQueue'
+import { abortPending, cancelPending, enqueueSave, flushPending, flushWithTimeout, SaveDeclinedError, type SaveFn } from '../../state/saveQueue'
 import { createDraftDebounce, type DraftDebounce } from '../../state/draftDebounce'
 import { createDeferredLoader, onDocumentSwitch, resolveRecoveryTarget, resolveSaveContent, type DeferredLoader } from '../../state/docSwitch'
 import {
@@ -201,6 +201,19 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
    *  但**拒绝**不置位 —— 拒绝后内容再变化必须重新询问（task-54 R11）。 */
   const sourceUnknownAckSessionRef = useRef(false)
   const sourceUnknownDeclinedRef = useRef<string | null>(null)
+  // FE-04（2026-10-17 审查）：源码模式下右栏保存标题/标签（PUT /meta）后，磁盘
+  // frontmatter 已更新，而源码通道基线 raw 仍是进入源码模式时的副本 → 下一次源码
+  // 正文保存会把旧 frontmatter 写回（标题/标签回滚）。文档状态更新且仍在源码模式时，
+  // 只同步基线的 **frontmatter 部分**；正文以用户正在编辑的 textarea 为准。
+  useEffect(() => {
+    if (viewModeRef.current !== 'source') return
+    const baseRaw = sourceBaseRawRef.current
+    const diskRaw = article?.content
+    if (!baseRaw || !diskRaw) return
+    const diskFm = frontmatterBlockOf(diskRaw)
+    if (frontmatterBlockOf(baseRaw) === diskFm) return
+    sourceBaseRawRef.current = diskFm + sourceBodyOf(baseRaw)
+  }, [article?.content])
   /** 最近一次「已保存」的磁盘原文（源码初值取保存后的内容，而非旧盘面） */
   const lastSavedRawRef = useRef(new Map<string, string>())
   /** A12（第三份审查 P1）：文档**装载代次** —— 切档/外部重载时递增。
@@ -527,7 +540,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         if (unknownMarkersChanged(sourceInitialRef.current, body)) {
           if (sourceUnknownDeclinedRef.current === body) {
             if (stillCurrent()) setSaveState('dirty')
-            return
+            // FE-01：不能普通 return —— 队列会把 resolve 记成「已保存」，随后切视图/
+            // 切档按旧落盘内容加载、编辑静默丢失。抛出「用户拒绝」信号保留脏状态。
+            throw new SaveDeclinedError('未知语法改动未确认，暂不保存')
           }
           if (!sourceUnknownAckSessionRef.current && sourceUnknownAckRef.current !== body) {
             const ok = await askConfirm(
@@ -538,7 +553,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               // 内容一旦再变 → 重新判定（可再次询问），绝不静默写入未确认的改动。
               sourceUnknownDeclinedRef.current = body
               if (stillCurrent()) setSaveState('dirty')
-              return
+              // FE-01：抛「用户拒绝」信号（而非 return），队列不得记成已保存
+              throw new SaveDeclinedError('用户取消保存未知语法改动')
             }
             // 仅确认成功后登记许可（绑定被确认的内容 + 会话级去重）
             sourceUnknownAckSessionRef.current = true
@@ -1246,6 +1262,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       if (!(await askConfirm('恢复此版本将替换当前文档内容，是否继续？'))) return
       try {
         setSaveState('saving')
+        // FE-02（2026-10-17 审查）：恢复前必须**中止在途 PUT 并等待其收尾**——
+        // cancelPending 只清未决计时器，撤不掉已在飞的请求；旧请求可能在恢复后
+        // 到达并把刚恢复的内容覆盖回去。与 R2 外部重载路径同款顺序。
+        abortPending(article.id)
+        bumpSeq(article.id)
+        await flushPending(article.id)
         const doc = await restoreHistory(article.id, v.id)
         // R02（审查报告：源码模式恢复历史后被陈旧 textarea 覆盖）：
         // 恢复 = 用磁盘旧版本**替换**当前内容，必须同时处理三条边界，否则刚恢复的版本会被

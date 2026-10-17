@@ -42,7 +42,12 @@ export interface FsEventDecision {
 
 export function classifyFsEvent(ev: FsEvent, ctx: FsEventCtx): FsEventDecision {
   const refreshTree = ev.type !== 'modified'
-  const matchesCurrent = !!ctx.currentId && ev.rel === ctx.currentId
+  // H-2（2026-10-17 审查）：删除事件可能指向**父文件夹**（rel = 文件夹路径，
+  // 不带子文件）→ 当前文档同样失效，必须按「当前文档被删除」处理，否则编辑器
+  // 停在已删路径上、后续自动保存 PUT 全部 404。
+  const ancestorDeleted =
+    !!ctx.currentId && ev.type === 'deleted' && ctx.currentId.startsWith(ev.rel + '/')
+  const matchesCurrent = !!ctx.currentId && (ev.rel === ctx.currentId || ancestorDeleted)
 
   if (!matchesCurrent) {
     return { refreshTree, surface: 'none' }

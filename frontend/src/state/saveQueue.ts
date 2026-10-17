@@ -50,7 +50,26 @@ interface Entry {
  * ⚠️ 语义约定：只有 `'saved'` 与 `'none'` 才允许视为「可以安全离开/切换」——
  * 旧实现把「Promise 已结束」一律映射为 true，导致保存失败也放行，用户编辑被静默丢弃。
  */
-export type SaveOutcome = 'saved' | 'failed' | 'cancelled' | 'none'
+export type SaveOutcome = 'saved' | 'failed' | 'cancelled' | 'declined' | 'none'
+
+/**
+ * FE-01（2026-10-17 审查）：saveFn 抛出的「用户明确拒绝保存」信号。
+ *
+ * 语义：内容**未落盘**，但不是失败（用户主动选择不写）。必须与成功区分 ——
+ * 队列若把它记成 `'saved'`，切视图/切换文档等离开入口会据此放行，用户刚
+ * 编辑/保留的内容被静默丢弃。队列记录为 `'declined'`：保留脏状态、继续拦截离开。
+ */
+export class SaveDeclinedError extends Error {
+  constructor(message = '保存被用户拒绝') {
+    super(message)
+    this.name = 'SaveDeclinedError'
+  }
+}
+
+/** 是否为「用户拒绝保存」信号（saveQueue 据此记录 declined，而非 failed/saved）。 */
+export function isSaveDeclinedError(err: unknown): err is SaveDeclinedError {
+  return err instanceof SaveDeclinedError
+}
 
 const entries = new Map<string, Entry>()
 
@@ -90,6 +109,11 @@ function drain(e: Entry): Promise<void> {
           if (e.abort?.signal.aborted) {
             e.outcome = 'cancelled'
             outcomes.set(e.docId, { outcome: 'cancelled' })
+          } else if (isSaveDeclinedError(err)) {
+            // FE-01：用户拒绝保存 ≠ 成功。内容仍在内存，离开入口必须继续拦截。
+            e.outcome = 'declined'
+            e.lastError = undefined
+            outcomes.set(e.docId, { outcome: 'declined' })
           } else {
             e.outcome = 'failed'
             e.lastError = err
@@ -104,11 +128,11 @@ function drain(e: Entry): Promise<void> {
       // 若 drain 期间又有新内容入队，则再跑一遍；否则清理空闲条目。
       if (e.latest !== undefined) {
         void drain(e)
-      } else if (e.outcome !== 'failed') {
+      } else if (e.outcome !== 'failed' && e.outcome !== 'declined') {
         entries.delete(e.docId)
       }
-      // R01：失败条目不删除 —— hasPending/pendingDocIds 继续反映「有未保存内容」，
-      // 调用方（关标签/切工作区/关窗）据此仍走「未保存确认」而不是静默放行。
+      // R01/FE-01：失败或被用户拒绝的条目不删除 —— hasPending/pendingDocIds 继续
+      // 反映「有未保存内容」，调用方（关标签/切工作区/关窗）据此仍走未保存确认。
     }
   })()
   return e.running
@@ -124,8 +148,8 @@ function drain(e: Entry): Promise<void> {
 export function enqueueSave(docId: string, saveFn: SaveFn, debounceMs = DEFAULT_DEBOUNCE_MS): Promise<void> {
   const e = entryFor(docId)
   e.latest = saveFn
-  // 新一轮内容入队：上一轮的失败标记作废（结果只反映最近一次尝试）
-  if (e.outcome === 'failed') {
+  // 新一轮内容入队：上一轮的失败/拒绝标记作废（结果只反映最近一次尝试）
+  if (e.outcome === 'failed' || e.outcome === 'declined') {
     e.outcome = undefined
     e.lastError = undefined
     outcomes.delete(docId)
@@ -227,6 +251,7 @@ export function discardPending(docId: string): void {
  *  - `'none'`  本无未决 ✓
  *  - `'cancelled'` 内容被**显式放弃/中止**（用户确认放弃、外部版本重载）→ 已无待保护内容 ✓
  *  - `'failed'` 保存失败但内容仍在 → **不安全**（必须走未保存确认/中止切换）
+ *  - `'declined'` 用户拒绝保存（FE-01）→ **不安全**（内容仍在内存，必须继续拦截）
  */
 export function isFlushSafe(outcome: SaveOutcome): boolean {
   return outcome === 'saved' || outcome === 'none' || outcome === 'cancelled'
@@ -235,6 +260,19 @@ export function isFlushSafe(outcome: SaveOutcome): boolean {
 /** 每 doc 最近一次保存结果（null = 本会话没有过保存尝试 / 已被显式取消） */
 export function lastSaveOutcome(docId: string): SaveOutcome | null {
   return outcomes.get(docId)?.outcome ?? null
+}
+
+/**
+ * SD-02（2026-10-17 审查）：存在「内容未落盘且不安全」的文档 id 列表。
+ *
+ * 退出/重新加载等**破坏性**桌面入口在 flush 之后据此判断是否需要让用户确认：
+ * `'failed'` / `'declined'`（以及任何非安全结果）都意味着退出会丢内容。
+ */
+export function unsafeDocIds(): string[] {
+  return Array.from(entries.keys()).filter((id) => {
+    const outcome = outcomes.get(id)?.outcome ?? 'none'
+    return !isFlushSafe(outcome)
+  })
 }
 
 /** 每 doc 最近一次保存失败原因（无失败 = undefined） */
@@ -266,7 +304,7 @@ export function flushWithTimeout(docId: string, timeoutMs = 3000): Promise<boole
 /** 是否存在未决（防抖中/在途待补）保存。 */
 export function hasPending(docId: string): boolean {
   const e = entries.get(docId)
-  return !!e && (e.latest !== undefined || e.running !== null || e.outcome === 'failed')
+  return !!e && (e.latest !== undefined || e.running !== null || e.outcome === 'failed' || e.outcome === 'declined')
 }
 
 /** 当前存在未决保存的文档 id 列表（用于 beforeunload / close-requested 巡检）。 */

@@ -114,3 +114,29 @@ describe('makeFsEventReader — 打开文档后能读到最新 id（ref 修复�
     expect(isCurrentDocEvent(ev('modified', 'Articles/b.md'), { currentId: read(), lastSavedAt: 0 })).toBe(true)
   })
 })
+
+describe('H-2 — 当前文档所在文件夹被删除（祖先目录事件）', () => {
+  it('删除事件指向父文件夹 → 按「当前文档被删除」处理（surface=deleted + 刷新树）', () => {
+    const d = classifyFsEvent(ev('deleted', 'Articles/Sub'), {
+      currentId: 'Articles/Sub/a.md',
+      lastSavedAt: 0,
+    })
+    expect(d).toEqual({ refreshTree: true, surface: 'deleted' })
+  })
+
+  it('前缀相似但不是祖先（Articles/SubX 与 Articles/Sub/a.md）→ 不提示', () => {
+    const d = classifyFsEvent(ev('deleted', 'Articles/SubX'), {
+      currentId: 'Articles/Sub/a.md',
+      lastSavedAt: 0,
+    })
+    expect(d.surface).toBe('none')
+  })
+
+  it('modified 事件指向文件夹本身 → 不当作当前文档修改', () => {
+    const d = classifyFsEvent(ev('modified', 'Articles/Sub'), {
+      currentId: 'Articles/Sub/a.md',
+      lastSavedAt: 0,
+    })
+    expect(d.surface).toBe('none')
+  })
+})

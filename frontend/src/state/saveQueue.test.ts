@@ -15,6 +15,8 @@ import {
   flushWithTimeout,
   hasPending,
   pendingDocIds,
+  SaveDeclinedError,
+  unsafeDocIds,
   type SaveFn,
 } from './saveQueue'
 
@@ -544,5 +546,80 @@ describe('saveQueue — task-54 R01：明确结果（成功/失败/取消/超时
     expect(hasPending('doc-F')).toBe(false)
     expect(hasFailedSave('doc-F')).toBe(false)
     expect(isFlushSafe(lastSaveOutcome('doc-F') ?? 'none')).toBe(true)
+  })
+})
+
+describe('FE-01 — 用户拒绝保存必须与成功区分（不得记成 saved）', () => {
+  it('saveFn 抛 SaveDeclinedError → declined / 不安全 / pending 保留', async () => {
+    await enqueueSave(
+      'doc-declined',
+      async () => {
+        throw new SaveDeclinedError('用户取消')
+      },
+      0,
+    )
+    await flushPending('doc-declined')
+    expect(lastSaveOutcome('doc-declined')).toBe('declined')
+    expect(isFlushSafe('declined'), '用户拒绝 = 内容未落盘，不能放行离开').toBe(false)
+    expect(hasFailedSave('doc-declined'), '拒绝不是失败（不弹保存失败 UI）').toBe(false)
+    expect(hasPending('doc-declined'), '拒绝后内容仍在内存 → pending 必须保留').toBe(true)
+  })
+
+  it('拒绝后内容再变化并重新入队 → declined 标记清除，可再次尝试且成功', async () => {
+    await enqueueSave(
+      'doc-declined-2',
+      async () => {
+        throw new SaveDeclinedError()
+      },
+      0,
+    )
+    await flushPending('doc-declined-2')
+    expect(lastSaveOutcome('doc-declined-2')).toBe('declined')
+
+    let saved = 0
+    await enqueueSave(
+      'doc-declined-2',
+      async () => {
+        saved += 1
+      },
+      0,
+    )
+    await flushPending('doc-declined-2')
+    expect(saved).toBe(1)
+    expect(lastSaveOutcome('doc-declined-2')).toBe('saved')
+    expect(hasPending('doc-declined-2')).toBe(false)
+    expect(isFlushSafe(lastSaveOutcome('doc-declined-2') ?? 'none')).toBe(true)
+  })
+})
+
+describe('SD-02 — unsafeDocIds 供退出/重载前确认', () => {
+  it('失败或用户拒绝的文档被列出；成功/取消的文档不列出', async () => {
+    await enqueueSave(
+      'sd2-fail',
+      async () => {
+        throw new Error('disk unavailable')
+      },
+      0,
+    )
+    await flushPending('sd2-fail')
+    await enqueueSave(
+      'sd2-declined',
+      async () => {
+        throw new SaveDeclinedError()
+      },
+      0,
+    )
+    await flushPending('sd2-declined')
+    await enqueueSave(
+      'sd2-ok',
+      async () => {
+        /* 成功 */
+      },
+      0,
+    )
+    await flushPending('sd2-ok')
+
+    const mine = unsafeDocIds().filter((id) => id.startsWith('sd2-'))
+    expect(mine.sort()).toEqual(['sd2-declined', 'sd2-fail'])
   })
 })

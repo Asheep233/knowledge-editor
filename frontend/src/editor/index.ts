@@ -251,13 +251,20 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
         const real = files.filter(isRealFile)
         if (real.length === 0) return false
         event.preventDefault()
-        const pos = view.state.selection.from
+        // FE-03（2026-10-17 审查）：剪贴板上传是异步的。上传返回时必须确认
+        // 「编辑器仍载着粘贴时那篇文档」，否则结果会插进后来切换到的另一篇
+        // 文档（内容串档）；插入点也要按当前文档重新夹取，避免越界。
+        const tokenAtPaste = currentDropDocToken()
+        let pos = view.state.selection.from
         void (async () => {
           for (const f of real) {
             try {
               const res = await uploadAttachment(f)
+              if (currentDropDocToken() !== tokenAtPaste) return
               const node = attachmentNode(view.state.schema, res, f.name)
+              pos = Math.min(pos, view.state.doc.content.size)
               view.dispatch(view.state.tr.insert(pos, node).scrollIntoView())
+              pos += node.nodeSize
             } catch (err) {
               window.alert(`附件上传失败：${String(err)}`)
             }

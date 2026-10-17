@@ -6,8 +6,32 @@
  *   选择后返回绝对路径；取消返回 null。非桌面（Web/测试）返回 null，
  *   由调用方回退到文本输入。
  */
+import { askConfirm } from './components/common/PromptDialog'
 import { isTauri } from './settings'
-import { flushPendingAll } from './state/saveQueue'
+import { flushPendingAll, unsafeDocIds } from './state/saveQueue'
+
+/** 桌面破坏性动作前的 flush 预算（与 Rust 1.5s 兜底定时器对齐） */
+const DESKTOP_FLUSH_TIMEOUT_MS = 1500
+
+/** 全速 flush 未决保存；返回是否在预算内完成（false = 仍有未决/超时）。 */
+async function flushForDesktopAction(): Promise<boolean> {
+  return Promise.race([
+    flushPendingAll()
+      .then(() => true)
+      .catch(() => true),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), DESKTOP_FLUSH_TIMEOUT_MS)),
+  ])
+}
+
+/** 调用 Rust 命令；旧版壳/测试环境没有该命令时静默忽略（走各自兜底路径）。 */
+async function invokeMaybe(cmd: string): Promise<void> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke(cmd)
+  } catch {
+    /* ignore */
+  }
+}
 
 export function isDesktop(): boolean {
   if (typeof window === 'undefined' || typeof location === 'undefined') return false
@@ -48,23 +72,34 @@ export async function setupCloseHandshake(): Promise<() => void> {
     // 有丢失窗口。改由 Rust emit `ke:reload-requested`，前端 await 完 flush 再触发 reload；
     // Rust 侧 1.5s 兜底保证即使前端异常也会刷新。
     const unlistenReload = await listen('ke:reload-requested', async () => {
-      await Promise.race([
-        flushPendingAll().then(() => true),
-        new Promise<boolean>((r) => setTimeout(() => r(false), 1500)),
-      ])
-      try {
-        const { invoke } = await import('@tauri-apps/api/core')
-        await invoke('reload_main_window')
-      } catch {
-        /* 兜底：Rust 侧 1.5s 到点会自行刷新 */
+      const flushed = await flushForDesktopAction()
+      const unsafe = unsafeDocIds()
+      if (!flushed || unsafe.length > 0) {
+        // SD-02：有内容未落盘 → 先取消 Rust 兜底刷新，让用户明确选择
+        await invokeMaybe('app_cancel_pending_reload')
+        const ok = await askConfirm(
+          `有 ${unsafe.length || 1} 篇文档未保存成功，重新加载将丢失这些修改。仍要重新加载？`,
+        )
+        if (!ok) return
       }
+      await invokeMaybe('reload_main_window')
     })
     const unlisten = await listen('ke:close-requested', async () => {
-      // 全速 flush 未决保存（不等待防抖计时器）；1.5s 兜底由 Rust 侧负责。
-      await Promise.race([
-        flushPendingAll().then(() => true),
-        new Promise<boolean>((r) => setTimeout(() => r(false), 1500)),
-      ])
+      const flushed = await flushForDesktopAction()
+      const unsafe = unsafeDocIds()
+      if (!flushed || unsafe.length > 0) {
+        // SD-02（2026-10-17 审查）：旧实现 flush 后无条件 win.close() ——
+        // 保存失败时窗口直接消失、编辑静默丢失。现在先取消 Rust 的 1.5s 兜底
+        // 强退（给用户确认时间）：取消 → 撤销待定退出并恢复窗口；确认 → 正常二次 close。
+        await invokeMaybe('app_hold_exit')
+        const ok = await askConfirm(
+          `有 ${unsafe.length || 1} 篇文档未保存成功，立即退出将丢失这些修改。仍要退出？`,
+        )
+        if (!ok) {
+          await invokeMaybe('app_cancel_pending_exit')
+          return
+        }
+      }
       // 用 close() 触发第二次关窗（走 Rust 正常清理），不要用 destroy()。
       const win = getCurrentWindow()
       void win.close()

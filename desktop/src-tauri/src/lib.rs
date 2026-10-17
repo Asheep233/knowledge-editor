@@ -94,6 +94,31 @@ pub fn reload_main_window_now(app: &AppHandle) {
     }
 }
 
+/// SD-02（2026-10-17 审查）：退出握手进入「等待用户确认」时调用 —— 取消 1.5s
+/// 兜底强退（**保留** `CLOSE_REQUESTED`，前端确认后二次 `close()` 仍能正常退出），
+/// 把「用户还在读确认框」的窗口留出来。
+#[tauri::command]
+fn app_hold_exit() {
+    CLOSE_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+/// SD-02：用户在「有内容未保存成功，仍要退出？」里选择取消 → 撤销待定退出并恢复窗口。
+#[tauri::command]
+fn app_cancel_pending_exit(app: AppHandle) {
+    cancel_pending_exit();
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+/// SD-02：重新加载握手进入「等待用户确认」时调用 —— 取消兜底刷新，给确认留时间。
+#[tauri::command]
+fn app_cancel_pending_reload() {
+    RELOAD_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -146,6 +171,9 @@ pub fn run() {
             menu::reload_main_window,
             menu::app_request_exit,
             menu::app_request_reload,
+            app_hold_exit,
+            app_cancel_pending_exit,
+            app_cancel_pending_reload,
             sidecar::get_runtime_info,
             settings::get_settings,
             settings::update_settings,

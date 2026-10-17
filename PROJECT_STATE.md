@@ -9,7 +9,7 @@
 | --- | --- |
 | 当前开发阶段 | v1.1.x → **v1.2.x 持续发布**（v1.2.13–v1.2.16 补记见 `CHANGELOG_DEV.md`）；**v1.2.17 修复版待发布**：两份 v1.2.16 独立审查（41F / 61sol）合并修复已完成 —— 发布门禁 P1、CI 四 job 全绿、二批功能/防御/工程门禁、发版文档断档（L-23/24/25）已处理；真机验收清单与发版决策待主理人 |
 | 当前版本号 | 正式版 **v1.2.16（Latest）**；**v1.2.17 待发**（版本号待主理人拍板；9 处版本源统一入口 `node scripts/bump-version.mjs <ver>`，**勿用全局正则改 lock**） |
-| 质量基线（2026-10-18） | pytest **827 collected**（WSL + Windows Py3.10 双环境全绿，平台相关 skip 保留）· tsc **0** · vitest **103 files / 1574 passed + 1 skipped** · cargo test **29/29** · CI（Desktop / Windows pytest+vitest / Backend Linux / Frontend Linux）**四 job 全绿** |
+| 质量基线（2026-10-18） | pytest **827 collected**（WSL + Windows Py3.10 双环境全绿，平台相关 skip 保留）· tsc **0** · vitest **103 files / 1574 passed + 1 skipped** · cargo test **29/29** · CI（Desktop / Windows pytest+vitest / Backend Linux / Frontend Linux）**四 job 全绿** · 真机 WebView2 dev 构建关键项验收通过（UI-01 / M-10 / M-11 / PDF 颜色 / SD-02 握手，明细见 `docs/release-notes-v1.2.17.md`） |
 | 启动方式 | `.\scripts\start.ps1`（前后端一键启动）/ `.\scripts\stop.ps1`（一键停止，含无 runtime.json 的端口+特征兜底） |
 | 前端地址 | http://localhost:5173 |
 | 后端地址 | http://127.0.0.1:8000 |

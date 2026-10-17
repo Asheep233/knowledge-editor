@@ -43,7 +43,15 @@
 
 **门禁（本轮实测）**：pytest **827 collected**（WSL + Windows Py3.10 双环境全绿；平台相关 skip 保留）· tsc **0** ·
 vitest **103 files / 1574 passed + 1 skipped** · cargo test **29/29** · PowerShell 脚本修复 Windows 实跑验证（读到 1.2.16）
-**真机验收**：WebView2 关键项（退出/重载握手、PDF 像素、case-only 改名、安装包底栏版本）待发版决策后执行，清单见 release notes。
+**真机验收（WebView2 dev 构建 `1.2.17-dev.1`，2026-10-18，沙箱工作区）**：
+- A 版本一致性：前后端均 `1.2.17-dev.1`、无「版本不一致」告警；
+- B UI-01：1100px 视口工具栏可横向滚动（1049>511），焦点末按钮后正文容器 scrollLeft=0；
+- C M-11：右栏未保存标题在切档后自动提交到旧文档磁盘 frontmatter；
+- D M-10：外部改写触发冲突弹窗，等待 10s（自动保存 8s）外部内容未被覆盖；「保留本地」后立即落盘；
+- E PDF：选 `#ffeeaa` 底色导出，PDF 页面像素 `(255,237,170)`，导出期间文档 sha256 不变；
+- F SD-02：保存失败时关窗/重载均弹未保存确认，取消不丢不关；重试保存成功后正常退出、无残留进程。
+  构建产物不入库；dev 版本文件已在验收后还原（git 工作区干净）。
+**待真机验收（发版前）**：安装包底栏版本一致性、Windows 大小写改名 UI 路径（case-only 已由 Windows pytest 在 NTFS 上覆盖）。
 **按主理人决策未做**：版本号 bump（建议 **v1.2.17**）、GitHub Release 与安装包构建 —— 需主理人拍板后执行；
 npm/pip 依赖 advisory 升级、NSIS TEMP 竞争 / PID 复用等 61sol 条件风险加固留待后续批次。
 

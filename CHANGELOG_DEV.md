@@ -21,7 +21,7 @@
 
 **B. CI 拉绿（自 2026-10-13 起 4 个 job 红 → 全绿）**
 - 平台可移植性：`/tmp` 硬编码 → `tempfile.gettempdir()` / `tmp_path`；Windows 长名 `ENAMETOOLONG`、CRLF 围栏识别（FE-06 真实产品缺陷）、测试超时/端口/编码差异
-- 前端测试稳定性：`prosemirror-view` DOMObserver 在环境 teardown 后 20ms 定时器访问 `document` → Vitest 未捕获错误（全部测试通过仍 exit 1）→ `src/test-setup.ts` 先 `forceFlush` 再销毁
+- 前端测试稳定性：`prosemirror-view` DOMObserver 在环境 teardown 后 20ms 定时器访问 `document` → Vitest 未捕获错误（全部测试通过仍 exit 1）→ `src/test-setup.ts` 两层防护（`Editor.destroy` 前 `forceFlush` + 每例结束后清空 ≤100ms 短定时器，覆盖不经 Editor.destroy 的路径）
 - 结果：Desktop / Windows pytest+vitest / Backend Linux / Frontend Linux 四 job 全绿
 
 **C. 二批（功能/防御纵深/工程门禁；提交 `02626ce` + 本轮）**

@@ -22,7 +22,7 @@
 ## 二、CI 全绿（此前自 2026-10-13 起持续红）
 
 - 平台可移植性：`/tmp` 硬编码 → 系统临时目录；Windows 长文件名 `ENAMETOOLONG`、CRLF 围栏识别（修复前会误判导出代码区）、超时/端口/编码差异
-- 前端测试稳定性：`prosemirror-view` 在测试环境 teardown 后 20ms 定时器访问 `document` 导致 Vitest「全部通过仍失败」→ 测试基建先 `forceFlush` 再销毁
+- 前端测试稳定性：`prosemirror-view` 在测试环境 teardown 后 20ms 定时器访问 `document` 导致 Vitest「全部通过仍失败」→ 测试基建两层防护（销毁前 `forceFlush` + 每例结束后清空 ≤100ms 短定时器）
 - 结果：Desktop / Windows pytest+vitest / Backend Linux / Frontend Linux **四 job 全绿**
 
 ## 三、用户可感知的功能/防御修复

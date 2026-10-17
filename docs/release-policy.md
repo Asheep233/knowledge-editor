@@ -28,3 +28,18 @@
 - **打包前问主理人**；打包必须核对产物（GUI 在跑会导致 NSIS 静默失败）
 - 发版依据：干净 worktree 上的全量门禁（pytest / tsc / vitest / cargo）+ 关键项真机验收；数据类缺陷逐条附「修复前→修复后」实测
 - 发版说明必须写「按主理人决策未做」与「已知残留」
+
+### dev 构建（`x.y.z-dev.N`）的硬性步骤（2026-10-17 补，v1.2.16 踩坑）
+
+`node scripts/dev-version.mjs` 会改**前端**版本，但**侧车（Python 后端）的版本串是编译进二进制的**，
+只改源码不重新 PyInstaller 编译 → 底栏会报「前后端版本不一致（可能运行的是旧代码）」。
+
+**dev 包构建必须按此顺序**：
+1. `node scripts/dev-version.mjs`（置 `x.y.z-dev.N`，不打 tag/不发 Release）
+2. `cd frontend && npm run build`
+3. **重建侧车**：`cd backend && python.exe -m PyInstaller --noconfirm knowledgeeditor-backend.spec`
+   → 产物拷到 `desktop/src-tauri/binaries/knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`
+4. `bash C:\ke-tmp\rebuild-nsis.sh` → `python gen-manifest.py`
+5. **验收项（必做）**：启动包 → 底栏应显示 `前端/后端` 同一版本串且**无「版本不一致」告警**
+6. 出包后把版本文件还原（`git checkout -- <版本文件>`），避免 dev 版本串混入 master
+

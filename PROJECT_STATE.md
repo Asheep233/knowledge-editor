@@ -1,15 +1,15 @@
 # PROJECT_STATE.md
 
 > 项目状态唯一快速参考。每次阶段变更或影响架构的修改后更新。
-> 最后更新：2026-09-17（**v1.1.9 正式版构建完成**） | 维护依据：`CHANGELOG_DEV.md`（权威流水）、`docs/backlog-1.1.x.md`、`docs/agent-handover-v1.1.8.md`、代码版本常量
+> 最后更新：2026-10-18（**v1.2.16 已发布 / v1.2.17 修复版待发布**） | 维护依据：`CHANGELOG_DEV.md`（权威流水）、`docs/release-notes-v1.2.17.md`、`docs/release-policy.md`、`docs/agent-handover-v1.2.16.md`、代码版本常量
 
 ## 当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 当前开发阶段 | Phase 6U/7 已完成；**v1.1.0 → v1.1.9 均已发布**（本行此前停在 v1.1.4，2026-09-17 补齐）：v1.1.5 细节优化 · v1.1.6 体验优化+恶性修复 · v1.1.7 公式编辑体验 · v1.1.8 回收站 MVP + S-1 草稿恢复点防抖 + S-2 GFM 脚注 + S-3 附件保留原名 · **v1.1.9（2026-09-17）**：品牌换新收尾 + 对外图标白底 + 附件能力归位左栏（默认收起）+ 移动路径 4 项修复（F9b/F9c/F11/F12）+ 保存切档 2 项修复（F-S1-2/F-S1-4）+ K3-I2 方案 A 启动自愈 |
-| 当前版本号 | **v1.1.9**（9 处版本源同步：`backend/app/__init__.py`、`frontend/src/version.ts`、`frontend/package.json` + lock、`desktop/package.json` + lock、`Cargo.toml` + `Cargo.lock`（仅 knowledgeeditor 块）、`tauri.conf.json`；统一入口 `node scripts/bump-version.mjs <ver>`，**勿用全局正则改 lock**） |
-| 质量基线（v1.1.9） | pytest **630 passed + 2 skipped** · tsc 0 · vitest **38 files / 548 passed + 1 skipped** · 每个改动均有独立对抗验证报告 `docs/verification-*.md` |
+| 当前开发阶段 | v1.1.x → **v1.2.x 持续发布**（v1.2.13–v1.2.16 补记见 `CHANGELOG_DEV.md`）；**v1.2.17 修复版待发布**：两份 v1.2.16 独立审查（41F / 61sol）合并修复已完成 —— 发布门禁 P1、CI 四 job 全绿、二批功能/防御/工程门禁、发版文档断档（L-23/24/25）已处理；真机验收清单与发版决策待主理人 |
+| 当前版本号 | 正式版 **v1.2.16（Latest）**；**v1.2.17 待发**（版本号待主理人拍板；9 处版本源统一入口 `node scripts/bump-version.mjs <ver>`，**勿用全局正则改 lock**） |
+| 质量基线（2026-10-18） | pytest **827 collected**（WSL + Windows Py3.10 双环境全绿，平台相关 skip 保留）· tsc **0** · vitest **103 files / 1574 passed + 1 skipped** · cargo test **29/29** · CI（Desktop / Windows pytest+vitest / Backend Linux / Frontend Linux）**四 job 全绿** |
 | 启动方式 | `.\scripts\start.ps1`（前后端一键启动）/ `.\scripts\stop.ps1`（一键停止，含无 runtime.json 的端口+特征兜底） |
 | 前端地址 | http://localhost:5173 |
 | 后端地址 | http://127.0.0.1:8000 |
@@ -23,11 +23,19 @@
 - 表格：插入 3×3、光标悬浮气泡菜单（增删行列/合并拆分/删表，6E 冻结后）
 - 附件：工具栏上传 + 拖拽文件到编辑区直接插入 attach/video 节点（v0.6.1）；孤儿附件仅手动删除
 - 模块系统：可复用 Markdown 模块（Phase 5）
-- 全文搜索与可靠性：FTS 索引、历史版本、自动保存、导入导出（Phase 6）
-- 文档属性面板：创建/修改时间、字数、大小（v0.7.3 修复保存后显示「—」）
+- 全文搜索与可靠性：FTS 索引、历史版本、自动保存、导入导出（Phase 6）；中文多词搜索 LIKE 交集兜底 + 索引 LIKE 转义（v1.2.17）
+- 文档属性面板：创建/修改时间、字数、大小（v0.7.3 修复保存后显示「—」）；v1.2.17：未提交编辑纳入全局未保存语义 + 切档前自动提交
+- 源码模式（v1.2.0-pre.2 起）：原生文本框直编 Markdown，字符串直存、frontmatter 隐藏保留、切视图自动保存
+- 自定义快捷键 + 文档标签栏（v1.2.0-pre.1 起）
+- 回收站 MVP + 草稿恢复点防抖 + GFM 脚注 + 附件保留原名（v1.1.8 起；恢复并发互斥在 v1.2.17 加固）
+- 导出 PDF（v1.2.12 起）：主题/底色/文字色/强调色 + 记住选择；v1.2.13–15 预览清晰度/A4 多页/主题根因修复；v1.2.16 起**预览=真 PDF**（temp 文件 + 内置阅读器，关闭即删）
+- 微分斜体 d → 正体 `\mathrm{d}`（v1.2.16，另存为新文件、差异预览、原件不变）
+- 文档包导入/导出（引用改写保序、附件收集去重、编码/角括号引用支持，v1.2.17 补全）
+- 桌面端：关闭/重载未保存确认与退出握手（v1.2.17 加固）、外部修改冲突处理（v1.2.17 暂停自动保存 + 保留本地显式落盘）
 
 ## 正在进行的任务
 
+- **v1.2.17 发版待办（等待主理人拍板）**：① 真机（Windows/WebView2）关键项验收——退出/重载握手、PDF 导出像素与颜色、case-only 改名、安装包底栏版本一致性；② `node scripts/bump-version.mjs 1.2.17`（版本号待确认）；③ 安装包构建 + manifest + `gh release create v1.2.17 --latest`（正文用 `docs/release-notes-v1.2.17.md`，禁止本机临时路径）；④ 发版后同步 README/PROJECT_STATE。清单与未做项见 release notes。
 - Phase 7 M0（环境与脚手架）已完成：Rust 1.97.1 + VS Build Tools 17.14.37（MSVC 14.44 / SDK 10.0.26100）就绪；`desktop/` Tauri v2 工程创建（`cargo build` 通过，`tauri dev` 冒烟窗口显示 UI）。
 - Phase 7 M1（后端侧车）已完成：`backend/run.py`（PyInstaller 入口）+ 单文件打包（12,637,746 B，含 11 个 uvicorn 隐藏导入）放入 `desktop/src-tauri/binaries/`（带 target triple 后缀）；Rust Sidecar Manager（`desktop/src-tauri/src/sidecar.rs`）实现四段式流程（清理旧进程 → 动态端口 → 拉起 + health 握手 → 写 runtime.json），含崩溃自动拉起（≤3 次）与退出清理（优雅终止 → 5s 超时 → PID 树强杀）。`tauri dev` 集成冒烟通过：窗口 → 侧车 → UI 全链路、退出无残留、崩溃自动恢复均验证。
 - Phase 7 M2（前端适配）已完成：`main.tsx` 挂载前 `invoke('get_runtime_info')` 注入 `window.__KE_API_BASE__`（`'__TAURI_INTERNALS__' in window` 检测，失败回退 Vite 代理）；`client.ts` 新增 `apiBase()` 统一拼接（含 4 处直接 fetch 与 uploadAttachment）；P9 `attachmentUrl` 合并至 client.ts（逐段 URI 编码）；P10 `package.json` 补 `test` 脚本（vitest run）+ CI frontend job 加 Unit tests + 新增 `backend/tests/test_openapi_snapshot.py`（36 路径 / 47 方法快照断言）。验收通过：vitest 62/62、typecheck、build（1.94 MB）、后端快照 2 passed、dev 冒烟（CORS 修复后 7 项核心 API 抽测全通过、退出清理无残留）、release 冒烟（`cargo build --release` → health/OPTIONS/GET 全 200 → WM_CLOSE 全清理）。

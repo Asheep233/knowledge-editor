@@ -2,7 +2,15 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前正式版 **v1.2.4**（公式悬浮工具条交互缺陷修复）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+当前正式版 **v1.2.16**（导出预览=真 PDF / 微分 d 转正体）· **v1.2.17 修复版待发布**（按 41F + 61sol 两份独立审查合并修复 30+ 项）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases)
+
+> **v1.2.17（待发布）**：按两份 v1.2.16 独立审查（41F 广度/E2E、61sol/Codex Windows 原生/严谨性）合并修复
+> **发布门禁 P1**、**CI 四 job 全绿**（此前自 2026-10-13 起红）与 **二批功能/防御/工程门禁项**；
+> 明细见 [CHANGELOG_DEV.md](./CHANGELOG_DEV.md) 与 [`docs/release-notes-v1.2.17.md`](./docs/release-notes-v1.2.17.md)。
+>
+> **近期版本**：v1.2.16 真 PDF 预览 + 微分 d 转正体 · v1.2.15 预览 A4 多页 + 浅色/深色根因修复 ·
+> v1.2.14 预览公式正确渲染 · v1.2.13 预览清晰度与导出健壮性 · v1.2.12 导出 PDF 新功能 ·
+> v1.2.9 块级公式消失（数据丢失）修复。完整记录见 [CHANGELOG_DEV.md](./CHANGELOG_DEV.md)。
 
 > **v1.2.0-pre.2（预发布）**：**源码模式**（在一个原生文本框里直接编辑 Markdown 原文，保存走
 > **字符串直存**——不经排版引擎，逐字节落盘；frontmatter 隐藏且原样保留；切视图自动保存；

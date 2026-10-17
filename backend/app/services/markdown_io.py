@@ -76,11 +76,20 @@ def slugify(name: str, fallback: str = "untitled") -> str:
 
 def yaml_scalar(value) -> str:
     """YAML 安全标量：字符串会被误解析为 int/float/bool 时加双引号（如 title: 1 → title: "1"）。
-    数字/布尔/空串/含特殊字符 → 双引号（内部转义 \" 与 \\）；普通字符串原样。"""
+    数字/布尔/空串/含特殊字符 → 双引号（内部转义 \" 与 \\）；普通字符串原样。
+
+    M-4：含换行/控制字符的字符串必须用**双引号 + 转义**输出（`json.dumps` 的
+    双引号标量与 YAML 兼容）——原实现原样返回，`title: good\\n---` 会把
+    frontmatter 闭合定界符挤进正文，造成注入性结构损坏。
+    """
     if not isinstance(value, str):
         return str(value)
     if value == "":
         return '""'
+    if any(ord(ch) < 0x20 or ch == "\x7f" for ch in value):
+        import json as _json
+
+        return _json.dumps(value, ensure_ascii=False)
     lowered = value.lower()
     if lowered in ("true", "false", "null", "yes", "no", "on", "off"):
         return f'"{value}"'
@@ -325,7 +334,11 @@ def _closing_dash_idx(lines: list[str]) -> int:
 
 
 def _render_key_lines(key: str, value) -> list[str]:
-    """渲染单个 frontmatter 键的原始行（支持列表；不支持时用 JSON 表达）。"""
+    """渲染单个 frontmatter 键的原始行（支持列表；不支持时用 JSON 表达）。
+
+    M-4：字符串一律经 `yaml_scalar` 渲染（含换行/控制字符时转义引号包裹），
+    否则换行会切断 frontmatter 结构并把后续内容注入正文。
+    """
     if isinstance(value, bool):
         return [f"{key}: {str(value).lower()}"]
     if isinstance(value, (int, float)):
@@ -333,12 +346,14 @@ def _render_key_lines(key: str, value) -> list[str]:
     if isinstance(value, (list, tuple)):
         if not value:
             return [f"{key}: []"]
-        return [f"{key}:"] + [f"  - {v}" for v in value]
+        return [f"{key}:"] + [
+            f"  - {yaml_scalar(v) if isinstance(v, str) else v}" for v in value
+        ]
     if isinstance(value, dict):
         import json as _json
 
         return [f"{key}: {_json.dumps(value, ensure_ascii=False)}"]
-    return [f"{key}: {value}"]
+    return [f"{key}: {yaml_scalar(value) if isinstance(value, str) else value}"]
 
 
 def split_frontmatter_block(content: str) -> tuple[Optional[str], str]:
@@ -490,6 +505,79 @@ def attachment_refs_in(content: str) -> set[str]:
     return refs
 
 
+def md_link_target_spans(content: str) -> list[tuple[str, int, int]]:
+    """扫描 Markdown 链接/图片目标，返回 [(target, start, end)]（R03 + BE-04）。
+
+    支持三种语法形态：
+    - 角括号目标 `<Attachments/images/my pic.png>`（允许空格）；
+    - 裸目标，**含平衡圆括号**（如 `Attachments/images/pic(1).png`）；
+    - 可选尾随 title（`"…"` / `'…'` / `(…)`）。
+    不跨行扫描（链接目标不跨行，避免把后续正文吞进目标）。
+
+    为什么手写扫描：旧正则 `([^\\s()]*)` 会在第一个 `(` 处截断含圆括号的目标
+    —— `pic(1).png` 因此被判「未被引用」→ 孤儿清理会把仍在使用的附件永久
+    删除（2026-10-17 独立审查 BE-04 实测）。
+    """
+    out: list[tuple[str, int, int]] = []
+    n = len(content)
+    for m in re.finditer(r"\]\(", content):
+        p = m.end()
+        while p < n and content[p] in " \t":
+            p += 1
+        if p >= n:
+            continue
+        if content[p] == "<":
+            q = content.find(">", p + 1)
+            if q == -1 or "\n" in content[p:q]:
+                continue
+            start = p + 1
+            while start < q and content[start] in " \t":
+                start += 1
+            end = q
+            while end > start and content[end - 1] in " \t":
+                end -= 1
+            if end <= start:
+                continue
+            rest = content[q + 1 :]
+            if not re.match(r"\s*(?:\"[^\"]*\"|'[^']*')?\s*\)", rest):
+                continue
+            out.append((content[start:end], start, end))
+            continue
+        depth = 0
+        i = p
+        close = -1
+        while i < n:
+            ch = content[i]
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == "\n":
+                break
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                if depth == 0:
+                    close = i
+                    break
+                depth -= 1
+            i += 1
+        if close == -1:
+            continue
+        segment = content[p:close]
+        raw = segment.strip()
+        if not raw:
+            continue
+        # 可选 title：`"…"` / `'…'` / `(…)`（括号 title 已被平衡扫描并入 raw 尾部）
+        stripped = re.sub(r"\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\))\s*$", "", raw).strip()
+        if not stripped:
+            continue
+        offset = p + segment.find(stripped)
+        if offset < p:  # 理论不可达；保守回退到段首
+            offset = p
+        out.append((stripped, offset, offset + len(stripped)))
+    return out
+
+
 def _raw_ref_candidates(content: str) -> list[str]:
     """原始引用候选（ke-attach/ke-video src + Markdown 链接目标），未规范化。"""
     out: list[str] = []
@@ -512,8 +600,8 @@ def _raw_ref_candidates(content: str) -> list[str]:
                 if isinstance(src, str):
                     out.append(src)
         pos = m.end()
-    for m in _RE_MD_LINK.finditer(content):
-        target = m.group(1) if m.group(1) is not None else m.group(2)
+    # BE-04：平衡圆括号/角括号/title 统一由 md_link_target_spans 解析
+    for target, _s, _e in md_link_target_spans(content):
         if target:
             out.append(target)
     return out

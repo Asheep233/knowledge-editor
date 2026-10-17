@@ -21,6 +21,7 @@ import os
 import re
 import secrets
 import shutil
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -196,6 +197,45 @@ def _dedupe_target(target: Path) -> Path:
     raise FileExistsError("同名文件过多，无法恢复")
 
 
+#: BE-03：同原路径并发恢复互斥。两个请求同时「exists 检查 → os.replace」会各自
+#: 写一份，后者覆盖前者（两个 entry 都被清掉、只留一份内容）。锁串行化
+#: 「选名 + 发布 + 清理」，发布本身再用排他语义兜底。
+_RESTORE_LOCK = threading.Lock()
+
+
+def _publish_exclusive(src: Path, target: Path) -> bool:
+    """把 ``src`` 发布到 ``target``：目标已存在返回 False（**绝不覆盖**）。
+
+    优先硬链接（同盘原子、天然不覆盖）；跨设备或文件系统不支持硬链接时退回
+    ``O_CREAT|O_EXCL`` 复制。返回 True 时 src 已被移除（等价移动语义）。
+    """
+    try:
+        os.link(src, target)
+    except FileExistsError:
+        return False
+    except OSError:
+        try:
+            fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            return False
+        try:
+            with os.fdopen(fd, "wb") as out, open(src, "rb") as inp:
+                shutil.copyfileobj(inp, out)
+                out.flush()
+                os.fsync(out.fileno())
+        except BaseException:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            raise
+    try:
+        src.unlink()
+    except OSError:
+        pass  # 发布成功即可；entry 清理阶段会再次尝试删除
+    return True
+
+
 def restore(root: Path, entry_id: str) -> tuple[str, bool]:
     """恢复条目到原路径，返回 ``(restored_rel, renamed)``。
 
@@ -204,6 +244,8 @@ def restore(root: Path, entry_id: str) -> tuple[str, bool]:
     - 恢复目标必须通过**与删除端点同款的白名单** ``markdown_io.is_doc_rel``
       （`Articles/` 或 `Modules/` 下的 `.md`/`.markdown`）—— 防止手工构造的 entry
       把文件写进 `Attachments/`/`Drafts/`/`.knowledgeeditor`/工作区根
+    - **BE-03**：选名与发布在 ``_RESTORE_LOCK`` 内串行，发布用排他语义
+      （``_publish_exclusive``）—— 并发恢复同原路径的两个条目不会互相覆盖。
     """
     entry = _checked_entry(root, entry_id)
     if not entry.is_dir():
@@ -218,12 +260,20 @@ def restore(root: Path, entry_id: str) -> tuple[str, bool]:
     target = markdown_io.safe_rel_path(root, rel)
     if target is None:
         raise ValueError("条目内容越出工作区")
-    renamed = False
-    if target.exists():
-        target = _dedupe_target(target)
-        renamed = True
     target.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(src, target)
+    renamed = False
+    with _RESTORE_LOCK:
+        if not _publish_exclusive(src, target):
+            final: Path | None = None
+            for _ in range(_DEDUP_MAX):
+                cand = _dedupe_target(target)
+                if _publish_exclusive(src, cand):
+                    final = cand
+                    renamed = True
+                    break
+            if final is None:
+                raise FileExistsError("同名文件过多，无法恢复")
+            target = final
     # 仅当 entry 已空时才清理，避免误删异常多文件条目的其余内容
     if not _entry_files(entry):
         shutil.rmtree(entry, ignore_errors=True)

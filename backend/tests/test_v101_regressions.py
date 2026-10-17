@@ -713,7 +713,11 @@ def test_p39_workspace_create_file_path_400(client, tmp_path):
 # ---------- P3-14 ----------
 
 def test_p314_rewrite_refs_only_touches_ref_literals():
-    """P3-14：引用改写只改 ke-attach/video src 与 ![](url)，URL/代码块不受影响。"""
+    """P3-14：引用改写只改引用字面量位置，URL/代码块不受影响。
+
+    BE-05 起 `_rewrite_refs` 返回 (新文档, 实际改写数)，并额外支持角括号/
+    %20 编码/普通链接目标（原实现只认无空格图片路径）。
+    """
     from app.routers.import_export import _rewrite_refs
 
     md = (
@@ -730,7 +734,8 @@ def test_p314_rewrite_refs_only_touches_ref_literals():
         "Attachments/files/old.pdf": "Attachments/files/new.pdf",
         "Attachments/videos/old.mp4": "Attachments/videos/new.mp4",
     }
-    out = _rewrite_refs(md, mapping)
+    out, rewritten = _rewrite_refs(md, mapping)
+    assert rewritten == 3, f"应改写 3 处（图片 + ke-attach + ke-video），实际 {rewritten}"
     # 真实引用已改写
     assert "Attachments/images/new.png" in out
     assert "Attachments/files/new.pdf" in out

@@ -97,6 +97,46 @@ def _mark_internal(request: Request, rel: str) -> None:
         watcher.mark_internal(rel)
 
 
+_META_FORBIDDEN_CONTROL = ("\r", "\n", "\x00")
+
+
+def _reject_meta_control(field: str, value: str) -> None:
+    """M-4：title/tags 不允许换行或控制字符。
+
+    换行会切断 frontmatter 结构（`title: good\\n---` 使闭合定界符被挤进正文），
+    控制字符同样破坏 YAML 行结构。API 层显式 400，避免产出坏文档。
+    """
+    if any(ch in value for ch in _META_FORBIDDEN_CONTROL) or any(
+        ord(ch) < 0x20 and ch != "\t" for ch in value
+    ):
+        raise HTTPException(status_code=400, detail=f"{field} 不能包含换行或控制字符")
+
+
+def _read_existing_or_http(full: Path) -> str:
+    """M-5：读取现有文档；失败时给出可区分的 4xx/409，而不是当作空内容覆盖。
+
+    - FileNotFoundError → 404（cached is_file 之后被删除的竞态）；
+    - UnicodeDecodeError → 422（不是合法 UTF-8，覆盖会毁原文）；
+    - 其他 OSError（Windows 文件锁/杀软/同步盘瞬时占用）→ 409，明确「不写盘」。
+    """
+    try:
+        return markdown_io.read_text(full)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="文章不存在")
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=422, detail="现有文档不是合法 UTF-8，已取消保存以免覆盖原文"
+        )
+    except OSError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "读取现有文档失败，已取消保存（避免丢失元数据），请重试："
+                f"{exc.strerror or exc}"
+            ),
+        ) from exc
+
+
 def _maybe_snapshot(request: Request, rel: str, new_content: str) -> None:
     """写盘前快照旧内容（Phase 6.3：历史版本）。
 
@@ -240,12 +280,21 @@ def update_article_meta(request: Request, article_id: str, body: ArticleMetaUpda
     full = _article_path(request, article_id)
     if not full.is_file():
         raise HTTPException(status_code=404, detail="文章不存在")
-    content = markdown_io.read_text(full)
+    content = _read_existing_or_http(full)
     updates = {}
     if body.title is not None:
-        updates["title"] = body.title.strip() or full.stem
+        title = body.title.strip() or full.stem
+        _reject_meta_control("title", title)
+        updates["title"] = title
     if body.tags is not None:
-        updates["tags"] = [t.strip() for t in body.tags if t.strip()]
+        tags: list[str] = []
+        for tag in body.tags:
+            tag = tag.strip()
+            if not tag:
+                continue
+            _reject_meta_control("tags", tag)
+            tags.append(tag)
+        updates["tags"] = tags
     new_content = markdown_io.set_meta(content, updates)
     if new_content != content:
         _maybe_snapshot(request, full.relative_to(request.app.state.workspace_root).as_posix(), new_content)
@@ -282,9 +331,11 @@ def update_article(request: Request, article_id: str, body: ArticleUpdate) -> Ar
     # YAML），正文逐字节保留；无差异时不落盘。
     merged = body.content
     try:
-        old_raw = markdown_io.read_text(full)
-    except (OSError, UnicodeDecodeError):
-        old_raw = ""
+        old_raw = _read_existing_or_http(full)
+    except HTTPException:
+        # M-5：读旧内容失败（Windows 文件锁等）时绝不能当「无旧内容」继续整篇
+        # 覆盖——那会静默丢掉 title/tags/自定义 frontmatter 且返回 200。
+        raise
     if old_raw:
         merged = markdown_io.merge_frontmatter(old_raw, body.content)
     if merged != body.content:

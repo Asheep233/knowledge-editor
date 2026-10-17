@@ -34,7 +34,7 @@ import shutil
 import zipfile
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
@@ -51,7 +51,6 @@ _TMP_REL = f"{config.DIR_INTERNAL}/tmp"  # .knowledgeeditor/tmp（workspace 内�
 
 # 引用字面量位置正则（P3-14：_rewrite_refs 只改这些位置）
 _RE_KE_COMMENT = re.compile(r"<!--\s*ke-(?:attach|video):\s*(\{[\s\S]*?\})\s*-->")
-_RE_MD_IMAGE_SRC = re.compile(r"!\[[^\]]*\]\(\s*([^\s)]+)(?:\s+\"[^\"]*\")?\s*\)")
 
 
 # ---------- 导出 ----------
@@ -216,15 +215,22 @@ def _unique_article_path(root: Path, title: str) -> str:
     raise HTTPException(status_code=409, detail="无法生成唯一文章文件名")
 
 
-def _unique_attachment_rel(root: Path, dest_rel: str) -> Optional[str]:
-    """为内容不同的同名附件生成唯一相对路径；50 次仍冲突返回 None。"""
+def _unique_attachment_rel(
+    root: Path, dest_rel: str, reserved: set[str] | None = None
+) -> Optional[str]:
+    """为内容不同的同名附件生成唯一相对路径；50 次仍冲突返回 None。
+
+    `reserved`：同一导入批次里**已规划但尚未落盘**的目标（BE-02：包内两个
+    附件可能规划到同一目标，仅查磁盘 exists 会漏掉批次内冲突）。
+    """
     dest = root / dest_rel
     stem, ext = dest.stem, dest.suffix
     parent_rel = dest.parent.relative_to(root).as_posix()
+    taken = reserved or set()
     for _ in range(50):
         name = f"{stem}-{secrets.token_hex(3)}{ext}"
         cand_rel = f"{parent_rel}/{name}"
-        if not (root / cand_rel).exists():
+        if cand_rel not in taken and not (root / cand_rel).exists():
             return cand_rel
     return None
 
@@ -333,26 +339,40 @@ def _mask_code_regions(md: str) -> str:
     return "".join(chars)
 
 
-def _rewrite_refs(md: str, mapping: dict[str, str]) -> str:
-    """P3-14：仅改写「引用字面量位置」的路径，绝不做全局字符串替换。
+def _rewrite_refs(md: str, mapping: dict[str, str]) -> tuple[str, int]:
+    """把「包内附件引用」改写到最终落点，返回 (新文档, 实际改写数)。
 
-    改写范围严格限定为：
-    - ke-attach / ke-video 注释 JSON 的 `src` 值；
-    - 标准 Markdown 图片 `![](url)` 的 url。
-    URL 文本与代码块/行内代码里的同名字符串不受影响（先掩码代码区域，
-    命中区间含掩码字符的候选直接跳过）。未命中映射的引用保持原样。
+    P3-14：仅改写引用字面量位置（ke-attach/ke-video JSON 的 src、Markdown
+    链接/图片目标），代码块与行内代码里的同名文本不受影响。
+
+    2026-10-17 独立审查修复（H-1 / BE-05）：
+    - `fix_ke` 旧实现用 `json.dumps(src)`（默认 ensure_ascii=True）构造待替换
+      字面量 → CJK 文件名变成 `\\uXXXX` 转义串，与正文里的 UTF-8 字面量**永不
+      匹配** → 导入后引用仍指向旧附件。改为直接在 JSON 文本内替换 "src" 值，
+      并 `ensure_ascii=False`。
+    - Markdown 目标旧实现只认「无空格图片路径」：角括号 `<…>`、`%20` 编码、
+      普通链接、含平衡圆括号的目标都不会被改写。现统一复用
+      `markdown_io.md_link_target_spans`（与引用提取/孤儿判定同源），按原目标
+      形态回写（角括号保持角括号、编码保持编码）。
+    - 返回实际改写数，响应里的 rewritten_refs 不再用「from != to」猜测。
     """
     if not mapping:
-        return md
+        return md, 0
     masked = _mask_code_regions(md)
-
-    def _map_ref(ref: str) -> str:
-        r = ref.strip()
-        if r.startswith("./"):
-            r = r[2:]
-        return mapping.get(r, ref)
-
     edits: list[tuple[int, int, str]] = []  # (start, end, replacement)
+
+    def _map_ref(ref: str) -> Optional[str]:
+        r0 = (ref or "").strip()
+        if not r0:
+            return None
+        cands = [r0]
+        if r0.startswith("./"):
+            cands.append(r0[2:])
+        cands += [unquote(c) for c in list(cands)]
+        for c in cands:
+            if c in mapping:
+                return mapping[c]
+        return None
 
     def fix_ke(m: re.Match) -> None:
         raw = md[m.start() : m.end()]
@@ -366,35 +386,44 @@ def _rewrite_refs(md: str, mapping: dict[str, str]) -> str:
         if not isinstance(src, str):
             return
         new = _map_ref(src)
-        if new == src:
+        if not new or new == src:
             return
-        old_lit, new_lit = json.dumps(src), json.dumps(new)
-        for variant in (f'"src": {old_lit}', f'"src":{old_lit}', f'"src" : {old_lit}'):
-            replaced = raw.replace(variant, f'"src": {new_lit}', 1)
-            if replaced != raw:
-                edits.append((m.start(), m.end(), replaced))
-                return
+        # 直接在 JSON 文本里替换 src 的值：不依赖 json.dumps 的转义/空白形态
+        m_src = re.search(r'"src"\s*:\s*("(?:[^"\\]|\\.)*")', raw)
+        if not m_src:
+            return
+        new_lit = json.dumps(new, ensure_ascii=False)
+        replaced = raw[: m_src.start(1)] + new_lit + raw[m_src.end(1) :]
+        if replaced != raw:
+            edits.append((m.start(), m.end(), replaced))
 
-    def fix_img(m: re.Match) -> None:
-        url = m.group(1)
-        if "\x00" in m.group(0) or "\x00" in url:
+    def fix_md_target(target: str, s: int, e: int, angle: bool) -> None:
+        if "\x00" in target:
             return  # 位于代码块/行内代码内
-        new = _map_ref(url)
-        if new == url:
+        new = _map_ref(target)
+        if not new or new == target:
             return
-        s = m.start(1)
-        e = m.end(1)
-        edits.append((s, e, new))
+        if angle:
+            repl = new
+        elif unquote(target) != target:
+            repl = quote(new, safe="/")  # 原引用是 URI 编码形态 → 保持编码
+        elif re.search(r"[\s()<>]", new):
+            repl = f"<{new}>"  # 新名含空白/括号 → 角括号包裹保持语法合法
+        else:
+            repl = new
+        edits.append((s, e, repl))
 
     for m in _RE_KE_COMMENT.finditer(masked):
         fix_ke(m)
-    for m in _RE_MD_IMAGE_SRC.finditer(masked):
-        fix_img(m)
+
+    for target, s, e in markdown_io.md_link_target_spans(masked):
+        angle = s > 0 and masked[s - 1] == "<" and e < len(masked) and masked[e] == ">"
+        fix_md_target(target, s, e, angle)
 
     out = md
     for s, e, repl in sorted(edits, key=lambda t: -t[0]):
         out = out[:s] + repl + out[e:]
-    return out
+    return out, len(edits)
 
 
 def _commit_staged(root: Path, staged: Path) -> list[str]:
@@ -528,6 +557,7 @@ async def import_package(request: Request, file: UploadFile = File(...)) -> dict
         # 2) 冲突规划：为每个附件确定最终目标与动作（原名复制 / 复用 / 唯一名复制）
         attach_dir = doc_dir / "Attachments"
         plan: list[dict] = []  # {in_pkg, dest_rel, reused}
+        planned: dict[str, str] = {}  # 本批已规划目标 → 内容 SHA-256（BE-02）
         if attach_dir.is_dir():
             for p in sorted(attach_dir.rglob("*")):
                 if not p.is_file():
@@ -539,21 +569,35 @@ async def import_package(request: Request, file: UploadFile = File(...)) -> dict
                     dest_rel = f"{config.DIR_ATTACHMENTS}/{sub}"
                 else:
                     dest_rel = f"{config.DIR_ATTACHMENTS}/{_category_of(p.name)}/{p.name}"
+                sha = _file_sha256(p)
                 reused = False
-                dest = root / dest_rel
-                if dest.exists():
-                    if _file_sha256(dest) == _file_sha256(p):
+                prior = planned.get(dest_rel)
+                if prior is not None:
+                    # BE-02：同一导入包内两个源附件规划到同一目标（如包内同时有
+                    # Attachments/a.png 与 Attachments/images/a.png，目录规范化后
+                    # 目标相同）。旧实现只查 workspace 磁盘、不查本批已规划目标 →
+                    # 暂存复制互相覆盖，一份内容静默丢失。
+                    if prior == sha:
+                        plan.append({"in_pkg": in_pkg, "dest_rel": dest_rel, "reused": True})
+                        continue
+                    cand = _unique_attachment_rel(root, dest_rel, reserved=set(planned))
+                    if cand is None:
+                        raise HTTPException(status_code=409, detail=f"附件冲突处理失败: {dest_rel}")
+                    dest_rel = cand
+                elif (root / dest_rel).exists():
+                    if _file_sha256(root / dest_rel) == sha:
                         reused = True
                     else:
-                        cand = _unique_attachment_rel(root, dest_rel)
+                        cand = _unique_attachment_rel(root, dest_rel, reserved=set(planned))
                         if cand is None:
                             raise HTTPException(status_code=409, detail=f"附件冲突处理失败: {dest_rel}")
                         dest_rel = cand
+                planned[dest_rel] = sha
                 plan.append({"in_pkg": in_pkg, "dest_rel": dest_rel, "reused": reused})
 
         # 3) 引用改写 + 文章落位规划
         mapping = {item["in_pkg"]: item["dest_rel"] for item in plan}
-        new_md = _rewrite_refs(md_text, mapping)
+        new_md, rewritten_refs = _rewrite_refs(md_text, mapping)
         meta, _ = markdown_io.parse_frontmatter(new_md)
         title = (meta.get("title") or "").strip() or md_path.stem
         art_rel = _unique_article_path(root, title)
@@ -585,6 +629,6 @@ async def import_package(request: Request, file: UploadFile = File(...)) -> dict
         "created": True,
         "imported": {
             "attachments": copied,
-            "rewritten_refs": len([c for c in copied if c["from"] != c["to"]]),
+            "rewritten_refs": rewritten_refs,
         },
     }

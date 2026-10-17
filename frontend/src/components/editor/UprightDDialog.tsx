@@ -125,27 +125,30 @@ export default function UprightDDialog({
   const changedCount = selected.length
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-label="微分 d 转正体预览">
-      <div className="flex max-h-[80vh] w-[min(760px,92vw)] flex-col rounded-lg bg-surface shadow-xl">
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div
+        className="flex max-h-[80vh] w-[min(760px,92vw)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        data-ke-upright-panel
+      >
+        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
           <div className="flex items-center gap-2 text-[15px] font-medium">
             <Icon name="sigma" className="h-4 w-4" />
             微分 d 转正体（\mathrm{'{'}d{'}'}）
           </div>
-          <button type="button" className="rounded px-2 py-1 text-muted hover:bg-accent" onClick={onClose} aria-label="关闭">
+          <button type="button" className="rounded px-2 py-1 text-muted-foreground hover:bg-accent" onClick={onClose} aria-label="关闭">
             <Icon name="close" className="h-4 w-4" />
           </button>
         </header>
 
-        <div className="flex items-center gap-3 border-b border-border px-4 py-2 text-[13px]">
+        <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-2 text-[13px]">
           <span data-ke-upright-summary>
             将修改 <b>{changedCount}</b> 处 / 跳过 <b>{analysis.skips.length}</b> 处
           </span>
-          <span className="text-muted">（共 {analysis.mathNodes} 个公式节点）</span>
+          <span className="text-muted-foreground">（共 {analysis.mathNodes} 个公式节点）</span>
           <span className="ml-auto flex gap-2">
             <button type="button" className="rounded px-2 py-0.5 text-accent hover:bg-accent" onClick={() => toggleAll(true)}>
               全选
             </button>
-            <button type="button" className="rounded px-2 py-0.5 text-muted hover:bg-accent" onClick={() => toggleAll(false)}>
+            <button type="button" className="rounded px-2 py-0.5 text-muted-foreground hover:bg-accent" onClick={() => toggleAll(false)}>
               全不选
             </button>
           </span>
@@ -153,13 +156,13 @@ export default function UprightDDialog({
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-2">
           {analysis.hits.length === 0 ? (
-            <p className="py-6 text-center text-[13px] text-muted">没有发现「微分场景」的斜体 d（d 后紧跟字母或命令）。</p>
+            <p className="py-6 text-center text-[13px] text-muted-foreground">没有发现「微分场景」的斜体 d（d 后紧跟字母或命令）。</p>
           ) : (
             <ul className="space-y-1">
               {analysis.hits.map((h) => {
                 const checked = !unchecked.has(h.id)
                 return (
-                  <li key={h.id} className="flex items-start gap-2 rounded px-1 py-1 hover:bg-accent/40">
+                  <li key={h.id} className="flex items-start gap-2 rounded px-1 py-1 hover:bg-accent">
                     <input
                       type="checkbox"
                       className="mt-0.5"
@@ -169,7 +172,7 @@ export default function UprightDDialog({
                       data-ke-upright-hit={h.id}
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-mono text-[12px] text-muted">
+                      <div className="truncate font-mono text-[12px] text-muted-foreground">
                         {h.nodeType === 'mathBlock' ? '块级公式' : '行内公式'} · {h.reason}
                       </div>
                       <div className="truncate font-mono text-[12px]" data-ke-upright-before={h.id}>
@@ -186,11 +189,11 @@ export default function UprightDDialog({
           )}
 
           {analysis.skips.length > 0 && (
-            <details className="mt-2 rounded border border-border/60 px-2 py-1">
-              <summary className="cursor-pointer text-[12px] text-muted">跳过的 {analysis.skips.length} 处（变量 / 孤立 d，保持斜体）</summary>
+            <details className="mt-2 rounded border border-border px-2 py-1">
+              <summary className="cursor-pointer text-[12px] text-muted-foreground">跳过的 {analysis.skips.length} 处（变量 / 孤立 d，保持斜体）</summary>
               <ul className="mt-1 space-y-0.5">
                 {analysis.skips.map((s) => (
-                  <li key={s.id} className="truncate font-mono text-[12px] text-muted" data-ke-upright-skip={s.id}>
+                  <li key={s.id} className="truncate font-mono text-[12px] text-muted-foreground" data-ke-upright-skip={s.id}>
                     {s.before}
                   </li>
                 ))}
@@ -211,8 +214,8 @@ export default function UprightDDialog({
           </p>
         )}
 
-        <footer className="flex items-center justify-between gap-2 border-t border-border px-4 py-3 text-[13px]">
-          <span className="truncate text-muted">
+        <footer className="flex items-center justify-between gap-2 border-t border-border bg-card px-4 py-3 text-[13px]">
+          <span className="truncate text-muted-foreground">
             另存为 <span className="font-mono" data-ke-upright-target>{uprightDFileName(fileName, existingNames)}</span>
             （原件不改动）
           </span>
@@ -221,13 +224,20 @@ export default function UprightDDialog({
               取消
             </button>
             {done ? (
-              <button type="button" className="rounded bg-accent px-3 py-1 font-medium" onClick={onClose} data-ke-upright-close>
+              <button
+                type="button"
+                className="rounded px-3 py-1 font-medium text-primary-foreground"
+                style={{ backgroundColor: 'var(--primary)' }}
+                onClick={onClose}
+                data-ke-upright-close
+              >
                 关闭
               </button>
             ) : (
               <button
                 type="button"
-                className="rounded bg-accent px-3 py-1 font-medium ring-inset hover:ring-1 hover:ring-accent-foreground disabled:opacity-50"
+                className="rounded px-3 py-1 font-medium text-primary-foreground disabled:opacity-50"
+                style={{ backgroundColor: 'var(--primary)' }}
                 onClick={save}
                 disabled={busy || selected.length === 0}
                 data-ke-upright-save

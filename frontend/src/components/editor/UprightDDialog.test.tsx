@@ -1,6 +1,7 @@
 /**
  * task-74 组件测：预览对话框的「列表 + 勾选 + 另存新文件」。
  * 红线守护：**原件 sha256 不变**、取消勾选**不写入**该处、重名**顺延序号且不覆盖**。
+ * 视觉回归（面板不透明）见 `UprightDDialog.opacity.test.tsx`。
  */
 import React from 'react'
 import { createRoot, type Root } from 'react-dom/client'

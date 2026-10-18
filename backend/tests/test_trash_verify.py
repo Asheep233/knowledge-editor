@@ -94,17 +94,21 @@ WORKSHOP_CONTEXT_PATHS = [
     "/api/context/open",
     "/api/context/release",
     "/api/context/request/{request_id}",
+    "/api/context/search",
     "/api/context/snapshot",
     "/api/context/switch",
+    "/api/context/tree",
     "/api/context/write",
 ]
-WORKSHOP_CONTEXT_METHODS = 9
+WORKSHOP_CONTEXT_METHODS = 11
 WORKSHOP_CONTEXT_SCHEMAS = {
     "ContextIdReq": ["id:string:req"],
     "ContextLeaseReq": ["epoch:integer:req", "id:string:req"],
     "ContextOpenReq": ["id:string:req", "root:string:req"],
     "ContextReleaseReq": ["lease_id:string:req"],
+    "ContextSearchReq": ["context_id:string:req", "epoch:integer:req", "limit:integer:opt", "query:string:req"],
     "ContextSnapshotReq": ["context_id:string:req", "epoch:integer:req", "rel_path:string:req"],
+    "ContextTreeReq": ["context_id:string:req", "epoch:integer:req"],
     "ContextWriteReq": [
         "content:string:req",
         "context_id:string:req",

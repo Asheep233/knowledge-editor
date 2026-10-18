@@ -127,6 +127,51 @@ class ContextRegistry:
                 ctx.docs[rel] = rec
             return {"rel_path": rel, "revision": int(rec["revision"]), "disk_hash": disk, "context_id": ctx_id}
 
+    # ---------- 只读域（T12 迁移切片）----------
+    def tree(self, ctx_id: str, epoch: int) -> dict[str, Any]:
+        """上下文绑定的文档树（只读域）。返回 [{rel_path, size}]（按路径排序）。"""
+        with self._lock:
+            ctx = self._require_bound(ctx_id, epoch)
+            root = ctx.root
+            items: list[dict[str, Any]] = []
+            base = root / "Articles"
+            if base.is_dir():
+                for path in sorted(base.rglob("*.md")):
+                    rel = path.relative_to(root).as_posix()
+                    try:
+                        size = path.stat().st_size
+                    except OSError:
+                        size = 0
+                    items.append({"rel_path": rel, "size": size})
+            return {"context_id": ctx_id, "epoch": ctx.epoch, "count": len(items), "items": items}
+
+    def search(self, ctx_id: str, epoch: int, query: str, limit: int = 50) -> dict[str, Any]:
+        """上下文绑定的简单全文搜索（只读域切片；产品级 FTS/indexer 绑定见 T12 后续）。"""
+        q = (query or "").strip()
+        if not q:
+            raise ContextError(400, "搜索词不能为空")
+        ql = q.lower()
+        with self._lock:
+            ctx = self._require_bound(ctx_id, epoch)
+            root = ctx.root
+            base = root / "Articles"
+            results: list[dict[str, Any]] = []
+            if base.is_dir():
+                for path in sorted(base.rglob("*.md")):
+                    try:
+                        text = path.read_text(encoding="utf-8", errors="replace")
+                    except OSError:
+                        continue
+                    if ql not in text.lower():
+                        continue
+                    rel = path.relative_to(root).as_posix()
+                    idx = text.lower().find(ql)
+                    snippet = text[max(0, idx - 40): idx + 120].replace("\n", " ")
+                    results.append({"rel_path": rel, "snippet": snippet})
+                    if len(results) >= limit:
+                        break
+            return {"context_id": ctx_id, "epoch": ctx.epoch, "query": q, "count": len(results), "results": results}
+
     # ---------- 写 ----------
     def write(
         self,

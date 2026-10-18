@@ -13,6 +13,10 @@
 新增 `/api/context/*` 9 个路径 / 9 个方法端点（上下文/租约/快照/CAS 写入/结果查询）+
 6 个请求 schema。基线由 39 路径 / 51 方法 → **48 路径 / 60 方法**。属工坊增量接口，
 不改既有端点行为；后续 T12 分域迁移时若统一到 Core 会再次显式更新本快照。
+
+**2026-10-19 UI 工坊 T12 只读域切片（显式评审更新）**：
+新增 `/api/context/tree`、`/api/context/search` 2 个路径 / 2 个方法 + 2 个请求 schema。
+基线由 48 路径 / 60 方法 → **50 路径 / 62 方法**。既有全局端点行为不变（App 可继续使用）。
 """
 
 from __future__ import annotations
@@ -33,8 +37,10 @@ SNAPSHOT_PATHS = [
     "/api/context/open",
     "/api/context/release",
     "/api/context/request/{request_id}",
+    "/api/context/search",
     "/api/context/snapshot",
     "/api/context/switch",
+    "/api/context/tree",
     "/api/context/write",
     "/api/drafts/recovery",
     "/api/drafts/recovery/restore",
@@ -98,7 +104,7 @@ def test_openapi_method_count(client):
         len([m for m in item if m in {"get", "post", "put", "delete", "patch"}])
         for item in resp.json()["paths"].values()
     )
-    assert methods == 60, f"方法端点数偏离实测基线 60，实际 {methods}"
+    assert methods == 62, f"方法端点数偏离实测基线 62，实际 {methods}"
 
 
 # P3-19：schema 签名快照——字段名/类型/required 的改动也会被冻结契约拦截，
@@ -127,7 +133,9 @@ SNAPSHOT_SCHEMAS = {
     "ContextLeaseReq": ["epoch:integer:req", "id:string:req"],
     "ContextOpenReq": ["id:string:req", "root:string:req"],
     "ContextReleaseReq": ["lease_id:string:req"],
+    "ContextSearchReq": ["context_id:string:req", "epoch:integer:req", "limit:integer:opt", "query:string:req"],
     "ContextSnapshotReq": ["context_id:string:req", "epoch:integer:req", "rel_path:string:req"],
+    "ContextTreeReq": ["context_id:string:req", "epoch:integer:req"],
     "ContextWriteReq": [
         "content:string:req",
         "context_id:string:req",

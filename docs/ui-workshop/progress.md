@@ -44,6 +44,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
 | T18 | in_progress | frontend/src/core/broker/{broker,binding,+2 tests}；protocol command.invoke；probe/* + s1 原型 broker 场景 | evidence/P3-T18-broker.md（**37 例**：broker 9+binding 9+protocol 19）、**P3-T18-broker-probe.md（Windows/WebView2 12/12）** | 真实产品 guest 连接建立/产品壳接线；三档授权 UI（T22）；后端写口来源收紧端到端 | 产品 guest 连接接线 + T22 授权 UI → T21 Windows 包安装 |
 | T21 | in_progress | 原型 tauri_sandbox/src/pack_store_proto.rs + core/packs/probe/* + run_pack_probe.py | **evidence/P3-T21-pack-install-probe.md（Windows 真实文件系统 20/20）** | 未接产品 Tauri 主进程；TS PackStore 与 Rust 单一事实来源未定；下载/扫描/首次安装确认 UI（T22）未做 | Rust store 接产品壳 + 启动 recover → T20/T22/T26 |
+| T12 | in_progress | backend: context_registry tree/search + routers/context.py + tests | evidence/P1-T12-domain-migration-slice.md（**只读域切片 5 例 + 契约 50 路径/62 方法 + 全量 840 collected 双平台绿**） | 写域/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 写域绑定 + 真实 store 迁移 → T13 Core 门槛 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -291,3 +292,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P3-T21-pack-install-probe.md` + `T21-pack-install-probe-results.json`。
 - 下一步：Rust store 接产品 Tauri 主进程 + 启动 recover（T20）；TS PackStore 与 Rust 单一事实来源决策；
   T22 下载/候选扫描/首次安装确认 UI。
+
+## P1 进度（T12 只读域迁移切片，2026-10-19）
+
+- 产品后端上下文只读域落地：`/api/context/tree`、`/api/context/search`（context+epoch 绑定，
+  两工作区完全隔离；旧 epoch 409；关闭上下文 404）；旧全局端点保持可用（App 不破坏）。
+- 契约显式更新：OpenAPI 50 路径 / 62 方法 / +2 schema；后端全量 **840 collected**，WSL 与 Windows
+  Py3.10 全绿。证据：`evidence/P1-T12-domain-migration-slice.md`。
+- 下一步：写域（article/attachment/import/export/print）逐域绑定；真实 store/indexer/history 迁移；
+  T13 Core 门槛（无 App/EditorArea 挂载验证）→ 进 P2（T14 EditorSession/T16 打印产品化）。

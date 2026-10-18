@@ -178,7 +178,11 @@ export class SaveCoordinator {
       }
       doc.status = 'saved'
       status = 'saved'
-      if (this.journal) await this.journal.commit(result.requestId)
+      if (this.journal) {
+        // 保存成功 → 提交当前恢复记录，并清理同一文档的旧恢复记录（abort 重试后的残留）
+        await this.journal.commit(result.requestId)
+        for (const stale of this.journal.pending(doc.relPath)) await this.journal.commit(stale.requestId)
+      }
     } else if (result.status === 'conflict' && result.kind === 'revision') {
       doc.status = 'conflict_revision'
       status = 'conflict_revision'

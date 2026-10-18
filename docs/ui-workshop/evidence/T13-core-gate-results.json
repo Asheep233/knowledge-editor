@@ -1,0 +1,206 @@
+{
+  "generatedAt": "2026-10-18T18:31:14.084Z",
+  "base": "http://127.0.0.1:8774",
+  "note": "UI-free Core gate（Node + 真实后端，无 App/EditorArea/happy-dom）",
+  "checks": [
+    {
+      "name": "打开工作区 A（create 或已存在）",
+      "pass": true,
+      "detail": 409
+    },
+    {
+      "name": "打开工作区 A（open）",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "打开工作区 B（create 或已存在）",
+      "pass": true,
+      "detail": 201
+    },
+    {
+      "name": "上下文 A 打开（epoch=1）",
+      "pass": true,
+      "detail": {
+        "id": "ctx-A",
+        "epoch": 1,
+        "root": "/tmp/ke-t13-gate.MyuBMc/ws-a",
+        "current": "ctx-A"
+      }
+    },
+    {
+      "name": "可信快照（revision=0 + disk hash）",
+      "pass": true,
+      "detail": {
+        "rel_path": "Articles/gate-demo.md",
+        "revision": 0,
+        "disk_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "context_id": "ctx-A"
+      }
+    },
+    {
+      "name": "Core 保存成功（file_durable）",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "requestId": "gate-save-1",
+        "result": {
+          "requestId": "gate-save-1",
+          "contextId": "ctx-A",
+          "relPath": "Articles/gate-demo.md",
+          "status": "completed",
+          "revision": 1,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        }
+      }
+    },
+    {
+      "name": "真实文件落盘",
+      "pass": true
+    },
+    {
+      "name": "保存后 journal 已提交",
+      "pass": true
+    },
+    {
+      "name": "abort 后状态=dirty（不假设失败）",
+      "pass": true,
+      "detail": {
+        "status": "dirty",
+        "requestId": "gate-save-aborted"
+      }
+    },
+    {
+      "name": "abort 后恢复日志保留（可重启恢复）",
+      "pass": true,
+      "detail": 1
+    },
+    {
+      "name": "重试保存成功（真实 HTTP）",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "requestId": "gate-save-retry",
+        "result": {
+          "requestId": "gate-save-retry",
+          "contextId": "ctx-A",
+          "relPath": "Articles/gate-demo.md",
+          "status": "completed",
+          "revision": 2,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        }
+      }
+    },
+    {
+      "name": "abort 内容最终落盘",
+      "pass": true,
+      "detail": "T13 abort 期间编辑"
+    },
+    {
+      "name": "恢复日志在成功后提交",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "只读域 tree 返回 demo 文档",
+      "pass": true,
+      "detail": {
+        "context_id": "ctx-A",
+        "epoch": 1,
+        "count": 1,
+        "items": [
+          {
+            "rel_path": "Articles/gate-demo.md",
+            "size": 22
+          }
+        ]
+      }
+    },
+    {
+      "name": "只读域 search 命中上下文内容",
+      "pass": true,
+      "detail": {
+        "context_id": "ctx-A",
+        "epoch": 1,
+        "query": "abort 期间",
+        "count": 1,
+        "results": [
+          {
+            "rel_path": "Articles/gate-demo.md",
+            "snippet": "T13 abort 期间编辑"
+          }
+        ]
+      }
+    },
+    {
+      "name": "上下文 B 打开（隔离工作区）",
+      "pass": true,
+      "detail": {
+        "id": "ctx-B",
+        "epoch": 1,
+        "root": "/tmp/ke-t13-gate.MyuBMc/ws-b",
+        "current": "ctx-B"
+      }
+    },
+    {
+      "name": "切库后旧 epoch 保存 → stale_context",
+      "pass": true,
+      "detail": {
+        "status": "stale_context",
+        "requestId": "gate-save-stale",
+        "result": {
+          "requestId": "gate-save-stale",
+          "contextId": "ctx-A",
+          "relPath": "Articles/gate-demo.md",
+          "status": "stale",
+          "detail": "上下文 epoch 已过期: 期望 2, 收到 1"
+        }
+      }
+    },
+    {
+      "name": "新 epoch 可继续保存",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "requestId": "gate-save-new-epoch",
+        "result": {
+          "requestId": "gate-save-new-epoch",
+          "contextId": "ctx-A",
+          "relPath": "Articles/gate-demo.md",
+          "status": "completed",
+          "revision": 3,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        }
+      }
+    },
+    {
+      "name": "有租约时关闭被拒（409）",
+      "pass": true,
+      "detail": 409
+    },
+    {
+      "name": "租约排空后关闭成功",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "关闭后旧上下文读取被拒（404）",
+      "pass": true,
+      "detail": 404
+    }
+  ],
+  "passed": 21,
+  "total": 21,
+  "uncovered": [
+    "单实例/退出协调（Rust 主壳）",
+    "打印 job 与取消（T16）",
+    "Rust 原生恢复（T20/T24）",
+    "恶意包/故障场景（T18 W 探针部分覆盖）"
+  ]
+}

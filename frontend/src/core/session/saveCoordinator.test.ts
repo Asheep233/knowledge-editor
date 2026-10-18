@@ -189,6 +189,22 @@ describe('SaveCoordinator（T10）', () => {
     expect(recovered[0]).toMatchObject({ relPath: REL, content: '崩溃前未保存内容', requestId: 'req-journal-abort' })
   })
 
+  it('abort 后重试成功 → 同文档旧恢复记录被清理（journal 不残留）', async () => {
+    const storage = new MemoryRecoveryStorage()
+    const journal = new RecoveryJournal(storage)
+    const transport = new MemoryTransport({ failWrite: (req) => (req.requestId === 'req-first' ? new Error('AbortError') : null) })
+    const coord = new SaveCoordinator({ transport, binding: { contextId: 'ctx-A', epoch: 1 }, journal })
+    coord.registerSnapshot(snapshot())
+    coord.recordEdit(REL, '内容')
+    const first = await coord.save(REL, 'req-first')
+    expect(first.status).toBe('dirty')
+    expect(journal.pending(REL)).toHaveLength(1)
+    const retry = await coord.save(REL, 'req-second')
+    expect(retry.status).toBe('saved')
+    expect(journal.pending(REL)).toHaveLength(0)
+    expect(storage.text).toBeNull()
+  })
+
   it('Core 会话层无 DOM/React 依赖（源码守卫）', async () => {
     const fs = await import('node:fs')
     const files = ['types.ts', 'saveCoordinator.ts', 'memoryTransport.ts', 'httpTransport.ts', 'recoveryJournal.ts']

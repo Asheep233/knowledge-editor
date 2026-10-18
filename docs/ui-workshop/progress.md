@@ -35,7 +35,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | --- | --- | --- | --- | --- | --- |
 | T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
 | T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
-| T02–T06 | todo | T02: s1_runtime/（iframe/WebviewWindow 探针）；T03: s2_editor/harness.ts + s1_runtime/run_s2_probe.py；T04: s3_save/；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、P0-S2-prototype.md（WebView2 换壳 **10/10**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源；T03 未覆盖产品 NodeView/MathLive/真实 IME；T05 未开工；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
+| T02–T06 | todo | T02: s1_runtime/；T03: s2_editor/；T04: s3_save/；T05: s4_print/ + s1_runtime/print_proto.rs；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、P0-S2-prototype.md（WebView2 换壳 **10/10**）、P0-S4-prototype.md（WebView2 真实 PDF **6/6**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源；T03 未覆盖产品 NodeView/MathLive/真实 IME；T05 未接真实 session revision/隐藏窗口/长文档；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
 | T07 | todo | | | | 路线 ADR |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
@@ -107,3 +107,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   synthetic composition、源码草稿保持；再移回 shell A 二次断言。结果经 Tauri `report_results` 落盘。
   证据：`evidence/P0-S2-prototype.md` + `P0-S2-probe-results.json`。
   限制：最小 StarterKit、无产品 React NodeViews/MathLive、synthetic IME、两 shell 为 vanilla 容器（真实两框架 T24）。
+
+## P0 原型进展（S4 独立打印，2026-10-19）
+
+- **S4（T05 部分，Windows/WebView2 真实 PDF 6/6）**：`print_proto.rs`（产品 print.rs 简化移植：对指定
+  renderer 窗口 PrintToPdf）+ `s4_print/harness.ts`（内存 session 快照 → 只读 HTML：未保存标记/
+  KaTeX 行内+根号公式/表格）→ 真实 PDF **90,002 B / 1 页**，PyMuPDF 文本校验含 `UNSAVED-SNAPSHOT-MARK`
+  与公式排版文本；打印**不隐式保存**（临时源笔记 sha256 不变），输出在系统临时目录。
+  证据：`evidence/P0-S4-prototype.md` + `P0-S4-probe-results.json`。
+  限制：快照未接真实 EditorSession revision、单页、未测隐藏窗口/长文档/图片附件/主题，留 T16。
+- **P0 五原型全部完成**（S1/S1b 运行域+恢复、S2 持续编辑面、S3 保存垂直切片、S4 独立打印、S5 事务）。
+  下一步：**T07 路线 ADR + P0 阶段报告**，然后进入 P1（T08 codec → T09 WorkspaceContext → T10 Core）。

@@ -162,6 +162,12 @@
             await finish(results);
             return;
           }
+          if (boot.scenario === 's4') {
+            results.phase = 's4-host-idle';
+            document.getElementById('status').textContent = 'S4 print harness running in print window…';
+            await new Promise(function (r) { setTimeout(r, 60000); });
+            return;
+          }
           if (boot.scenario === 's2') {
             // S2 场景：由 Rust setup 打开的 s2-shell 写 results.json；主窗保持存活不写结果
             results.phase = 's2-host-idle';

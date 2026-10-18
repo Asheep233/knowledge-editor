@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-10-19T01:41:14+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "S4-1 Rust setup 打开 print-render 窗口",
+      "pass": true,
+      "detail": [
+        "startup-clean",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"print_target\":\"C:\\\\ke-tmp\\\\uiws-s4-probe\\\\probe-s4\\\\snapshot.pdf\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s4-probe\\\\probe-s4\",",
+        "print-render opened by rust setup",
+        "startup-clean"
+      ]
+    },
+    {
+      "name": "S4-2 harness 完成且 KaTeX 渲染 2 处",
+      "pass": true,
+      "detail": "phase=s4-done katex=2 err=None"
+    },
+    {
+      "name": "S4-3 快照包含未保存内容标记（来自内存 session，非磁盘）",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "S4-4 真实 PDF 生成且含未保存内容（PyMuPDF 文本校验）",
+      "pass": true,
+      "detail": {
+        "size": 90002,
+        "pages": 1,
+        "text_has_mark": true,
+        "text_snippet": "S4 独立打印快照\n未保存正文标记：UNSAVED-SNAPSHOT-MARK\n行内公式：\n；根号：\n列A\n列B\n1\n2\nsnapshot revision = 7（未保存内容）\nE = mc2\n​\n​\n2\na +b\n2\n2\n"
+      }
+    },
+    {
+      "name": "S4-5 打印不隐式保存：源笔记 sha256 不变",
+      "pass": true,
+      "detail": "3116793755fcdb58"
+    },
+    {
+      "name": "S4-6 PDF 输出在系统临时目录（工作区之外）",
+      "pass": true,
+      "detail": "C:\\ke-tmp\\uiws-s4-probe\\probe-s4\\snapshot.pdf"
+    }
+  ],
+  "pass_count": 6,
+  "total": 6,
+  "raw_results": {
+    "phase": "s4-done",
+    "printTarget": "C:\\ke-tmp\\uiws-s4-probe\\probe-s4\\snapshot.pdf",
+    "htmlLen": 30087,
+    "katexCount": 2,
+    "unsavedMarkPresent": true,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "pdfPath": "C:\\ke-tmp\\uiws-s4-probe\\probe-s4\\snapshot.pdf"
+  },
+  "pdf": {
+    "size": 90002,
+    "pages": 1,
+    "text_has_mark": true,
+    "text_snippet": "S4 独立打印快照\n未保存正文标记：UNSAVED-SNAPSHOT-MARK\n行内公式：\n；根号：\n列A\n列B\n1\n2\nsnapshot revision = 7（未保存内容）\nE = mc2\n​\n​\n2\na +b\n2\n2\n"
+  }
+}

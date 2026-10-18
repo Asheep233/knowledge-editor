@@ -11,6 +11,8 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+mod print_proto;
+
 use tauri::State;
 
 #[derive(Clone)]
@@ -78,6 +80,7 @@ fn boot_state(state: State<ProbeState>) -> serde_json::Value {
         "bad_start": state.bad_start,
         "probe_dir": state.dir.display().to_string(),
         "scenario": env::var("S1_SCENARIO").unwrap_or_default(),
+        "print_target": env::var("S1_PRINT_TARGET").unwrap_or_default(),
         "guest_iso_url": env::var("S1_GUEST_ISO_URL").unwrap_or_default(),
     })
 }
@@ -227,6 +230,19 @@ fn main() {
                     }
                 }
             }
+            if env::var("S1_OPEN_PRINT").map(|v| v == "1").unwrap_or(false) {
+                use tauri::{WebviewUrl, WebviewWindowBuilder};
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                match WebviewWindowBuilder::new(app, "print-render", WebviewUrl::App("print.html".into()))
+                    .title("S4 print renderer")
+                    .inner_size(820.0, 1100.0)
+                    .build()
+                {
+                    Ok(_) => append_event(&dir, "print-render opened by rust setup"),
+                    Err(e) => append_event(&dir, &format!("print-render build error: {e}")),
+                }
+            }
             if env::var("S1_OPEN_S2").map(|v| v == "1").unwrap_or(false) {
                 use tauri::{WebviewUrl, WebviewWindowBuilder};
                 let dir = probe_dir();
@@ -254,6 +270,7 @@ fn main() {
             sensitive_probe,
             report_guest_result,
             debug_log,
+            print_proto::print_window_pdf,
             exit_probe
         ])
         .run(tauri::generate_context!())

@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-10-18T20:45:27.362Z",
+  "base": "http://127.0.0.1:8757",
+  "checks": [
+    {
+      "name": "LF 普通文档：旧链创建 (201)",
+      "pass": true,
+      "detail": 201
+    },
+    {
+      "name": "LF 普通文档：旧链保存 (200)",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "LF 普通文档：Core 打开上下文",
+      "pass": true,
+      "detail": {
+        "contextId": "ke-default",
+        "epoch": 1
+      }
+    },
+    {
+      "name": "LF 普通文档：Core 保存 saved",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "revision": 1
+      }
+    },
+    {
+      "name": "LF 普通文档：**旧链与 Core 落盘字节完全一致**",
+      "pass": true,
+      "detail": {
+        "legacyBytes": 52,
+        "coreBytes": 52,
+        "legacyHash": "d50d6f7b06acd601",
+        "coreHash": "d50d6f7b06acd601"
+      }
+    },
+    {
+      "name": "LF 普通文档：落盘内容等于写入内容（无损）",
+      "pass": true,
+      "detail": {
+        "expected": 52,
+        "actual": 52
+      }
+    },
+    {
+      "name": "CRLF + BOM 文档（traits 场景）：旧链创建 (201)",
+      "pass": true,
+      "detail": 201
+    },
+    {
+      "name": "CRLF + BOM 文档（traits 场景）：旧链保存 (200)",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "CRLF + BOM 文档（traits 场景）：Core 打开上下文",
+      "pass": true,
+      "detail": {
+        "contextId": "ke-default",
+        "epoch": 2
+      }
+    },
+    {
+      "name": "CRLF + BOM 文档（traits 场景）：Core 保存 saved",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "revision": 1
+      }
+    },
+    {
+      "name": "CRLF + BOM 文档（traits 场景）：**旧链与 Core 落盘字节完全一致**",
+      "pass": true,
+      "detail": {
+        "legacyBytes": 63,
+        "coreBytes": 63,
+        "legacyHash": "f52eafa28a0a3f86",
+        "coreHash": "f52eafa28a0a3f86"
+      }
+    },
+    {
+      "name": "CRLF + BOM 文档（traits 场景）：落盘内容等于写入内容（无损）",
+      "pass": true,
+      "detail": {
+        "expected": 63,
+        "actual": 63
+      }
+    }
+  ],
+  "passed": 12,
+  "total": 12
+}

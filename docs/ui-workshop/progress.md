@@ -46,7 +46,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T21 | in_progress | 原型 pack_store_proto.rs+probe（W 20/20）；产品壳 pack_store.rs（scan/install/list/verify/activate/rollback/recover/**uninstall**）+ 命令注册 + Rust 测试；前端适配器/UI 集成 | evidence/P3-T21-pack-install-probe.md（W 20/20）、P3-T21-product-pack-store.md（**cargo 34/34 + release 构建**）、P3-T23-workshop-integration.md | 签名校验；Windows 端到端交互 W（安装→启用→回滚→卸载）；升级 UI；与 T20 启动恢复合并 | Windows E2E W → T21/T26 |
 | T12 | in_progress | backend: context_registry tree/search/save_article + routers/context.py + 2 test files | evidence/P1-T12-domain-migration-slice.md（只读域 5 例）、**P1-T12-write-domain-slice.md（写域 6 例 + 契约 51 路径/63 方法 + 全量 846 collected 双平台绿）** | 重命名/删除/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 其余写域 + 真实 store 迁移 → T14 接线 |
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
-| T14 | in_progress | core/session/{productAdapter,coreSaveBridge,coreSaveRuntime,+tests}；EditorArea flag 分支；e2e run_t14_bridge_e2e.sh；adr/ADR-002 | P2-T14-product-adapter.md（6 例）、P2-T14-core-save-bridge.md（单元 8 + 真实后端 e2e 11/11）、**P2-T14-editor-wiring.md（flag 接线 + 全量 126 files/1769 passed）** | 字节一致性验证；flag 开启 UI e2e（保存/切档/外部改盘/恢复点）；Windows 实机保存 W；验收后才谈默认开启 | 字节一致性 + flag-on e2e/Windows W |
+| T14 | in_progress | core/session/* + EditorArea flag 分支 + e2e（bridge/byte-consistency）；adr/ADR-002 | product-adapter（6）、core-save-bridge（8+e2e 11/11）、editor-wiring（flag 接线+全量绿）、**byte-consistency（真实后端 12/12：LF 与 CRLF+BOM 旧链/Core 落盘逐字节一致）** | flag 开启 UI e2e（保存/切档/外部改盘/恢复点）；Windows 实机保存 W；验收后才谈默认开启 | flag-on UI e2e + Windows W → 默认开启评估 |
 | T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
 | T16 | in_progress | core/print/*；产品 print_snapshot.rs（隐藏 renderer + PrintToPdf + **ready 握手/超时兜底**）；public/print-render.html | P2-T16-print-core.md（12 例）、S4 W 6/6、**P2-T16-product-print.md（管线 + ready 握手；cargo 38、前端 130 files/1795 passed）** | Windows 端到端 W（隔离安装）；长文档分页/主题/源码；打印 UI 与取消清理；握手运行时验证 | 隔离安装 W + 打印 UI → T26 |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
@@ -608,3 +608,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   token + 轮询 ≤5s，超时记录并兜底继续打印（不因环境差异断打印）。
   cargo **38 passed**、release 构建成功。证据：`evidence/P2-T16-product-print.md`（收尾更新）。
 - 剩余：隔离安装 Windows E2E W（含握手真实路径/取消清理）、长文档分页/主题/源码模式、打印 UI 接线。
+
+## P2 进度（T14 字节一致性，2026-10-19）
+
+- ADR-002 验收门槛「保存字节一致性」达成：同一最终 markdown 经**旧链 PUT** 与 **Core 上下文写**落盘
+  逐字节一致；LF 与 CRLF+BOM 两场景均无损（真实后端 e2e **12/12 PASS**）。
+  证据：`evidence/P2-T14-byte-consistency.md` + results JSON。
+- 剩余：flag 开启路径 UI e2e（保存/切档/外部改盘/恢复点）、Windows/WebView2 实机保存 W；
+  通过后才评估 `VITE_KE_CORE_SAVE` 默认开启。

@@ -1,0 +1,114 @@
+{
+  "generated_at": "2026-10-19T02:25:05+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T18-1 Rust setup 打开 broker-render 窗口",
+      "pass": true,
+      "detail": [
+        "startup-clean",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t18-probe\\\\probe-broker\",\"safe_mode\":false,\"scenario\":\"broker\"}",
+        "broker-render opened by rust setup"
+      ]
+    },
+    {
+      "name": "W-T18-2 guest 探针完成",
+      "pass": true,
+      "detail": {
+        "phase": "broker-done",
+        "guest": "broker-guest-done",
+        "error": null
+      }
+    },
+    {
+      "name": "W-T18-3 握手能力受限（只回传已授能力）",
+      "pass": true,
+      "detail": [
+        "context.read",
+        "print.request",
+        "ui.shell"
+      ]
+    },
+    {
+      "name": "W-T18-4 允许的 snapshot 成功",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "revision": 1
+      }
+    },
+    {
+      "name": "W-T18-5 越权 context.write → E_CAPABILITY",
+      "pass": true,
+      "detail": "E_CAPABILITY"
+    },
+    {
+      "name": "W-T18-6 已声明命令可执行",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": "demo.hello"
+      }
+    },
+    {
+      "name": "W-T18-7 未声明命令 → E_FORBIDDEN",
+      "pass": true,
+      "detail": "E_FORBIDDEN"
+    },
+    {
+      "name": "W-T18-8 超限 payload → E_BAD_PAYLOAD",
+      "pass": true,
+      "detail": "E_BAD_PAYLOAD"
+    },
+    {
+      "name": "W-T18-9 未知方法 → E_UNKNOWN_METHOD",
+      "pass": true,
+      "detail": "E_UNKNOWN_METHOD"
+    },
+    {
+      "name": "W-T18-10 opaque iframe 直接调 Tauri 原生命令被拒",
+      "pass": true,
+      "detail": "rejected: Origin header is not a valid URL"
+    },
+    {
+      "name": "W-T18-11 攻击后 host 仍健康",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "W-T18-12 真实 WebView2（UA Edg）",
+      "pass": true,
+      "detail": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+    }
+  ],
+  "pass_count": 12,
+  "total": 12,
+  "raw_results": {
+    "phase": "broker-done",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "guest": {
+      "phase": "broker-guest-done",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+      "handshakeAccepted": [
+        "context.read",
+        "print.request",
+        "ui.shell"
+      ],
+      "snapshot": {
+        "ok": true,
+        "revision": 1
+      },
+      "writeError": "E_CAPABILITY",
+      "declaredCommand": {
+        "ok": true,
+        "value": "demo.hello"
+      },
+      "undeclaredCommandError": "E_FORBIDDEN",
+      "oversizeError": "E_BAD_PAYLOAD",
+      "unknownMethodError": "E_UNKNOWN_METHOD",
+      "tauriDirectInvoke": "rejected: Origin header is not a valid URL",
+      "events": [],
+      "hostHealthyAfterAttacks": true
+    }
+  }
+}

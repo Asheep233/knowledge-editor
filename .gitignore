@@ -42,3 +42,7 @@ docs/ui-workshop/prototypes/p0/s1_runtime/tauri_sandbox/frontend/s4.js
 # T11 传输探针构建中间产物
 docs/ui-workshop/core/protocol/probe/guest-code.txt
 docs/ui-workshop/prototypes/p0/s1_runtime/tauri_sandbox/frontend/protocol.js
+
+# T18 broker 探针构建产物
+docs/ui-workshop/core/broker/probe/guest-code.txt
+docs/ui-workshop/prototypes/p0/s1_runtime/tauri_sandbox/frontend/broker.js

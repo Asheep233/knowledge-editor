@@ -10,14 +10,17 @@
     - **有界代理**：单连接 `maxInflight`（`E_BUSY` retryable）、单请求 payload 上限（`E_BAD_PAYLOAD`+limit）；
     - official / trusted / guest 三档：official 全能力（可配置关闭），trusted/guest 按能力集合。
   - `protocol/types.ts` 显式升级：新增 `command.invoke` 方法（契约快照/测试同步）。
-  - `frontend/src/core/broker/broker.test.ts`：9 例
-- 证据类型：**U（Core 单测 + 源码守卫）**；真实 WebView2 恶意/故障包探针与 Tauri 命令面接线尚未完成
+  - `frontend/src/core/broker/binding.ts`：`brokeredHandlers(broker, connection)` —— 把 Broker 接到
+    协议 HostDispatcher；`protocol.capabilities` 回传受信连接信息（不泄漏未授能力）
+  - `frontend/src/core/broker/broker.test.ts`（9 例）+ `binding.test.ts`（9 例）
+- 证据类型：**U（Core 单测 + 源码守卫）** + **W（Windows/WebView2 恶意 guest 探针 12/12，
+  见 `P3-T18-broker-probe.md`）**
 
 ## 测试结果
 
 ```text
 $ npx vitest run src/core/broker src/core/protocol
-Tests  28 passed (28)     # broker 9 + protocol 19（含 command.invoke 契约更新）
+Tests  37 passed (37)     # broker 9 + binding 9 + protocol 19（含 command.invoke 契约更新）
 $ npx tsc -b --noEmit
 exit 0
 ```
@@ -39,6 +42,9 @@ exit 0
 
 - T18 的 Core 授权层成立：guest 无任意命令面（方法级能力 + 声明式命令白名单 + epoch 绑定 + 有界代理），
   错误全部类型化；与 T11 协议、T17 manifest 的能力声明一致。
+- **Windows/WebView2 恶意 guest 实机探针 12/12 PASS**（`P3-T18-broker-probe.md`）：越权写入
+  E_CAPABILITY、未声明命令 E_FORBIDDEN、超限 payload E_BAD_PAYLOAD、未知方法 E_UNKNOWN_METHOD、
+  opaque iframe 直接调 Tauri 被拒（Origin 校验）、攻击后 host 仍健康。
 - 尚未完成（T18 继续）：
   1. 把 Broker 接到 `HostDispatcher`（连接建立时注入 connection；`protocol.capabilities` 返回已授能力），
      并在 Windows/WebView2 上用真实恶意/故障测试包验证（W 证据）；

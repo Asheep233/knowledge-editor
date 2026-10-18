@@ -42,7 +42,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
 | T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
 | T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
-| T18 | in_progress | frontend/src/core/broker/{broker,test}；protocol command.invoke | evidence/P3-T18-broker.md（9 例 U：能力/epoch/命令白名单/有界代理/错误码） | Broker 未接 HostDispatcher；Windows 恶意/故障包 W 证据未做；三档授权 UI 未做 | Broker↔Dispatcher 接线 + W 恶意包探针 → T22 授权 UI |
+| T18 | in_progress | frontend/src/core/broker/{broker,binding,+2 tests}；protocol command.invoke；probe/* + s1 原型 broker 场景 | evidence/P3-T18-broker.md（**37 例**：broker 9+binding 9+protocol 19）、**P3-T18-broker-probe.md（Windows/WebView2 12/12）** | 真实产品 guest 连接建立/产品壳接线；三档授权 UI（T22）；后端写口来源收紧端到端 | 产品 guest 连接接线 + T22 授权 UI → T21 Windows 包安装 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -269,3 +269,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P3-T18-broker.md`。
 - 下一步：Broker↔HostDispatcher 接线（连接建立注入 connection、能力回传）+ Windows/WebView2 恶意/故障
   测试包越权探针（W）；再进 T22 三档授权 UI 与 T12/13 收尾。
+
+## P3 进度（T18 Broker 接线 + W 探针，2026-10-19）
+
+- Broker↔HostDispatcher 接线：`brokeredHandlers(broker, connection)`（握手回传受信能力、所有方法经
+  Broker 授权）；binding 9 例 + broker 9 例 + protocol 19 例 = **37 例全过**，tsc 0。
+- **Windows/WebView2 恶意/故障 guest 探针 12/12 PASS**：guest 只能经受控协议面；越权写 E_CAPABILITY、
+  未声明命令 E_FORBIDDEN、超限 payload E_BAD_PAYLOAD、未知方法 E_UNKNOWN_METHOD、opaque iframe 直接调
+  Tauri 被拒（Origin 校验）、攻击后 host 仍健康。
+- 证据：`evidence/P3-T18-broker.md`、`P3-T18-broker-probe.md` + `T18-broker-probe-results.json`。
+- 下一步：真实产品 guest 连接建立（包激活 → 能力集合 → 协议会话）与 T22 授权 UI；T21 Windows 包安装/
+  回滚实机；T12 分域迁移继续。

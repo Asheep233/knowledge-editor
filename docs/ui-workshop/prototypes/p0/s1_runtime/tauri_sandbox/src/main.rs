@@ -230,6 +230,19 @@ fn main() {
                     }
                 }
             }
+            if env::var("S1_OPEN_BROKER").map(|v| v == "1").unwrap_or(false) {
+                use tauri::{WebviewUrl, WebviewWindowBuilder};
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                match WebviewWindowBuilder::new(app, "broker-render", WebviewUrl::App("broker.html".into()))
+                    .title("T18 broker malicious guest probe")
+                    .inner_size(900.0, 700.0)
+                    .build()
+                {
+                    Ok(_) => append_event(&dir, "broker-render opened by rust setup"),
+                    Err(e) => append_event(&dir, &format!("broker-render build error: {e}")),
+                }
+            }
             if env::var("S1_OPEN_PROTOCOL").map(|v| v == "1").unwrap_or(false) {
                 use tauri::{WebviewUrl, WebviewWindowBuilder};
                 let dir = probe_dir();

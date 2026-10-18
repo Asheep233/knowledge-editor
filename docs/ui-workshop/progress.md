@@ -46,7 +46,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T21 | in_progress | 原型 pack_store_proto.rs+probe（W 20/20）；产品壳 pack_store.rs（scan/install/list/verify/activate/rollback/recover/**uninstall**）+ 命令注册 + Rust 测试；前端适配器/UI 集成 | evidence/P3-T21-pack-install-probe.md（W 20/20）、P3-T21-product-pack-store.md（**cargo 34/34 + release 构建**）、P3-T23-workshop-integration.md | 签名校验；Windows 端到端交互 W（安装→启用→回滚→卸载）；升级 UI；与 T20 启动恢复合并 | Windows E2E W → T21/T26 |
 | T12 | in_progress | backend: context_registry tree/search/save_article + routers/context.py + 2 test files | evidence/P1-T12-domain-migration-slice.md（只读域 5 例）、**P1-T12-write-domain-slice.md（写域 6 例 + 契约 51 路径/63 方法 + 全量 846 collected 双平台绿）** | 重命名/删除/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 其余写域 + 真实 store 迁移 → T14 接线 |
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
-| T14 | in_progress | core/session/* + EditorArea flag 分支 + e2e；**coreSaveRuntime base URL（__KE_API_BASE__）修复** | product-adapter（6）、core-save-bridge（8+e2e 11/11）、editor-wiring、byte-consistency（12/12）、**A8 尝试发现并修复桥未用产品 base URL** | flag 开启 UI e2e（保存/切档/外部改盘/恢复点）；Windows 实机保存 W；验收后才谈默认开启 | flag-on UI e2e + Windows W → 默认开启评估 |
+| T14 | in_progress | core/session/* + EditorArea flag 分支 + e2e；base URL 修复；上下文写 frontmatter merge（后端） | product-adapter（6）、core-save-bridge（8+e2e 11/11）、editor-wiring、byte-consistency（12/12）、**A8 产品 UI 保存 W 9/9（autosave→/api/context/write、frontmatter 保留）** | 切档/外部改盘/恢复点专项；Windows 实机字节回归；默认开启评估 | 切档/外部改盘专项 → 默认开启评估 |
 | T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
 | T16 | in_progress | core/print/*；产品 print_snapshot.rs（隐藏 renderer + PrintToPdf + **ready 握手/超时兜底**）；public/print-render.html | P2-T16-print-core.md（12 例）、S4 W 6/6、**P2-T16-product-print.md（管线 + ready 握手；cargo 38、前端 130 files/1795 passed）** | Windows 端到端 W（隔离安装）；长文档分页/主题/源码；打印 UI 与取消清理；握手运行时验证 | 隔离安装 W + 打印 UI → T26 |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
@@ -55,7 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
-| T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具（APPDATA 隔离已强制）、A2–A6 产品 W 探针、A8 尝试 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、A5 UI（11/11）、**A8 尝试 6/8（CDP 输入不触发编辑器脏标记，未通过，记录限制）** | A8 真实输入/测试入口重试；A5 能力上限（依赖 A7）；A7 产品包宿主；真实 IME/多 DPI；安装包升级；隔离事故披露 | A7/A8 重试 → 认证 |
+| T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具、A2–A6/A8 产品 W 探针 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、A5 UI（11/11）、**A8 尝试 6/8（CDP 输入不触发编辑器脏标记，未通过，记录限制）** | A5 能力上限（依赖 A7）、A7 产品包宿主、真实 IME/多 DPI、安装包升级、切档/外部改盘专项 | A7/A5 上限 → 认证 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -691,3 +691,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   后续需人工真实编辑或测试保存入口。
 - 发现并修复真实集成缺陷：`coreSaveRuntime` 默认桥未使用产品后端 `window.__KE_API_BASE__`
   （Core 保存会打到 Tauri 资源域）；已修复 + runtime 测试 5 例/tsc 0。
+
+## P6/T26 进度（A8 通过 W 9/9，2026-10-19）
+
+- **A8 完成**：隔离产品构建（VITE_KE_CORE_SAVE=1）+ 当前源码 sidecar → 编辑器 autosave 经 Core
+  上下文链落盘（日志 `/api/context/write`），frontmatter 元信息保留；真实 SendInput 编辑验证。
+- 排查中修复 3 个真实缺陷：Core 桥 base URL、sidecar 版本不匹配（旧打包后端无 /api/context）、
+  上下文写入丢 frontmatter（后端 merge 语义 + 测试）。
+- 证据：`evidence/P5-T26-A8-save.md`；A8 期间自动化限制尝试保留于 `P5-T26-A8-save-attempt.md`。

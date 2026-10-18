@@ -206,6 +206,18 @@ def main() -> int:
         check("W-T26-A8-3 编辑插入标记文本（真实 SendInput 优先）", focused and "A8MARK" in text_now,
               {"focused": focused, "hasMarker": "A8MARK" in text_now, "text": text_now[-80:]})
 
+        # 诊断：编辑后保存状态指示/控制台错误（判断 dirty 是否成立、autosave 是否在跑）
+        try:
+            save_indicator = cdp.eval("(() => { const t=(document.body.innerText||'');"
+                                      " const m=t.match(/(已保存|未保存|保存中|保存失败|同步中)[^\\n]{0,20}/g);"
+                                      " return m ? m.slice(0,5) : null; })()")
+        except Exception:
+            save_indicator = None
+        try:
+            cdp.call("Log.enable")
+        except Exception:
+            pass
+        diag_text = str(cdp.eval("(document.body.innerText || '').slice(0, 600)"))
         # 触发保存：先聚焦窗口（后台窗口可能暂停自动保存）→ 等待自动保存；
         # 再 Ctrl+S；再失焦（点击标题区）触发保存-失焦。逐步尝试并记录生效方式。
         try:
@@ -245,6 +257,9 @@ def main() -> int:
                     saved, saved_by = True, "blur/click"
                     break
                 time.sleep(0.4)
+        saved_text = article.read_text(encoding="utf-8", errors="replace") if saved else ""
+        check("W-T26-A8-9 保存保留 frontmatter 元信息（title）", saved and "title:" in saved_text,
+              {"frontmatterHead": saved_text.split("---")[1][:120] if saved_text.count("---") >= 2 else saved_text[:120]})
         check("W-T26-A8-4 保存落盘（磁盘文件包含标记）", saved,
               {"file": str(article), "savedBy": saved_by, "tail": article.read_text(encoding="utf-8", errors="replace")[-120:]})
 
@@ -256,8 +271,12 @@ def main() -> int:
               "/api/context/write" in log_text,
               {"hasContextWrite": "/api/context/write" in log_text,
                "hasLegacyPut": "/api/articles" in log_text})
+        time.sleep(4.0)
+        body_after = str(cdp.eval("(document.body.innerText || '').slice(0, 600)"))
         check("W-T26-A8-6 无保存错误（日志无 Core 保存失败/异常）",
-              "E_INTERNAL" not in log_text and "保存失败" not in log_text, {"logTail": log_text.strip().splitlines()[-3:]})
+              "E_INTERNAL" not in log_text and "保存失败" not in log_text,
+              {"logTail": log_text.strip().splitlines()[-3:], "saveIndicator": save_indicator,
+               "bodyAfter": body_after})
         check("W-T26-A8-7 主进程存活（保存链路无崩溃）", proc.poll() is None, proc.poll())
         upid = user_pid()
         check("W-T26-A8-8 用户运行中的 AstraNota 未受影响", upid.isdigit(), {"user_pid": upid})

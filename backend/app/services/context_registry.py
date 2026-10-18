@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from ..services import markdown_io
 from ..services.markdown_io import atomic_write
 
 
@@ -206,8 +207,18 @@ class ContextRegistry:
                           "context_id": ctx_id}
                 self._results[request_id] = result
                 return result
-            digest = sha_bytes(content.encode("utf-8"))
-            atomic_write(p, content)
+            # 与旧链 PUT /api/articles/{id} 一致：正文保存 = 合并语义，
+            # 保留既有 frontmatter 元信息（title/tags/自定义键），正文不被元信息覆盖。
+            merged = content
+            if p.is_file():
+                try:
+                    old_raw = p.read_text(encoding="utf-8")
+                except OSError:
+                    old_raw = ""
+                if old_raw:
+                    merged = markdown_io.merge_frontmatter(old_raw, content)
+            digest = sha_bytes(merged.encode("utf-8"))
+            atomic_write(p, merged)
             ctx.docs[rel] = {"revision": int(rec["revision"]) + 1, "hash": digest}
             ctx.history.append(f"{rel}@{ctx.docs[rel]['revision']}")
             result = {

@@ -90,3 +90,29 @@ def test_article_context_isolation(client, tmp_path):
 def test_global_endpoints_unaffected(client):
     assert client.get("/api/health").status_code == 200
     assert client.get("/api/tree").status_code == 200
+
+
+def test_context_write_preserves_frontmatter_meta(client):
+    """T9/T12：上下文写入与旧链 PUT 一致——保留既有 frontmatter 元信息（title/tags）。"""
+    ws = client.app.state.workspace_root
+    created = client.post("/api/articles", json={"title": "merge-demo", "content": "---\ntitle: merge-demo\ntags: [x]\n---\n\n旧正文\n"})
+    assert created.status_code == 201
+    rel = created.json()["path"]
+    opened = client.post("/api/context/open", json={"id": "ke-merge", "root": str(ws)})
+    if opened.status_code == 409:
+        opened = client.post("/api/context/switch", json={"id": "ke-merge"})
+    assert opened.status_code == 200
+    ctx = opened.json()
+    snap = client.post("/api/context/snapshot", json={"context_id": ctx["id"], "epoch": ctx["epoch"], "rel_path": rel})
+    assert snap.status_code == 200
+    rev = snap.json()["revision"]
+    wrote = client.post("/api/context/write", json={
+        "context_id": ctx["id"], "epoch": ctx["epoch"], "rel_path": rel,
+        "content": "只写正文（不带 frontmatter）\n", "expected_revision": rev,
+    })
+    assert wrote.status_code == 200, wrote.text
+    assert wrote.json()["status"] == "completed"
+    raw = (ws / rel).read_text(encoding="utf-8")
+    assert "title: merge-demo" in raw        # 元信息保留
+    assert "tags:" in raw
+    assert "只写正文" in raw                   # 正文更新

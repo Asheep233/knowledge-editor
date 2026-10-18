@@ -35,7 +35,7 @@
 | T11 类型化协议 | 🟡 契约+W 传输探针 7/7 | `P1-T11-protocol.md`、`P1-T11-transport-probe.md` |
 | T12 分域迁移 | 🟡 只读域+写域切片 | `P1-T12-domain-migration-slice.md`、`P1-T12-write-domain-slice.md` |
 | T13 Core 门槛 | 🟡 UI-free 21/21 + 单实例 W 6/6 | `P1-T13-core-gate.md`、`P1-T13-instance-probe.md` |
-| T14 EditorSession/官方 shell | 🟡 适配层+Core 桥（真实后端 e2e 11/11）+EditorArea flag 接线（默认关闭）；字节一致性/flag-on UI e2e/Windows W 未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
+| T14 EditorSession/官方 shell | 🟡 适配层+Core 桥（e2e 11/11）+flag 接线+**产品 UI 保存 W 9/9（A8）**；切档/外部改盘专项/默认开启未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
 | T15 IME/焦点/缩放 | 🟡 CDP W 8/8；OS IME/多 DPI 未测 | `P2-T15-ime-zoom-probe.md` |
 | T16 打印产品化 | 🟡 Job Core 12 例 + 产品管线；**真实产品壳多资源打印 W 9/9（A2）**；长文档分页/主题/打印 UI 未做 | `P2-T16-product-print.md`、`P5-T26-A2-print.md`、`P0-S4-prototype.md` |
 | T17 包加载器 | 🟡 Core 14 例 + 产品 Rust 存储 | `P3-T17-pack-loader.md`、`P3-T21-product-pack-store.md` |
@@ -47,7 +47,7 @@
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
 | T24 可信包限定 | 🟡 信任策略10+签名8+keyring8+信任UI+产品 Rust 验签+打包签名工具+**签名数据源贯通 UI**；正式发布密钥流程/Windows 验签 E2E 未做 | `P4-T24-trust-policy.md`、`P4-T24-pack-signature.md`、`P4-T24-trust-ui.md`、`P4-T24-keyring.md`、`P4-T24-rust-signature.md` |
 | T25 平台验证矩阵 | 🟡 自动生成矩阵 18 行（9 W/2 A/2 A/U/3 回归/1 构建） | `P4-T25-validation-matrix.md`、`validation-matrix.csv` |
-| T26 Windows 认证 | 🟡 A1–A6 已过（smoke 7/7、A2 9/9、A3 9/9、A4+A6 16/16、**A5 信任 UI 11/11**、原型 13/13）；**A5 能力上限/A7/A8/IME/多 DPI/安装包升级未完成 → 未认证**；有事故记录（误杀用户 App，已恢复） | `P5-T26-windows-witnesses.md`、`T26-windows-acceptance-plan.md`、`P5-T26-isolated-smoke.md`、`P5-T26-A2-print.md` |
+| T26 Windows 认证 | 🟡 A1–A6 + **A8 已过**（smoke 7/7、A2 9/9、A3 9/9、A4+A6 16/16、A5 UI 11/11、**A8 保存 9/9**、原型 13/13）；A5 能力上限/A7/IME/多 DPI/安装包升级未完成 → 未认证；有事故记录（已恢复） | `P5-T26-windows-witnesses.md`、`T26-windows-acceptance-plan.md`、`P5-T26-isolated-smoke.md`、`P5-T26-A2-print.md` |
 | T27–T29 | ⬜ 未开始 | 发布候选/最终交接（需主理人授权） |
 
 ## 2b. 安全与密钥流程

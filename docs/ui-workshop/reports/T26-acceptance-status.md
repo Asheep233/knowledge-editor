@@ -15,6 +15,7 @@
 | A4 签名信任链（valid/missing/invalid/revoked → 安装拒绝） | **通过** | `P5-T26-A4-A6-install.md` |
 | A6 安装→启用→回滚→卸载（磁盘 state 校验） | **通过** | 同上（A4+A6 合计 16/16） |
 | A5 工坊信任 UI（入口/真实列表/签名徽章/授予撤销/TrustStore 持久化） | **11/11** | `P5-T26-A5-ui.md` |
+| A8 Core 保存 flag 产品 UI（autosave→上下文写/frontmatter 保留） | **9/9** | `P5-T26-A8-save.md` |
 | 原型壳 W 探针一键门禁 | **13/13** | `P5-T26-windows-witnesses.md` |
 
 ## 2. 本轮发现并修复的真实缺陷（W 价值）
@@ -29,8 +30,8 @@
 - **A5 剩余**：能力上限在真实包会话的运行时强制执行（依赖 A7 产品侧 PackageHost 装配）；
   （信任授予/撤销 UI 已完成 W 11/11，见 `P5-T26-A5-ui.md`）；
 - **A7**：产品侧包隔离宿主（真实入口资源 + 崩溃检测 + 停用/恢复持久化）—— 原型已 W 8/8，产品壳未接；
-- **A8**：`VITE_KE_CORE_SAVE=1` 的产品 UI 保存验证 **两次尝试未通过（合成输入/真实 SendInput 均未触发保存调用；
-  已修复 base URL 集成缺陷）**，见 `P5-T26-A8-save-attempt.md`；需人工真实编辑/测试保存入口重试；
+- **A8**：`VITE_KE_CORE_SAVE=1` 产品 UI 保存 **已完成 W 9/9**（autosave→`/api/context/write`、frontmatter
+  保留；排查中修复 base URL/sidecar 版本/上下文写入 merge 三个真实缺陷），见 `P5-T26-A8-save.md`；
 - **真实 OS 中文 IME / 多 DPI**（T15/T26）；
 - **安装包升级/回滚演练**（发布候选阶段 T27）；
 - 正式发布密钥签发/分发流程（ADR-003 实施清单）。

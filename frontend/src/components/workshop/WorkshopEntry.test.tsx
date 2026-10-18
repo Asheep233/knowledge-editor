@@ -3,8 +3,13 @@ import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { listen } from '@tauri-apps/api/event'
 import { WorkshopEntry } from './WorkshopEntry'
 import type { WorkshopAdapter } from './WorkshopPanel'
+
+vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn() }))
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -44,6 +49,7 @@ const buttonByText = (label: string) =>
 beforeEach(() => {
   container = document.createElement('div')
   document.body.appendChild(container)
+  vi.mocked(listen).mockResolvedValue(() => undefined)
 })
 
 afterEach(async () => {
@@ -72,6 +78,21 @@ describe('T23 工坊入口', () => {
     expect(container.querySelector('[role="dialog"]')).toBeTruthy()
     expect(container.textContent).toContain('已安装包')
     expect(adapter.listInstalled).toHaveBeenCalled()
+  })
+
+  it('收到 workshop://recover-status(safeMode) 事件显示 safe mode 徽标', async () => {
+    const handlers: Array<(e: { payload: unknown }) => void> = []
+    vi.mocked(listen).mockImplementation(async (_event, handler) => {
+      handlers.push(handler as unknown as (e: { payload: unknown }) => void)
+      return () => undefined
+    })
+    await mount(<WorkshopEntry enabled adapter={makeAdapter()} />)
+    await flush()
+    await act(async () => {
+      for (const h of handlers) h({ payload: { safeMode: true } })
+    })
+    await flush()
+    expect(container.textContent).toContain('safe mode')
   })
 
   it('点击关闭后对话框消失', async () => {

@@ -68,6 +68,12 @@ describe('T21/T23 TauriPackAdapter', () => {
     await expect(adapter().recover('com.demo.b')).resolves.toEqual({ recovered: true, action: 'rollback-corrupt-active' })
   })
 
+  it('recoverAll 调用 workshop_pack_recover_all 并映射 safeMode', async () => {
+    mockedInvoke.mockResolvedValueOnce({ checked: 2, safeMode: true, results: [] })
+    await expect(adapter().recoverAll!()).resolves.toEqual({ checked: 2, safeMode: true, results: [] })
+    expect(mockedInvoke).toHaveBeenCalledWith('workshop_pack_recover_all')
+  })
+
   it('Rust 命令失败 → 抛出 Error（保留原因）', async () => {
     mockedInvoke.mockRejectedValueOnce('E_HASH: 资产哈希不匹配')
     await expect(adapter({ chooseSourceDir: async () => 'C:/packs/bad' }).stageFromFile()).rejects.toThrow(/E_HASH/)

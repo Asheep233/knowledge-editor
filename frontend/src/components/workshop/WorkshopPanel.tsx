@@ -41,6 +41,12 @@ export interface RecoverResultView {
   action: string
 }
 
+export interface RecoverAllView {
+  checked: number
+  safeMode: boolean
+  results?: unknown
+}
+
 export interface WorkshopAdapter {
   listInstalled(): Promise<InstalledPackView[]>
   /** 用户选择本地包后返回预览（产品实现：扫描 manifest → 预览，不安装）。 */
@@ -49,6 +55,8 @@ export interface WorkshopAdapter {
   cancelPreview(token: string): boolean
   rollback(packId: string): Promise<void>
   recover(packId: string): Promise<RecoverResultView>
+  /** 全部包启动恢复（产品壳 workshop_pack_recover_all；可选能力） */
+  recoverAll?(): Promise<RecoverAllView>
 }
 
 export interface WorkshopPanelProps {
@@ -69,6 +77,7 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [recoverStatus, setRecoverStatus] = useState<RecoverAllView | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -126,6 +135,15 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
       await refresh()
     })
 
+  const onRecoverAll = () =>
+    run(async () => {
+      if (!adapter.recoverAll) return
+      const status = await adapter.recoverAll()
+      setRecoverStatus(status)
+      setMessage(`已检查 ${status.checked} 个包${status.safeMode ? '（存在无法自动恢复的包）' : ''}`)
+      await refresh()
+    })
+
   const onRecover = (packId: string) =>
     run(async () => {
       const result = await adapter.recover(packId)
@@ -140,16 +158,33 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
           <h2 className="text-base font-semibold">创意工坊</h2>
           <p className="text-xs text-slate-500">安装前会展示包身份与能力影响，需显式确认</p>
         </div>
-        <button
-          type="button"
-          className="rounded border px-3 py-1.5 text-xs disabled:opacity-50"
-          disabled={busy}
-          onClick={onChoose}
-        >
-          选择包并预览…
-        </button>
+        <div className="flex gap-2">
+          {adapter.recoverAll && (
+            <button
+              type="button"
+              className="rounded border px-3 py-1.5 text-xs disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void onRecoverAll()}
+            >
+              检查/修复全部包
+            </button>
+          )}
+          <button
+            type="button"
+            className="rounded border px-3 py-1.5 text-xs disabled:opacity-50"
+            disabled={busy}
+            onClick={onChoose}
+          >
+            选择包并预览…
+          </button>
+        </div>
       </header>
 
+      {recoverStatus?.safeMode && (
+        <div role="alert" className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          有包无法自动恢复（safe mode）：请检查版本完整性/回滚或重新安装。
+        </div>
+      )}
       {message && (
         <div role="status" className="rounded bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
           {message}

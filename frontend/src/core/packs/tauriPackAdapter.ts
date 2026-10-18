@@ -8,7 +8,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
-import type { InstalledPackView, InstallPreviewView, RecoverResultView, WorkshopAdapter } from '../../components/workshop/WorkshopPanel'
+import type { InstalledPackView, InstallPreviewView, RecoverAllView, RecoverResultView, WorkshopAdapter } from '../../components/workshop/WorkshopPanel'
 import { capabilityRisk } from './installPolicy'
 
 export interface TauriPackAdapterOptions {
@@ -107,6 +107,14 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
     async rollback(packId: string): Promise<void> {
       try {
         await call('workshop_pack_rollback', { id: packId })
+      } catch (e) {
+        throw err(e)
+      }
+    },
+    async recoverAll(): Promise<RecoverAllView> {
+      try {
+        const res = (await call('workshop_pack_recover_all')) as { checked?: number; safeMode?: boolean; results?: unknown }
+        return { checked: Number(res.checked ?? 0), safeMode: !!res.safeMode, results: res.results }
       } catch (e) {
         throw err(e)
       }

@@ -51,7 +51,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T16 | in_progress | frontend/src/core/print/{printJob,test} | evidence/P2-T16-print-core.md（12 例 U：快照绑定/状态机/串行/取消/超时/路径校验）+ 既有 S4 真实 PDF W 6/6 | 产品隐藏 renderer+Rust PrintToPdf 接线；长文档分页/主题/源码打印；取消清理与 job 对账；打印 UI + W | 隐藏 renderer 接线 + 长文档 → T21/T26 W |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
 | T23 | in_progress | frontend/src/components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/tauriPackAdapter；App flag 入口 | evidence/P3-T23-workshop-panel.md（7 例）、**P3-T23-workshop-integration.md（适配器 6 例 + 入口 3 例 + 全量 122 files/1733 passed）** | 真实包目录选择（dialog/zip）；Windows 端到端交互 W；签名/来源信任/卸载；启动 recover 合并 | Tauri dialog + Windows E2E W → T21/T26 |
-| T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + workshop-recover-status.json + workshop://recover-status 事件；adapter dialog 目录选择 | evidence/P3-T20-startup-recover.md（cargo 33/33 + build；adapter 7 例） | safeMode 仅状态标记（前端未呈现/未阻断）；Windows 端到端 W；卸载；与单实例/退出协调状态合并 | safeMode UI 呈现 + Windows 包故障启动 W → T24/T26 |
+| T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；**safeMode UI 呈现（徽标/横幅/全部修复）** | evidence/P3-T20-startup-recover.md（cargo 33/33 + build；工坊+pack 43 例；全量 122 files/1737 passed） | Windows 端到端 W；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载 | Windows 包故障启动 W → T24/T26 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -421,3 +421,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   **项目级仍判 `P0_READY`**（工坊未在产品 UX 完整落地，不满足 IMPLEMENTED_WINDOWS_PENDING）；
   给出证据索引、完成度判定表、最短路径优先级与风险清单。
 - 测试基线：前端 122 files/1733 passed+1 skipped；后端 846 collected；产品 cargo 33 passed。
+
+## P2/P3 进度（T20 safeMode UI 呈现，2026-10-19）
+
+- safeMode 前端呈现：WorkshopPanel「检查/修复全部包」（adapter.recoverAll → workshop_pack_recover_all）+
+  safeMode 警告横幅；WorkshopEntry 监听 `workshop://recover-status` 显示 safe mode 徽标。
+- 测试：工坊+packs 43 例全过、tsc 0；**全量前端 122 files / 1737 passed + 1 skipped（exit 0）**。
+- 下一步：Windows 端到端交互 W（损坏包启动→safe mode→修复/回滚→卸载）；P2 T14 真实接线。

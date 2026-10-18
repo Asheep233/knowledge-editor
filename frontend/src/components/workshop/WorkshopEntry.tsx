@@ -5,7 +5,8 @@
  * - `enabled=true` 时显示「创意工坊」按钮，打开控制面面板；适配器默认走产品 Tauri 包命令，
  *   测试/嵌入可注入替身。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { listen } from '@tauri-apps/api/event'
 
 import { createTauriPackAdapter } from '../../core/packs/tauriPackAdapter'
 import { WorkshopPanel, type WorkshopAdapter } from './WorkshopPanel'
@@ -17,6 +18,21 @@ export interface WorkshopEntryProps {
 
 export function WorkshopEntry({ enabled, adapter }: WorkshopEntryProps) {
   const [open, setOpen] = useState(false)
+  const [safeMode, setSafeMode] = useState(false)
+  useEffect(() => {
+    if (!enabled) return
+    let unlisten: (() => void) | null = null
+    void listen<{ safeMode?: boolean }>('workshop://recover-status', (event) => {
+      setSafeMode(!!event.payload?.safeMode)
+    })
+      .then((fn) => {
+        unlisten = fn
+      })
+      .catch(() => {
+        /* 非 Tauri 环境（测试/浏览器）忽略 */
+      })
+    return () => unlisten?.()
+  }, [enabled])
   if (!enabled) return null
   const workshopAdapter = adapter ?? createTauriPackAdapter()
   return (
@@ -28,6 +44,11 @@ export function WorkshopEntry({ enabled, adapter }: WorkshopEntryProps) {
         onClick={() => setOpen(true)}
       >
         创意工坊
+        {safeMode && (
+          <span role="status" className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">
+            safe mode
+          </span>
+        )}
       </button>
       {open && (
         <div

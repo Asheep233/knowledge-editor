@@ -34,6 +34,7 @@ function makeAdapter(overrides: Partial<WorkshopAdapter> = {}): WorkshopAdapter 
     cancelPreview: vi.fn(() => true),
     rollback: vi.fn(async () => undefined),
     recover: vi.fn(async () => ({ recovered: true, action: 'rollback-corrupt-active' })),
+    recoverAll: vi.fn(async () => ({ checked: 2, safeMode: false, results: [] })),
     ...overrides,
   }
 }
@@ -145,6 +146,15 @@ describe('T23 创意工坊控制面 UI', () => {
     await click(buttonByText('修复/恢复'))
     expect(adapter.recover).toHaveBeenCalledWith('com.demo.hello')
     expect(text()).toContain('已恢复（rollback-corrupt-active）')
+  })
+
+  it('检查/修复全部包：显示检查结果；safeMode 时显示警告', async () => {
+    const adapter = makeAdapter({ recoverAll: vi.fn(async () => ({ checked: 3, safeMode: true, results: [] })) })
+    await mount(adapter)
+    await click(buttonByText('检查/修复全部包'))
+    expect(adapter.recoverAll).toHaveBeenCalled()
+    expect(text()).toContain('已检查 3 个包')
+    expect(container.querySelector('[role="alert"]')!.textContent).toContain('safe mode')
   })
 
   it('adapter 报错时展示可读错误', async () => {

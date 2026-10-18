@@ -35,7 +35,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | --- | --- | --- | --- | --- | --- |
 | T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
 | T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
-| T02–T06 | todo | T06: prototypes/p0/s5_txn/（registry.py + 10 tests + demo） | evidence/P0-S5-prototype.md（Linux + Windows 10/10） | T06 未接入真实运行时/包格式/Rust 指针；T02/T03/T04/T05 未开工 | S1/S2/S3/S4 原型；T06 待接入 |
+| T02–T06 | todo | T06: prototypes/p0/s5_txn/；T04: prototypes/p0/s3_save/ | evidence/P0-S5-prototype.md、evidence/P0-S3-prototype.md（均 Linux+Windows 10/10） | T04/T06 均未接入真实后端/运行时/UI；T02/T03/T05 未开工 | S1/S2/S4 原型；T04/T06 待接入 |
 | T07 | todo | | | | 路线 ADR |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
@@ -66,3 +66,13 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   崩溃恢复（4 个提交点进程终止用例）、回滚不动 Core 笔记、私有状态隔离与迁移回调；
   Linux WSL + Windows Python(NTFS) 各 10/10 通过。证据：`evidence/P0-S5-prototype.md`。
   未验证：真实运行时/包格式/Tauri/Rust 指针（留给 T17–T20）。
+
+## P0 原型进展（续 2026-10-19）
+
+- **S3 保存垂直切片（T04 部分）**：`prototypes/p0/s3_save/` 完成
+  可信快照（全文+revision+磁盘指纹）→ 保存三阶段（accepted/recovery_durable/file_durable）→
+  revision CAS、外部改盘冲突、切库 epoch 迟到写拒绝、两工作区同相对路径隔离、
+  requestId 幂等 + queryResult、崩溃三阶段恢复（恢复日志后/正文写入后/提交后）且
+  恢复不覆盖外部新内容；Linux WSL + Windows Python(NTFS) 各 10/10 通过。
+  证据：`evidence/P0-S3-prototype.md`。未验证：真实 FastAPI/WorkspaceContext（T09）、
+  真实 Core 与 UI 网络时序（T10/W02）。

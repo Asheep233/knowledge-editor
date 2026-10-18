@@ -788,3 +788,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 协议守卫脚本无法移除 `__TAURI_INTERNALS__`（不可配置）→ 改为 postMessage 自检上报；宿主展示
   残余风险提示（`guest-isolation-warning`）并记录诊断；隔离探针复跑 **6/6 PASS**。
   证据：`evidence/P5-T26-A7-isolation.md` 追加节。
+
+## 会话末段最终交接（2026-10-19）
+
+- `HANDOVER-FINAL.md`：代码基线/回归数字/11 个真实产品 W 场景证据索引/里程碑判定
+  （EXPERIMENTAL_TRUSTED_PACKS）/残余风险/事故记录/下一步建议。

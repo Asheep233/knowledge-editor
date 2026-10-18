@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-10-19T07:08:02+0800",
+  "scenario": "T26 W06 guest 执行/网络边界（CSP + 能力越权）",
+  "checks": [
+    {
+      "name": "W-T26-W06-1 安装签名包",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368384778667807 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W06-2 guest origin 为 workshop.localhost",
+      "pass": true,
+      "detail": "http://workshop.localhost"
+    },
+    {
+      "name": "W-T26-W06-3 fetch 相对/loopback/外部均被阻断（CSP connect-src none）",
+      "pass": true,
+      "detail": {
+        "fetch-relative": "blocked",
+        "fetch-loopback": "blocked",
+        "fetch-external": "blocked"
+      }
+    },
+    {
+      "name": "W-T26-W06-4 worker/blob 被阻断",
+      "pass": true,
+      "detail": {
+        "name": "worker-blob",
+        "result": "blocked",
+        "detail": "worker-error"
+      }
+    },
+    {
+      "name": "W-T26-W06-5 WebSocket 被阻断",
+      "pass": true,
+      "detail": {
+        "name": "websocket-loopback",
+        "result": "blocked",
+        "detail": "ws-error"
+      }
+    },
+    {
+      "name": "W-T26-W06-6 越权 context.write 被 Capability 拒绝（E_CAPABILITY）",
+      "pass": true,
+      "detail": {
+        "name": "capability-write",
+        "result": "blocked",
+        "detail": "{\"code\":\"E_CAPABILITY\",\"message\":\"缺少能力: context.write\",\"retryable\":false,\"details\":{\"required\":\"context.write\",\"granted\":[\"ui.shell\",\"context.read\"]}}"
+      }
+    },
+    {
+      "name": "W-T26-W06-7 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-W06-8 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 8,
+  "total": 8
+}

@@ -800,3 +800,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   context.snapshot（真实后端/修订/哈希）；会话状态 active/能力子集；W **7/7 PASS**。
   证据：`evidence/P5-T26-W05-protocol.md`。
 - W05 剩余：subscribe/断连重连/慢包/超时 queryResult/取消冲突语义、write/print/command 产品实现。
+
+## P6/T26 进度（W06 边界功能级验证，2026-10-19）
+
+- guest 真实执行环境：fetch 相对/loopback/外部全阻断、blob worker 不执行、WebSocket 不连接、
+  越权 context.write → E_CAPABILITY（granted 列表）——W **8/8 PASS**。
+  证据：`evidence/P5-T26-W06-boundary.md`。
+- 剩余：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归。

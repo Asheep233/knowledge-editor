@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T06:38:18+0800",
+  "generated_at": "2026-10-19T06:41:39+0800",
   "scenario": "T26 A7 guest 隔离核对（Tauri IPC 可达性）",
   "checks": [
     {

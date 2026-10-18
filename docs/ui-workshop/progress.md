@@ -768,3 +768,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   **`EXPERIMENTAL_TRUSTED_PACKS`**（受信实验包；隔离残余风险/离线包/恢复 I 门禁/表单交接/SDK/
   协议线/网络边界/性能未通过或 NOT_RUN 均列出）；不声明更高状态。
 - HANDOVER 增加「里程碑评估」段。
+
+## P6/T26 进度（隔离硬化尝试，2026-10-19）
+
+- 包文档守卫脚本（移除 __TAURI_INTERNALS__）尝试**无效**（属性不可配置）；cargo 46 passed（含
+  inject_guard 单测），但隔离保证改为依赖：独立 origin + Tauri IPC authority remote 拒绝
+  （capabilities 无 remote 声明）+ Tauri 升级回归；残余风险保留在里程碑评估中。
+  证据：`evidence/P5-T26-A7-isolation.md` 追加节。

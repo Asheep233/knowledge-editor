@@ -55,6 +55,31 @@ pub fn pack_document_csp() -> String {
     )
 }
 
+/// 包文档硬化守卫：在 Tauri 初始化脚本注入 `__TAURI_INTERNALS__` 之后，于包脚本执行前
+/// 将其 `invoke` 置空并移除 window 引用（纵深防御；remote IPC 本已不可用，但需防止实现漂移）。
+pub fn hardening_script() -> &'static str {
+    r#"<script>(function(){try{var i=window.__TAURI_INTERNALS__;if(i){try{Object.defineProperty(i,'invoke',{value:undefined,writable:false,configurable:false});}catch(e){}}
+try{Object.defineProperty(window,'__TAURI_INTERNALS__',{value:undefined,writable:false,configurable:false});}catch(e){try{delete window.__TAURI_INTERNALS__;}catch(e2){}}}catch(e){}})();</script>"#
+}
+
+/// 在 HTML 的 `<head>` 后（或 doctype 后）注入硬化脚本，避免破坏 quirks/布局。
+pub fn inject_guard(html: Vec<u8>) -> Vec<u8> {
+    let guard = hardening_script().as_bytes();
+    let lower_head = html.windows(6).position(|w| w.eq_ignore_ascii_case(b"<head>"));
+    if let Some(pos) = lower_head {
+        let insert_at = pos + 6;
+        let mut out = Vec::with_capacity(html.len() + guard.len());
+        out.extend_from_slice(&html[..insert_at]);
+        out.extend_from_slice(guard);
+        out.extend_from_slice(&html[insert_at..]);
+        return out;
+    }
+    let mut out = Vec::with_capacity(html.len() + guard.len());
+    out.extend_from_slice(guard);
+    out.extend_from_slice(&html);
+    out
+}
+
 fn response(status: u16, content_type: &str, body: Vec<u8>, include_csp: bool) -> http::Response<Cow<'static, [u8]>> {
     let mut builder = http::Response::builder().status(status).header("Content-Type", content_type);
     if include_csp {
@@ -78,7 +103,11 @@ pub fn handle<R: Runtime>(app: &AppHandle<R>, request: http::Request<Vec<u8>>) -
         return response(404, "text/plain", b"not found".to_vec(), false);
     }
     match std::fs::read(&file) {
-        Ok(bytes) => response(200, content_type(&rel), bytes, rel.ends_with(".html") || rel.ends_with(".htm")),
+        Ok(bytes) => {
+            let is_html = rel.ends_with(".html") || rel.ends_with(".htm");
+            let body = if is_html { inject_guard(bytes) } else { bytes };
+            response(200, content_type(&rel), body, is_html)
+        }
         Err(_) => response(500, "text/plain", b"read error".to_vec(), false),
     }
 }
@@ -107,6 +136,24 @@ mod tests {
         assert!(parse_pack_path("/com.demo.pack").is_err());
         assert!(parse_pack_path("//1.0.0/x").is_err());
         assert!(parse_pack_path("/com.demo.pack/1.0.0/a\\b").is_err());
+    }
+
+    #[test]
+    fn html_guard_injected_after_head() {
+        let html = b"<!doctype html><html><head><title>x</title></head><body>hi</body></html>".to_vec();
+        let out = String::from_utf8(inject_guard(html)).unwrap();
+        let head_idx = out.find("<head>").unwrap();
+        let guard_idx = out.find("__TAURI_INTERNALS__").unwrap();
+        assert!(guard_idx > head_idx, "guard 应在 <head> 之后");
+        assert!(out.contains("Object.defineProperty(window,'__TAURI_INTERNALS__'"));
+        assert!(out.ends_with("</html>"));
+    }
+
+    #[test]
+    fn html_guard_prepends_when_no_head() {
+        let out = String::from_utf8(inject_guard(b"<div>fragment</div>".to_vec())).unwrap();
+        assert!(out.starts_with("<script>"));
+        assert!(out.ends_with("<div>fragment</div>"));
     }
 
     #[test]

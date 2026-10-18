@@ -76,3 +76,9 @@ iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP�
   （remote IPC 未生效）；**不得宣称绝对隔离**，按「受限优先 + 残余风险」表述；
 - 必做硬化：guest SDK 自检 internals 存在则拒绝运行/上报；Tauri remote-domain IPC 配置审计与
   升级回归（复跑 isolation 探针）；评估独立 WebviewWindow/独立 profile 形态。
+
+## 追加硬化（2026-10-19，负结果记录）
+
+- 包文档响应注入守卫脚本尝试移除 `__TAURI_INTERNALS__`：**无效**（Tauri 注入属性不可配置），
+  已保留为纵深防御但不宣称有效；隔离依赖独立 origin + Tauri IPC authority 对 remote origin 的拒绝
+  （capabilities 无 remote 声明）+ 升级回归。详见 `P5-T26-A7-isolation.md` 追加节。

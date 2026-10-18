@@ -133,6 +133,8 @@ export interface ProtocolMethods {
     }
   }
   'print.snapshot': { params: { relPath: string }; result: { pdfToken: string; pages: number } }
+  /** 声明式命令调用：仅允许 manifest.commands 中声明的 name（T17/T18） */
+  'command.invoke': { params: { name: string; args?: Record<string, unknown> }; result: { ok: boolean; value?: unknown } }
 }
 
 export type MethodName = keyof ProtocolMethods
@@ -150,7 +152,7 @@ export function protocolError(code: ErrorCode, message: string, details?: Record
 /** 契约快照：破坏性变更必须让 contract 测试失败（显式评审后更新本常量）。 */
 export const PROTOCOL_CONTRACT = Object.freeze({
   protocolVersion: PROTOCOL_VERSION,
-  methods: ['protocol.capabilities', 'context.snapshot', 'context.write', 'print.snapshot'] as MethodName[],
+  methods: ['protocol.capabilities', 'context.snapshot', 'context.write', 'print.snapshot', 'command.invoke'] as MethodName[],
   errorCodes: [
     'E_VERSION',
     'E_UNKNOWN_METHOD',

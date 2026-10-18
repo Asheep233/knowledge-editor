@@ -37,7 +37,7 @@ function setup(overrides: HostHandlers = {}) {
 describe('T11 协议契约（host↔guest）', () => {
   it('契约快照：版本/方法/错误码/事件/消息类型完全一致（破坏性变更守卫）', () => {
     expect(PROTOCOL_CONTRACT.protocolVersion).toBe(PROTOCOL_VERSION)
-    expect([...PROTOCOL_CONTRACT.methods]).toEqual(['protocol.capabilities', 'context.snapshot', 'context.write', 'print.snapshot'])
+    expect([...PROTOCOL_CONTRACT.methods]).toEqual(['protocol.capabilities', 'context.snapshot', 'context.write', 'print.snapshot', 'command.invoke'])
     expect([...PROTOCOL_CONTRACT.errorCodes].sort()).toEqual(
       ['E_BAD_PAYLOAD', 'E_BUSY', 'E_CANCELED', 'E_CAPABILITY', 'E_CONFLICT', 'E_FORBIDDEN', 'E_INTERNAL', 'E_STALE_CONTEXT', 'E_TIMEOUT', 'E_UNKNOWN_METHOD', 'E_VERSION'],
     )

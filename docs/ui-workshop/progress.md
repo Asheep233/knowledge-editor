@@ -42,6 +42,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
 | T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
 | T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
+| T18 | in_progress | frontend/src/core/broker/{broker,test}；protocol command.invoke | evidence/P3-T18-broker.md（9 例 U：能力/epoch/命令白名单/有界代理/错误码） | Broker 未接 HostDispatcher；Windows 恶意/故障包 W 证据未做；三档授权 UI 未做 | Broker↔Dispatcher 接线 + W 恶意包探针 → T22 授权 UI |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -258,3 +259,13 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P3-T17-pack-loader.md`。
 - 下一步：真实 Tauri fs 适配 + T18 broker 能力强制 → Windows 安装/回滚实机证据（T21）；
   T12 分域迁移继续。
+
+## P3 进度（T18 Broker Core，2026-10-19）
+
+- 新增 Core `frontend/src/core/broker/broker.ts`：连接身份（pack/version/role/capabilities/context/epoch/
+  declaredCommands）+ 方法→能力映射 + epoch 过期 E_STALE_CONTEXT + 声明式命令白名单（E_FORBIDDEN）+
+  有界代理（maxInflight→E_BUSY、payload 上限→E_BAD_PAYLOAD+limit）；official/trusted/guest 三档。
+- 协议显式升级：新增 `command.invoke`（契约快照同步）；broker 9 例 + protocol 19 例全过、tsc 0。
+  证据：`evidence/P3-T18-broker.md`。
+- 下一步：Broker↔HostDispatcher 接线（连接建立注入 connection、能力回传）+ Windows/WebView2 恶意/故障
+  测试包越权探针（W）；再进 T22 三档授权 UI 与 T12/13 收尾。

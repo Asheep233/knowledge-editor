@@ -820,3 +820,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   心跳中断检测 suspended → 连续超限 failed + safeMode → 停用 stopped 持久化 → 宿主存活；W **8/8**。
   证据：`evidence/P5-T26-W07-fault.md`（前次尝试保留）。
 - W07 剩余：CPU/内存压力、boot crash、桥接超时、连续启动失败、原生 Rust 恢复 + I 门禁。
+
+## P6/T26 进度（W09 性能基线 FAIL，2026-10-19）
+
+- 真实产品 W 3/7：启动 2.1s OK、无双编辑器；**256KB 打开 60.9s 未打开、512KB 23s、输入约
+  991ms/字符、guest 启用 81s 未成功** → W09 未达预算，需性能剖析/优化；记录限制（公式密集 fixture、
+  CDP 开销、重负载叠加）。证据：`evidence/P5-T26-W09-perf.md`。

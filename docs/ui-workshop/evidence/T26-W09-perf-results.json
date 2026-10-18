@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-10-19T07:16:19+0800",
+  "scenario": "T26 W09 性能基线（部分）",
+  "checks": [
+    {
+      "name": "W-T26-W09-1 启动到主 UI 就绪（< 30s）",
+      "pass": true,
+      "detail": {
+        "startupMs": 2162
+      }
+    },
+    {
+      "name": "W-T26-W09-2 打开 256KB 文档（< 5s）",
+      "pass": false,
+      "detail": {
+        "ms": 60917,
+        "chars": 0
+      }
+    },
+    {
+      "name": "W-T26-W09-3 打开 512KB 文档（< 8s）",
+      "pass": false,
+      "detail": {
+        "ms": 23055,
+        "chars": 414191
+      }
+    },
+    {
+      "name": "W-T26-W09-4 无双编辑器复制（ProseMirror 实例数=1）",
+      "pass": true,
+      "detail": {
+        "editors": 1
+      }
+    },
+    {
+      "name": "W-T26-W09-5 大文档输入延迟（≤ 50ms/字符）",
+      "pass": false,
+      "detail": {
+        "totalMs": 17848,
+        "perCharMs": 991.56
+      }
+    },
+    {
+      "name": "W-T26-W09-6 启用 guest 成本（< 3s）",
+      "pass": false,
+      "detail": {
+        "ms": 81068,
+        "active": false
+      }
+    },
+    {
+      "name": "W-T26-W09-7 主进程存活 / 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 3,
+  "total": 7
+}

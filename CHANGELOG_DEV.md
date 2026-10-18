@@ -2,9 +2,11 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-10-18（**v1.2.17 待发布**：按 41F + 61sol 两份 v1.2.16 独立审查合并修复；版本号与 Release 待主理人拍板）
+> 最后更新：2026-10-18（**v1.2.17 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.17）
 
-## 2026-10-18（★ v1.2.17 待发布：按两份独立审查修复 30+ 项 · 状态：待发版决策）
+## 2026-10-18（★ v1.2.17 已发布（Latest）：按两份独立审查修复 30+ 项）
+
+**Tag** `v1.2.17` · **Release** https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.17（Latest）
 
 **来源**：两份 **v1.2.16 独立审查包**（41F 视角：广度/E2E，7.8/10；61sol/Codex 视角：Windows 原生/严谨性，8.5/10）。
 合并去重后按「发布门禁 P1 → CI 拉绿 → 二批功能/防御/工程门禁」三批修复；每项遵循
@@ -52,8 +54,9 @@ vitest **103 files / 1574 passed + 1 skipped** · cargo test **29/29** · PowerS
 - F SD-02：保存失败时关窗/重载均弹未保存确认，取消不丢不关；重试保存成功后正常退出、无残留进程。
   构建产物不入库；dev 版本文件已在验收后还原（git 工作区干净）。
 **待真机验收（发版前）**：安装包底栏版本一致性、Windows 大小写改名 UI 路径（case-only 已由 Windows pytest 在 NTFS 上覆盖）。
-**按主理人决策未做**：版本号 bump（建议 **v1.2.17**）、GitHub Release 与安装包构建 —— 需主理人拍板后执行；
-npm/pip 依赖 advisory 升级、NSIS TEMP 竞争 / PID 复用等 61sol 条件风险加固留待后续批次。
+**发布**（主理人 2026-10-18 批准）：bump v1.2.17 → 前端构建 → 侧车 PyInstaller（46,232,351 B）→ NSIS 安装包（50,879,449 B）→ manifest/versions → 安装包真机验收 6/6 → GitHub Release（Latest）。
+安装包 sha256 `94c1d1fd…cf19` · 侧车 `43aa96f0…e9a` · 完整资产与哈希见 `docs/release-notes-v1.2.17.md` §九。
+**未纳入本版（按主理人决定下批观察反馈再定）**：npm/pip 依赖 advisory 升级、NSIS TEMP 竞争 / PID 复用等 61sol 条件风险加固、多词搜索 FTS 索引本体。
 
 ## 2026-10-13–10-17（补记：v1.2.13 / v1.2.14 / v1.2.15 / v1.2.16 发布记录）
 

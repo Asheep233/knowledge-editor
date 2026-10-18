@@ -47,12 +47,20 @@ export class SaveCoordinator {
   private docs = new Map<string, DocState>()
   /** 已知 requestId → 发起时 binding（用于迟到响应判定） */
   private readonly pending = new Map<string, ContextBinding>()
+  /** 状态订阅者（旧 UI 状态条/T14 适配层） */
+  private readonly listeners = new Set<(change: SaveStateChange) => void>()
 
   constructor(opts: SaveCoordinatorOptions) {
     this.transport = opts.transport
     this.binding = opts.binding
     this.onStateChange = opts.onStateChange
     this.journal = opts.journal
+  }
+
+  /** 订阅保存状态变化（返回取消订阅）。 */
+  subscribe(listener: (change: SaveStateChange) => void): () => void {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
   }
 
   currentBinding(): ContextBinding {
@@ -203,13 +211,15 @@ export class SaveCoordinator {
   }
 
   private emit(doc: DocState): void {
-    this.onStateChange?.({
+    const change: SaveStateChange = {
       relPath: doc.relPath,
       status: doc.status,
       revision: doc.snapshot.revision,
       requestId: doc.lastRequestId,
       detail: doc.lastError,
-    })
+    }
+    this.onStateChange?.(change)
+    for (const listener of this.listeners) listener(change)
   }
 }
 

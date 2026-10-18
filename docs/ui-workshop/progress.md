@@ -46,6 +46,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T21 | in_progress | 原型 tauri_sandbox/src/pack_store_proto.rs + core/packs/probe/* + run_pack_probe.py | **evidence/P3-T21-pack-install-probe.md（Windows 真实文件系统 20/20）** | 未接产品 Tauri 主进程；TS PackStore 与 Rust 单一事实来源未定；下载/扫描/首次安装确认 UI（T22）未做 | Rust store 接产品壳 + 启动 recover → T20/T22/T26 |
 | T12 | in_progress | backend: context_registry tree/search/save_article + routers/context.py + 2 test files | evidence/P1-T12-domain-migration-slice.md（只读域 5 例）、**P1-T12-write-domain-slice.md（写域 6 例 + 契约 51 路径/63 方法 + 全量 846 collected 双平台绿）** | 重命名/删除/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 其余写域 + 真实 store 迁移 → T14 接线 |
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
+| T14 | in_progress | frontend/src/core/session/productAdapter.ts + test；SaveCoordinator.subscribe | evidence/P2-T14-product-adapter.md（适配层 6 例 + session 29 例 + tsc 0） | 未接真实 EditorArea/SaveQueue（双写开关/恢复点/源码直存兼容）；无 W 证据 | 接线真实 EditorArea + 后端上下文端点 → T15 IME/DPI W |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -340,3 +341,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   tsc 0；Core 新增单测 74。
 - 下一阶段：T14/T15（EditorSession 产品接线 + 真实 IME/DPI W）、T16（打印产品化）、T17/T18（包加载器/
   broker 产品化）、T20/T21（Rust 恢复/安装验收）、T12 剩余域。
+
+## P2 进度（T14 适配层起步，2026-10-19）
+
+- Core ↔ 既有产品 UI 适配层：`createCoreSaveFn`（产品 SaveFn 语义，仅 file_durable resolve/类型化冲突错误）、
+  `createEditHook`（O(1) 标脏）、`createSaveStateReporter`（状态条回调）、`switchDocument`/`hasDirtyDocument`；
+  SaveCoordinator 增加 `subscribe`。无 React 测试覆盖（session 29 例全过、tsc 0）。
+  证据：`evidence/P2-T14-product-adapter.md`。
+- 下一步：真实 EditorArea/SaveQueue 接线（与 `/api/context/*` 联调，双写开关）；T15 IME/DPI Windows 验收；
+  T16 打印产品化（隐藏窗口/长文档/job 取消）。

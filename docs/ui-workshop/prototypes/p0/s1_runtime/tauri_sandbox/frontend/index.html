@@ -168,6 +168,12 @@
             await new Promise(function (r) { setTimeout(r, 120000); });
             return;
           }
+          if (boot.scenario === 't19') {
+            results.phase = 't19-host-idle';
+            document.getElementById('status').textContent = 'T19 probe running in separate window…';
+            await new Promise(function (r) { setTimeout(r, 60000); });
+            return;
+          }
           if (boot.scenario === 'pack') {
             results.phase = 'pack-host-idle';
             document.getElementById('status').textContent = 'T21 pack probe running in separate window…';

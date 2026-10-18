@@ -10,7 +10,8 @@
     - `restart`：崩溃计数未超限且版本仍完整 → 重新建立会话（**切库后读取新 epoch**）；
     - `stop`：stopped + deactivate；`subscribe` 会话状态（UI/原生状态上报）。
   - `packageHost.test.ts` 7 例
-- 证据类型：**U（Core 单测）**；真实 guest WebView 会话/包加载器（T17 产品化）尚未接入
+- 证据类型：**U（Core 单测）+ W（Windows/WebView2 实机探针 8/8，见 `P3-T19-package-host-probe.md`）**；
+  真实包入口资源加载（T17 产品化）与真实 WebView 崩溃信号尚未接入
 
 ## 测试结果
 
@@ -36,7 +37,7 @@ exit 0
 - T19 的**隔离宿主控制面**成立：包会话的生命周期、完整性门槛、受限连接、崩溃升级与 safe mode
   均有确定性测试；与 T18 broker、T20 启动恢复、T17 存储的能力/命令声明一致。
 - 尚未完成（T19 继续）：
-  1. 真实 guest WebView（iframe）会话装配：把 Broker/HostDispatcher 与包入口 HTML/资源加载
-     （T17 产品化）接起来；崩溃信号来自 WebView（renderer crash/导航失败）；
+  1. 真实 guest WebView（iframe）会话装配（探针已用内联 guest 验证控制面）：包入口 HTML/资源来自
+     T17 产品化安装目录；崩溃信号来自 WebView（renderer crash/导航失败）；
   2. 与 T20 原生恢复合并（safeMode 联动 UI、停用/恢复状态持久化）；
   3. Windows 实机故障注入 W（guest 崩溃→suspended→超限→safeMode→修复）。

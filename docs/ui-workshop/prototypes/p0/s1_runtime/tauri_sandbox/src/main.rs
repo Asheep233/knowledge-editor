@@ -240,6 +240,19 @@ fn main() {
                     }
                 }
             }
+            if env::var("S1_OPEN_T19").map(|v| v == "1").unwrap_or(false) {
+                use tauri::{WebviewUrl, WebviewWindowBuilder};
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                match WebviewWindowBuilder::new(app, "t19-render", WebviewUrl::App("t19.html".into()))
+                    .title("T19 package host probe")
+                    .inner_size(900.0, 700.0)
+                    .build()
+                {
+                    Ok(_) => append_event(&dir, "t19-render opened by rust setup"),
+                    Err(e) => append_event(&dir, &format!("t19-render build error: {e}")),
+                }
+            }
             if env::var("S1_OPEN_PACK").map(|v| v == "1").unwrap_or(false) {
                 use tauri::{WebviewUrl, WebviewWindowBuilder};
                 let dir = probe_dir();

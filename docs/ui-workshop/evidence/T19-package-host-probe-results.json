@@ -1,0 +1,136 @@
+{
+  "generated_at": "2026-10-19T03:23:15+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T19-1 Rust setup 打开 t19-render 窗口",
+      "pass": true,
+      "detail": [
+        "startup-clean",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t19-probe\\\\probe-t19\",\"safe_mode\":false,\"scenario\":\"t1",
+        "t19-render opened by rust setup"
+      ]
+    },
+    {
+      "name": "W-T19-2 探针完成（host+guest）",
+      "pass": true,
+      "detail": {
+        "host": "t19-done",
+        "guest": "t19-guest-done",
+        "error": null
+      }
+    },
+    {
+      "name": "W-T19-3 PackageHost 会话 active 且连接受限（guest/能力/epoch）",
+      "pass": true,
+      "detail": {
+        "connectionId": "session-com.probe.t19-1.0.0-1792351374759",
+        "packId": "com.probe.t19",
+        "packVersion": "1.0.0",
+        "role": "guest",
+        "capabilities": [
+          "context.read"
+        ],
+        "contextId": "ctx-t19",
+        "epoch": 1,
+        "declaredCommands": []
+      }
+    },
+    {
+      "name": "W-T19-4 guest 经 Broker 完成握手+只读 snapshot（能力放行）",
+      "pass": true,
+      "detail": {
+        "handshake": [
+          "context.read"
+        ],
+        "snapshot": {
+          "relPath": "Articles/t19.md",
+          "revision": 1,
+          "diskHash": "t19-hash"
+        }
+      }
+    },
+    {
+      "name": "W-T19-5 崩溃未超限 → suspended（可重启）",
+      "pass": true,
+      "detail": [
+        "suspended",
+        "suspended"
+      ]
+    },
+    {
+      "name": "W-T19-6 崩溃超限 → failed",
+      "pass": true,
+      "detail": "failed"
+    },
+    {
+      "name": "W-T19-7 超限触发停用+recover+safeMode",
+      "pass": true,
+      "detail": {
+        "deactivate": 1,
+        "recover": 1,
+        "safeMode": true
+      }
+    },
+    {
+      "name": "W-T19-8 真实 WebView2（UA Edg）",
+      "pass": true,
+      "detail": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+    }
+  ],
+  "pass_count": 8,
+  "total": 8,
+  "raw_results": {
+    "phase": "t19-done",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "sessionStarted": true,
+    "connection": {
+      "connectionId": "session-com.probe.t19-1.0.0-1792351374759",
+      "packId": "com.probe.t19",
+      "packVersion": "1.0.0",
+      "role": "guest",
+      "capabilities": [
+        "context.read"
+      ],
+      "contextId": "ctx-t19",
+      "epoch": 1,
+      "declaredCommands": []
+    },
+    "brokerStarted": true,
+    "guest": {
+      "phase": "t19-guest-done",
+      "handshakeAccepted": [
+        "context.read"
+      ],
+      "snapshot": {
+        "relPath": "Articles/t19.md",
+        "revision": 1,
+        "diskHash": "t19-hash"
+      }
+    },
+    "crashStates": [
+      "suspended",
+      "suspended"
+    ],
+    "overLimitState": "failed",
+    "safeMode": true,
+    "diag": {
+      "iframeLoaded": true,
+      "messages": [
+        "t19-guest-alive",
+        "t19-wire",
+        "t19-wire",
+        "t19-guest-results"
+      ],
+      "states": [
+        "starting",
+        "active",
+        "suspended",
+        "suspended",
+        "failed"
+      ],
+      "deactivateCalls": 1,
+      "recoverCalls": 1
+    }
+  }
+}

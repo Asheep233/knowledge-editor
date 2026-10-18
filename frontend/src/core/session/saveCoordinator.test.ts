@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MemoryTransport } from './memoryTransport'
+import { MemoryRecoveryStorage, RecoveryJournal } from './recoveryJournal'
 import { SaveCoordinator, hashContent } from './saveCoordinator'
 import type { DocumentSnapshot, WriteResult } from './types'
 
@@ -159,9 +160,38 @@ describe('SaveCoordinator（T10）', () => {
     expect(transport.calls).toHaveLength(0)
   })
 
+  it('保存成功 → 恢复日志记录被提交（recovery_durable 生命周期）', async () => {
+    const storage = new MemoryRecoveryStorage()
+    const journal = new RecoveryJournal(storage)
+    const transport = new MemoryTransport()
+    const coord = new SaveCoordinator({ transport, binding: { contextId: 'ctx-A', epoch: 1 }, journal })
+    coord.registerSnapshot(snapshot())
+    coord.recordEdit(REL, 'saved content')
+    const out = await coord.save(REL, 'req-journal-ok')
+    expect(out.status).toBe('saved')
+    expect(journal.pending()).toHaveLength(0)
+    expect(storage.text).toBeNull()
+  })
+
+  it('abort 后恢复记录保留：新会话 load 可恢复未保存内容', async () => {
+    const storage = new MemoryRecoveryStorage()
+    const journal = new RecoveryJournal(storage)
+    const transport = new MemoryTransport({ failWrite: () => new Error('AbortError') })
+    const coord = new SaveCoordinator({ transport, binding: { contextId: 'ctx-A', epoch: 1 }, journal })
+    coord.registerSnapshot(snapshot())
+    coord.recordEdit(REL, '崩溃前未保存内容')
+    const out = await coord.save(REL, 'req-journal-abort')
+    expect(out.status).toBe('dirty')
+    expect(journal.pending()).toHaveLength(1)
+    // 模拟新会话/重启：新 journal 实例 load 后恢复该记录
+    const restarted = new RecoveryJournal(storage)
+    const recovered = await restarted.load()
+    expect(recovered[0]).toMatchObject({ relPath: REL, content: '崩溃前未保存内容', requestId: 'req-journal-abort' })
+  })
+
   it('Core 会话层无 DOM/React 依赖（源码守卫）', async () => {
     const fs = await import('node:fs')
-    const files = ['types.ts', 'saveCoordinator.ts', 'memoryTransport.ts']
+    const files = ['types.ts', 'saveCoordinator.ts', 'memoryTransport.ts', 'httpTransport.ts', 'recoveryJournal.ts']
     for (const f of files) {
       const src = fs.readFileSync(new URL(f, import.meta.url), 'utf8')
       expect(src).not.toMatch(/\bdocument\b/)

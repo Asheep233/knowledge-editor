@@ -10,6 +10,7 @@
  *  - `switchContext` 使旧 epoch 失效：后续保存直接 stale_context，**不发请求**；
  *  - 旧 epoch 的迟到响应被丢弃（不应用到新上下文）。
  */
+import type { RecoveryJournal } from './recoveryJournal'
 import type {
   ContextBinding,
   DocumentSnapshot,
@@ -26,6 +27,8 @@ export interface SaveCoordinatorOptions {
   binding: ContextBinding
   /** 状态变化回调（可选，供 UI/测试观察） */
   onStateChange?: (change: SaveStateChange) => void
+  /** 可选恢复日志：保存开始前持久化恢复记录，file_durable 后提交（T10 recovery_durable） */
+  journal?: RecoveryJournal
 }
 
 interface DocState {
@@ -39,6 +42,7 @@ interface DocState {
 export class SaveCoordinator {
   private readonly transport: SaveTransport
   private readonly onStateChange?: (change: SaveStateChange) => void
+  private readonly journal?: RecoveryJournal
   private binding: ContextBinding
   private docs = new Map<string, DocState>()
   /** 已知 requestId → 发起时 binding（用于迟到响应判定） */
@@ -48,6 +52,7 @@ export class SaveCoordinator {
     this.transport = opts.transport
     this.binding = opts.binding
     this.onStateChange = opts.onStateChange
+    this.journal = opts.journal
   }
 
   currentBinding(): ContextBinding {
@@ -115,6 +120,7 @@ export class SaveCoordinator {
     doc.status = 'saving'
     doc.lastRequestId = rid
     this.pending.set(rid, binding)
+    if (this.journal) await this.journal.begin(binding, relPath, doc.snapshot.content, doc.snapshot.revision, rid)
     this.emit(doc)
     try {
       const result = await this.transport.write({
@@ -125,7 +131,7 @@ export class SaveCoordinator {
         expectedRevision: doc.snapshot.revision,
         requestId: rid,
       })
-      return this.applyResult(doc, binding, result)
+      return await this.applyResult(doc, binding, result)
     } catch (e) {
       // abort/超时：保留 pending，状态回 dirty；真实结果必须通过 reconcile 查询
       doc.status = 'dirty'
@@ -145,7 +151,7 @@ export class SaveCoordinator {
     }
     const doc = [...this.docs.values()].find((d) => d.lastRequestId === requestId)
     if (!doc) return { status: 'idle', result }
-    return this.applyResult(doc, binding, result)
+    return await this.applyResult(doc, binding, result)
   }
 
   private bindingStatusFor(requestId: string): SaveStatus {
@@ -153,7 +159,7 @@ export class SaveCoordinator {
     return 'idle'
   }
 
-  private applyResult(doc: DocState, requestBinding: ContextBinding, result: WriteResult): { status: SaveStatus; requestId?: string; result?: WriteResult } {
+  private async applyResult(doc: DocState, requestBinding: ContextBinding, result: WriteResult): Promise<{ status: SaveStatus; requestId?: string; result?: WriteResult }> {
     // 迟到响应：发起时 binding 与当前不同 → 丢弃，不得改当前上下文状态/快照
     if (
       requestBinding.contextId !== this.binding.contextId ||
@@ -172,6 +178,7 @@ export class SaveCoordinator {
       }
       doc.status = 'saved'
       status = 'saved'
+      if (this.journal) await this.journal.commit(result.requestId)
     } else if (result.status === 'conflict' && result.kind === 'revision') {
       doc.status = 'conflict_revision'
       status = 'conflict_revision'

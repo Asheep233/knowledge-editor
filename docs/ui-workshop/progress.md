@@ -50,6 +50,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
 | T16 | in_progress | frontend/src/core/print/{printJob,test} | evidence/P2-T16-print-core.md（12 例 U：快照绑定/状态机/串行/取消/超时/路径校验）+ 既有 S4 真实 PDF W 6/6 | 产品隐藏 renderer+Rust PrintToPdf 接线；长文档分页/主题/源码打印；取消清理与 job 对账；打印 UI + W | 隐藏 renderer 接线 + 长文档 → T21/T26 W |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
+| T23 | in_progress | frontend/src/components/workshop/{WorkshopPanel,test} | evidence/P3-T23-workshop-panel.md（7 例 React：包列表/安装预览/确认/取消/blocked/回滚恢复/错误） | 未集成 App/路由；产品 Rust 包命令适配器未实现；真实选择包/进度可视化/Windows W 未做 | 集成 App + Rust 适配器 → T21/T26 W 视觉/交互 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -378,3 +379,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   9 例全过（packs 共 23），tsc 0。证据：`evidence/P3-T22-install-confirmation.md`。
 - 下一步：T23 工坊控制面 UI（渲染预览/确认/进度/回滚）；真实包下载/候选扫描/签名验证；
   T21 Windows 安装交互 W 证据。
+
+## P3 进度（T23 控制面 UI 骨架，2026-10-19）
+
+- `WorkshopPanel`：已安装包列表/回滚修复、安装预览（身份/来源/签名/能力风险/warnings/blocked）、
+  确认安装与取消；`WorkshopAdapter` 注入接口（产品=Tauri Rust 命令，测试=内存替身）；
+  7 例 React 测试全过（产品测试栈，无新依赖），tsc 0。证据：`evidence/P3-T23-workshop-panel.md`。
+- 下一步：集成进 App/路由（工坊入口）+ 产品 Rust 包命令适配器；真实选择包/进度/取消；Windows W 交互。

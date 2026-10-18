@@ -421,6 +421,10 @@ pub fn activate(root: &Path, id: &str, version: &str) -> Result<Value, String> {
         return Err(format!("E_HASH: 版本完整性校验失败 {id}@{version}"));
     }
     let before = state_of(root, id);
+    // 幂等：重复激活当前 active 版本不得改写 previous（否则 rollback 目标被破坏）
+    if before.get("active").and_then(|v| v.as_str()) == Some(version) {
+        return Ok(before);
+    }
     write_json_atomic(&txn_path(root, id), &json!({"op": "activate", "id": id, "version": version, "before": before}))?;
     let next = json!({"active": version,
         "previous": before.get("active").cloned().unwrap_or(Value::Null),
@@ -738,6 +742,27 @@ mod tests {
         let err = install_from_dir(&root, src.to_str().unwrap()).unwrap_err();
         assert!(err.contains("E_SIGNATURE"), "{err}");
         std::env::remove_var("KE_WORKSHOP_PUBKEYS");
+    }
+
+    #[test]
+    fn activate_same_version_is_idempotent() {
+        let root = tmp_root("activate-idem");
+        let src1 = root.join("src-1");
+        let src2 = root.join("src-2");
+        make_pack(&src1, "com.test.idem", "1.0.0", false);
+        make_pack(&src2, "com.test.idem", "2.0.0", false);
+        install_from_dir(&root, src1.to_str().unwrap()).unwrap();
+        install_from_dir(&root, src2.to_str().unwrap()).unwrap();
+        let before = state_of(&root, "com.test.idem");
+        assert_eq!(before["active"], "2.0.0");
+        assert_eq!(before["previous"], "1.0.0");
+        // 重复 activate 当前 active：状态不变（previous 仍为 1.0.0），rollback 仍可用
+        let same = activate(&root, "com.test.idem", "2.0.0").unwrap();
+        assert_eq!(same["active"], "2.0.0");
+        assert_eq!(same["previous"], "1.0.0");
+        let rolled = rollback(&root, "com.test.idem").unwrap();
+        assert_eq!(rolled["active"], "1.0.0");
+        assert_eq!(rolled["previous"], "2.0.0");
     }
 
     #[test]

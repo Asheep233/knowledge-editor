@@ -47,7 +47,7 @@
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
 | T24 可信包限定 | 🟡 信任策略10+签名8+keyring8+信任UI+产品 Rust 验签+打包签名工具+**签名数据源贯通 UI**；正式发布密钥流程/Windows 验签 E2E 未做 | `P4-T24-trust-policy.md`、`P4-T24-pack-signature.md`、`P4-T24-trust-ui.md`、`P4-T24-keyring.md`、`P4-T24-rust-signature.md` |
 | T25 平台验证矩阵 | 🟡 自动生成矩阵 18 行（9 W/2 A/2 A/U/3 回归/1 构建） | `P4-T25-validation-matrix.md`、`validation-matrix.csv` |
-| T26 Windows 认证 | 🟡 13/13 原型 W + 隔离冒烟 7/7 + **A2 打印 9/9 + A3 recover/safeMode 9/9**；A4–A8 未执行；**有事故记录（误杀用户 App，已恢复）** | `P5-T26-windows-witnesses.md`、`T26-windows-acceptance-plan.md`、`P5-T26-isolated-smoke.md`、`P5-T26-A2-print.md` |
+| T26 Windows 认证 | 🟡 13/13 原型 W + smoke 7/7 + A2 打印 9/9 + A3 recover 9/9 + **A4+A6 签名安装/生命周期 16/16**；A5/A7/A8 未执行；**有事故记录（误杀用户 App，已恢复）** | `P5-T26-windows-witnesses.md`、`T26-windows-acceptance-plan.md`、`P5-T26-isolated-smoke.md`、`P5-T26-A2-print.md` |
 | T27–T29 | ⬜ 未开始 | 发布候选/最终交接（需主理人授权） |
 
 ## 2b. 安全与密钥流程

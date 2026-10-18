@@ -1,0 +1,186 @@
+{
+  "generated_at": "2026-10-19T05:07:51+0800",
+  "scenario": "T26 A4 签名安装拒绝 + A6 安装/启用/回滚/卸载（真实产品壳隔离构建）",
+  "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+  "publicKeyHex": "a145634f452cae103e90f1d2dbb8765fab8a2011f136dc7dd32b80c77e480aa6",
+  "checks": [
+    {
+      "name": "W-T26-A4-1 测试包准备（signed v1/v2、tampered、unsigned）",
+      "pass": true,
+      "detail": {
+        "publicKeyHex": "a145634f452cae10…"
+      }
+    },
+    {
+      "name": "W-T26-A4-2 有效签名 scan → signatureStatus=valid",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "apiVersion": 1,
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "commands": [],
+          "name": "T26 Install Pack",
+          "packId": "com.probe.t26install",
+          "signatureStatus": "valid",
+          "sizeBytes": 22,
+          "version": "1.0.0"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A4-3 未签名 scan → signatureStatus=missing",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "apiVersion": 1,
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "commands": [],
+          "name": "T26 Install Pack",
+          "packId": "com.probe.t26install",
+          "signatureStatus": "missing",
+          "sizeBytes": 21,
+          "version": "3.0.0"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A4-4 篡改清单 scan → signatureStatus=invalid",
+      "pass": true,
+      "detail": {
+        "signatureStatus": "invalid",
+        "reason": "E_SIGNATURE: 验签失败"
+      }
+    },
+    {
+      "name": "W-T26-A4-5 篡改包 install → 拒绝（E_SIGNATURE）",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "error": "E_SIGNATURE: 验签失败"
+      }
+    },
+    {
+      "name": "W-T26-A6-1 安装 signed v1 → 成功、active=1.0.0",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368312697929811 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A6-2 安装列表：signatureStatus=valid",
+      "pass": true,
+      "detail": {
+        "packs": [
+          {
+            "active": "1.0.0",
+            "activeVersion": "1.0.0",
+            "capabilities": [
+              "ui.shell"
+            ],
+            "id": "com.probe.t26install",
+            "name": "T26 Install Pack",
+            "previous": null,
+            "signatureReason": null,
+            "signatureStatus": "valid"
+          }
+        ]
+      }
+    },
+    {
+      "name": "W-T26-A6-3 安装 signed v2 → 成功",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "2.0.0",
+          "previous": "1.0.0",
+          "updatedAt": "SystemTime { intervals: 134368312698149229 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A6-4 activate 当前 active → 幂等（active=2.0.0/previous 仍 1.0.0）",
+      "pass": true,
+      "detail": {
+        "active": "2.0.0",
+        "previous": "1.0.0",
+        "updatedAt": "SystemTime { intervals: 134368312698149229 }"
+      }
+    },
+    {
+      "name": "W-T26-A6-5 rollback → active=1.0.0 / previous=2.0.0",
+      "pass": true,
+      "detail": {
+        "active": "1.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368312698250027 }"
+      }
+    },
+    {
+      "name": "W-T26-A6-6 uninstall → 列表为空、包目录删除",
+      "pass": true,
+      "detail": {
+        "uninstall": {
+          "ok": true,
+          "value": {
+            "previousState": {
+              "active": "1.0.0",
+              "previous": "2.0.0",
+              "updatedAt": "SystemTime { intervals: 134368312698250027 }"
+            },
+            "uninstalled": "com.probe.t26install"
+          }
+        },
+        "dirGone": true
+      }
+    },
+    {
+      "name": "W-T26-A6-7 主进程存活（命令链路无崩溃）",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A4-6 撤销密钥 scan → invalid（E_SIGNATURE_REVOKED）",
+      "pass": true,
+      "detail": {
+        "status": "invalid",
+        "reason": "E_SIGNATURE_REVOKED: 密钥已撤销 k1"
+      }
+    },
+    {
+      "name": "W-T26-A4-7 撤销密钥 install → 拒绝",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "error": "E_SIGNATURE_REVOKED: 密钥已撤销 k1"
+      }
+    },
+    {
+      "name": "W-T26-A4-8 撤销场景主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A4/A6-9 用户运行中的 AstraNota 未受影响（PID 存在）",
+      "pass": true,
+      "detail": {
+        "user_pid": "82360"
+      }
+    }
+  ],
+  "pass_count": 16,
+  "total": 16
+}

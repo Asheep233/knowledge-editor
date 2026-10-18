@@ -199,6 +199,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             pack_store::workshop_pack_scan,
             pack_store::workshop_pack_install,
+            pack_store::workshop_pack_stage_zip,
+            pack_store::workshop_pack_install_staged,
+            pack_store::workshop_pack_abort_staged,
             pack_store::workshop_pack_list,
             pack_store::workshop_pack_read_asset,
             pack_store::workshop_pack_session_status,

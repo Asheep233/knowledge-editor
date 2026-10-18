@@ -775,3 +775,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   inject_guard 单测），但隔离保证改为依赖：独立 origin + Tauri IPC authority remote 拒绝
   （capabilities 无 remote 声明）+ Tauri 升级回归；残余风险保留在里程碑评估中。
   证据：`evidence/P5-T26-A7-isolation.md` 追加节。
+
+## P6/T26 进度（W01 ZIP 离线包，2026-10-19）
+
+- 产品命令 `workshop_pack_stage_zip/install_staged/abort_staged`：安全解压（条目/大小/总量/zip-slip/
+  符号链接/缺 manifest 拒绝）+ staging 路径白名单；前端 adapter/面板 ZIP 按钮与 staging 路由；
+- 验证：Rust cargo **50 passed**；产品 W **8/8**（有效 zip 安装 + zip-slip/E_STAGED 拒绝 + 用户实例安全）。
+  证据：`evidence/P5-T26-W01-zip.md`；W01 仍缺 I 门禁（T27）。

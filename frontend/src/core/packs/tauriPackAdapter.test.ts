@@ -67,6 +67,23 @@ describe('T21/T23 TauriPackAdapter', () => {
     expect(ok).toMatchObject({ signature: 'valid', blocked: false })
   })
 
+  it('W01：stageFromZip → staging 预览；confirmInstall 走 install_staged；cancel 清理 staging', async () => {
+    const invokeImpl = vi.fn(async (cmd: string) => {
+      if (cmd === 'workshop_pack_stage_zip') {
+        return { packId: 'com.demo.zip', name: 'Zip Pack', version: '1.0.0', apiVersion: 1,
+          capabilities: ['ui.shell'], signatureStatus: 'valid', token: 'C:/data/.staging-zip-1-2' }
+      }
+      return undefined
+    })
+    const a = createTauriPackAdapter({ invokeImpl: invokeImpl as never, chooseZipFile: async () => 'C:/tmp/pack.zip' })
+    const preview = await a.stageFromZip!()
+    expect(preview).toMatchObject({ packId: 'com.demo.zip', source: 'zip-file', signature: 'valid', blocked: false })
+    await a.confirmInstall(preview!.token)
+    expect(invokeImpl).toHaveBeenCalledWith('workshop_pack_install_staged', { sourceDir: 'C:/data/.staging-zip-1-2' })
+    expect(a.cancelPreview(preview!.token)).toBe(true)
+    expect(invokeImpl).toHaveBeenCalledWith('workshop_pack_abort_staged', { sourceDir: 'C:/data/.staging-zip-1-2' })
+  })
+
   it('chooseSourceDir 返回 null → 不扫描', async () => {
     const a = adapter({ chooseSourceDir: async () => null })
     expect(await a.stageFromFile()).toBeNull()

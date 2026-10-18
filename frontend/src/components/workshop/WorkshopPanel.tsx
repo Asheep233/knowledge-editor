@@ -36,7 +36,7 @@ export interface InstallPreviewView {
   name: string
   version: string
   apiVersion: number
-  source: 'local-file' | 'downloaded' | 'builtin'
+  source: 'local-file' | 'downloaded' | 'builtin' | 'zip-file'
   signature: 'valid' | 'missing' | 'invalid'
   capabilities: CapabilityView[]
   warnings: string[]
@@ -73,6 +73,8 @@ export interface WorkshopAdapter {
   revokeTrust?(packId: string): Promise<void>
   /** A7：创建产品 guest 宿主后端（可选能力；有则允许启用/停用 guest） */
   createGuestBackend?(): ProductHostBackend
+  /** W01：选择 ZIP 离线包并预览（可选能力） */
+  stageFromZip?(): Promise<InstallPreviewView | null>
 }
 
 export interface WorkshopPanelProps {
@@ -139,6 +141,15 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
       const staged = await adapter.stageFromFile()
       setPreview(staged)
       if (!staged) setMessage('未选择包')
+    })
+
+  const onChooseZip = () =>
+    run(async () => {
+      if (!adapter.stageFromZip) return
+      setMessage(null)
+      const staged = await adapter.stageFromZip()
+      setPreview(staged)
+      if (!staged) setMessage('未选择 ZIP 包')
     })
 
   const onConfirm = () =>
@@ -231,6 +242,16 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
           >
             选择包并预览…
           </button>
+          {adapter.stageFromZip && (
+            <button
+              type="button"
+              className="rounded border px-3 py-1.5 text-xs disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void onChooseZip()}
+            >
+              选择 ZIP 离线包…
+            </button>
+          )}
         </div>
       </header>
 

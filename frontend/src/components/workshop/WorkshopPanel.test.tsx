@@ -210,6 +210,14 @@ describe('T23 创意工坊控制面 UI', () => {
     expect(text()).toContain('签名：invalid')
   })
 
+  it('W01：提供 stageFromZip 时显示 ZIP 按钮并进入预览', async () => {
+    const adapter = makeAdapter({ stageFromZip: vi.fn(async () => PREVIEW) })
+    await mount(adapter)
+    await click(buttonByText('选择 ZIP 离线包'))
+    expect(adapter.stageFromZip).toHaveBeenCalled()
+    expect(text()).toContain('com.demo.new')
+  })
+
   it('adapter 报错时展示可读错误', async () => {
     const adapter = makeAdapter({
       listInstalled: vi.fn(async () => {

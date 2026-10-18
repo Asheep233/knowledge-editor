@@ -509,6 +509,96 @@ pub fn recover(root: &Path, id: &str) -> Result<Value, String> {
     Ok(state)
 }
 
+// ---------------- W01：ZIP 离线包安装（解压安全：炸弹/条目数/路径穿越/符号链接）----------------
+
+const MAX_ZIP_ENTRIES: usize = 1000;
+const MAX_ZIP_ENTRY_BYTES: u64 = 10 * 1024 * 1024;
+const MAX_ZIP_TOTAL_BYTES: u64 = 64 * 1024 * 1024;
+
+/// 解压 zip 到 root 下的临时 staging 目录（安全校验后），返回 staging 路径。
+pub fn extract_zip_to_staging(root: &Path, zip_path: &str) -> Result<PathBuf, String> {
+    let src = Path::new(zip_path);
+    if !src.is_file() {
+        return Err(format!("E_SOURCE: zip 文件不存在: {zip_path}"));
+    }
+    let file = fs::File::open(src).map_err(|e| format!("E_IO: 打开 zip 失败: {e}"))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("E_ZIP: 非法 zip: {e}"))?;
+    if archive.len() > MAX_ZIP_ENTRIES {
+        return Err(format!("E_ZIP: 条目数超过上限（{} > {MAX_ZIP_ENTRIES}）", archive.len()));
+    }
+    let staging = root.join(format!(
+        ".staging-zip-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    ));
+    fs::create_dir_all(&staging).map_err(|e| format!("E_IO: 创建 staging 失败: {e}"))?;
+    let mut total: u64 = 0;
+    let mut files_written = 0usize;
+    let result: Result<(), String> = (|| {
+        for i in 0..archive.len() {
+            let mut entry = archive.by_index(i).map_err(|e| format!("E_ZIP: 读取条目失败: {e}"))?;
+            // 目录条目跳过（安装只需文件）
+            let Some(name) = entry.enclosed_name() else {
+                return Err(format!("E_ZIP: 非法条目路径（疑似穿越）: {}", entry.name()));
+            };
+            let rel = name.to_string_lossy().replace('\\', "/");
+            if rel.is_empty() || rel.ends_with('/') {
+                continue;
+            }
+            let safe = safe_rel(&rel)?;
+            // 符号链接/特殊文件拒绝（仅普通文件）
+            if let Some(mode) = entry.unix_mode() {
+                if mode & 0o170000 == 0o120000 {
+                    return Err(format!("E_ZIP: 拒绝符号链接条目: {rel}"));
+                }
+            }
+            let size = entry.size();
+            if size > MAX_ZIP_ENTRY_BYTES {
+                return Err(format!("E_ZIP: 单文件超过上限 {rel} ({size} bytes)"));
+            }
+            total = total.saturating_add(size);
+            if total > MAX_ZIP_TOTAL_BYTES {
+                return Err(format!("E_ZIP: 解压总量超过上限（>{MAX_ZIP_TOTAL_BYTES} bytes）"));
+            }
+            let target = staging.join(&safe);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent).map_err(|e| format!("E_IO: 创建目录失败: {e}"))?;
+            }
+            let mut out = fs::File::create(&target).map_err(|e| format!("E_IO: 写入失败 {rel}: {e}"))?;
+            std::io::copy(&mut entry, &mut out).map_err(|e| format!("E_IO: 解压失败 {rel}: {e}"))?;
+            files_written += 1;
+        }
+        if files_written == 0 {
+            return Err("E_ZIP: 空包（无文件）".into());
+        }
+        if !staging.join("manifest.json").is_file() {
+            return Err("E_ZIP: 缺少 manifest.json".into());
+        }
+        Ok(())
+    })();
+    if let Err(e) = result {
+        let _ = fs::remove_dir_all(&staging);
+        return Err(e);
+    }
+    Ok(staging)
+}
+
+/// 校验 staging 目录确实由我们创建（防止任意路径安装）。
+fn staging_dir_guard(root: &Path, source_dir: &str) -> Result<PathBuf, String> {
+    let dir = Path::new(source_dir);
+    if !dir.starts_with(root) {
+        return Err("E_STAGED: 非法 staging 路径（不在应用数据目录内）".into());
+    }
+    let name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    if !name.starts_with(".staging-zip-") {
+        return Err("E_STAGED: 非法 staging 目录名".into());
+    }
+    Ok(dir.to_path_buf())
+}
+
 /// 启动时对全部已安装包执行 recover：清理半成品/损坏回退，并生成状态摘要。
 /// 返回 `{checked, results, safeMode, generatedAt}`；safeMode = 存在无法回退的损坏包。
 pub fn recover_all(root: &Path) -> Value {
@@ -634,6 +724,36 @@ pub fn workshop_pack_read_asset(
 }
 
 /// A7：读取 product guest 会话状态（无记录 → idle）。
+/// W01：ZIP 离线包 —— 安全解压到 staging 并返回扫描预览（token=staging 目录）。
+#[tauri::command]
+pub fn workshop_pack_stage_zip(app: AppHandle, zip_path: String) -> Result<Value, String> {
+    let root = root_of(&app)?;
+    let staging = extract_zip_to_staging(&root, &zip_path)?;
+    let preview = scan_dir(&root, staging.to_string_lossy().as_ref())?;
+    let mut out = preview;
+    out["token"] = json!(staging.to_string_lossy());
+    out["source"] = json!("zip-file");
+    Ok(out)
+}
+
+/// W01：安装已解压 staged 包（原子安装；完成后清理 staging）。
+#[tauri::command]
+pub fn workshop_pack_install_staged(app: AppHandle, source_dir: String) -> Result<Value, String> {
+    let root = root_of(&app)?;
+    let staging = staging_dir_guard(&root, &source_dir)?;
+    let result = install_from_dir(&root, staging.to_string_lossy().as_ref());
+    let _ = fs::remove_dir_all(&staging);
+    result
+}
+
+/// W01：取消/清理 staged 包。
+#[tauri::command]
+pub fn workshop_pack_abort_staged(app: AppHandle, source_dir: String) -> Result<(), String> {
+    let root = root_of(&app)?;
+    let staging = staging_dir_guard(&root, &source_dir)?;
+    fs::remove_dir_all(&staging).map_err(|e| format!("E_IO: 清理 staging 失败: {e}"))
+}
+
 #[tauri::command]
 pub fn workshop_pack_session_status(app: AppHandle) -> Result<Value, String> {
     Ok(read_session_status(&root_of(&app)?))
@@ -818,6 +938,79 @@ mod tests {
         let err = install_from_dir(&root, src.to_str().unwrap()).unwrap_err();
         assert!(err.contains("E_SIGNATURE"), "{err}");
         std::env::remove_var("KE_WORKSHOP_PUBKEYS");
+    }
+
+    fn make_zip(path: &Path, entries: &[(&str, &[u8])]) -> Result<(), String> {
+        use std::io::Write;
+        use zip::write::SimpleFileOptions;
+        let file = fs::File::create(path).map_err(|e| e.to_string())?;
+        let mut zip = zip::ZipWriter::new(file);
+        let opts = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        for (name, content) in entries {
+            zip.start_file(*name, opts).map_err(|e| e.to_string())?;
+            zip.write_all(content).map_err(|e| e.to_string())?;
+        }
+        zip.finish().map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    fn manifest_bytes(id: &str, version: &str, content: &str) -> Vec<u8> {
+        let hash = sha256_hex(content.as_bytes());
+        serde_json::to_vec(&json!({
+            "id": id, "name": "ZipPack", "version": version, "apiVersion": 1,
+            "capabilities": ["ui.shell"], "entry": {"html": "index.html"},
+            "assets": [{"path": "index.html", "sha256": hash}],
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn zip_stage_and_install_valid_pack() {
+        let root = tmp_root("zip-valid");
+        let zip_path = root.join("pack.zip");
+        let content = b"<html>zip pack</html>";
+        make_zip(&zip_path, &[("manifest.json", &manifest_bytes("com.test.zip", "1.0.0", "<html>zip pack</html>")),
+                              ("index.html", content)]).unwrap();
+        let staging = extract_zip_to_staging(&root, zip_path.to_str().unwrap()).unwrap();
+        assert!(staging.join("manifest.json").is_file());
+        assert!(staging.join("index.html").is_file());
+        install_from_dir(&root, staging.to_str().unwrap()).unwrap();
+        let listed = list_packs(&root);
+        assert_eq!(listed["packs"][0]["id"], "com.test.zip");
+    }
+
+    #[test]
+    fn zip_rejects_zip_slip_and_absolute_paths() {
+        let root = tmp_root("zip-slip");
+        let zip_path = root.join("evil.zip");
+        make_zip(&zip_path, &[("../evil.txt", b"x"), ("manifest.json", b"{}")]).unwrap();
+        assert!(extract_zip_to_staging(&root, zip_path.to_str().unwrap()).is_err());
+        let zip2 = root.join("abs.zip");
+        make_zip(&zip2, &[("/etc/passwd", b"x")]).unwrap();
+        assert!(extract_zip_to_staging(&root, zip2.to_str().unwrap()).is_err());
+    }
+
+    #[test]
+    fn zip_rejects_too_many_entries_and_missing_manifest() {
+        let root = tmp_root("zip-bomb");
+        let zip_path = root.join("many.zip");
+        let names: Vec<String> = (0..(MAX_ZIP_ENTRIES + 1)).map(|i| format!("f{i}.txt")).collect();
+        let entries: Vec<(&str, &[u8])> = names.iter().map(|n| (n.as_str(), b"x" as &[u8])).collect();
+        make_zip(&zip_path, &entries).unwrap();
+        let err = extract_zip_to_staging(&root, zip_path.to_str().unwrap()).unwrap_err();
+        assert!(err.contains("条目数超过上限"), "{err}");
+        let zip2 = root.join("nomanifest.zip");
+        make_zip(&zip2, &[("a.txt", b"x")]).unwrap();
+        let err2 = extract_zip_to_staging(&root, zip2.to_str().unwrap()).unwrap_err();
+        assert!(err2.contains("manifest.json"), "{err2}");
+    }
+
+    #[test]
+    fn staging_dir_guard_rejects_outside_paths() {
+        let root = tmp_root("staging-guard");
+        assert!(staging_dir_guard(&root, root.join(".staging-zip-1-x").to_str().unwrap()).is_ok());
+        assert!(staging_dir_guard(&root, root.join("com.test.a").to_str().unwrap()).is_err());
+        assert!(staging_dir_guard(&root, "/tmp/.staging-zip-1-x").is_err());
     }
 
     #[test]

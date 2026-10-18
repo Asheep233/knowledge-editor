@@ -20,6 +20,7 @@
 | A7 安全核对：guest 独立 origin + Tauri IPC 不可用（附残余风险） | **5/5** | `P5-T26-A7-isolation.md` |
 | 原型壳 W 探针一键门禁 | **13/13** | `P5-T26-windows-witnesses.md` |
 | 产品 IME 组词 + DPI/缩放后编辑面可用（CDP/WebView2 渲染层） | **7/7** | `P5-T26-ime-dpi.md` |
+| W01 ZIP 离线包 staging/安装 + 解压安全（U+W） | **8/8** | `P5-T26-W01-zip.md` |
 
 > 说明：A1–A8 全部已通过真实产品壳 W；T26 认证仍需补真实 IME/多 DPI、安装包升级/回滚演练（T27）。
 

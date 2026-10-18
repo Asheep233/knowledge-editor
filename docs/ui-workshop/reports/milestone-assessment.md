@@ -40,7 +40,7 @@ ACCEPTANCE A 节：
 | --- | --- | --- |
 | 真实人工系统 IME / 多 DPI | NOT_RUN | 需人工中文输入法与多显示器实测 |
 | W08 覆盖升级/降级/兼容（I 证据） | NOT_RUN | 计划与命令已备：`T27-installer-upgrade-plan.md` |
-| W01 ZIP 离线包/ZIP bomb/多资源完整性 | FAIL/部分 | 未实现 zip 安装与 bomb 防护 |
+| W01 ZIP 离线包/ZIP bomb/多资源完整性 | 部分（U+W 8/8） | zip staging/安装/zip-slip/条目数/总量防护已实现并 W 验证；**I 门禁未执行**、更深炸弹/嵌套 zip 未覆盖 |
 | W02 表单交接（IME/title/tags/公式草稿跨 UI） | NOT_RUN | 产品 guest 未接正式编辑器表单桥 |
 | W03 包与私有状态回滚 | NOT_RUN | Core 有 store/recover，U 级；I 门禁未做 |
 | W04 SDK 外部独立开发模板/CLI | NOT_RUN | 未提供外部开发模板与第二套 UI 全任务 |

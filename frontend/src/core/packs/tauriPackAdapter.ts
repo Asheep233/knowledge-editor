@@ -17,6 +17,8 @@ import { createProductHostBackend, type ProductHostBackend } from './productHost
 
 export interface TauriPackAdapterOptions {
   invokeImpl?: typeof invoke
+  /** 选择 zip 包文件（默认 dialog；测试可注入） */
+  chooseZipFile?: () => Promise<string | null>
   /** 信任等级持久化（默认 localStorage；测试可注入内存） */
   trustStore?: TrustStore
   trustStorage?: KeyValueStorage
@@ -25,6 +27,10 @@ export interface TauriPackAdapterOptions {
 }
 
 type SignatureStatus = 'valid' | 'missing' | 'invalid'
+
+interface StageZipResponse extends ScanResponse {
+  token?: string
+}
 
 interface ScanResponse {
   packId: string
@@ -65,8 +71,34 @@ export async function choosePackDirectory(): Promise<string | null> {
 export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): WorkshopAdapter {
   const call = options.invokeImpl ?? invoke
   const chooseSourceDir = options.chooseSourceDir ?? choosePackDirectory
+  const chooseZipFile = options.chooseZipFile ?? (async () => {
+    const { open } = await import('@tauri-apps/plugin-dialog')
+    const chosen = await open({ multiple: false, directory: false, filters: [{ name: 'AstraNota Pack', extensions: ['zip'] }] })
+    return typeof chosen === 'string' ? chosen : null
+  })
   const trustStore: TrustStore = options.trustStore ?? new LocalTrustStore(options.trustStorage ?? defaultTrustStorage())
   return {
+    /** W01：选择 ZIP 离线包 → 安全解压 staging + 扫描预览（token=staging 目录） */
+    async stageFromZip(): Promise<InstallPreviewView | null> {
+      const zipPath = await chooseZipFile()
+      if (!zipPath) return null
+      const res = (await options.invokeImpl?.('workshop_pack_stage_zip', { zipPath })) as unknown as StageZipResponse
+      const signature: SignatureStatus = res.signatureStatus ?? 'missing'
+      const signatureInvalid = signature === 'invalid'
+      return {
+        token: res.token ?? zipPath,
+        packId: res.packId,
+        name: res.name,
+        version: res.version,
+        apiVersion: res.apiVersion,
+        source: 'zip-file',
+        signature,
+        capabilities: (res.capabilities ?? []).map((capability) => capabilityRisk(capability)),
+        warnings: signatureInvalid ? ['签名无效：安装将被拒绝'] : ['ZIP 离线包：已通过路径/大小安全检查'],
+        blocked: signatureInvalid,
+        blockReason: signatureInvalid ? (res.signatureReason ?? 'E_SIGNATURE: 包签名无效，禁止安装') : undefined,
+      }
+    },
     async listInstalled(): Promise<InstalledPackView[]> {
       try {
         const res = (await call('workshop_pack_list')) as ListResponse
@@ -119,13 +151,18 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
     },
     async confirmInstall(token: string): Promise<void> {
       try {
-        await call('workshop_pack_install', { sourceDir: token })
+        const staged = token.includes('.staging-zip-')
+        await call(staged ? 'workshop_pack_install_staged' : 'workshop_pack_install', { sourceDir: token })
       } catch (e) {
         throw err(e)
       }
     },
-    cancelPreview(): boolean {
-      return true // 扫描/预览无服务端状态，取消即丢弃 UI token
+    cancelPreview(token?: string): boolean {
+      // W01：staged zip 预览取消 → 清理 staging 目录（失败不影响 UI）
+      if (token && token.includes('.staging-zip-')) {
+        void call('workshop_pack_abort_staged', { sourceDir: token }).catch(() => undefined)
+      }
+      return true
     },
     async rollback(packId: string): Promise<void> {
       try {

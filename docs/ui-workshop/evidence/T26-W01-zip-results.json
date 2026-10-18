@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-10-19T06:48:08+0800",
+  "scenario": "T26 W01 ZIP 离线包（staging/安装/解压安全）",
+  "checks": [
+    {
+      "name": "W-T26-W01-1 产品启动 + IPC 就绪",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-W01-2 有效 ZIP staging 扫描成功（签名 valid + token）",
+      "pass": true,
+      "detail": {
+        "packId": "com.probe.t26zip",
+        "signature": "valid",
+        "token": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs\\.staging-zip-76796-1792363687956"
+      }
+    },
+    {
+      "name": "W-T26-W01-3 staged 安装成功（active=1.0.0）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368372879716091 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W01-4 安装列表可见",
+      "pass": true,
+      "detail": {
+        "packs": [
+          {
+            "active": "1.0.0",
+            "activeVersion": "1.0.0",
+            "capabilities": [
+              "ui.shell"
+            ],
+            "id": "com.probe.t26zip",
+            "name": "T26 Zip Pack",
+            "previous": null,
+            "signatureReason": null,
+            "signatureStatus": "valid"
+          }
+        ]
+      }
+    },
+    {
+      "name": "W-T26-W01-5 zip-slip 条目 → staging 拒绝（E_ZIP/E_PATH）",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "error": "E_ZIP: 非法条目路径（疑似穿越）: ../evil.txt"
+      }
+    },
+    {
+      "name": "W-T26-W01-6 非 staging 路径 → E_STAGED 拒绝",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "error": "E_STAGED: 非法 staging 路径（不在应用数据目录内）"
+      }
+    },
+    {
+      "name": "W-T26-W01-7 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-W01-8 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 8,
+  "total": 8
+}

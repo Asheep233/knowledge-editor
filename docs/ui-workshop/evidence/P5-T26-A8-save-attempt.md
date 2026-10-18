@@ -23,6 +23,17 @@
   因此 autosave 不触发；这是**自动化手段限制**，不能据此判断产品 flag 路径好坏。
 - 因此 W-T26-A8-5（Core 上下文链日志）也无法验证；**A8 仍未完成**。
 
+## 追加尝试（真实 SendInput + base URL 修复后，仍 6/8）
+
+- 用 Windows `SendInput(KEYEVENTF_UNICODE)` 真实硬件级输入打 `A8MARK` 进入编辑器（DOM 内可见），
+  仍无任何保存调用（后端日志只有 GET）→ 说明**不是输入事件未到**，更可能是产品 autosave 脏标记/
+  保存调度未在当前自动化路径触发（或 flag 分支条件未满足）。
+- 同时发现并修复一个**真实集成缺陷**：`coreSaveRuntime` 默认桥未使用产品后端 base URL
+  （`window.__KE_API_BASE__`）→ 即使走到 Core 保存也会请求到 Tauri 资源域而不是后端。
+  已修复为 `new CoreSaveBridge({ baseUrl: resolveCoreApiBase() })`（runtime 测试 5 例、tsc 0）。
+- 结论：A8 保留 **pending**；后续需人工在隔离构建里真实编辑保存（或加仅测试保存入口），
+  并观察 EditorArea 的 dirty/save 状态指示定位 autosave 未触发的具体环节。
+
 ## 后续正确验证方式（建议）
 
 1. 用真实键盘输入（人工操作或 Windows UI Automation/SendInput 真实硬件级输入）在隔离构建中编辑并保存；

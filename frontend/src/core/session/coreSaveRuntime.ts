@@ -13,8 +13,18 @@ interface BridgeLike {
   createSaveFn(relPath: string, getContent: () => string): Promise<ProductSaveFn>
 }
 
+/** 产品后端 base URL（main.tsx 在挂载前写入；测试/非桌面为空 → 同源相对路径） */
+export function resolveCoreApiBase(): string {
+  try {
+    const base = (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__
+    return typeof base === 'string' ? base : ''
+  } catch {
+    return ''
+  }
+}
+
 let bridge: BridgeLike | null = null
-let bridgeFactory: () => BridgeLike = () => new CoreSaveBridge()
+let bridgeFactory: () => BridgeLike = () => new CoreSaveBridge({ baseUrl: resolveCoreApiBase() })
 const contentByRel = new Map<string, string>()
 const fnByRel = new Map<string, ProductSaveFn>()
 
@@ -44,7 +54,7 @@ export async function saveViaCore(relPath: string, content: string, signal?: Abo
 /** 测试/切库：清空桥单例与每文档缓存。 */
 export function resetCoreSaveRuntimeForTests(): void {
   bridge = null
-  bridgeFactory = () => new CoreSaveBridge()
+  bridgeFactory = () => new CoreSaveBridge({ baseUrl: resolveCoreApiBase() })
   contentByRel.clear()
   fnByRel.clear()
 }

@@ -5,6 +5,7 @@ import {
   __setCoreBridgeFactoryForTests,
   coreSaveEnabled,
   resetCoreSaveRuntimeForTests,
+  resolveCoreApiBase,
   saveViaCore,
 } from './coreSaveRuntime'
 
@@ -13,6 +14,14 @@ afterEach(() => resetCoreSaveRuntimeForTests())
 describe('T14 coreSaveRuntime（ADR-002 步骤2 入口）', () => {
   it('flag 默认关闭（VITE_KE_CORE_SAVE 未设置）', () => {
     expect(coreSaveEnabled()).toBe(false)
+  })
+
+  it('resolveCoreApiBase：读取产品注入的 window.__KE_API_BASE__（桌面版）', () => {
+    const g = globalThis as { __KE_API_BASE__?: string }
+    expect(resolveCoreApiBase()).toBe('')
+    g.__KE_API_BASE__ = 'http://127.0.0.1:8123'
+    expect(resolveCoreApiBase()).toBe('http://127.0.0.1:8123')
+    delete g.__KE_API_BASE__
   })
 
   it('saveViaCore：每文档创建一次 SaveFn，内容 provider 取最新内容', async () => {

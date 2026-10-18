@@ -186,14 +186,25 @@ def main() -> int:
             " sel.addRange(r); return true; })()"
         )
         focused = bool(cdp.eval(focus_expr))
-        # 逐字符 char 事件（更接近真实输入，触发 ProseMirror input 管线/脏标记）
-        for ch in "A8标记文本":
-            cdp.call("Input.dispatchKeyEvent", {"type": "char", "text": ch, "key": ch})
-            time.sleep(0.05)
-        cdp.call("Input.insertText", {"text": ""})
+        # 优先：Windows SendInput（KEYEVENTF_UNICODE）真实硬件级输入，触发 ProseMirror 事务；
+        # 若失败再退回 CDP char 事件（仅 DOM）。
+        marker = "A8MARK"
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                            r"C:\ke-tmp\ps\type_unicode.ps1", "-TargetPid", str(proc.pid), "-Text", marker],
+                           capture_output=True, text=True, timeout=60)
+        except Exception:
+            pass
+        time.sleep(0.5)
+        if marker not in str(cdp.eval("document.querySelector('.ProseMirror')?.innerText || ''")):
+            for ch in marker:
+                cdp.call("Input.dispatchKeyEvent", {"type": "char", "text": ch, "key": ch})
+                time.sleep(0.05)
+        time.sleep(0.5)
         time.sleep(0.5)
         text_now = str(cdp.eval("document.querySelector('.ProseMirror')?.innerText || ''"))
-        check("W-T26-A8-3 编辑插入标记文本", focused and "A8标记文本" in text_now, {"focused": focused, "hasMarker": "A8标记文本" in text_now})
+        check("W-T26-A8-3 编辑插入标记文本（真实 SendInput 优先）", focused and "A8MARK" in text_now,
+              {"focused": focused, "hasMarker": "A8MARK" in text_now, "text": text_now[-80:]})
 
         # 触发保存：先聚焦窗口（后台窗口可能暂停自动保存）→ 等待自动保存；
         # 再 Ctrl+S；再失焦（点击标题区）触发保存-失焦。逐步尝试并记录生效方式。
@@ -206,7 +217,7 @@ def main() -> int:
 
         def check_file() -> bool:
             try:
-                return "A8标记文本" in article.read_text(encoding="utf-8")
+                return "A8MARK" in article.read_text(encoding="utf-8")
             except Exception:
                 return False
 

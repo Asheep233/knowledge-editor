@@ -7,6 +7,7 @@ T10-e2e-results.json,T10,A,Linux WSL（真实后端）,PASS,19,19,bash core/sess
 T11-transport-probe-results.json,T11,W,Windows/WebView2,PASS,7,7,python run_protocol_probe.py
 T13-core-gate-results.json,T13,A,Linux WSL（真实后端+Core）,PASS,21,21,bash core/gate/run_t13_gate.sh
 T13-instance-probe-results.json,T13,W,Windows（Tauri 主壳）,PASS,6,6,python run_instance_probe.py
+T14-bridge-e2e-results.json,T14,A,Linux WSL（真实后端）,PASS,11,11,bash core/session/run_t14_bridge_e2e.sh
 T15-ime-zoom-probe-results.json,T15,W,Windows/WebView2（CDP）,PASS,8,8,python run_t15_cdp_probe.py
 T18-broker-probe-results.json,T18,W,Windows/WebView2,PASS,12,12,python run_broker_probe.py
 T19-package-host-probe-results.json,T19,W,Windows/WebView2,PASS,8,8,python run_t19_probe.py

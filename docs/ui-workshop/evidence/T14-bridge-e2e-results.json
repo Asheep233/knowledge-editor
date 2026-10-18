@@ -1,0 +1,104 @@
+{
+  "generatedAt": "2026-10-18T19:26:59.298Z",
+  "base": "http://127.0.0.1:8757",
+  "checks": [
+    {
+      "name": "工作区创建/已存在",
+      "pass": true,
+      "detail": 409
+    },
+    {
+      "name": "工作区打开",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "桥解析上下文（ke-default）",
+      "pass": true,
+      "detail": {
+        "contextId": "ke-default",
+        "epoch": 1
+      }
+    },
+    {
+      "name": "首次保存 saved（revision=1）",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "revision": 1
+      }
+    },
+    {
+      "name": "二次保存 revision 前进（=2）",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "revision": 2
+      }
+    },
+    {
+      "name": "tree 可见桥保存的文档",
+      "pass": true,
+      "detail": {
+        "context_id": "ke-default",
+        "epoch": 1,
+        "count": 1,
+        "items": [
+          {
+            "rel_path": "Articles/bridge-demo.md",
+            "size": 17
+          }
+        ]
+      }
+    },
+    {
+      "name": "search 命中桥保存内容",
+      "pass": true,
+      "detail": {
+        "context_id": "ke-default",
+        "epoch": 1,
+        "query": "第二版",
+        "count": 1,
+        "results": [
+          {
+            "rel_path": "Articles/bridge-demo.md",
+            "snippet": "桥 e2e 第二版"
+          }
+        ]
+      }
+    },
+    {
+      "name": "snapshot 接口可用（rev+hash）",
+      "pass": true,
+      "detail": {
+        "rel_path": "Articles/bridge-demo.md",
+        "revision": 2,
+        "disk_hash": "0faa55869ba2c21f00ad2211f192a6875074214acde5e2d04253b8499f6183e2",
+        "context_id": "ke-default"
+      }
+    },
+    {
+      "name": "新桥实例复用当前 revision 可保存（无旧缓存冲突）",
+      "pass": true,
+      "detail": "saved"
+    },
+    {
+      "name": "切库后旧桥保存被拒（stale/conflict，不静默写入）",
+      "pass": true,
+      "detail": {
+        "code": "E_STALE_CONTEXT"
+      }
+    },
+    {
+      "name": "switch 返回新 epoch",
+      "pass": true,
+      "detail": {
+        "id": "ke-default",
+        "epoch": 3,
+        "current": "ke-default"
+      }
+    }
+  ],
+  "passed": 11,
+  "total": 11
+}

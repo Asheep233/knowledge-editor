@@ -24,6 +24,7 @@ META: dict[str, tuple[str, str, str, str]] = {
     "P0-S3": ("T04", "A/U", "Linux + Windows", "pytest test_s3.py"),
     "P0-S5": ("T06", "A/U", "Linux + Windows", "pytest test_s5.py"),
     "T10-e2e-results.json": ("T10", "A", "Linux WSL（真实后端）", "bash core/session/run_t10_e2e.sh"),
+    "T14-bridge-e2e-results.json": ("T14", "A", "Linux WSL（真实后端）", "bash core/session/run_t14_bridge_e2e.sh"),
     "T11-transport-probe-results.json": ("T11", "W", "Windows/WebView2", "python run_protocol_probe.py"),
     "T13-core-gate-results.json": ("T13", "A", "Linux WSL（真实后端+Core）", "bash core/gate/run_t13_gate.sh"),
     "T13-instance-probe-results.json": ("T13", "W", "Windows（Tauri 主壳）", "python run_instance_probe.py"),

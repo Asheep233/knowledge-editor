@@ -14,6 +14,8 @@ use std::path::PathBuf;
 mod pack_store_proto;
 mod print_proto;
 
+use std::collections::HashMap;
+
 use tauri::{Manager, State};
 
 #[derive(Clone)]
@@ -206,6 +208,57 @@ fn main() {
         }))
         .manage(state)
         .setup(|app| {
+            // T20 原型：环境驱动的包播种 / 启动恢复（模拟“上次运行留下损坏包，本次启动 recover”）
+            let probe = probe_dir();
+            if env::var("S1_PACK_SEED").map(|v| v == "1").unwrap_or(false) {
+                if let Ok(root) = env::var("S1_PACK_ROOT") {
+                    let mut files1 = HashMap::new();
+                    files1.insert("index.html".to_string(), "<html>v1</html>".to_string());
+                    let mut hashes1 = HashMap::new();
+                    hashes1.insert("index.html".to_string(), crate::pack_store_proto::sha256_hex_pub("<html>v1</html>"));
+                    let mut files2 = HashMap::new();
+                    files2.insert("index.html".to_string(), "<html>v2</html>".to_string());
+                    let mut hashes2 = HashMap::new();
+                    hashes2.insert("index.html".to_string(), crate::pack_store_proto::sha256_hex_pub("<html>v2</html>"));
+                    let _ = crate::pack_store_proto::pack_install(
+                        root.clone(), "com.probe.recover".into(), "1.0.0".into(), 1,
+                        vec!["ui.shell".into()], files1, hashes1, None,
+                    );
+                    let _ = crate::pack_store_proto::pack_install(
+                        root.clone(), "com.probe.recover".into(), "2.0.0".into(), 1,
+                        vec!["ui.shell".into()], files2, hashes2, None,
+                    );
+                    // 损坏 active v2（previous v1 可用）
+                    let _ = crate::pack_store_proto::pack_corrupt(
+                        root.clone(), "com.probe.recover".into(), "2.0.0".into(),
+                        "index.html".into(), "corrupted".into(),
+                    );
+                    if env::var("S1_PACK_SEED_SAFE_MODE").map(|v| v == "1").unwrap_or(false) {
+                        // 无 previous 的损坏包 → 启动恢复进入 safeMode
+                        let mut f = HashMap::new();
+                        f.insert("index.html".to_string(), "<html>lonely</html>".to_string());
+                        let mut h = HashMap::new();
+                        h.insert("index.html".to_string(), crate::pack_store_proto::sha256_hex_pub("<html>lonely</html>"));
+                        let _ = crate::pack_store_proto::pack_install(
+                            root.clone(), "com.probe.lonely".into(), "1.0.0".into(), 1,
+                            vec!["ui.shell".into()], f, h, None,
+                        );
+                        let _ = crate::pack_store_proto::pack_corrupt(
+                            root.clone(), "com.probe.lonely".into(), "1.0.0".into(),
+                            "index.html".into(), "corrupted".into(),
+                        );
+                    }
+                    append_event(&probe, "pack-seeded");
+                }
+            }
+            if env::var("S1_PACK_RECOVER_ON_START").map(|v| v == "1").unwrap_or(false) {
+                if let Ok(root) = env::var("S1_PACK_ROOT") {
+                    let status = crate::pack_store_proto::pack_recover_all(&root);
+                    let text = serde_json::to_string_pretty(&status).unwrap_or_default();
+                    let _ = fs::write(probe.join("workshop-recover-status.json"), text);
+                    append_event(&probe, &format!("pack-recover-startup: {}", serde_json::to_string(&status["safeMode"]).unwrap_or_default()));
+                }
+            }
             if env::var("S1_OPEN_GUESTS").map(|v| v == "1").unwrap_or(false) {
                 use tauri::{WebviewUrl, WebviewWindowBuilder};
                 let dir = probe_dir();

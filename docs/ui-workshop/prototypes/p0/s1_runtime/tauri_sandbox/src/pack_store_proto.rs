@@ -42,6 +42,10 @@ fn txn_path(root: &str, id: &str) -> PathBuf {
     id_dir(root, id).join("txn.json")
 }
 
+pub fn sha256_hex_pub(bytes: &str) -> String {
+    sha256_hex(bytes.as_bytes())
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -290,4 +294,36 @@ pub fn pack_recover(root: String, id: String) -> Result<Value, String> {
 pub fn pack_corrupt(root: String, id: String, version: String, path: String, content: String) -> Result<(), String> {
     let rel = safe_rel(&path)?;
     fs::write(version_dir(&root, &id, &version).join(rel), content.as_bytes()).map_err(|e| e.to_string())
+}
+
+
+/// T20 原型：启动恢复全部已安装包（与产品壳 recover_all 同语义），返回摘要。
+pub fn pack_recover_all(root: &str) -> serde_json::Value {
+    let mut results: Vec<serde_json::Value> = vec![];
+    let mut checked = 0usize;
+    let mut safe_mode = false;
+    let packs = std::path::Path::new(root).join("packs");
+    if let Ok(entries) = std::fs::read_dir(&packs) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() || !entry.path().join("state.json").exists() {
+                continue;
+            }
+            checked += 1;
+            let id = entry.file_name().to_string_lossy().to_string();
+            match pack_recover(root.to_string(), id.clone()) {
+                Ok(mut value) => {
+                    if value.get("action").and_then(|v| v.as_str()) == Some("corrupt-no-fallback") {
+                        safe_mode = true;
+                    }
+                    value["id"] = serde_json::json!(id);
+                    results.push(value);
+                }
+                Err(e) => {
+                    safe_mode = true;
+                    results.push(serde_json::json!({"id": id, "error": e}));
+                }
+            }
+        }
+    }
+    serde_json::json!({"checked": checked, "results": results, "safeMode": safe_mode})
 }

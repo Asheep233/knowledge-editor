@@ -32,6 +32,7 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T18-broker-probe-results.json": ("T18", "W", "Windows/WebView2", "python run_broker_probe.py"),
     "T19-package-host-probe-results.json": ("T19", "W", "Windows/WebView2", "python run_t19_probe.py"),
     "T21-pack-install-probe-results.json": ("T21", "W", "Windows（真实文件系统）", "python run_pack_probe.py"),
+    "T20-startup-recover-probe-results.json": ("T20", "W", "Windows（真实文件系统）", "python run_startup_recover_probe.py"),
 }
 
 # 代码回归基线（由工具链产出，人工记录；更新时同步改这里）

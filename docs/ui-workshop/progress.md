@@ -832,3 +832,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 诊断：plain256 首次 60.9s 属点击未命中（测量无效）；formula256 真实打开 10.6s；小文档打开 328ms/
   输入 13ms/guest 57ms 正常 → W09 修正为「正常路径 OK，大公式文档打开超预算」，需优化与严谨复测。
   证据：`evidence/P5-T26-W09-perf-diag.md`。
+
+## P6/T26 进度（W09 复测：大文档打开 FAIL，归因体积，2026-10-19）
+
+- MARKER 判定复测：plain256 12.2s、plain512 46.5s、formula256 11.5s 均打开成功；**瓶颈为文档体积
+  而非公式**；小文档 328ms/输入 13ms/guest 57ms 正常 → W09 大文档打开 FAIL，需优化后复测。
+  证据：`evidence/P5-T26-W09-perf-plain.md`。

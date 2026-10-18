@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-10-19T07:19:57+0800",
+  "scenario": "T26 W09 复测（plain/formula 大文档，MARKER 判定）",
+  "checks": [
+    {
+      "name": "W-T26-W09P plain256 打开（marker 命中）",
+      "pass": true,
+      "detail": {
+        "clicked": true,
+        "ms": 12227,
+        "ok": true
+      }
+    },
+    {
+      "name": "W-T26-W09P plain512 打开（marker 命中）",
+      "pass": true,
+      "detail": {
+        "clicked": true,
+        "ms": 46460,
+        "ok": true
+      }
+    },
+    {
+      "name": "W-T26-W09P formula256 打开（marker 命中）",
+      "pass": true,
+      "detail": {
+        "clicked": true,
+        "ms": 11489,
+        "ok": true
+      }
+    },
+    {
+      "name": "W-T26-W09P-1 纯文本 256KB 打开 < 5s",
+      "pass": false,
+      "detail": {
+        "ms": 12227
+      }
+    },
+    {
+      "name": "W-T26-W09P-2 纯文本 512KB 打开 < 8s",
+      "pass": false,
+      "detail": {
+        "ms": 46460
+      }
+    },
+    {
+      "name": "W-T26-W09P-3 公式密集 256KB 打开 < 8s",
+      "pass": false,
+      "detail": {
+        "ms": 11489
+      }
+    },
+    {
+      "name": "W-T26-W09P-4 公式密集显著慢于纯文本（归因记录）",
+      "pass": false,
+      "detail": {
+        "plainMs": 12227,
+        "formulaMs": 11489
+      }
+    },
+    {
+      "name": "W-T26-W09P-5 主进程存活 / 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 4,
+  "total": 8,
+  "metrics": {
+    "plain256": {
+      "clicked": true,
+      "ms": 12227,
+      "ok": true
+    },
+    "plain512": {
+      "clicked": true,
+      "ms": 46460,
+      "ok": true
+    },
+    "formula256": {
+      "clicked": true,
+      "ms": 11489,
+      "ok": true
+    }
+  }
+}

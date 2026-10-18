@@ -8,6 +8,11 @@
 新增 3 个路径 / 4 个方法端点（`GET /api/trash`、`POST /api/trash/restore`、
 `DELETE /api/trash/{entry_id}`、`DELETE /api/trash`）+ 1 个 schema `RestoreBody`。
 基线由 36 路径 / 47 方法 → **39 路径 / 51 方法**。属**预期变更**，非契约漂移。
+
+**2026-10-19 UI 工坊 T09 纵向切片（显式评审更新）**：
+新增 `/api/context/*` 9 个路径 / 9 个方法端点（上下文/租约/快照/CAS 写入/结果查询）+
+6 个请求 schema。基线由 39 路径 / 51 方法 → **48 路径 / 60 方法**。属工坊增量接口，
+不改既有端点行为；后续 T12 分域迁移时若统一到 Core 会再次显式更新本快照。
 """
 
 from __future__ import annotations
@@ -22,6 +27,15 @@ SNAPSHOT_PATHS = [
     "/api/attachments/list",
     "/api/attachments/orphans",
     "/api/attachments/{rel_path}",
+    "/api/context/close",
+    "/api/context/current",
+    "/api/context/lease",
+    "/api/context/open",
+    "/api/context/release",
+    "/api/context/request/{request_id}",
+    "/api/context/snapshot",
+    "/api/context/switch",
+    "/api/context/write",
     "/api/drafts/recovery",
     "/api/drafts/recovery/restore",
     "/api/drafts/recovery/{doc_path}",
@@ -84,7 +98,7 @@ def test_openapi_method_count(client):
         len([m for m in item if m in {"get", "post", "put", "delete", "patch"}])
         for item in resp.json()["paths"].values()
     )
-    assert methods == 51, f"方法端点数偏离实测基线 51，实际 {methods}"
+    assert methods == 60, f"方法端点数偏离实测基线 60，实际 {methods}"
 
 
 # P3-19：schema 签名快照——字段名/类型/required 的改动也会被冻结契约拦截，
@@ -108,6 +122,20 @@ SNAPSHOT_SCHEMAS = {
     "Body_import_markdown_api_import_markdown_post": ["file:string:req"],
     "Body_import_package_api_import_package_post": ["file:string:req"],
     "Body_upload_attachment_api_attachments_post": ["file:string:req"],
+    # 2026-10-19 UI 工坊 T09 纵向切片新增（/api/context/*）
+    "ContextIdReq": ["id:string:req"],
+    "ContextLeaseReq": ["epoch:integer:req", "id:string:req"],
+    "ContextOpenReq": ["id:string:req", "root:string:req"],
+    "ContextReleaseReq": ["lease_id:string:req"],
+    "ContextSnapshotReq": ["context_id:string:req", "epoch:integer:req", "rel_path:string:req"],
+    "ContextWriteReq": [
+        "content:string:req",
+        "context_id:string:req",
+        "epoch:integer:req",
+        "expected_revision:integer:req",
+        "rel_path:string:req",
+        "request_id:anyOf:null+string:opt",
+    ],
     "DirCreate": ["path:string:req"],
     "DocCreate": ["dir:string:opt", "title:string:req"],
     "ExportPackageReq": ["md:string:req", "refs:array:opt", "title:string:req"],

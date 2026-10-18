@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse
 from . import __version__, config
 from .routers import (
     attachments,
+    context,
     documents,
     drafts,
     fs,
@@ -237,6 +238,7 @@ app.include_router(index.router)
 app.include_router(fs.router)
 app.include_router(tags.router)
 app.include_router(trash.router)
+app.include_router(context.router)
 
 
 if __name__ == "__main__":

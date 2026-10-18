@@ -38,7 +38,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T02–T06 | in_progress | T02: s1_runtime/；T03: s2_editor/；T04: s3_save/；T05: s4_print/ + s1_runtime/print_proto.rs；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、P0-S2-prototype.md（WebView2 换壳 **10/10**）、P0-S4-prototype.md（WebView2 真实 PDF **6/6**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源；T03 未覆盖产品 NodeView/MathLive/真实 IME；T05 未接真实 session revision/隐藏窗口/长文档；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
 | T07 | passed | adr/ADR-001-runtime-route.md、reports/P0-report.md | S1/S1b/S2/S3/S4/S5 原型 + Windows 证据已写入 ADR；P0_READY 里程碑见 P0 报告 | T02–T06 产品化收尾（capability/NodeView/真实后端/打印产品化）在 P1–P3 继续 | 进入 P1（T08→T09→T10） |
 | T08 | passed | core/codec/probe{,2,3}.ts + run_probe*.sh + CANONICAL-RULES.md | probe2（10 类扩展无 DOM 分层，全部可 parse/serialize）；probe3（8 样本保存管线 roundtrip 台账：声明 R1–R6 后 **fixpoint2 8/8 字节稳定**；ke 标记保留、BOM/CRLF 还原）；DOM-free API 边界已明确 | 唯一性细节（如首次空行归并）已按声明规范处理；真实 UI 行为一致性留 T26 复核 | T10 Core 直接引用 ke.ts traits + serializer 边界 |
-| T09 | in_progress | core/workspace_context/app.py + test_context.py | evidence/P1-T09-workspace-context.md（Linux+Windows 各 10/10） | 原型未移植进产品 backend（真实 store/indexer/watcher/附件/导入绑定、HTTP abort 结果查询、API 快照更新） | 移植 backend/app 并补既有测试 |
+| T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -169,3 +169,16 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P1-T09-workspace-context.md`。
 - 下一步：T09 产品化移植（backend/app 的 WorkspaceContext 生命周期/路由屏障/附件导入恢复打印绑定），
   与 T10 Core/SaveCoordinator 合流；补既有后端测试与 API 快照。
+
+## P1 进度（T09 产品纵向切片，2026-10-19）
+
+- 产品后端增量落地：`backend/app/services/context_registry.py` + `backend/app/routers/context.py`
+  新增 `/api/context/*` 9 端点（open/switch/current/close/lease/release/snapshot/write/request），
+  实现 context/epoch、服务端租约排空、快照+revision CAS、磁盘指纹外部冲突、requestId 幂等与结果查询、
+  路径穿越防护；既有端点行为未改。
+- 契约显式更新（只做加法）：OpenAPI 快照 39→48 路径 / 51→60 方法 / +6 schema；
+  trash 契约完整性测试新增 WORKSHOP_CONTEXT_PATHS/SCHEMAS 常量（既有 frozen 断言未弱化）。
+- 测试：新 8 例全过；后端全量 WSL 835 collected exit 0、Windows Py3.10 exit 0。
+  证据：`evidence/P1-T09-product-slice.md`。
+- 下一步：T10 Core/SaveCoordinator（前端侧快照/保存/切库/迟到响应）接入这些端点；
+  T12 把既有业务端点/后台任务逐步绑定 ContextRegistry。

@@ -85,6 +85,36 @@ BASELINE_OPENAPI_PATHS = [
 BASELINE_OPENAPI_METHODS = 47
 CONTRACT_TRASH_PATHS = ["/api/trash", "/api/trash/restore", "/api/trash/{id}"]
 
+# 2026-10-19 UI 工坊 T09 纵向切片（显式评审更新）：新增 /api/context/* 增量接口。
+# 与回收站（2026-09-15）同样是**预期增量**：既有端点未改动，快照只做加法。
+WORKSHOP_CONTEXT_PATHS = [
+    "/api/context/close",
+    "/api/context/current",
+    "/api/context/lease",
+    "/api/context/open",
+    "/api/context/release",
+    "/api/context/request/{request_id}",
+    "/api/context/snapshot",
+    "/api/context/switch",
+    "/api/context/write",
+]
+WORKSHOP_CONTEXT_METHODS = 9
+WORKSHOP_CONTEXT_SCHEMAS = {
+    "ContextIdReq": ["id:string:req"],
+    "ContextLeaseReq": ["epoch:integer:req", "id:string:req"],
+    "ContextOpenReq": ["id:string:req", "root:string:req"],
+    "ContextReleaseReq": ["lease_id:string:req"],
+    "ContextSnapshotReq": ["context_id:string:req", "epoch:integer:req", "rel_path:string:req"],
+    "ContextWriteReq": [
+        "content:string:req",
+        "context_id:string:req",
+        "epoch:integer:req",
+        "expected_revision:integer:req",
+        "rel_path:string:req",
+        "request_id:anyOf:null+string:opt",
+    ],
+}
+
 BASELINE_SCHEMAS: dict[str, list[str]] = {
     "ArticleCreate": ["content:string:opt", "title:string:req"],
     "ArticleMetaUpdate": ["tags:anyOf:array+null:opt", "title:anyOf:null+string:opt"],
@@ -1412,30 +1442,26 @@ class TestOpenAPISnapshotIntegrity:
         assert not missing, f"冻结基线端点被移除/改名（快照被弱化）: {missing}"
 
     def test_openapi_added_paths_are_exactly_the_trash_contract(self, client):
-        """路径**形状**：恰好新增 3 条 /api/trash* 路径，无其它新增。"""
+        """路径**形状**：新增 = 回收站契约（+3）+ UI 工坊 T09 上下文切片（+9），无其它新增。"""
         added = sorted(set(self._paths(client)) - set(BASELINE_OPENAPI_PATHS))
-        assert len(added) == 3, f"新增路径数量偏离契约 §9（+3 路径）: {added}"
-        assert all(p.startswith("/api/trash") for p in added), f"新增了非回收站路径: {added}"
-        norm = sorted(re.sub(r"\{[^}]*\}", "{}", p) for p in added)
-        assert norm == ["/api/trash", "/api/trash/restore", "/api/trash/{}"], (
-            f"回收站路径形状偏离契约 §3: {added}"
-        )
+        expected = sorted(set(CONTRACT_TRASH_PATHS) | set(WORKSHOP_CONTEXT_PATHS))
+        assert added == expected, f"新增路径偏离已声明契约（trash+T09 workshop）: {added}"
+        norm = sorted(re.sub(r"\{[^}]*\}", "{}", p) for p in set(CONTRACT_TRASH_PATHS))
+        assert norm == ["/api/trash", "/api/trash/restore", "/api/trash/{}"], f"回收站路径形状偏离: {norm}"
 
     def test_openapi_path_param_naming_matches_contract(self, client):
-        """契约 §3 逐字段一致：DELETE 模板参数名为 `{id}`（而非 {entry_id} 等）。"""
+        """契约 §3 逐字段一致：DELETE 模板参数名为 `{id}`；T09 上下文切片模板参数同样逐字一致。"""
         added = sorted(set(self._paths(client)) - set(BASELINE_OPENAPI_PATHS))
-        assert added == CONTRACT_TRASH_PATHS, (
-            f"路径模板与契约 §3 字面不一致（URL 功能等价但契约文本为 {CONTRACT_TRASH_PATHS}）: {added}"
-        )
+        expected = sorted(set(CONTRACT_TRASH_PATHS) | set(WORKSHOP_CONTEXT_PATHS))
+        assert added == expected, f"路径模板与已声明契约字面不一致: {added}"
 
     def test_openapi_method_count_delta(self, client):
         methods = sum(
             len([m for m in item if m in {"get", "post", "put", "delete", "patch"}])
             for item in client.get("/openapi.json").json()["paths"].values()
         )
-        assert methods == BASELINE_OPENAPI_METHODS + 4, (
-            f"方法端点数应 {BASELINE_OPENAPI_METHODS}+4={BASELINE_OPENAPI_METHODS + 4}，实际 {methods}"
-        )
+        expected = BASELINE_OPENAPI_METHODS + 4 + WORKSHOP_CONTEXT_METHODS
+        assert methods == expected, f"方法端点数应 {expected}（回收站 +4 + T09 工坊 +9），实际 {methods}"
 
     def test_openapi_baseline_schemas_unchanged(self, client):
         sig = _live_schema_sig(client)
@@ -1451,10 +1477,10 @@ class TestOpenAPISnapshotIntegrity:
     def test_openapi_added_schemas_are_single_restore_body(self, client):
         sig = _live_schema_sig(client)
         added = sorted(set(sig) - set(BASELINE_SCHEMAS))
-        assert len(added) == 1, f"契约 §9：应只 +1 schema，实际新增 {added}"
-        assert sig[added[0]] == ["id:string:req"], (
-            f"新增 schema 应为 restore 请求体 {{id:string:req}}，实际 {added[0]}={sig[added[0]]}"
-        )
+        expected = {"RestoreBody": ["id:string:req"], **WORKSHOP_CONTEXT_SCHEMAS}
+        assert added == sorted(expected), f"新增 schema 偏离已声明契约（restore + T09）：{added}"
+        diffs = {n: {"now": sig[n], "expected": expected[n]} for n in expected if sig[n] != expected[n]}
+        assert not diffs, f"新增 schema 结构偏离: {diffs}"
 
 
 # ===========================================================================

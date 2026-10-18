@@ -15,15 +15,21 @@ $env:CARGO_HOME="F:\Work\Dev\cargo"; $env:RUSTUP_HOME="F:\Work\Dev\rustup"; $env
 Set-Location $DST
 cargo build --release
 
-# 3) 启动冒烟（按 PID 停止，禁止 taskkill /IM knowledgeeditor.exe）
+# 3) sidecar（cargo 裸构建需要手动放置；否则后端不可用）
+Copy-Item 'D:\AstraNota\knowledgeeditor-backend.exe' 'F:\Work\Dev\cargo-target\release\knowledgeeditor-backend-x86_64-pc-windows-msvc.exe' -Force
+
+# 4) 启动冒烟（按 PID 停止，禁止 taskkill /IM knowledgeeditor.exe）
 $env:KE_WS_PRINT_RENDER="1"
 $p = Start-Process -FilePath "F:\Work\Dev\cargo-target\release\knowledgeeditor.exe" -PassThru
 Start-Sleep 14
 # 检查 %APPDATA%\com.astranota.uiws.e2e\workshop-packs\workshop-recover-status.json
-Stop-Process -Id $p.Id -Force
+# 优先优雅关闭；强制结束会遗留 sidecar 孙进程
+if (-not $p.CloseMainWindow()) { } ; Start-Sleep 2
+if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+# 异常清理（路径白名单，禁止按镜像名杀进程）：
+# Get-Process knowledgeeditor-backend | Where-Object { $_.Path -like 'F:\Work\Dev\cargo-target\*' } | Stop-Process -Force
 
-# 4) 注意：cargo 裸构建无 sidecar；后端功能需 tauri build 打包或放置
-#    knowledgeeditor-backend-x86_64-pc-windows-msvc.exe 到 exe 同目录。
+# 5) 注意：强制结束测试实例会跳过 Tauri 退出清理 → sidecar 孙进程遗留；务必按路径白名单清理。
 ```
 
 红线：不推送、不发布；不使用真实笔记库；不杀用户运行中的进程；测试结束清理临时目录/进程。

@@ -632,4 +632,5 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   W **7/7 PASS** —— 主窗口、独立 appData、**产品启动 recover 状态文件真实生成**、隔离单实例、
   用户运行中的 AstraNota（PID 69108）不受影响、进程清理。
   证据：`evidence/P5-T26-isolated-smoke.md` + results JSON；步骤：`tools/t26_isolated_build.md`。
-- 限制：cargo 裸构建无 sidecar；A2/A4–A8 需 `tauri build` 打包 sidecar 后执行。
+- 限制/补充：复制 sidecar 到测试 exe 同目录后**后端可工作**（A2/A4–A8 可执行）；强制结束会遗留 sidecar
+  孙进程，T26 脚本须优雅关闭 + 路径白名单清理（已写入 tools/t26_isolated_build.md）。

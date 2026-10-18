@@ -48,7 +48,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
 | T14 | in_progress | core/session/{productAdapter,coreSaveBridge,coreSaveRuntime,+tests}；EditorArea flag 分支；e2e run_t14_bridge_e2e.sh；adr/ADR-002 | P2-T14-product-adapter.md（6 例）、P2-T14-core-save-bridge.md（单元 8 + 真实后端 e2e 11/11）、**P2-T14-editor-wiring.md（flag 接线 + 全量 126 files/1769 passed）** | 字节一致性验证；flag 开启 UI e2e（保存/切档/外部改盘/恢复点）；Windows 实机保存 W；验收后才谈默认开启 | 字节一致性 + flag-on e2e/Windows W |
 | T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
-| T16 | in_progress | frontend/src/core/print/{printJob,test} | evidence/P2-T16-print-core.md（12 例 U：快照绑定/状态机/串行/取消/超时/路径校验）+ 既有 S4 真实 PDF W 6/6 | 产品隐藏 renderer+Rust PrintToPdf 接线；长文档分页/主题/源码打印；取消清理与 job 对账；打印 UI + W | 隐藏 renderer 接线 + 长文档 → T21/T26 W |
+| T16 | in_progress | core/print/{printJob,tauriPrintTransport,+tests}；产品 print_snapshot.rs/render_window_pdf_to；public/print-render.html | P2-T16-print-core.md（12 例）、S4 W 6/6、**P2-T16-product-print.md（隐藏 renderer+PrintToPdf 管线；cargo 34、前端 130 files/1793 passed）** | Windows 端到端 W（隔离安装）；renderer ready 握手；长文档分页/主题/源码；打印 UI 与取消清理 | 隔离安装 W + 打印 UI → T26 |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
 | T23 | in_progress | components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/{tauriPackAdapter,localTrustStore}；App flag 入口 | P3-T23-workshop-panel.md（7 例）、P3-T23-workshop-integration.md（适配器 6 例+入口 3 例）、**P4-T24-trust-ui.md（信任/签名徽章+授予/撤销；全量 128 files/1783 passed）** | 真实签名数据源；Windows 端到端交互 W；启动 recover 合并；卸载后清理 | Windows E2E W + 签名数据源 → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；safeMode UI；原型 seed/recover 探针 | P3-T20-startup-recover.md（cargo 33/33）、**P3-T20-startup-recover-probe.md（Windows 启动恢复 W 9/9）** | 产品安装目录端到端 W 未做；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载清理 | 产品目录端到端 W + safeMode 阻断策略 → T26 |
@@ -535,3 +535,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P4-T24-keyring.md`。
 - 下一步：真实发布密钥签发/分发 + 打包器签名工具链 + Rust 侧验签；工坊签名数据源接线；
   Windows 信任安全演练；T16 打印产品接线。
+
+## P2 进度（T16 打印产品切片，2026-10-19）
+
+- 产品打印管线：`print.rs` 抽取 `render_window_pdf_to(window_label,…)`；新增 `print_snapshot.rs`
+  （启动时 env 门控隐藏 renderer + `print_snapshot_pdf` 注入快照/校验路径/PrintToPdf）；
+  前端 `TauriPrintTransport`。cargo **34 passed** + release 构建；全量前端
+  **130 files / 1793 passed + 1 skipped**、tsc 0。证据：`evidence/P2-T16-product-print.md`。
+- 下一步：隔离安装 Windows 端到端 W（隐藏 renderer/PDF/取消清理）；renderer ready 握手；
+  长文档分页/主题/源码模式；打印 UI 接线与取消对账。

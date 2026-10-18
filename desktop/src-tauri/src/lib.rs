@@ -4,6 +4,7 @@
 // 窗口关闭/菜单退出均先走 flush 握手（`begin_close_handshake`），前端 flush 后二次 close 才真正清理退出（有界强杀，见 sidecar.rs）。
 
 mod pack_store;
+mod print_snapshot;
 mod print;
 mod menu;
 mod settings;
@@ -140,6 +141,12 @@ pub fn run() {
         .manage(sidecar::SidecarState::default())
         .setup(|app| {
             sidecar::start(app.handle().clone());
+            // T16：env 门控的隐藏打印 renderer（默认不创建，不影响既有行为）
+            if std::env::var("KE_WS_PRINT_RENDER").map(|v| v == "1").unwrap_or(false) {
+                if let Err(e) = print_snapshot::ensure_render_window(app.handle()) {
+                    eprintln!("[ws] {e}");
+                }
+            }
             // UI 工坊 T20：启动时对已安装包执行 recover（清理半成品/损坏回退），
             // 结果写状态文件并广播（失败不阻断启动）。
             if let Ok(root) = pack_store::root_of(app.handle()) {
@@ -182,6 +189,7 @@ pub fn run() {
             pack_store::workshop_pack_recover,
             pack_store::workshop_pack_recover_all,
             pack_store::workshop_pack_uninstall,
+            print_snapshot::print_snapshot_pdf,
             print::export_pdf,
             print::preview_pdf,
             print::discard_preview_pdf,

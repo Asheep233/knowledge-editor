@@ -37,7 +37,7 @@
 | T13 Core 门槛 | 🟡 UI-free 21/21 + 单实例 W 6/6 | `P1-T13-core-gate.md`、`P1-T13-instance-probe.md` |
 | T14 EditorSession/官方 shell | 🟡 适配层+Core 桥（真实后端 e2e 11/11）+EditorArea flag 接线（默认关闭）；字节一致性/flag-on UI e2e/Windows W 未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
 | T15 IME/焦点/缩放 | 🟡 CDP W 8/8；OS IME/多 DPI 未测 | `P2-T15-ime-zoom-probe.md` |
-| T16 打印产品化 | 🟡 Job Core 12 例；产品接线未做 | `P2-T16-print-core.md`、`P0-S4-prototype.md` |
+| T16 打印产品化 | 🟡 Job Core 12 例 + 产品隐藏 renderer/PrintToPdf 管线（env 门控）；Windows E2E W 未做 | `P2-T16-print-core.md`、`P2-T16-product-print.md`、`P0-S4-prototype.md` |
 | T17 包加载器 | 🟡 Core 14 例 + 产品 Rust 存储 | `P3-T17-pack-loader.md`、`P3-T21-product-pack-store.md` |
 | T18 broker/能力隔离 | 🟡 Core 37 例 + W 恶意 guest 12/12 | `P3-T18-broker.md`、`P3-T18-broker-probe.md` |
 | T19 包隔离宿主 | 🟡 Core 7 例 + **W 探针 8/8**；真实入口资源/真实 WebView 崩溃信号未接 | `P3-T19-package-host.md`、`P3-T19-package-host-probe.md` |
@@ -100,7 +100,7 @@
 ```bash
 git checkout feat/ui-workshop   # 本地分支；HEAD 见 git log
 # 1) 基线回归
-cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 128 files / 1783 passed +1 skipped
+cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 130 files / 1793 passed +1 skipped
 cd ../backend && python3 -m pytest backend/tests -q                  # 846 collected
 # 2) 产品 Tauri
 cd desktop/src-tauri && cargo test --release                          # 34 passed

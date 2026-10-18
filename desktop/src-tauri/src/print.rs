@@ -82,9 +82,19 @@ async fn render_pdf_to(
     target: PathBuf,
     content_width: Option<f64>,
 ) -> Result<String, String> {
+    render_window_pdf_to(app, "main".to_string(), target, content_width).await
+}
+
+/// 把**指定窗口**打印到 `target`（T16 独立打印 renderer 复用；成功返回路径）。
+pub async fn render_window_pdf_to(
+    app: AppHandle,
+    window_label: String,
+    target: PathBuf,
+    content_width: Option<f64>,
+) -> Result<String, String> {
     let window = app
-        .get_webview_window("main")
-        .ok_or_else(|| "找不到主窗口，无法导出 PDF".to_string())?;
+        .get_webview_window(&window_label)
+        .ok_or_else(|| format!("找不到窗口 {window_label}，无法导出 PDF"))?;
 
     // with_webview 的闭包必须返回 ()（错误经这个槽带回）
     let err_slot: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));

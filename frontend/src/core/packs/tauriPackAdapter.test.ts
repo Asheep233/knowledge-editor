@@ -68,6 +68,15 @@ describe('T21/T23 TauriPackAdapter', () => {
     await expect(adapter().recover('com.demo.b')).resolves.toEqual({ recovered: true, action: 'rollback-corrupt-active' })
   })
 
+  it('信任等级：tierOf/grantTrust/revokeTrust 使用 TrustStore（默认 community）', async () => {
+    const a = adapter()
+    expect(await a.tierOf!('com.demo.a')).toBe('community')
+    await a.grantTrust!('com.demo.a', 'trusted')
+    expect(await a.tierOf!('com.demo.a')).toBe('trusted')
+    await a.revokeTrust!('com.demo.a')
+    expect(await a.tierOf!('com.demo.a')).toBe('community')
+  })
+
   it('uninstall 调用 workshop_pack_uninstall', async () => {
     mockedInvoke.mockResolvedValueOnce({ uninstalled: 'com.demo.a' })
     await adapter().uninstall!('com.demo.a')

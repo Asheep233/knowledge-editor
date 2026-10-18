@@ -7,6 +7,8 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 
+import type { TrustTier } from '../../core/packs/trustPolicy'
+
 export interface InstalledPackView {
   id: string
   name: string
@@ -14,6 +16,10 @@ export interface InstalledPackView {
   active: boolean
   previous?: string | null
   capabilities: string[]
+  /** 信任等级（来自 TrustStore 持久化；缺省 community） */
+  tier?: TrustTier
+  /** 签名状态（产品验证后填入；缺省 unknown） */
+  signature?: 'valid' | 'missing' | 'invalid'
 }
 
 export interface CapabilityView {
@@ -59,6 +65,10 @@ export interface WorkshopAdapter {
   recoverAll?(): Promise<RecoverAllView>
   /** 卸载包（可选能力） */
   uninstall?(packId: string): Promise<void>
+  /** 信任等级读取/授予/撤销（可选能力；产品=T24 TrustStore） */
+  tierOf?(packId: string): Promise<TrustTier>
+  grantTrust?(packId: string, tier: TrustTier): Promise<void>
+  revokeTrust?(packId: string): Promise<void>
 }
 
 export interface WorkshopPanelProps {
@@ -84,7 +94,19 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
 
   const refresh = useCallback(async () => {
     try {
-      setPacks(await adapter.listInstalled())
+      const list = await adapter.listInstalled()
+      if (adapter.tierOf) {
+        await Promise.all(
+          list.map(async (pack) => {
+            try {
+              pack.tier = await adapter.tierOf!(pack.id)
+            } catch {
+              pack.tier = 'community'
+            }
+          }),
+        )
+      }
+      setPacks(list)
       setError(null)
     } catch (e) {
       setError(`加载已安装包失败：${String((e as Error)?.message ?? e)}`)
@@ -153,6 +175,22 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
       setConfirmUninstall(null)
       await adapter.uninstall(packId)
       setMessage(`已卸载 ${packId}`)
+      await refresh()
+    })
+
+  const onGrantTrust = (packId: string, tier: TrustTier) =>
+    run(async () => {
+      if (!adapter.grantTrust) return
+      await adapter.grantTrust(packId, tier)
+      setMessage(`已将 ${packId} 设为 ${tier}`)
+      await refresh()
+    })
+
+  const onRevokeTrust = (packId: string) =>
+    run(async () => {
+      if (!adapter.revokeTrust) return
+      await adapter.revokeTrust(packId)
+      setMessage(`已撤销 ${packId} 的信任（community）`)
       await refresh()
     })
 
@@ -280,6 +318,16 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
                       版本 {pack.version}
                       {pack.previous ? `（可回滚到 ${pack.previous}）` : ''} · {pack.active ? '已激活' : '未激活'}
                     </div>
+                    <div className="mt-1 flex items-center gap-2 text-xs">
+                      <span role="status" className="rounded bg-slate-100 px-1.5 py-0.5">
+                        信任：{pack.tier ?? 'community'}
+                      </span>
+                      {pack.signature && (
+                        <span className={`rounded px-1.5 py-0.5 ${pack.signature === 'valid' ? 'bg-emerald-100 text-emerald-800' : pack.signature === 'invalid' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
+                          签名：{pack.signature}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -298,6 +346,26 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
                     >
                       修复/恢复
                     </button>
+                    {adapter.grantTrust && (
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-xs disabled:opacity-40"
+                        disabled={busy || pack.tier === 'trusted' || pack.tier === 'builtin'}
+                        onClick={() => void onGrantTrust(pack.id, 'trusted')}
+                      >
+                        授予信任
+                      </button>
+                    )}
+                    {adapter.revokeTrust && (
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-xs disabled:opacity-40"
+                        disabled={busy || (pack.tier ?? 'community') === 'community'}
+                        onClick={() => void onRevokeTrust(pack.id)}
+                      >
+                        撤销信任
+                      </button>
+                    )}
                     {adapter.uninstall && (
                       <button
                         type="button"

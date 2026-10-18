@@ -10,9 +10,15 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
 import type { InstalledPackView, InstallPreviewView, RecoverAllView, RecoverResultView, WorkshopAdapter } from '../../components/workshop/WorkshopPanel'
 import { capabilityRisk } from './installPolicy'
+import { LocalTrustStore, defaultTrustStorage } from './localTrustStore'
+import type { KeyValueStorage } from './localTrustStore'
+import type { TrustStore, TrustTier } from './trustPolicy'
 
 export interface TauriPackAdapterOptions {
   invokeImpl?: typeof invoke
+  /** 信任等级持久化（默认 localStorage；测试可注入内存） */
+  trustStore?: TrustStore
+  trustStorage?: KeyValueStorage
   /** 选择本地包目录（默认使用 Tauri dialog 插件选择目录；测试可注入替身） */
   chooseSourceDir?: () => Promise<string | null>
 }
@@ -52,6 +58,7 @@ export async function choosePackDirectory(): Promise<string | null> {
 export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): WorkshopAdapter {
   const call = options.invokeImpl ?? invoke
   const chooseSourceDir = options.chooseSourceDir ?? choosePackDirectory
+  const trustStore: TrustStore = options.trustStore ?? new LocalTrustStore(options.trustStorage ?? defaultTrustStorage())
   return {
     async listInstalled(): Promise<InstalledPackView[]> {
       try {
@@ -110,6 +117,15 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
       } catch (e) {
         throw err(e)
       }
+    },
+    async tierOf(packId: string): Promise<TrustTier> {
+      return await trustStore.tierOf(packId)
+    },
+    async grantTrust(packId: string, tier: TrustTier): Promise<void> {
+      await trustStore.grant(packId, tier)
+    },
+    async revokeTrust(packId: string): Promise<void> {
+      await trustStore.revoke(packId)
     },
     async uninstall(packId: string): Promise<void> {
       try {

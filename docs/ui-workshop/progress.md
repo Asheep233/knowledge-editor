@@ -50,10 +50,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
 | T16 | in_progress | frontend/src/core/print/{printJob,test} | evidence/P2-T16-print-core.md（12 例 U：快照绑定/状态机/串行/取消/超时/路径校验）+ 既有 S4 真实 PDF W 6/6 | 产品隐藏 renderer+Rust PrintToPdf 接线；长文档分页/主题/源码打印；取消清理与 job 对账；打印 UI + W | 隐藏 renderer 接线 + 长文档 → T21/T26 W |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
-| T23 | in_progress | frontend/src/components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/tauriPackAdapter；App flag 入口 | evidence/P3-T23-workshop-panel.md（7 例）、**P3-T23-workshop-integration.md（适配器 6 例 + 入口 3 例 + 全量 122 files/1733 passed）** | 真实包目录选择（dialog/zip）；Windows 端到端交互 W；签名/来源信任/卸载；启动 recover 合并 | Tauri dialog + Windows E2E W → T21/T26 |
+| T23 | in_progress | components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/{tauriPackAdapter,localTrustStore}；App flag 入口 | P3-T23-workshop-panel.md（7 例）、P3-T23-workshop-integration.md（适配器 6 例+入口 3 例）、**P4-T24-trust-ui.md（信任/签名徽章+授予/撤销；全量 128 files/1783 passed）** | 真实签名数据源；Windows 端到端交互 W；启动 recover 合并；卸载后清理 | Windows E2E W + 签名数据源 → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；safeMode UI；原型 seed/recover 探针 | P3-T20-startup-recover.md（cargo 33/33）、**P3-T20-startup-recover-probe.md（Windows 启动恢复 W 9/9）** | 产品安装目录端到端 W 未做；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载清理 | 产品目录端到端 W + safeMode 阻断策略 → T26 |
 | T19 | in_progress | core/packs/{packageHost,+test}；probe/{t19_guest,t19_host,build} + s1 原型 t19 场景 | evidence/P3-T19-package-host.md（7 例 U）、**P3-T19-package-host-probe.md（Windows/WebView2 **8/8**）** | 包入口资源真实加载（T17 产品化）；真实 WebView 崩溃信号；停用/恢复状态持久化与 T20 联动；Windows 端到端交互 W | 真实入口加载 + 崩溃信号 → T21/T26 W |
-| T24 | in_progress | core/packs/{trustPolicy,signature,+tests}；packageHost 能力上限 | P4-T24-trust-policy.md（10 例）、**P4-T24-pack-signature.md（Ed25519 8 例：规范化载荷/三态/不抛异常）** | 密钥信任根/轮换/撤销；签名工具链与 Rust 验签；来源信任 UI；T20/T21 端到端合并 + Windows W | 信任根 + 工具链/Rust 验签 → T21/T26 |
+| T24 | in_progress | core/packs/{trustPolicy,signature,localTrustStore,+tests}；工坊信任 UI；packageHost 能力上限 | P4-T24-trust-policy.md（10）、P4-T24-pack-signature.md（8）、**P4-T24-trust-ui.md（UI 贯通 + 过渡持久化）** | 密钥信任根/轮换/撤销；签名工具链与 Rust 验签；TrustStore 产品化（Rust）；Windows E2E 安全演练 | 信任根 + Rust TrustStore/验签 → T21/T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
@@ -517,3 +517,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   自动回退/`corrupt-no-fallback` → safeMode 状态文件与事件 → 应用仍正常启动。
   证据：`evidence/P3-T20-startup-recover-probe.md` + results JSON；矩阵新增 T20 W 行（20 行，门禁 PASS）。
 - 下一步：产品安装目录端到端 W（隔离数据目录）；safeMode 阻断危险操作策略；与单实例状态合并。
+
+## P4 进度（T24 信任 UI 贯通，2026-10-19）
+
+- 信任授权 UI：工坊已安装包行显示信任等级 + 签名状态徽章；授予 trusted / 撤销信任按钮；
+  LocalTrustStore 过渡持久化（localStorage，可平滑替换 Rust）；tauriAdapter 接通 TrustStore。
+- 测试：localTrustStore 3 例 + WorkshopPanel 2 例 + adapter 1 例；工坊+packs 77 例全过、tsc 0；
+  **全量前端 128 files / 1783 passed + 1 skipped（exit 0）**。证据：`evidence/P4-T24-trust-ui.md`。
+- 下一步：签名状态接入真实验签与公钥信任根；TrustStore 产品化（Rust）；Windows 信任安全演练；
+  T16 打印产品接线。

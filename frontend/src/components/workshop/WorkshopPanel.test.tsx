@@ -36,6 +36,9 @@ function makeAdapter(overrides: Partial<WorkshopAdapter> = {}): WorkshopAdapter 
     recover: vi.fn(async () => ({ recovered: true, action: 'rollback-corrupt-active' })),
     recoverAll: vi.fn(async () => ({ checked: 2, safeMode: false, results: [] })),
     uninstall: vi.fn(async () => undefined),
+    tierOf: vi.fn(async () => 'community' as const),
+    grantTrust: vi.fn(async () => undefined),
+    revokeTrust: vi.fn(async () => undefined),
     ...overrides,
   }
 }
@@ -176,6 +179,35 @@ describe('T23 创意工坊控制面 UI', () => {
     await click(buttonByText('取消'))
     expect(adapter.uninstall).not.toHaveBeenCalled()
     expect(container.querySelector('[role="alertdialog"]')).toBeNull()
+  })
+
+  it('信任等级展示 + 授予/撤销信任调用 adapter 并刷新', async () => {
+    let tier: 'community' | 'trusted' = 'community'
+    const adapter = makeAdapter({
+      tierOf: vi.fn(async () => tier),
+      grantTrust: vi.fn(async () => {
+        tier = 'trusted'
+      }),
+      revokeTrust: vi.fn(async () => {
+        tier = 'community'
+      }),
+    })
+    await mount(adapter)
+    expect(text()).toContain('信任：community')
+    await click(buttonByText('授予信任'))
+    expect(adapter.grantTrust).toHaveBeenCalledWith('com.demo.hello', 'trusted')
+    expect(text()).toContain('已将 com.demo.hello 设为 trusted')
+    await click(buttonByText('撤销信任'))
+    expect(adapter.revokeTrust).toHaveBeenCalledWith('com.demo.hello')
+    expect(text()).toContain('已撤销 com.demo.hello 的信任')
+  })
+
+  it('签名状态展示（valid/invalid/missing 徽章）', async () => {
+    const adapter = makeAdapter({
+      listInstalled: vi.fn(async () => [{ ...PACKS[0], signature: 'invalid' as const }]),
+    })
+    await mount(adapter)
+    expect(text()).toContain('签名：invalid')
   })
 
   it('adapter 报错时展示可读错误', async () => {

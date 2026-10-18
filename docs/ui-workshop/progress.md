@@ -39,6 +39,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T07 | passed | adr/ADR-001-runtime-route.md、reports/P0-report.md | S1/S1b/S2/S3/S4/S5 原型 + Windows 证据已写入 ADR；P0_READY 里程碑见 P0 报告 | T02–T06 产品化收尾（capability/NodeView/真实后端/打印产品化）在 P1–P3 继续 | 进入 P1（T08→T09→T10） |
 | T08 | passed | core/codec/probe{,2,3}.ts + run_probe*.sh + CANONICAL-RULES.md | probe2（10 类扩展无 DOM 分层，全部可 parse/serialize）；probe3（8 样本保存管线 roundtrip 台账：声明 R1–R6 后 **fixpoint2 8/8 字节稳定**；ke 标记保留、BOM/CRLF 还原）；DOM-free API 边界已明确 | 唯一性细节（如首次空行归并）已按声明规范处理；真实 UI 行为一致性留 T26 复核 | T10 Core 直接引用 ke.ts traits + serializer 边界 |
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
+| T10 | in_progress | frontend/src/core/session/{types,saveCoordinator,memoryTransport,test} | evidence/P1-T10-core-savecoordinator.md（9 例 U + tsc 0 + 无 DOM/React 守卫） | 真实 HTTP transport/恢复日志持久化/与真实加载切换接线、索引 history 绑定未完成（T14/T15/T12） | HTTP transport 联调 T09 + 恢复点接线 → T11 协议 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -182,3 +183,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P1-T09-product-slice.md`。
 - 下一步：T10 Core/SaveCoordinator（前端侧快照/保存/切库/迟到响应）接入这些端点；
   T12 把既有业务端点/后台任务逐步绑定 ContextRegistry。
+
+## P1 进度（T10 起步，2026-10-19）
+
+- 新增产品 Core 会话层 `frontend/src/core/session/`（无 React/DOM）：
+  - `SaveCoordinator`：可信快照 (context/epoch/relPath/revision/diskHash) 绑定、O(1) 标脏、
+    save 结果三阶段（accepted/recovery_durable/file_durable，仅 file_durable 才 saved）、
+    abort/超时后 `reconcile` 查真实结果、切库后旧 epoch 迟到响应丢弃、revision/外部冲突状态；
+  - `types.ts` 类型化边界 + `memoryTransport.ts` 故障注入替身 + 9 例 vitest；tsc 0；源码守卫证明无 DOM/React。
+  证据：`evidence/P1-T10-core-savecoordinator.md`。
+- 下一步：真实 HTTP Transport 对接 T09 `/api/context/*` 联调；恢复点/日志持久化与 recovery_durable 真实判定；
+  再进入 T11 类型化协议契约。

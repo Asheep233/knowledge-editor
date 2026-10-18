@@ -9,11 +9,11 @@
 | 套件 | 结果 |
 | --- | --- |
 | frontend `tsc -b --noEmit` | 0 错 |
-| frontend `vitest --maxWorkers=2` | **130 files / 1795 passed + 1 skipped（exit 0）** |
-| backend `pytest backend/tests` | **exit 0**（846 用例，WSL；Windows 平台此前同套件绿） |
+| frontend `vitest --maxWorkers=2` | **130 files / 1796 passed + 1 skipped（exit 0）** |
+| backend `pytest backend/tests` | **847 collected / exit 0**（WSL；新增 frontmatter merge 测试） |
 | 产品 `cargo test --release` | **39 passed**（+ release 构建成功） |
 | 原型 W 探针一键门禁（13 探针） | **13/13 PASS**（`run_all_w_probes.py --check`） |
-| 验证矩阵 | **34 行**（W/A/U/B 分层），`--check` PASS |
+| 验证矩阵 | **35 行**（W/A/U/B 分层），`--check` PASS |
 
 ## 本轮修掉的探针稳定性缺陷
 
@@ -27,3 +27,9 @@
 - 前端/后端/产品 Rust/原型 W 门禁全部绿；无已知回归；
 - 真实产品壳 T26 A1–A6 证据仍有效（本轮未改动相关实现，除既有修复）；A7/A8/IME/多 DPI/
   安装包升级仍未完成，T26 未最终认证。
+
+## 追加回归（A8 修复后，2026-10-19）
+
+- A8 排查修复（coreSaveRuntime base URL、context write frontmatter merge、sidecar 版本问题）后复跑：
+  frontend 130 files / **1796 passed** +1 skipped、tsc 0；backend **847 collected / exit 0**；
+  产品 cargo **39 passed**；矩阵 **35 行** --check PASS。无回归。

@@ -24,10 +24,10 @@
 | --- | --- |
 | frontend `tsc -b --noEmit` | 0 错 |
 | frontend `vitest --maxWorkers=2` | **130 files / 1793 passed + 1 skipped** |
-| backend `pytest` | **846 collected**（WSL 3.14 + Windows 3.10 全绿） |
+| backend `pytest` | **847 collected**（WSL 3.14 + Windows 3.10 全绿） |
 | 产品 `cargo test --release` | **34 passed**（+ release 构建成功） |
 | W 探针一键门禁 | **13/13 PASS**（`run_all_w_probes.py --check`，含 T20 判读竞态修复） |
-| 验证矩阵 | **34 行**，`--check` PASS |
+| 验证矩阵 | **35 行**，`--check` PASS |
 | 真实产品壳 W（T26） | A1 7/7、A2 9/9、A3 9/9、A4+A6 16/16（隔离构建） |
 
 ## 3. 任务状态（摘要）

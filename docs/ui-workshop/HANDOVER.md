@@ -46,7 +46,8 @@
 | T22 首次安装确认 | 🟡 Core 9 例；签名验证/来源信任未做 | `P3-T22-install-confirmation.md` |
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
 | T24 可信包限定 | 🟡 Core 10 例（信任等级/签名策略/能力上限/授权持久化）；真实 PKI/UI 未做 | `P4-T24-trust-policy.md` |
-| T25–T29 | ⬜ 未开始 | 依赖 P4/P5（平台矩阵、Windows 认证、发布候选、最终交接） |
+| T25 平台验证矩阵 | 🟡 自动生成矩阵 18 行（9 W/2 A/2 A/U/3 回归/1 构建） | `P4-T25-validation-matrix.md`、`validation-matrix.csv` |
+| T26–T29 | ⬜ 未开始 | Windows 认证、发布候选、最终交接（需主理人授权） |
 
 ## 3. 代码交付索引
 
@@ -73,7 +74,7 @@
 - `p0/s1_runtime/`：迷你 Tauri app（S1/S1b/S2/S4/T11/T18/T21/T13 探针宿主）
 - `p0/s2_editor/`、`s3_save/`、`s4_print/`、`s5_txn/`；探针运行器 `run_*.py`（Windows Python）
 
-## 4. Windows/WebView2 W 证据索引
+## 4. Windows/WebView2 W 证据索引（自动矩阵见 `validation-matrix.csv`）
 
 | 探针 | 结果 | 命令 |
 | --- | --- | --- |

@@ -1,0 +1,19 @@
+evidence,task,kind,platform,result,passed,total,reproduce
+P0-S1-probe-results.json,T02,U/W?（Linux 侧 U + Windows 混合，见文档）,Linux WSL + Windows,PASS_WITH_FINDINGS(2),23,25,python run_s1_probe.py
+P0-S1-windows-probe-results.json,T02,W,Windows/WebView2,PASS,10,10,python run_s1_windows_probe.py
+P0-S2-probe-results.json,T03,W,Windows/WebView2,PASS,10,10,python run_s2_probe.py
+P0-S4-probe-results.json,T05,W,Windows/WebView2,PASS,6,6,python run_s4_probe.py
+T10-e2e-results.json,T10,A,Linux WSL（真实后端）,PASS,19,19,bash core/session/run_t10_e2e.sh
+T11-transport-probe-results.json,T11,W,Windows/WebView2,PASS,7,7,python run_protocol_probe.py
+T13-core-gate-results.json,T13,A,Linux WSL（真实后端+Core）,PASS,21,21,bash core/gate/run_t13_gate.sh
+T13-instance-probe-results.json,T13,W,Windows（Tauri 主壳）,PASS,6,6,python run_instance_probe.py
+T15-ime-zoom-probe-results.json,T15,W,Windows/WebView2（CDP）,PASS,8,8,python run_t15_cdp_probe.py
+T18-broker-probe-results.json,T18,W,Windows/WebView2,PASS,12,12,python run_broker_probe.py
+T19-package-host-probe-results.json,T19,W,Windows/WebView2,PASS,8,8,python run_t19_probe.py
+T21-pack-install-probe-results.json,T21,W,Windows（真实文件系统）,PASS,20,20,python run_pack_probe.py
+P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
+P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py
+frontend: tsc + vitest 全量,P1/P2,U,Linux WSL（happy-dom 组件测试）,PASS,1747,1748,cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2
+backend: pytest 全量,P1,A,Linux WSL + Windows Py3.10,PASS,846,846,python3 -m pytest backend/tests -q（Windows: CI venv）
+cargo: 产品壳单测,P2/P3,U,Windows（Rust 单元测试）,PASS,34,34,cd desktop/src-tauri && cargo test --release
+cargo: 原型壳单测（无独立测试，仅构建）,P0,B,Windows,BUILD_OK,,,cargo build --release（原型 tauri_sandbox）

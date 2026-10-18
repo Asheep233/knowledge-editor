@@ -162,6 +162,12 @@
             await finish(results);
             return;
           }
+          if (boot.scenario === 'instance') {
+            results.phase = 'instance-host-idle';
+            document.getElementById('status').textContent = 'T13 instance probe running…';
+            await new Promise(function (r) { setTimeout(r, 120000); });
+            return;
+          }
           if (boot.scenario === 'pack') {
             results.phase = 'pack-host-idle';
             document.getElementById('status').textContent = 'T21 pack probe running in separate window…';

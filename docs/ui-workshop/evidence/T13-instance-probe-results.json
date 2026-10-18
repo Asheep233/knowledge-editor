@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-10-19T02:35:17+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T13I-1 实例 1 启动并完成 boot",
+      "pass": true,
+      "detail": {
+        "exit": null,
+        "events": [
+          "startup-clean",
+          "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t13-instance\\\\probe-instance\",\"safe_mode\":false,\"scena"
+        ]
+      }
+    },
+    {
+      "name": "W-T13I-2 第二实例立即退出（单实例生效）",
+      "pass": true,
+      "detail": {
+        "exit": 0
+      }
+    },
+    {
+      "name": "W-T13I-3 实例 1 收到 second-instance 事件",
+      "pass": true,
+      "detail": [
+        "second-instance-detected"
+      ]
+    },
+    {
+      "name": "W-T13I-4 实例 1 仍在运行",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T13I-5 WM_CLOSE 后进程退出",
+      "pass": true,
+      "detail": {
+        "exit": 0
+      }
+    },
+    {
+      "name": "W-T13I-6 退出协调标记落盘（ExitRequested/Exit）",
+      "pass": true,
+      "detail": {
+        "exit_requested": true,
+        "exit": true
+      }
+    }
+  ],
+  "pass_count": 6,
+  "total": 6,
+  "events": [
+    "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t13-instance\\\\probe-instance\",\"safe_mode\":false,\"scena",
+    "second-instance-detected",
+    "exit-requested"
+  ]
+}

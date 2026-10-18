@@ -14,7 +14,7 @@ use std::path::PathBuf;
 mod pack_store_proto;
 mod print_proto;
 
-use tauri::State;
+use tauri::{Manager, State};
 
 #[derive(Clone)]
 struct ProbeState {
@@ -196,6 +196,14 @@ fn main() {
         bad_start: env::var("S1_BAD_START").map(|v| v == "1").unwrap_or(false),
     };
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            let dir = probe_dir();
+            let _ = fs::create_dir_all(&dir);
+            append_event(&dir, "second-instance-detected");
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_focus();
+            }
+        }))
         .manage(state)
         .setup(|app| {
             if env::var("S1_OPEN_GUESTS").map(|v| v == "1").unwrap_or(false) {
@@ -321,6 +329,20 @@ fn main() {
             pack_store_proto::pack_corrupt,
             exit_probe
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running uiws s1 probe");
+        .build(tauri::generate_context!())
+        .expect("error while building uiws s1 probe")
+        .run(|_app, event| match event {
+            tauri::RunEvent::ExitRequested { .. } => {
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                append_event(&dir, "exit-requested");
+                let _ = fs::write(dir.join("exit-requested.json"), "{\"ok\":true}");
+            }
+            tauri::RunEvent::Exit => {
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                let _ = fs::write(dir.join("exit.json"), "{\"ok\":true}");
+            }
+            _ => {}
+        });
 }

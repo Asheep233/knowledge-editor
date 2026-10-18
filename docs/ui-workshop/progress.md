@@ -48,6 +48,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
 | T14 | in_progress | frontend/src/core/session/productAdapter.ts + test；SaveCoordinator.subscribe | evidence/P2-T14-product-adapter.md（适配层 6 例 + session 29 例 + tsc 0） | 未接真实 EditorArea/SaveQueue（双写开关/恢复点/源码直存兼容）；无 W 证据 | 接线真实 EditorArea + 后端上下文端点 → T15 IME/DPI W |
 | T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
+| T16 | in_progress | frontend/src/core/print/{printJob,test} | evidence/P2-T16-print-core.md（12 例 U：快照绑定/状态机/串行/取消/超时/路径校验）+ 既有 S4 真实 PDF W 6/6 | 产品隐藏 renderer+Rust PrintToPdf 接线；长文档分页/主题/源码打印；取消清理与 job 对账；打印 UI + W | 隐藏 renderer 接线 + 长文档 → T21/T26 W |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -359,3 +360,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P2-T15-ime-zoom-probe.md` + `T15-ime-zoom-probe-results.json`。
 - 限制：IME 为 CDP 浏览器级模拟（非物理键盘+OS IME）；多 DPI 拖拽/失焦遮挡未测；探针钩子仅原型。
 - 下一步：T14 真实 EditorArea 接线后回归 T15；T16 打印产品化；T12 剩余写域。
+
+## P2 进度（T16 打印 Core，2026-10-19）
+
+- Core 打印层 `frontend/src/core/print/printJob.ts`：仅消费指定 revision 可信快照；Job 状态机
+  （queued→rendering→printing→done/failed/canceled）、串行打印、取消（任意阶段）、超时 abort、
+  输出路径校验；12 例全过、tsc 0；与 S4 真实 PDF W 证据互补。
+  证据：`evidence/P2-T16-print-core.md`。
+- 下一步：隐藏 renderer + Rust PrintToPdf 产品接线、长文档分页/主题/源码打印、取消清理与 job 对账、
+  打印 UI 与 Windows W 验收；T14 真实 EditorArea 接线回归。

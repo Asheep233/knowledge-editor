@@ -26,7 +26,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 已知失败归属：无新增；历史 v1.2.16 报告中「3 个 Linux 超长文件名失败」在当前基线未复现
   （参见 CHANGELOG_DEV v1.2.17：已随 CI 可移植性修复收敛）。
 测试数据目录：临时目录/沙箱（C:\ke-tmp\ke-sandbox 等）；禁止真实笔记。
-当前里程碑状态：P0 进行中（T00 in_progress）
+当前里程碑状态：**P0_READY**（T00/T01/T07 完成；S1–S5 原型与路由 ADR 已交付；T02–T06 产品化在 P1–P3 收尾）
 ```
 
 ## 任务进度
@@ -34,9 +34,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | Task ID | 状态 | 实现提交/文件 | 验收 ID 与证据 | 剩余问题 | 下一步 |
 | --- | --- | --- | --- | --- | --- |
 | T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
-| T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
-| T02–T06 | todo | T02: s1_runtime/；T03: s2_editor/；T04: s3_save/；T05: s4_print/ + s1_runtime/print_proto.rs；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、P0-S2-prototype.md（WebView2 换壳 **10/10**）、P0-S4-prototype.md（WebView2 真实 PDF **6/6**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源；T03 未覆盖产品 NodeView/MathLive/真实 IME；T05 未接真实 session revision/隐藏窗口/长文档；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
-| T07 | todo | | | | 路线 ADR |
+| T01 | passed | tools/build_feature_baseline.py、feature-baseline.csv（130 行，含 hostService/hostCommand/officialPanel/workshopTaskId 映射）、fixtures/、known-failures.md | 源码自动生成 + F01–F16/W 全覆盖映射；fixtures（basic/256KB/512KB/附件）已就绪 | 逐项「真实入口核对」结果列留 T12/T26 验收轮填写（不属于 T01 交付定义） | — |
+| T02–T06 | in_progress | T02: s1_runtime/；T03: s2_editor/；T04: s3_save/；T05: s4_print/ + s1_runtime/print_proto.rs；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、P0-S2-prototype.md（WebView2 换壳 **10/10**）、P0-S4-prototype.md（WebView2 真实 PDF **6/6**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源；T03 未覆盖产品 NodeView/MathLive/真实 IME；T05 未接真实 session revision/隐藏窗口/长文档；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
+| T07 | passed | adr/ADR-001-runtime-route.md、reports/P0-report.md | S1/S1b/S2/S3/S4/S5 原型 + Windows 证据已写入 ADR；P0_READY 里程碑见 P0 报告 | T02–T06 产品化收尾（capability/NodeView/真实后端/打印产品化）在 P1–P3 继续 | 进入 P1（T08→T09→T10） |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -118,3 +118,13 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   限制：快照未接真实 EditorSession revision、单页、未测隐藏窗口/长文档/图片附件/主题，留 T16。
 - **P0 五原型全部完成**（S1/S1b 运行域+恢复、S2 持续编辑面、S3 保存垂直切片、S4 独立打印、S5 事务）。
   下一步：**T07 路线 ADR + P0 阶段报告**，然后进入 P1（T08 codec → T09 WorkspaceContext → T10 Core）。
+
+## P0 收口（2026-10-19）
+
+- **T07 通过**：`adr/ADR-001-runtime-route.md` 基于 3 组 Windows/WebView2 实机原型给出路线：
+  首发 **iframe+MessagePort（强制 opaque origin）** 作为 shell 渲染域 + 独立来源 WebviewWindow 后备；
+  编辑面常驻主 webview（只移动 DOM）；打印面独立 renderer + Rust PrintToPdf；Rust 原生恢复；S5 单提交点事务。
+- **T01 通过**：feature-baseline.csv 130 行，F01–F16 + W 验收域全覆盖，并补齐 hostService/hostCommand/
+  officialPanel/workshopTaskId 映射与 fixtures/失败台账（逐项结果列留 T12/T26 验收轮）。
+- **P0 阶段报告**：`reports/P0-report.md`（状态 **P0_READY**；交付清单、Windows 证据、限制与下一阶段任务）。
+- 下一阶段：P1（T08 文档 codec → T09 WorkspaceContext/CAS → T10 Core/SaveCoordinator → T11 协议 → T12 分域迁移 → T13 Core 门槛）。

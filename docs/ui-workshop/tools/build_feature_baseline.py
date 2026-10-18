@@ -35,8 +35,42 @@ COLUMNS = [
     "packAEntry",
     "packBEntry",
     "requiredPlatforms",
+    "hostService",
+    "hostCommand",
+    "officialPanel",
+    "workshopTaskId",
     "notes",
 ]
+
+# 领域 → 宿主服务/命令/官方入口/工坊验收任务（T01 映射；T12 逐域迁移后以真实 Core 服务名为准）
+DOMAIN_META: dict[str, dict[str, str]] = {
+    "F01": {"hostService": "WorkspaceService", "hostCommand": "workspace.open/create/recent/close", "officialPanel": "WorkspacePicker / 顶栏工作区", "workshopTaskId": "T09/T12"},
+    "F02": {"hostService": "DocumentService/FsService", "hostCommand": "doc.create/rename/move/delete; fs.dir.*", "officialPanel": "左栏文件树 / 页眉标题", "workshopTaskId": "T12"},
+    "F03": {"hostService": "EditorCommandService", "hostCommand": "editor.* (format/list/link/undo/redo)", "officialPanel": "编辑器工具栏 / 快捷键", "workshopTaskId": "T12/T14"},
+    "F04": {"hostService": "EditorCommandService+MathService", "hostCommand": "editor.math.*; 公式对话框", "officialPanel": "工具栏公式菜单 / MathEditorModal", "workshopTaskId": "T14/T15"},
+    "F05": {"hostService": "EditorCommandService", "hostCommand": "editor.table.*", "officialPanel": "工具栏表格菜单 / TableBubbleMenu", "workshopTaskId": "T14"},
+    "F06": {"hostService": "CodecService/ModuleService", "hostCommand": "ke.* 节点序列化; modules.*", "officialPanel": "工具栏插入（模块/信息块/脚注）/ 左栏模块", "workshopTaskId": "T08/T12"},
+    "F07": {"hostService": "DocumentSession/SaveCoordinator", "hostCommand": "doc.snapshot/save/recovery", "officialPanel": "保存状态 / Ctrl+S / 自动保存", "workshopTaskId": "T10/T12"},
+    "F08": {"hostService": "DocumentSession/HistoryService", "hostCommand": "history.*; recovery.*; external-change", "officialPanel": "历史快照 / 外部修改弹窗", "workshopTaskId": "T10/T12"},
+    "F09": {"hostService": "AttachmentService", "hostCommand": "attachments.*; upload", "officialPanel": "左栏附件 / 拖放粘贴上传", "workshopTaskId": "T12"},
+    "F10": {"hostService": "SearchService/IndexService", "hostCommand": "search; tags.*; index.rebuild", "officialPanel": "左栏搜索 / 标签 / 重建索引", "workshopTaskId": "T12"},
+    "F11": {"hostService": "TrashService", "hostCommand": "trash.*", "officialPanel": "左栏回收站", "workshopTaskId": "T12"},
+    "F12": {"hostService": "CodecService/EditorSession", "hostCommand": "source.*（直存通道）", "officialPanel": "工具栏视图切换 / 源码 textarea", "workshopTaskId": "T08/T14/T15"},
+    "F13": {"hostService": "ImportExportService", "hostCommand": "import.*; export.*", "officialPanel": "导出 ▾ / 导入入口", "workshopTaskId": "T12/T16"},
+    "F14": {"hostService": "PrintService", "hostCommand": "print job（快照 revision）", "officialPanel": "导出 PDF 对话框", "workshopTaskId": "T16"},
+    "F15": {"hostService": "SettingsService/ShortcutService", "hostCommand": "settings.*; shortcuts.*", "officialPanel": "设置面板", "workshopTaskId": "T12/T13"},
+    "F16": {"hostService": "HostWindowService（Rust）", "hostCommand": "menu/reload/close/restore", "officialPanel": "原生菜单 / 窗口生命周期", "workshopTaskId": "T20"},
+    "P3/P4": {"hostService": "WorkshopHostService", "hostCommand": "pack.*; broker.*; rollback", "officialPanel": "工坊控制面（T23）", "workshopTaskId": "T17–T23"},
+    "F": {"hostService": "（见 domain 行）", "hostCommand": "", "officialPanel": "", "workshopTaskId": ""},
+}
+FIXTURE_BY_DOMAIN: dict[str, str] = {
+    "F06": "docs/ui-workshop/fixtures/basic.md",
+    "F09": "docs/ui-workshop/fixtures/Attachments/",
+    "F12": "docs/ui-workshop/fixtures/basic.md",
+    "F13": "docs/ui-workshop/fixtures/basic.md",
+    "F14": "docs/ui-workshop/fixtures/basic.md",
+    "W09": "docs/ui-workshop/fixtures/large-256kb.md,docs/ui-workshop/fixtures/large-512kb.md",
+}
 
 
 def rows() -> list[dict[str, str]]:
@@ -45,6 +79,12 @@ def rows() -> list[dict[str, str]]:
     def add(**kw: str) -> None:
         row = {c: "" for c in COLUMNS}
         row.update(kw)
+        meta = DOMAIN_META.get(row.get("domain", ""), {})
+        for k, v in meta.items():
+            if not row.get(k):
+                row[k] = v
+        if not row.get("fixtureId") and row.get("domain") in FIXTURE_BY_DOMAIN:
+            row["fixtureId"] = FIXTURE_BY_DOMAIN[row["domain"]]
         if not row["officialBaselineResult"]:
             row["officialBaselineResult"] = "NOT_RUN"
         out.append(row)

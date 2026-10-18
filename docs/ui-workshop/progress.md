@@ -26,7 +26,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 已知失败归属：无新增；历史 v1.2.16 报告中「3 个 Linux 超长文件名失败」在当前基线未复现
   （参见 CHANGELOG_DEV v1.2.17：已随 CI 可移植性修复收敛）。
 测试数据目录：临时目录/沙箱（C:\ke-tmp\ke-sandbox 等）；禁止真实笔记。
-当前里程碑状态：**P0_READY**（T00/T01/T07 完成；S1–S5 原型与路由 ADR 已交付；T02–T06 产品化在 P1–P3 收尾）
+当前里程碑状态：**P0_READY**；**P1 阶段状态：`P1_READY_PENDING`**（T08 passed；T09–T13 核心闭环与 Windows 证据已交付，剩余项见 `reports/P1-report.md`）
 ```
 
 ## 任务进度
@@ -330,3 +330,13 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   WSL 与 Windows Py3.10 全绿。证据：`evidence/P1-T12-write-domain-slice.md`。
 - 下一步：其余写域（重命名/删除/附件/导入导出/print job）与真实 store/indexer 迁移；P1 阶段报告；
   T14/T15 前端接线。
+
+## P1 阶段报告（2026-10-19）
+
+- `reports/P1-report.md`：P1 状态 `P1_READY_PENDING` —— T08 passed；T09/T10/T11/T12 切片与 T13 Core 门禁
+  （UI-free 21/21 + 单实例/退出协调 W 6/6）已交付；T13 剩余打印 job（T16）/Rust 原生恢复（T20）/
+  产品工作区流程合并验证。
+- 测试基线：backend 846 collected（WSL+Windows 全绿）、frontend 116 files/1690 passed+1 skipped（exit 0）、
+  tsc 0；Core 新增单测 74。
+- 下一阶段：T14/T15（EditorSession 产品接线 + 真实 IME/DPI W）、T16（打印产品化）、T17/T18（包加载器/
+  broker 产品化）、T20/T21（Rust 恢复/安装验收）、T12 剩余域。

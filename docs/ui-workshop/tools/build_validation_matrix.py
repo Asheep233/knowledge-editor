@@ -55,7 +55,9 @@ def result_of(data: dict) -> tuple[str, str, str]:
     return ("PASS" if p == t else "FAIL", str(p), str(t))
 
 
-def main() -> None:
+def main() -> int:
+    """生成矩阵；`--check` 模式在存在 FAIL（不含 PASS_WITH_FINDINGS）时退出非 0（CI 门禁用）。"""
+    check_only = "--check" in __import__("sys").argv
     rows: list[list[str]] = []
     for path in sorted(EVID.glob("*-results.json")):
         name = path.name
@@ -86,9 +88,16 @@ def main() -> None:
         w.writerow(["evidence", "task", "kind", "platform", "result", "passed", "total", "reproduce"])
         w.writerows(rows)
     print(f"written: {OUT} ({len(rows)} rows)")
+    failed = [r for r in rows if str(r[4]).startswith("FAIL")]
+    if check_only:
+        if failed:
+            print(f"MATRIX GATE: FAIL ({len(failed)} rows): " + ", ".join(r[0] for r in failed))
+            return 1
+        print("MATRIX GATE: PASS（无 FAIL 行；PASS_WITH_FINDINGS 已显式标注）")
+        return 0
     for r in rows:
         print(f"  {r[0]:<48} {r[1]:<5} {r[2]:<6} {r[3]:<26} {r[4]:<8} {r[5]}/{r[6]}")
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

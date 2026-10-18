@@ -479,3 +479,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   `validation-matrix.csv`（18 行：9 W / 2 A / 2 A/U / 3 回归 / 1 构建；S1 的 2 项已知发现单独标注）。
   证据：`evidence/P4-T25-validation-matrix.md`。
 - 下一步：矩阵 CI 门禁化（FAIL 阻断）；接入产品 E2E W/真实 IME/多 DPI；T14 接线/T16 产品打印。
+
+## P4 进度（T25 矩阵门禁 + T14 接线决策，2026-10-19）
+
+- T25：`build_validation_matrix.py --check` 门禁模式（存在 FAIL 退出非 0；PASS_WITH_FINDINGS 显式标注）。
+- T14：`adr/ADR-002-t14-editor-save-integration.md` —— 适配器优先/flag 双轨（`VITE_KE_CORE_SAVE`，默认关闭）、
+  禁止双写、上下文解析与失败降级、验收门槛与回滚方式；实现顺序（coreSaveBridge → EditorArea flag 分支 →
+  产品验收 W）已定。

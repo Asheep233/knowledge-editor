@@ -10,9 +10,146 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use ed25519_dalek::{Signature, VerifyingKey};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager};
+
+/// T24：签名规范化载荷（与 TS `canonicalManifestPayload` 逐字节一致：字段固定顺序 + JSON.stringify 语义）。
+pub fn canonical_manifest_payload(manifest: &Value) -> Result<Vec<u8>, String> {
+    let j = |s: &str| serde_json::to_string(s).map_err(|e| e.to_string());
+    let mut out = String::new();
+    out.push_str("{\"id\":");
+    out.push_str(&j(manifest.get("id").and_then(|v| v.as_str()).unwrap_or(""))?);
+    out.push_str(",\"name\":");
+    out.push_str(&j(manifest.get("name").and_then(|v| v.as_str()).unwrap_or(""))?);
+    out.push_str(",\"version\":");
+    out.push_str(&j(manifest.get("version").and_then(|v| v.as_str()).unwrap_or(""))?);
+    out.push_str(",\"apiVersion\":");
+    out.push_str(&manifest.get("apiVersion").and_then(|v| v.as_u64()).unwrap_or(0).to_string());
+    out.push_str(",\"capabilities\":[");
+    if let Some(caps) = manifest.get("capabilities").and_then(|v| v.as_array()) {
+        for (i, cap) in caps.iter().enumerate() {
+            if i > 0 { out.push(','); }
+            out.push_str(&j(cap.as_str().unwrap_or(""))?);
+        }
+    }
+    out.push_str("],\"entry\":{\"html\":");
+    out.push_str(&j(manifest.get("entry").and_then(|e| e.get("html")).and_then(|v| v.as_str()).unwrap_or(""))?);
+    out.push_str(",\"sdk\":");
+    match manifest.get("entry").and_then(|e| e.get("sdk")).and_then(|v| v.as_str()) {
+        Some(sdk) => out.push_str(&j(sdk)?),
+        None => out.push_str("null"),
+    }
+    out.push_str("},\"commands\":[");
+    if let Some(cmds) = manifest.get("commands").and_then(|v| v.as_array()) {
+        for (i, cmd) in cmds.iter().enumerate() {
+            if i > 0 { out.push(','); }
+            out.push_str("{\"name\":");
+            out.push_str(&j(cmd.get("name").and_then(|v| v.as_str()).unwrap_or(""))?);
+            out.push_str(",\"handler\":");
+            out.push_str(&j(cmd.get("handler").and_then(|v| v.as_str()).unwrap_or(""))?);
+            out.push('}');
+        }
+    }
+    out.push_str("],\"assets\":[");
+    if let Some(assets) = manifest.get("assets").and_then(|v| v.as_array()) {
+        for (i, asset) in assets.iter().enumerate() {
+            if i > 0 { out.push(','); }
+            out.push_str("{\"path\":");
+            out.push_str(&j(asset.get("path").and_then(|v| v.as_str()).unwrap_or(""))?);
+            out.push_str(",\"sha256\":");
+            out.push_str(&j(asset.get("sha256").and_then(|v| v.as_str()).unwrap_or(""))?);
+            out.push_str(",\"size\":");
+            match asset.get("size").and_then(|v| v.as_u64()) {
+                Some(size) => out.push_str(&size.to_string()),
+                None => out.push_str("null"),
+            }
+            out.push('}');
+        }
+    }
+    out.push_str("]}");
+    Ok(out.into_bytes())
+}
+
+/// 公钥配置（env `KE_WORKSHOP_PUBKEYS` = {keyId: {"key":"<hex32>","revoked":bool,"expiresAt":<ms>}}）。
+fn keyring_from_env() -> Value {
+    std::env::var("KE_WORKSHOP_PUBKEYS")
+        .ok()
+        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+        .unwrap_or_else(|| json!({}))
+}
+
+fn parse_hex_32(hex: &str) -> Option<[u8; 32]> {
+    let hex = hex.trim().to_ascii_lowercase();
+    if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    let mut out = [0u8; 32];
+    for i in 0..32 {
+        out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
+
+/// T24：验签 → `("valid"|"missing"|"invalid", reason)`；异常一律 invalid（不 panic）。
+pub fn signature_status(manifest: &Value) -> (String, Option<String>) {
+    let sig = match manifest.get("signature") {
+        Some(sig) if sig.is_object() => sig,
+        _ => return ("missing".into(), None),
+    };
+    if sig.get("alg").and_then(|v| v.as_str()) != Some("ed25519") {
+        return ("invalid".into(), Some("E_SIGNATURE_ALG: 不支持的算法".into()));
+    }
+    let key_id = sig.get("keyId").and_then(|v| v.as_str()).unwrap_or("");
+    let keyring = keyring_from_env();
+    let entry = match keyring.get(key_id) {
+        Some(entry) => entry,
+        None => return ("invalid".into(), Some(format!("E_SIGNATURE_KEY: 未知密钥 {key_id}"))),
+    };
+    if entry.get("revoked").and_then(|v| v.as_bool()) == Some(true) {
+        return ("invalid".into(), Some(format!("E_SIGNATURE_REVOKED: 密钥已撤销 {key_id}")));
+    }
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    if let Some(expires) = entry.get("expiresAt").and_then(|v| v.as_u64()) {
+        if now_ms >= expires {
+            return ("invalid".into(), Some(format!("E_SIGNATURE_EXPIRED: 密钥已过期 {key_id}")));
+        }
+    }
+    let Some(public_key) = entry.get("key").and_then(|v| v.as_str()).and_then(parse_hex_32) else {
+        return ("invalid".into(), Some("E_SIGNATURE_KEY: 公钥配置非法".into()));
+    };
+    let Some(sig_bytes) = sig.get("signature").and_then(|v| v.as_str()).and_then(parse_hex_64) else {
+        return ("invalid".into(), Some("E_SIGNATURE_FORMAT: 签名必须是 64 字节 hex".into()));
+    };
+    let payload = match canonical_manifest_payload(manifest) {
+        Ok(payload) => payload,
+        Err(e) => return ("invalid".into(), Some(format!("E_SIGNATURE: 载荷序列化失败 {e}"))),
+    };
+    let Ok(verifying_key) = VerifyingKey::from_bytes(&public_key) else {
+        return ("invalid".into(), Some("E_SIGNATURE_KEY: 公钥非法".into()));
+    };
+    let signature = Signature::from_bytes(&sig_bytes);
+    match verifying_key.verify_strict(&payload, &signature) {
+        Ok(()) => ("valid".into(), None),
+        Err(_) => ("invalid".into(), Some("E_SIGNATURE: 验签失败".into())),
+    }
+}
+
+fn parse_hex_64(hex: &str) -> Option<[u8; 64]> {
+    let hex = hex.trim().to_ascii_lowercase();
+    if hex.len() != 128 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    let mut out = [0u8; 64];
+    for i in 0..64 {
+        out[i] = u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
 
 const ALLOWED_CAPS: [&str; 6] = [
     "ui.shell",
@@ -144,7 +281,13 @@ pub fn scan_dir(root: &Path, source_dir: &str) -> Result<Value, String> {
     }
     let manifest = parse_manifest(src)?;
     let size = verify_assets(src, &manifest)?;
-    Ok(summary(&manifest, size))
+    let (sig_status, sig_reason) = signature_status(&manifest);
+    let mut preview = summary(&manifest, size);
+    preview["signatureStatus"] = json!(sig_status);
+    if let Some(reason) = sig_reason {
+        preview["signatureReason"] = json!(reason);
+    }
+    Ok(preview)
 }
 
 fn state_of(root: &Path, id: &str) -> Value {
@@ -198,6 +341,11 @@ pub fn install_from_dir(root: &Path, source_dir: &str) -> Result<Value, String> 
     }
     let manifest = parse_manifest(src)?;
     verify_assets(src, &manifest)?;
+    // T24：签名无效（含未知/撤销/过期）→ 拒绝安装；missing 交由 T22/T24 安装确认策略决定。
+    let (sig_status, sig_reason) = signature_status(&manifest);
+    if sig_status == "invalid" {
+        return Err(sig_reason.unwrap_or_else(|| "E_SIGNATURE: 包签名无效".into()));
+    }
     let id = manifest.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let version = manifest.get("version").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let dir = id_dir(root, &id).join(&version);
@@ -470,6 +618,119 @@ mod tests {
             "assets": [{"path": "index.html", "sha256": hash}],
         });
         fs::write(dir.join("manifest.json"), serde_json::to_string(&manifest).unwrap()).unwrap();
+    }
+
+    // 环境变量（KE_WORKSHOP_PUBKEYS）在并行测试间共享 → 串行化用到 env 的用例
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    fn env_guard() -> std::sync::MutexGuard<'static, ()> {
+        ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn signed_manifest(public_key_hex: &str, mutate: Option<&str>) -> (Value, String) {
+        use ed25519_dalek::{Signer, SigningKey};
+        let seed: [u8; 32] = [
+            0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4,
+            0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
+        ];
+        let signing_key = SigningKey::from_bytes(&seed);
+        let _ = public_key_hex;
+        let mut manifest = json!({
+            "id": "com.demo.signed", "name": "Signed Pack", "version": "1.0.0", "apiVersion": 1,
+            "capabilities": ["ui.shell"], "entry": {"html": "index.html"},
+            "commands": [{"name": "demo.hello", "handler": "hello"}],
+            "assets": [{"path": "index.html", "sha256": "a".repeat(64)}],
+        });
+        if let Some(field) = mutate {
+            manifest[field] = json!("tampered");
+        }
+        let payload = canonical_manifest_payload(&manifest).unwrap();
+        let signature = signing_key.sign(&payload).to_bytes();
+        let signature_hex: String = signature.iter().map(|b| format!("{b:02x}")).collect();
+        let public_key = signing_key.verifying_key().to_bytes();
+        let public_hex: String = public_key.iter().map(|b| format!("{b:02x}")).collect();
+        manifest["signature"] = json!({"alg": "ed25519", "keyId": "k1", "signature": signature_hex});
+        (manifest, public_hex)
+    }
+
+    fn with_keyring(public_hex: &str) {
+        std::env::set_var(
+            "KE_WORKSHOP_PUBKEYS",
+            serde_json::to_string(&json!({ "k1": { "key": public_hex } })).unwrap(),
+        );
+    }
+
+    #[test]
+    fn canonical_payload_matches_ts_contract() {
+        let manifest = json!({
+            "id": "com.demo.signed", "name": "Signed Pack", "version": "1.0.0", "apiVersion": 1,
+            "capabilities": ["ui.shell"], "entry": {"html": "index.html"},
+            "commands": [{"name": "demo.hello", "handler": "hello"}],
+            "assets": [{"path": "index.html", "sha256": "a".repeat(64)}],
+        });
+        let expected = format!(
+            "{{\"id\":\"com.demo.signed\",\"name\":\"Signed Pack\",\"version\":\"1.0.0\",\"apiVersion\":1,\"capabilities\":[\"ui.shell\"],\"entry\":{{\"html\":\"index.html\",\"sdk\":null}},\"commands\":[{{\"name\":\"demo.hello\",\"handler\":\"hello\"}}],\"assets\":[{{\"path\":\"index.html\",\"sha256\":\"{}\" ,\"size\":null}}]}}",
+            "a".repeat(64)
+        ).replace("\" ,", "\",");
+        let actual = String::from_utf8(canonical_manifest_payload(&manifest).unwrap()).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn signature_status_valid_invalid_missing() {
+        let _guard = env_guard();
+        let (manifest, public_hex) = signed_manifest("", None);
+        with_keyring(&public_hex);
+        assert_eq!(signature_status(&manifest).0, "valid");
+        // 篡改：payload 变化 → invalid
+        let mut tampered = manifest.clone();
+        tampered["version"] = json!("9.9.9");
+        assert_eq!(signature_status(&tampered).0, "invalid");
+        // 未知密钥
+        let mut unknown = manifest.clone();
+        unknown["signature"]["keyId"] = json!("k-unknown");
+        assert_eq!(signature_status(&unknown).0, "invalid");
+        // 无签名
+        let unsigned = json!({"id": "x"});
+        assert_eq!(signature_status(&unsigned).0, "missing");
+        std::env::remove_var("KE_WORKSHOP_PUBKEYS");
+    }
+
+    #[test]
+    fn signature_revoked_and_expired() {
+        let _guard = env_guard();
+        let (manifest, public_hex) = signed_manifest("", None);
+        std::env::set_var(
+            "KE_WORKSHOP_PUBKEYS",
+            serde_json::to_string(&json!({ "k1": { "key": public_hex, "revoked": true } })).unwrap(),
+        );
+        assert_eq!(signature_status(&manifest).0, "invalid");
+        assert!(signature_status(&manifest).1.unwrap().contains("E_SIGNATURE_REVOKED"));
+        std::env::set_var(
+            "KE_WORKSHOP_PUBKEYS",
+            serde_json::to_string(&json!({ "k1": { "key": public_hex, "expiresAt": 1u64 } })).unwrap(),
+        );
+        assert!(signature_status(&manifest).1.unwrap().contains("E_SIGNATURE_EXPIRED"));
+        std::env::remove_var("KE_WORKSHOP_PUBKEYS");
+    }
+
+    #[test]
+    fn install_rejects_invalid_signature() {
+        let _guard = env_guard();
+        let root = tmp_root("sig-install");
+        let src = root.join("src-signed");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("index.html"), "<html>signed</html>").unwrap();
+        let (mut manifest, _public_hex) = signed_manifest("", None);
+        // 资产 sha 不匹配（让哈希校验先过：直接按真实内容改 sha 并重新签）
+        let hash = sha256_hex(b"<html>signed</html>");
+        manifest["assets"][0]["sha256"] = json!(hash);
+        fs::write(src.join("manifest.json"), serde_json::to_string(&manifest).unwrap()).unwrap();
+        // 用错误密钥配置 → 验签失败 → 安装拒绝
+        std::env::set_var("KE_WORKSHOP_PUBKEYS", "{}");
+        let err = install_from_dir(&root, src.to_str().unwrap()).unwrap_err();
+        assert!(err.contains("E_SIGNATURE"), "{err}");
+        std::env::remove_var("KE_WORKSHOP_PUBKEYS");
     }
 
     #[test]

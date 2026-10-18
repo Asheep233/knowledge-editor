@@ -103,6 +103,15 @@ describe('T24 包签名验证（Ed25519）', () => {
     expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true)
   })
 
+  it('canonical 载荷与 Rust 侧契约逐字节一致（跨语言 parity）', () => {
+    const expected =
+      '{"id":"com.demo.signed","name":"Signed Pack","version":"1.0.0","apiVersion":1,' +
+      '"capabilities":["ui.shell"],"entry":{"html":"index.html","sdk":null},' +
+      '"commands":[{"name":"demo.hello","handler":"hello"}],' +
+      '"assets":[{"path":"index.html","sha256":"' + 'a'.repeat(64) + '","size":null}]}'
+    expect(new TextDecoder().decode(canonicalManifestPayload(MANIFEST))).toBe(expected)
+  })
+
   it('parseHex 严格校验', () => {
     expect(parseHex('00ff')).toEqual(new Uint8Array([0, 255]))
     expect(parseHex('0')).toBeNull()

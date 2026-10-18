@@ -53,7 +53,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T23 | in_progress | components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/{tauriPackAdapter,localTrustStore}；App flag 入口 | P3-T23-workshop-panel.md（7 例）、P3-T23-workshop-integration.md（适配器 6 例+入口 3 例）、**P4-T24-trust-ui.md（信任/签名徽章+授予/撤销；全量 128 files/1783 passed）** | 真实签名数据源；Windows 端到端交互 W；启动 recover 合并；卸载后清理 | Windows E2E W + 签名数据源 → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；safeMode UI；原型 seed/recover 探针 | P3-T20-startup-recover.md（cargo 33/33）、**P3-T20-startup-recover-probe.md（Windows 启动恢复 W 9/9）** | 产品安装目录端到端 W 未做；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载清理 | 产品目录端到端 W + safeMode 阻断策略 → T26 |
 | T19 | in_progress | core/packs/{packageHost,+test}；probe/{t19_guest,t19_host,build} + s1 原型 t19 场景 | evidence/P3-T19-package-host.md（7 例 U）、**P3-T19-package-host-probe.md（Windows/WebView2 **8/8**）** | 包入口资源真实加载（T17 产品化）；真实 WebView 崩溃信号；停用/恢复状态持久化与 T20 联动；Windows 端到端交互 W | 真实入口加载 + 崩溃信号 → T21/T26 W |
-| T24 | in_progress | core/packs/{trustPolicy,signature,keyring,localTrustStore,+tests}；工坊信任 UI；packageHost 能力上限 | P4-T24-trust-policy.md（10）、P4-T24-pack-signature.md（8）、P4-T24-trust-ui.md、**P4-T24-keyring.md（信任根轮换/撤销/过期 8 例）** | 真实发布密钥签发/分发；签名工具链与 Rust 验签；TrustStore 产品化；Windows E2E 安全演练 | 发布密钥 + 工具链/Rust 验签 → T21/T26 |
+| T24 | in_progress | core/packs/{trustPolicy,signature,keyring,localTrustStore,+tests}；工坊信任 UI；packageHost 能力上限；**产品 Rust 验签（pack_store signature_status + install 拒绝）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、**rust-signature（cargo 38/38）** | 真实发布密钥签发/分发；打包器签名工具链；UI 数据源接线；Windows E2E 安全演练 | 发布密钥 + 工具链 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
 | T26 | in_progress | tools/run_all_w_probes.py；evidence/windows-witnesses-summary.json | **evidence/P5-T26-windows-witnesses.md（11/11 W 探针复跑 PASS，--check 门禁 PASS）** | 产品壳端到端交互 W（安装/启用/回滚/卸载、T16 隐藏 renderer 打印）需隔离安装；真实 OS IME/多 DPI；Windows 安装包升级回归 | 隔离安装产品 E2E W + 平台矩阵补齐 → 认证结论 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
@@ -553,3 +553,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   产出 `evidence/windows-witnesses-summary.json`。证据：`evidence/P5-T26-windows-witnesses.md`。
 - 剩余：产品壳端到端交互 W（隔离安装）、真实 OS IME/多 DPI、Windows 安装包升级回归；
   之后才能给 T26 认证结论（不冒进）。
+
+## P4 进度（T24 产品 Rust 验签，2026-10-19）
+
+- 产品壳 `pack_store` 增加 ed25519 验签：canonical 载荷与 TS 逐字节一致（跨语言 parity 测试）、
+  env 公钥配置（key/revoked/expiresAt）、scan 暴露 signatureStatus、install 硬拒绝 invalid 签名。
+- 测试：产品 cargo **38 passed**（+4）、TS signature 9 例（含 parity）、tsc 0。
+  证据：`evidence/P4-T24-rust-signature.md`。
+- 下一步：真实发布密钥签发/配置分发、打包器签名工具链、工坊 UI 签名数据源、Windows 验签 E2E。

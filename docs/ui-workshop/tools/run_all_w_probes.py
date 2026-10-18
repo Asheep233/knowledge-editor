@@ -37,6 +37,7 @@ PROBES = [
     ("T18 恶意/故障 guest Broker", "run_broker_probe.py", 12, 180),
     ("T19 包隔离宿主", "run_t19_probe.py", 8, 180),
     ("T19 包入口真实资源", "run_t19_entry_probe.py", 8, 240),
+    ("T19 多资源+心跳崩溃检测", "run_t19_multiasset_probe.py", 8, 240),
     ("T20 启动恢复/safeMode", "run_startup_recover_probe.py", 9, 240),
     ("T21 原生包存储", "run_pack_probe.py", 20, 240),
 ]

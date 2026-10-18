@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T04:33:31+0800",
+  "generated_at": "2026-10-19T04:42:36+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -22,7 +22,7 @@
       "pass": true,
       "detail": {
         "source": "pack-entry",
-        "bytes": 7807,
+        "bytes": 7912,
         "err": null
       }
     },
@@ -83,7 +83,7 @@
     "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
     "sessionStarted": true,
     "connection": {
-      "connectionId": "session-com.probe.t19-1.0.0-1792355590443",
+      "connectionId": "session-com.probe.t19-1.0.0-1792356133257",
       "packId": "com.probe.t19",
       "packVersion": "1.0.0",
       "role": "guest",
@@ -95,8 +95,11 @@
       "declaredCommands": []
     },
     "guestSource": "pack-entry",
-    "entryBytes": 7807,
+    "entryBytes": 7912,
     "packId": "com.probe.t19entry",
+    "assetsLoaded": [
+      "index.html"
+    ],
     "brokerStarted": true,
     "guest": {
       "phase": "t19-guest-done",
@@ -109,6 +112,10 @@
         "diskHash": "t19-hash"
       }
     },
+    "heartbeatCount": 2,
+    "iframeRemovedForCrash": true,
+    "autoCrashState": "suspended",
+    "autoDetectedCrashes": 1,
     "crashStates": [
       "suspended",
       "suspended"
@@ -121,7 +128,10 @@
         "t19-guest-alive",
         "t19-wire",
         "t19-wire",
-        "t19-guest-results"
+        "t19-guest-results",
+        "t19-heartbeat",
+        "t19-heartbeat",
+        "t19-heartbeat"
       ],
       "states": [
         "starting",
@@ -131,7 +141,10 @@
         "failed"
       ],
       "deactivateCalls": 1,
-      "recoverCalls": 1
+      "recoverCalls": 1,
+      "heartbeatCount": 3,
+      "autoDetectedCrashes": 1,
+      "lastHeartbeatAt": 1792356133892
     }
   }
 }

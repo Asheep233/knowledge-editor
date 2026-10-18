@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-19T04:32:22+0800",
+  "generated_at": "2026-10-19T04:41:23+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
       "name": "W-T15-1 连接的 CDP 页面存在（WebView2 remote debugging）",
       "pass": true,
       "detail": {
-        "port": 9544,
+        "port": 9468,
         "diag": {
           "targets": [
             [
@@ -50,6 +50,12 @@
       "pass": true,
       "detail": {
         "documentHasFocus": true,
+        "rect": {
+          "x": 450,
+          "y": 83.25,
+          "connected": true,
+          "contenteditable": "true"
+        },
         "tag": "DIV",
         "editable": true
       }
@@ -58,15 +64,15 @@
       "name": "W-T15-5 IME 组词输入进入编辑面",
       "pass": true,
       "detail": {
-        "text": " AAA BBBzhongwenFOCUS中中文组词初始内容 initial"
+        "text": " AAA BBBFOCUS中初始内容 initial中文组词"
       }
     },
     {
       "name": "W-T15-6 IME 输入可撤销（history 正常）",
       "pass": true,
       "detail": {
-        "afterIme": " AAA BBBzhongwenFOCUS中中文组词初始内容 initial",
-        "afterUndo": " AAA BBBzhongwen初始内容 initial"
+        "afterIme": " AAA BBBFOCUS中初始内容 initial中文组词",
+        "afterUndo": " AAA BBBFOCUS中初始内容 initial"
       }
     },
     {
@@ -82,7 +88,7 @@
     {
       "name": "W-T15-8 缩放后编辑面仍可输入",
       "pass": true,
-      "detail": " AAA BBBzhongwenZOOMED初始内容 initial"
+      "detail": " AAA BBBFOCUS中初始内容 initialZOOMED"
     }
   ],
   "pass_count": 8,
@@ -92,17 +98,23 @@
     "baselineText": " AAA BBB初始内容 initial",
     "focus": {
       "documentHasFocus": true,
+      "rect": {
+        "x": 450,
+        "y": 83.25,
+        "connected": true,
+        "contenteditable": "true"
+      },
       "tag": "DIV",
       "editable": true
     },
-    "textAfterIme": " AAA BBBzhongwenFOCUS中中文组词初始内容 initial",
-    "textAfterUndo": " AAA BBBzhongwen初始内容 initial",
+    "textAfterIme": " AAA BBBFOCUS中初始内容 initial中文组词",
+    "textAfterUndo": " AAA BBBFOCUS中初始内容 initial",
     "zoom": {
       "result": "ok",
       "dprBefore": 2,
       "dprAfter": 2.5,
       "visualViewportScale": 1
     },
-    "textAfterZoom": " AAA BBBzhongwenZOOMED初始内容 initial"
+    "textAfterZoom": " AAA BBBFOCUS中初始内容 initialZOOMED"
   }
 }

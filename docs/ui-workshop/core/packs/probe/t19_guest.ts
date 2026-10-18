@@ -32,5 +32,7 @@ window.addEventListener('message', (e: MessageEvent) => {
       out.error = String((e as Error)?.stack ?? e)
     }
     window.parent.postMessage({ type: 't19-guest-results', payload: out }, '*')
+    // T19 心跳：宿主据此检测 guest 崩溃（iframe 移除/卡死 → 心跳中断 → 自动 reportCrash）
+    setInterval(() => window.parent.postMessage({ type: 't19-heartbeat', t: Date.now() }, '*'), 200)
   })()
 })

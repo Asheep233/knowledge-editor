@@ -31,7 +31,17 @@ const MANIFEST: PackManifest = {
 }
 
 const result: Record<string, unknown> = { phase: 't19-start', ua: navigator.userAgent }
-const diag = { iframeLoaded: false, messages: [] as string[], states: [] as string[], deactivateCalls: 0, recoverCalls: 0 }
+const diag = {
+  iframeLoaded: false,
+  messages: [] as string[],
+  states: [] as string[],
+  deactivateCalls: 0,
+  recoverCalls: 0,
+  heartbeatCount: 0,
+  autoDetectedCrashes: 0,
+  lastHeartbeatAt: 0,
+}
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 class ProbeBackend implements PackageHostBackend {
   async verify() { return true }
@@ -64,14 +74,33 @@ async function main(): Promise<void> {
   try {
     const boot = (await tauriInvoke('boot_state')) as { pack_root?: string }
     if (boot.pack_root) {
-      const html = (await tauriInvoke('pack_read_asset', {
-        root: boot.pack_root, id: 'com.probe.t19entry', version: '1.0.0', path: 'index.html',
-      })) as string
+      const readAsset = async (path: string) =>
+        (await tauriInvoke('pack_read_asset', {
+          root: boot.pack_root, id: 'com.probe.t19entry', version: '1.0.0', path,
+        })) as string
+      const html = await readAsset('index.html')
       if (typeof html === 'string' && html.length > 0) {
         entryHtml = html
         result.guestSource = 'pack-entry'
         result.entryBytes = html.length
         result.packId = 'com.probe.t19entry'
+        // T19 升级 2：多资源从已安装包加载（css/js，安装期已哈希校验）
+        const assetsLoaded: string[] = ['index.html']
+        try {
+          const css = await readAsset('style.css')
+          if (typeof css === 'string' && css.length > 0) {
+            entryHtml = entryHtml.replace('{{STYLE}}', `<style>${css}</style>`)
+            assetsLoaded.push('style.css')
+          }
+        } catch { /* 单资源包 */ }
+        try {
+          const sdk = await readAsset('sdk.js')
+          if (typeof sdk === 'string' && sdk.length > 0) {
+            entryHtml = entryHtml.replace('{{SCRIPT}}', `<script>${sdk}<\/script>`)
+            assetsLoaded.push('sdk.js')
+          }
+        } catch { /* 单资源包 */ }
+        result.assetsLoaded = assetsLoaded
       }
     }
   } catch (e) {
@@ -106,6 +135,19 @@ async function main(): Promise<void> {
   dispatcher.start()
   result.brokerStarted = true
 
+  // T19 升级 2：心跳监控 —— guest 崩溃（iframe 移除/卡死）→ 心跳中断 → 自动 reportCrash
+  let hbMonitorReported = false
+  const hbMonitor = setInterval(() => {
+    if (hbMonitorReported || diag.heartbeatCount < 2) return
+    if (Date.now() - diag.lastHeartbeatAt > 1200) {
+      hbMonitorReported = true
+      diag.autoDetectedCrashes += 1
+      void host.reportCrash('com.probe.t19', 'heartbeat timeout (renderer crash detected)').then((r) => {
+        result.autoCrashState = r?.state
+      })
+    }
+  }, 150)
+
   const guestResult = await new Promise<Record<string, unknown>>((resolve) => {
     const timer = setTimeout(() => resolve({ phase: 'guest-timeout' }), 10000)
     window.addEventListener('message', (e: MessageEvent) => {
@@ -115,6 +157,10 @@ async function main(): Promise<void> {
         diag.iframeLoaded = true
         iframe.contentWindow?.postMessage({ type: 't19-port' }, '*')
       }
+      if (d?.type === 't19-heartbeat') {
+        diag.heartbeatCount += 1
+        diag.lastHeartbeatAt = Date.now()
+      }
       if (d?.type === 't19-guest-results') {
         clearTimeout(timer)
         resolve(d.payload ?? {})
@@ -123,13 +169,29 @@ async function main(): Promise<void> {
   })
   result.guest = guestResult
 
-  // 崩溃 1/2：suspended
-  const crash1 = await host.reportCrash('com.probe.t19', 'guest iframe removed (simulated crash 1)')
+  // 等心跳稳定后：移除 iframe 模拟真实 renderer 崩溃 → 心跳中断 → 宿主自动检测并 reportCrash
+  await sleep(600)
+  result.heartbeatCount = diag.heartbeatCount
+  let autoCrashState: string | undefined
+  if (diag.heartbeatCount > 0) {
+    iframe.remove()
+    result.iframeRemovedForCrash = true
+    const deadline = Date.now() + 4000
+    while (autoCrashState === undefined && Date.now() < deadline) {
+      await sleep(120)
+      if (diag.autoDetectedCrashes > 0 && diag.states.includes('suspended')) {
+        autoCrashState = 'suspended'
+      }
+    }
+    result.autoCrashState = autoCrashState
+    result.autoDetectedCrashes = diag.autoDetectedCrashes
+  }
+  // 崩溃 2（显式）→ suspended；崩溃 3 → 超限 failed + deactivate + recover + safeMode
   const crash2 = await host.reportCrash('com.probe.t19', 'guest crash 2')
-  result.crashStates = [crash1?.state, crash2?.state]
-  // 超限：failed + deactivate + recover + safeMode
+  result.crashStates = [autoCrashState, crash2?.state]
   const crash3 = await host.reportCrash('com.probe.t19', 'guest crash 3 (over limit)')
   result.overLimitState = crash3?.state
+  clearInterval(hbMonitor)
   result.safeMode = host.isSafeMode()
   result.diag = diag
   result.phase = 't19-done'

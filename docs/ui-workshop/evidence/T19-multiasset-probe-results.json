@@ -1,0 +1,157 @@
+{
+  "generated_at": "2026-10-19T04:43:01+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T19M-1 setup 从真实包目录安装 3 资产（哈希校验）",
+      "pass": true,
+      "detail": [
+        "pack-seeded-from-dir"
+      ]
+    },
+    {
+      "name": "W-T19M-2 已安装包完整落盘（manifest/css/js/entry）",
+      "pass": true,
+      "detail": [
+        "index.html",
+        "manifest.json",
+        "sdk.js",
+        "style.css"
+      ]
+    },
+    {
+      "name": "W-T19M-3 entry/css/js 多资源从已安装包加载",
+      "pass": true,
+      "detail": {
+        "assetsLoaded": [
+          "index.html",
+          "style.css",
+          "sdk.js"
+        ],
+        "entryBytes": 156,
+        "err": null
+      }
+    },
+    {
+      "name": "W-T19M-4 host+guest 握手 + 只读 snapshot",
+      "pass": true,
+      "detail": {
+        "phase": "t19-guest-done",
+        "hs": [
+          "context.read"
+        ],
+        "snap": {
+          "relPath": "Articles/t19.md",
+          "revision": 1,
+          "diskHash": "t19-hash"
+        }
+      }
+    },
+    {
+      "name": "W-T19M-5 guest 心跳到达宿主（用于崩溃检测）",
+      "pass": true,
+      "detail": {
+        "heartbeatCount": 2,
+        "iframeRemoved": true
+      }
+    },
+    {
+      "name": "W-T19M-6 iframe 移除后宿主**自动检测**崩溃（心跳超时）并 suspended",
+      "pass": true,
+      "detail": {
+        "autoDetected": 1,
+        "state": "suspended"
+      }
+    },
+    {
+      "name": "W-T19M-7 超限 → failed + deactivate + recover + safeMode",
+      "pass": true,
+      "detail": {
+        "state": "failed",
+        "deactivate": 1,
+        "recover": 1,
+        "safeMode": true
+      }
+    },
+    {
+      "name": "W-T19M-8 真实 WebView2/Windows 环境",
+      "pass": true,
+      "detail": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l"
+      }
+    }
+  ],
+  "pass_count": 8,
+  "total": 8,
+  "raw_results": {
+    "phase": "t19-done",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "sessionStarted": true,
+    "connection": {
+      "connectionId": "session-com.probe.t19-1.0.0-1792356158163",
+      "packId": "com.probe.t19",
+      "packVersion": "1.0.0",
+      "role": "guest",
+      "capabilities": [
+        "context.read"
+      ],
+      "contextId": "ctx-t19",
+      "epoch": 1,
+      "declaredCommands": []
+    },
+    "guestSource": "pack-entry",
+    "entryBytes": 156,
+    "packId": "com.probe.t19entry",
+    "assetsLoaded": [
+      "index.html",
+      "style.css",
+      "sdk.js"
+    ],
+    "brokerStarted": true,
+    "guest": {
+      "phase": "t19-guest-done",
+      "handshakeAccepted": [
+        "context.read"
+      ],
+      "snapshot": {
+        "relPath": "Articles/t19.md",
+        "revision": 1,
+        "diskHash": "t19-hash"
+      }
+    },
+    "heartbeatCount": 2,
+    "iframeRemovedForCrash": true,
+    "autoCrashState": "suspended",
+    "autoDetectedCrashes": 1,
+    "crashStates": [
+      "suspended",
+      "suspended"
+    ],
+    "overLimitState": "failed",
+    "safeMode": true,
+    "diag": {
+      "iframeLoaded": true,
+      "messages": [
+        "t19-guest-alive",
+        "t19-wire",
+        "t19-wire",
+        "t19-guest-results",
+        "t19-heartbeat",
+        "t19-heartbeat",
+        "t19-heartbeat"
+      ],
+      "states": [
+        "starting",
+        "active",
+        "suspended",
+        "suspended",
+        "failed"
+      ],
+      "deactivateCalls": 1,
+      "recoverCalls": 1,
+      "heartbeatCount": 3,
+      "autoDetectedCrashes": 1,
+      "lastHeartbeatAt": 1792356158799
+    }
+  }
+}

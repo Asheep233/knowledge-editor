@@ -47,6 +47,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T12 | in_progress | backend: context_registry tree/search/save_article + routers/context.py + 2 test files | evidence/P1-T12-domain-migration-slice.md（只读域 5 例）、**P1-T12-write-domain-slice.md（写域 6 例 + 契约 51 路径/63 方法 + 全量 846 collected 双平台绿）** | 重命名/删除/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 其余写域 + 真实 store 迁移 → T14 接线 |
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
 | T14 | in_progress | frontend/src/core/session/productAdapter.ts + test；SaveCoordinator.subscribe | evidence/P2-T14-product-adapter.md（适配层 6 例 + session 29 例 + tsc 0） | 未接真实 EditorArea/SaveQueue（双写开关/恢复点/源码直存兼容）；无 W 证据 | 接线真实 EditorArea + 后端上下文端点 → T15 IME/DPI W |
+| T15 | in_progress | s2 harness __s2 + tauri capabilities + run_t15_cdp_probe.py | **evidence/P2-T15-ime-zoom-probe.md（Windows/WebView2 CDP 8/8）** | 真实 OS 中文 IME/多 DPI 拖拽/失焦遮挡未测；产品 EditorSession 接线后需回归 | 真实 IME/DPI 矩阵补测 + T14 接线回归 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -350,3 +351,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P2-T14-product-adapter.md`。
 - 下一步：真实 EditorArea/SaveQueue 接线（与 `/api/context/*` 联调，双写开关）；T15 IME/DPI Windows 验收；
   T16 打印产品化（隐藏窗口/长文档/job 取消）。
+
+## P2 进度（T15 WebView2 CDP 实机 8/8，2026-10-19）
+
+- **Windows/WebView2 CDP 探针 8/8 PASS**：真实 WebView2 页面内 IME 组词（imeSetComposition+insertText）、
+  焦点（真实鼠标点击→contenteditable active）、撤销、Tauri setZoom（dpr 2→2.5）后继续输入。
+  证据：`evidence/P2-T15-ime-zoom-probe.md` + `T15-ime-zoom-probe-results.json`。
+- 限制：IME 为 CDP 浏览器级模拟（非物理键盘+OS IME）；多 DPI 拖拽/失焦遮挡未测；探针钩子仅原型。
+- 下一步：T14 真实 EditorArea 接线后回归 T15；T16 打印产品化；T12 剩余写域。

@@ -64,6 +64,20 @@ async function main(): Promise<void> {
       content: '<p>初始内容 initial</p>',
       element: shellA.editorHost,
     })
+    // T15 探针钩子：供 WebView2 CDP 驱动真实 IME 组词/焦点/缩放验收
+    ;(window as unknown as { __s2?: Record<string, unknown> }).__s2 = {
+      editor,
+      getText: () => editor.getText(),
+      focus: () => (editor.view.dom as HTMLElement).focus(),
+      activeElementTag: () => document.activeElement?.tagName ?? null,
+      activeElementEditable: () => (document.activeElement as HTMLElement | null)?.isContentEditable ?? false,
+      dpr: () => window.devicePixelRatio,
+      visualViewportScale: () => window.visualViewport?.scale ?? null,
+      moveToShell: (id: string) => {
+        const target = id === 'B' ? shellB : shellA
+        moveEditor(target, editor.view.dom as HTMLElement, target.source)
+      },
+    }
     const view = editor.view
     const dom = view.dom as HTMLElement
     out.editorCreated = !!editor

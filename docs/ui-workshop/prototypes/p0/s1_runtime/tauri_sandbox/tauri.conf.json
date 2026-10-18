@@ -17,7 +17,14 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "uiws-probe",
+          "windows": ["*"],
+          "permissions": ["core:webview:allow-set-webview-zoom", "core:window:allow-set-focus"]
+        }
+      ]
     }
   },
   "bundle": {

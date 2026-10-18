@@ -68,3 +68,11 @@ iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP�
    工坊面板「启用/停用 guest」+ safeMode 禁用（✅ UI 最小闭环，2 例 U；A7 W 待做）；
 5. ✅ 产品 W A7 探针 + A5 能力上限验证（W 11/11，`P5-T26-A7-A5-guest.md`）；
 6. 文档/证据/台账更新，之后重新评估 T26 认证。
+
+## 安全核对结果（2026-10-19，`P5-T26-A7-isolation.md`）
+
+- ✅ guest 运行于独立 origin `http://workshop.localhost`；
+- ⚠️ guest 仍可见 `__TAURI_INTERNALS__`（跨域 iframe 继承 Tauri 注入），但 `invoke` 实测无响应
+  （remote IPC 未生效）；**不得宣称绝对隔离**，按「受限优先 + 残余风险」表述；
+- 必做硬化：guest SDK 自检 internals 存在则拒绝运行/上报；Tauri remote-domain IPC 配置审计与
+  升级回归（复跑 isolation 探针）；评估独立 WebviewWindow/独立 profile 形态。

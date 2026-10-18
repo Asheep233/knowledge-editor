@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-10-19T06:38:18+0800",
+  "scenario": "T26 A7 guest 隔离核对（Tauri IPC 可达性）",
+  "checks": [
+    {
+      "name": "W-T26-A7-ISO-1 guest 已启用且 iframe 加载",
+      "pass": true,
+      "detail": {
+        "iframe": true
+      }
+    },
+    {
+      "name": "W-T26-A7-ISO-2 guest 自报 origin 为 workshop.localhost",
+      "pass": true,
+      "detail": {
+        "type": "iso-probe",
+        "origin": "http://workshop.localhost",
+        "href": "http://workshop.localhost/com.probe.t26iso/1.0.0/index.html",
+        "hasInternals": true,
+        "invokeType": "function",
+        "invokeResult": "timeout"
+      }
+    },
+    {
+      "name": "W-T26-A7-ISO-3 guest 的 Tauri invoke 不可用（独立 origin + remote IPC 未生效）",
+      "pass": true,
+      "detail": {
+        "hasInternals": true,
+        "invokeResult": "timeout"
+      }
+    },
+    {
+      "name": "W-T26-A7-ISO-4 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A7-ISO-5 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 5,
+  "total": 5,
+  "contexts": []
+}

@@ -17,6 +17,7 @@
 | A5 工坊信任 UI（入口/真实列表/签名徽章/授予撤销/TrustStore 持久化） | **11/11** | `P5-T26-A5-ui.md` |
 | A8 Core 保存 flag 产品 UI（autosave→上下文写/frontmatter 保留） | **9/9** | `P5-T26-A8-save.md` |
 | A7 产品侧包隔离宿主 + A5 能力上限运行时（自定义协议/心跳崩溃/safeMode/停用持久化） | **11/11** | `P5-T26-A7-A5-guest.md` |
+| A7 安全核对：guest 独立 origin + Tauri IPC 不可用（附残余风险） | **5/5** | `P5-T26-A7-isolation.md` |
 | 原型壳 W 探针一键门禁 | **13/13** | `P5-T26-windows-witnesses.md` |
 | 产品 IME 组词 + DPI/缩放后编辑面可用（CDP/WebView2 渲染层） | **7/7** | `P5-T26-ime-dpi.md` |
 
@@ -39,6 +40,12 @@
 - **人工真实系统 IME/多 DPI**（CDP 路径已过 W 7/7，但不能替代人工输入法实测）；
 - **安装包升级/回滚演练**（发布候选阶段 T27）；
 - 正式发布密钥签发/分发流程（ADR-003 实施清单）。
+
+## 3b. 隔离残余风险（必须随认证结论一起说明）
+
+- guest 独立 origin 已成立，但 guest 仍能看到 `__TAURI_INTERNALS__` 对象；实测 invoke 无响应
+  （remote IPC 未生效，timeout）→ 当前不可利用，但属实现细节；需 SDK 自检 + Tauri remote-domain
+  审计 + 升级回归（详见 `P5-T26-A7-isolation.md` / ADR-004）。
 
 ## 4. 认证判定
 

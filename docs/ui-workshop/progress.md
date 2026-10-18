@@ -753,3 +753,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 产品 WebView2 编辑器：IME 组词路径、DPI/缩放（dpr 2→1.5）、缩放后仍可输入且恢复；W 7/7。
   证据：`evidence/P5-T26-ime-dpi.md`（明确边界：CDP 合成输入，不能替代人工真实 IME 实测）。
 - T26 剩余：人工真实系统 IME/多 DPI、安装包升级/回滚（T27）。
+
+## P6/T26 进度（A7 隔离核对，2026-10-19）
+
+- guest 独立 origin `http://workshop.localhost`；guest 仍可见 __TAURI_INTERNALS__ 但 invoke 实测
+  timeout（remote IPC 未生效）→ W 5/5 PASS，附**残余风险**与硬化清单（SDK 自检/配置审计/独立
+  WebviewWindow 评估）。证据：`evidence/P5-T26-A7-isolation.md`。

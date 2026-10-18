@@ -41,6 +41,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
 | T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
+| T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -246,3 +247,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   （`maxInflight` 超出 → `E_BUSY` retryable，错误码契约显式升级）。
 - 测试：协议层 **18 例全过**（契约 12 + 传输 6：wire 往返/256KB 大消息/channel 隔离/畸形/背压/错误），tsc 0。
 - 下一步：T17 包加载器接入正式 iframe DOM 适配器；T12 分域迁移。
+
+## P3 进度（T17 包加载器 Core，2026-10-19）
+
+- 新增 Core 包层 `frontend/src/core/packs/`：
+  - `manifest.ts`：包清单 + 能力 allowlist + 路径/哈希/apiVersion/声明式命令校验（未知能力无损拒绝）；
+  - `store.ts`：PackStore（不可变版本目录、staging→rename、state.json 单提交点+jjournal、
+    安装/激活/回滚/完整性校验、recover 自动回滚损坏 active）+ MemoryPackFs；
+  - `pack.test.ts` 14 例全过、tsc 0、无 DOM/React 守卫。
+  证据：`evidence/P3-T17-pack-loader.md`。
+- 下一步：真实 Tauri fs 适配 + T18 broker 能力强制 → Windows 安装/回滚实机证据（T21）；
+  T12 分域迁移继续。

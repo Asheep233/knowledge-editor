@@ -50,6 +50,11 @@
 | T26 Windows 认证 | 🟡 **11/11 W 探针一键复跑 PASS**（`run_all_w_probes.py --check`）；产品 E2E W 待隔离安装 | `P5-T26-windows-witnesses.md` |
 | T27–T29 | ⬜ 未开始 | 发布候选/最终交接（需主理人授权） |
 
+## 2b. 安全与密钥流程
+
+- 包签名：ed25519（TS/Rust/签名工具三语言 canonical parity 锁定）；私钥离线保管、公钥进产品信任根、
+  轮换重叠期、吊销/过期与紧急响应流程见 `adr/ADR-003-pack-signing-key-lifecycle.md`。
+
 ## 3. 代码交付索引
 
 **Core（前端，产品仓库内，无 DOM/React）**

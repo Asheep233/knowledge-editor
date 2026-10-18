@@ -586,3 +586,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 一键 W 门禁扩展为 **12 探针**（含 T19E），修复 T15 CDP IME 偶发竞态（preedit 取消 + 重试）后
   **12/12 PASS**；矩阵 **21 行**、`--check` PASS。证据：`P5-T26-windows-witnesses.md`、
   `P3-T19-pack-entry-probe.md`。
+
+## P4 进度（T24 密钥生命周期 ADR，2026-10-19）
+
+- `adr/ADR-003-pack-signing-key-lifecycle.md`：ed25519 密钥分级/离线私钥保管/公钥进产品
+  （Rust env + TS keyring）/轮换重叠期/吊销紧急响应/审计与可验证性/被拒方案/实施清单。
+  与已实现的能力（三语言 parity、Rust 硬拒绝、UI 数据源、签名工具）串联，明确 T24/T26 收尾项。
+- 下一步：生成正式 release 密钥并登记公钥；打包脚本串联签名→Rust scan 校验；撤销/轮换 Windows E2E 演练。

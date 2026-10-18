@@ -807,3 +807,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   越权 context.write → E_CAPABILITY（granted 列表）——W **8/8 PASS**。
   证据：`evidence/P5-T26-W06-boundary.md`。
 - 剩余：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归。
+
+## P6/T26 进度（W07 尝试，未完成，2026-10-19）
+
+- guest 无限循环故障探针：故障包安装成功，但实例停在 WorkspacePicker（KE_WORKSPACE 已激活而后端
+  UI 未进入主界面），无法启用 guest → **W07 保持 NOT_RUN**，记录尝试与环境问题，不当作证据。
+  证据：`evidence/P5-T26-W07-fault-attempt.md`。架构风险（同渲染进程阻塞）仍需独立设计与验证。

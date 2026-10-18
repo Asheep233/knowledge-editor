@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-10-19T07:10:13+0800",
+  "scenario": "T26 W07 guest 无限循环故障（宿主独立性验证）",
+  "checks": [
+    {
+      "name": "W-T26-W07-1 安装签名包（故障包）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368386064528066 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W07-2 guest 已启用（进入无限循环前）",
+      "pass": false,
+      "detail": {
+        "clicked": false,
+        "bodyTail": "KE\nAstraNota\n\nAlpha\n\n以 Markdown 为唯一事实源的本地知识编辑器——选择一个工作区开始\n\n打开已有工作区\n选择已有 workspace 文件夹继续写作\n创建新工作区\n在指定位置初始化空白知识库\n程序与数据分离 · 卸载软件不删除数据\nv1.2.18 · Markdown 为唯一事实源 · 索引可整体重建"
+      }
+    },
+    {
+      "name": "W-T26-W07-3 故障后宿主 IPC 仍可响应（独立恢复前提）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "capabilities": [],
+          "packId": null,
+          "state": "idle",
+          "updatedAt": null
+        }
+      }
+    },
+    {
+      "name": "W-T26-W07-4 会话状态可查询（崩溃/停用可观测）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "capabilities": [],
+          "packId": null,
+          "state": "idle",
+          "updatedAt": null
+        }
+      }
+    },
+    {
+      "name": "W-T26-W07-5 测试进程状态（frozen vs alive）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "note": "alive 但无响应 = 渲染进程被 guest 阻塞"
+      }
+    },
+    {
+      "name": "W-T26-W07-6 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 5,
+  "total": 6
+}

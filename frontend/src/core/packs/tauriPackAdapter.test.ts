@@ -23,11 +23,11 @@ function adapter(opts: Parameters<typeof createTauriPackAdapter>[0] = {}): AnyAd
 describe('T21/T23 TauriPackAdapter', () => {
   it('listInstalled 映射 Rust list 响应', async () => {
     mockedInvoke.mockResolvedValueOnce({
-      packs: [{ id: 'com.demo.a', name: 'A', active: '2.0.0', previous: '1.0.0', activeVersion: '2.0.0', capabilities: ['ui.shell'] }],
+      packs: [{ id: 'com.demo.a', name: 'A', active: '2.0.0', previous: '1.0.0', activeVersion: '2.0.0', capabilities: ['ui.shell'], signatureStatus: 'valid' }],
     })
     const packs = await adapter().listInstalled()
     expect(packs).toEqual([
-      { id: 'com.demo.a', name: 'A', version: '2.0.0', active: true, previous: '1.0.0', capabilities: ['ui.shell'] },
+      { id: 'com.demo.a', name: 'A', version: '2.0.0', active: true, previous: '1.0.0', capabilities: ['ui.shell'], signature: 'valid' },
     ])
     expect(mockedInvoke).toHaveBeenCalledWith('workshop_pack_list')
   })
@@ -49,6 +49,22 @@ describe('T21/T23 TauriPackAdapter', () => {
     expect(openDialog).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }))
     vi.mocked(openDialog).mockResolvedValueOnce(null as never)
     await expect(choosePackDirectory()).resolves.toBeNull()
+  })
+
+  it('scan 签名状态映射：invalid → blocked + 原因；valid → 可确认', async () => {
+    mockedInvoke.mockResolvedValueOnce({
+      packId: 'com.demo.bad', name: 'Bad', version: '1.0.0', apiVersion: 1, capabilities: ['ui.shell'],
+      signatureStatus: 'invalid', signatureReason: 'E_SIGNATURE: 验签失败',
+    })
+    const bad = await adapter({ chooseSourceDir: async () => 'C:/packs/bad' }).stageFromFile()
+    expect(bad).toMatchObject({ signature: 'invalid', blocked: true, blockReason: 'E_SIGNATURE: 验签失败' })
+    expect(bad!.warnings.join(' ')).toMatch(/签名无效/)
+    mockedInvoke.mockResolvedValueOnce({
+      packId: 'com.demo.ok', name: 'Ok', version: '1.0.0', apiVersion: 1, capabilities: ['ui.shell'],
+      signatureStatus: 'valid',
+    })
+    const ok = await adapter({ chooseSourceDir: async () => 'C:/packs/ok' }).stageFromFile()
+    expect(ok).toMatchObject({ signature: 'valid', blocked: false })
   })
 
   it('chooseSourceDir 返回 null → 不扫描', async () => {

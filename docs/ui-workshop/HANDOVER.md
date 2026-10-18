@@ -45,7 +45,7 @@
 | T21 Windows 安装/升级/回滚 | 🟡 原型 W 20/20；产品命令+前端适配器/卸载；Windows E2E W 未做 | `P3-T21-pack-install-probe.md`、`P3-T21-product-pack-store.md` |
 | T22 首次安装确认 | 🟡 Core 9 例；签名验证/来源信任未做 | `P3-T22-install-confirmation.md` |
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
-| T24 可信包限定 | 🟡 Core 信任策略10+签名8+keyring8+信任UI；**产品 Rust 验签（cargo 38/38、安装拒绝 invalid）**；真实发布密钥/打包签名工具链未做 | `P4-T24-trust-policy.md`、`P4-T24-pack-signature.md`、`P4-T24-trust-ui.md`、`P4-T24-keyring.md`、`P4-T24-rust-signature.md` |
+| T24 可信包限定 | 🟡 信任策略10+签名8+keyring8+信任UI+产品 Rust 验签+打包签名工具+**签名数据源贯通 UI**；正式发布密钥流程/Windows 验签 E2E 未做 | `P4-T24-trust-policy.md`、`P4-T24-pack-signature.md`、`P4-T24-trust-ui.md`、`P4-T24-keyring.md`、`P4-T24-rust-signature.md` |
 | T25 平台验证矩阵 | 🟡 自动生成矩阵 18 行（9 W/2 A/2 A/U/3 回归/1 构建） | `P4-T25-validation-matrix.md`、`validation-matrix.csv` |
 | T26 Windows 认证 | 🟡 **11/11 W 探针一键复跑 PASS**（`run_all_w_probes.py --check`）；产品 E2E W 待隔离安装 | `P5-T26-windows-witnesses.md` |
 | T27–T29 | ⬜ 未开始 | 发布候选/最终交接（需主理人授权） |
@@ -102,7 +102,7 @@
 ```bash
 git checkout feat/ui-workshop   # 本地分支；HEAD 见 git log
 # 1) 基线回归
-cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 130 files / 1793 passed +1 skipped
+cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 130 files / 1795 passed +1 skipped
 cd ../backend && python3 -m pytest backend/tests -q                  # 846 collected
 # 2) 产品 Tauri
 cd desktop/src-tauri && cargo test --release                          # 34 passed

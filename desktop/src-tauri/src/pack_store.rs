@@ -313,11 +313,16 @@ pub fn list_packs(root: &Path) -> Value {
             let active = state.get("active").and_then(|v| v.as_str()).unwrap_or("");
             let mut name = String::new();
             let mut caps = json!([]);
+            let mut sig_status_text = "missing".to_string();
+            let mut signature_reason: Option<String> = None;
             if !active.is_empty() {
                 if let Ok(text) = fs::read_to_string(entry.path().join(active).join("manifest.json")) {
                     if let Ok(m) = serde_json::from_str::<Value>(&text) {
                         name = m.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
                         caps = m.get("capabilities").cloned().unwrap_or(json!([]));
+                        let (status, reason) = signature_status(&m);
+                        sig_status_text = status;
+                        signature_reason = reason;
                     }
                 }
             }
@@ -328,6 +333,8 @@ pub fn list_packs(root: &Path) -> Value {
                 "previous": state.get("previous").cloned().unwrap_or(Value::Null),
                 "activeVersion": active,
                 "capabilities": caps,
+                "signatureStatus": sig_status_text,
+                "signatureReason": signature_reason,
             }));
         }
     }
@@ -807,6 +814,7 @@ mod tests {
         assert_eq!(state2["previous"], "1.0.0");
         let listed = list_packs(&root);
         assert_eq!(listed["packs"].as_array().unwrap().len(), 1);
+        assert_eq!(listed["packs"][0]["signatureStatus"], "missing");
         assert!(verify_pack(&root, "com.demo.chain", "1.0.0").unwrap());
         let rb = rollback(&root, "com.demo.chain").unwrap();
         assert_eq!(rb["active"], "1.0.0");

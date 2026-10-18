@@ -23,6 +23,8 @@ export interface TauriPackAdapterOptions {
   chooseSourceDir?: () => Promise<string | null>
 }
 
+type SignatureStatus = 'valid' | 'missing' | 'invalid'
+
 interface ScanResponse {
   packId: string
   name: string
@@ -32,6 +34,8 @@ interface ScanResponse {
   commands?: unknown[]
   sizeBytes?: number
   blocked?: boolean
+  signatureStatus?: SignatureStatus
+  signatureReason?: string
 }
 
 interface ListResponse {
@@ -42,6 +46,8 @@ interface ListResponse {
     previous: string | null
     activeVersion: string
     capabilities: string[]
+    signatureStatus?: SignatureStatus
+    signatureReason?: string | null
   }>
 }
 
@@ -70,6 +76,7 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
           active: !!p.active && p.active === p.activeVersion,
           previous: p.previous,
           capabilities: p.capabilities ?? [],
+          signature: p.signatureStatus,
         }))
       } catch (e) {
         throw err(e)
@@ -84,6 +91,8 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
       } catch (e) {
         throw err(e)
       }
+      const signature: SignatureStatus = scan.signatureStatus ?? 'missing'
+      const signatureInvalid = signature === 'invalid'
       return {
         token: dir,
         packId: scan.packId,
@@ -91,14 +100,20 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
         version: scan.version,
         apiVersion: scan.apiVersion,
         source: 'local-file',
-        signature: 'missing',
+        signature,
         capabilities: (scan.capabilities ?? []).map((cap) => {
           const risk = capabilityRisk(cap)
           return { capability: risk.capability, risk: risk.risk, summary: risk.summary }
         }),
-        warnings: ['本地目录包：请确认来源可信（sha256 由包清单限定）'],
-        blocked: scan.blocked === true,
-        blockReason: scan.blocked ? 'E_SIGNATURE: 该包被阻止安装' : undefined,
+        warnings: signatureInvalid
+          ? ['签名无效：安装将被拒绝']
+          : ['本地目录包：请确认来源可信（sha256 由包清单限定）'],
+        blocked: scan.blocked === true || signatureInvalid,
+        blockReason: signatureInvalid
+          ? (scan.signatureReason ?? 'E_SIGNATURE: 包签名无效，禁止安装')
+          : scan.blocked
+            ? (scan.signatureReason ?? 'E_SIGNATURE: 该包被阻止安装')
+            : undefined,
       }
     },
     async confirmInstall(token: string): Promise<void> {

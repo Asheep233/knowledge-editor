@@ -1,0 +1,12 @@
+# UI 工坊环境快照 2026-10-19 01:13:36 CST
+
+OS: Linux TB-Asheep233 6.18.54.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Tue Oct  6 19:13:07 UTC 2026 x86_64 GNU/Linux
+Node: v24.19.0
+npm: 11.17.0
+Python: Python 3.14.4
+Rust: 
+cargo(windows): cargo 1.97.1 (c980f4866 2026-06-30)
+git HEAD: 10f06745a557a3abdaedfc7f698a8cdfe947e684
+branch: feat/ui-workshop
+
+## Windows 侧（可选）

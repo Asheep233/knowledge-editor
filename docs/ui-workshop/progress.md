@@ -33,8 +33,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 | Task ID | 状态 | 实现提交/文件 | 验收 ID 与证据 | 剩余问题 | 下一步 |
 | --- | --- | --- | --- | --- | --- |
-| T00 | in_progress | e54d37b（overlay）、本文件 | evidence/T00-baseline.md | 需补 256/512KB 文档、公式/附件、两 shell 预热测量的可重复脚本 | 测量脚本 + 证据目录固化 |
-| T01 | todo | | | | 功能矩阵 feature-baseline.csv + fixtures + 失败台账 |
+| T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
+| T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
 | T02–T06 | todo | | | | P0 五原型（S1 运行域/S2 编辑面/S3 保存/S4 打印/S5 事务） |
 | T07 | todo | | | | 路线 ADR |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
@@ -46,3 +46,15 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 ## 路线 ADR
 
 见 `docs/ui-workshop/adr/`；已记录 ADR-000（实施基线选择）。
+
+## 本轮交付（2026-10-19，T00/T01 种子）
+
+- `scripts/ui-workshop/sandbox-env.sh|.ps1`：隔离测试数据目录（KE_WORKSPACE/KE_APP_CONFIG/LEGACY/WebView2 user data）
+- `scripts/ui-workshop/collect-env.sh` → `evidence/env-*.txt`：环境快照
+- `scripts/ui-workshop/bench.sh` → `evidence/T00-measurements.md`：
+  tsc 19.7s / build 21.9s（dist-build 2,830,583 B）/ backend health 805ms（隔离目录）
+- `docs/ui-workshop/tools/make_fixtures.py` → `fixtures/`：basic.md、large-256kb.md、
+  large-512kb.md、附件占位、fixtures-manifest.json（5 files，确定性可复现）
+- `docs/ui-workshop/tools/build_feature_baseline.py` → `feature-baseline.csv`：
+  130 行种子（快捷键动作 42 / API 路由 / 工具栏 / 设置 / 原生菜单 / 导出与对话框 / F01–F16+W 验收域）
+- `docs/ui-workshop/known-failures.md`：当前无新增失败；历史 3 条登记且本基线未复现

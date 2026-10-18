@@ -1,16 +1,17 @@
-# P5-T26 A7 安全核对：guest 独立 origin 与 Tauri IPC 可达性 — W 5/5 PASS（附残余风险）
+# P5-T26 A7 安全核对：guest 独立 origin 与 Tauri IPC 可达性 — W 6/6 PASS（附残余风险）
 
 - 日期：2026-10-19 · 平台：Windows 11 + WebView2（隔离测试构建 + workshop 自定义协议）
 - 工具：`tools/run_t26_guest_isolation_probe.py`（guest 自报 origin/internals/invoke 行为；
   不依赖父窗口跨域读取）；原始结果：`evidence/T26-A7-isolation-results.json`
 - 证据类型：**W（真实产品 WebView2 内 guest 上下文）**
 
-## 实测结果：5/5 PASS
+## 实测结果：6/6 PASS
 
 | 检查 | 结果 |
 | --- | --- |
 | W-T26-A7-ISO-1 guest 已启用且 iframe 加载 | PASS |
 | **W-T26-A7-ISO-2 guest 自报 origin 为 `http://workshop.localhost`（独立 origin）** | PASS |
+| **W-T26-A7-ISO-2b 宿主收到 guest internals 自检上报并展示残余风险提示** | PASS |
 | **W-T26-A7-ISO-3 guest 的 Tauri `invoke` 不可用（remote IPC 未生效，1.5s 超时）** | PASS |
 | W-T26-A7-ISO-4 主进程存活 | PASS |
 | W-T26-A7-ISO-5 用户实例未受影响 | PASS |
@@ -47,3 +48,11 @@ guest 自报（关键原文）：
   3. 仍需：Tauri 升级回归（每次升级复跑本探针）、guest SDK 自检上报、评估独立 WebviewWindow。
 - 守卫脚本保留为纵深防御（对未来可配置实现生效），但**不宣称其有效**；本残余风险已列入
   `reports/milestone-assessment.md` 阻止更高里程碑。
+
+## 自检上报（纵深防御，2026-10-19 追加）
+
+- `workshop://` 响应注入的守卫脚本在**无法移除** `__TAURI_INTERNALS__` 后，改为**自检上报**：
+  `window.parent.postMessage({type:'guest-internals', hasInternals})`；
+- 宿主 `WorkshopGuestFrame` 接收并展示残余风险提示（`data-testid=guest-isolation-warning`），
+  记录到 `window.__keGuestInternals` 供诊断；
+- 产品 W 复跑 **6/6 PASS**（新增 ISO-2b：宿主收到上报并提示）；残余风险仍保留在里程碑评估。

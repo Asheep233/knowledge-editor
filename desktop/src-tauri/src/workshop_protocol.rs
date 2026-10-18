@@ -59,7 +59,8 @@ pub fn pack_document_csp() -> String {
 /// 将其 `invoke` 置空并移除 window 引用（纵深防御；remote IPC 本已不可用，但需防止实现漂移）。
 pub fn hardening_script() -> &'static str {
     r#"<script>(function(){try{var i=window.__TAURI_INTERNALS__;if(i){try{Object.defineProperty(i,'invoke',{value:undefined,writable:false,configurable:false});}catch(e){}}
-try{Object.defineProperty(window,'__TAURI_INTERNALS__',{value:undefined,writable:false,configurable:false});}catch(e){try{delete window.__TAURI_INTERNALS__;}catch(e2){}}}catch(e){}})();</script>"#
+try{Object.defineProperty(window,'__TAURI_INTERNALS__',{value:undefined,writable:false,configurable:false});}catch(e){try{delete window.__TAURI_INTERNALS__;}catch(e2){}}}catch(e){}
+try{window.parent.postMessage({type:'guest-internals',hasInternals:typeof window.__TAURI_INTERNALS__!=='undefined'},'*');}catch(e){}})();</script>"#
 }
 
 /// 在 HTML 的 `<head>` 后（或 doctype 后）注入硬化脚本，避免破坏 quirks/布局。
@@ -146,6 +147,7 @@ mod tests {
         let guard_idx = out.find("__TAURI_INTERNALS__").unwrap();
         assert!(guard_idx > head_idx, "guard 应在 <head> 之后");
         assert!(out.contains("Object.defineProperty(window,'__TAURI_INTERNALS__'"));
+        assert!(out.contains("guest-internals"), "守卫脚本应上报 internals 自检结果");
         assert!(out.ends_with("</html>"));
     }
 

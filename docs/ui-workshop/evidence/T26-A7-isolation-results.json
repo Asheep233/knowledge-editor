@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T06:41:39+0800",
+  "generated_at": "2026-10-19T06:58:26+0800",
   "scenario": "T26 A7 guest 隔离核对（Tauri IPC 可达性）",
   "checks": [
     {
@@ -19,6 +19,14 @@
         "hasInternals": true,
         "invokeType": "function",
         "invokeResult": "timeout"
+      }
+    },
+    {
+      "name": "W-T26-A7-ISO-2b 宿主收到 guest internals 自检上报并展示残余风险提示",
+      "pass": true,
+      "detail": {
+        "internals": true,
+        "warning": true
       }
     },
     {
@@ -42,7 +50,7 @@
       }
     }
   ],
-  "pass_count": 5,
-  "total": 5,
+  "pass_count": 6,
+  "total": 6,
   "contexts": []
 }

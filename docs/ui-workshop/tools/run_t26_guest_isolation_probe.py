@@ -210,6 +210,10 @@ def main() -> int:
         print("iso:", json.dumps(iso, ensure_ascii=False)[:600], flush=True)
         (BASE / "diag-after-guest.txt").write_text(str(cdp.eval("document.body.innerText || ''")), encoding="utf-8")
         check("W-T26-A7-ISO-2 guest 自报 origin 为 workshop.localhost", isinstance(iso, dict) and "workshop.localhost" in str(iso.get("origin", "")), iso)
+        host_report = cdp.eval("({internals: window.__keGuestInternals, warning: !!document.querySelector('[data-testid=guest-isolation-warning]')})")
+        check("W-T26-A7-ISO-2b 宿主收到 guest internals 自检上报并展示残余风险提示",
+              isinstance(host_report, dict) and host_report.get("internals") is True and host_report.get("warning") is True,
+              host_report)
         check("W-T26-A7-ISO-3 guest 的 Tauri invoke 不可用（独立 origin + remote IPC 未生效）",
               isinstance(iso, dict) and iso.get("invokeResult") in ("absent", "blocked", "timeout", "sync-error"),
               {"hasInternals": (iso or {}).get("hasInternals"), "invokeResult": (iso or {}).get("invokeResult")})

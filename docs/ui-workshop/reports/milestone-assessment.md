@@ -45,7 +45,7 @@ ACCEPTANCE A 节：
 | W03 包与私有状态回滚 | NOT_RUN | Core 有 store/recover，U 级；I 门禁未做 |
 | W04 SDK 外部独立开发模板/CLI | NOT_RUN | 未提供外部开发模板与第二套 UI 全任务 |
 | W05 协议 snapshot/subscribe/断连重放 | 部分 | 原型 Broker/协议 W 有；产品级未接完整消息线 |
-| W06 执行/网络边界（IPC/loopback/fetch/worker） | 部分 | 隔离核对 5/5（IPC invoke timeout）；**页面内移除 Tauri globals 尝试无效**（不可配置属性，已记录）；网络/worker/伪造消息未系统验证 |
+| W06 执行/网络边界（IPC/loopback/fetch/worker） | 部分 | 隔离核对 5/5（IPC invoke timeout）；**页面内移除 Tauri globals 无效 → 已实现自检上报 + 宿主残余风险提示**；网络/worker/伪造消息未系统验证 |
 | W07 原生故障恢复（无限循环/CPU/内存/boot crash） | NOT_RUN | 仅启动 recover/safeMode W |
 | W09 性能/资源预算 | NOT_RUN | 未做 256/512KB/大量事件压测 |
 | F01–F16 全功能基线逐项 guest 覆盖 | 部分 | 官方 UI 基线回归绿；**guest 入口全任务覆盖**未逐项验证 |

@@ -79,6 +79,7 @@ iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP�
 
 ## 追加硬化（2026-10-19，负结果记录）
 
-- 包文档响应注入守卫脚本尝试移除 `__TAURI_INTERNALS__`：**无效**（Tauri 注入属性不可配置），
-  已保留为纵深防御但不宣称有效；隔离依赖独立 origin + Tauri IPC authority 对 remote origin 的拒绝
-  （capabilities 无 remote 声明）+ 升级回归。详见 `P5-T26-A7-isolation.md` 追加节。
+- 包文档响应注入守卫脚本尝试移除 `__TAURI_INTERNALS__`：**无效**（Tauri 注入属性不可配置）；
+  改为**自检上报**（guest → 宿主 postMessage），宿主展示残余风险并记录诊断；隔离依赖独立 origin +
+  Tauri IPC authority 对 remote origin 的拒绝（capabilities 无 remote 声明）+ 升级回归。
+  详见 `P5-T26-A7-isolation.md` 追加节。

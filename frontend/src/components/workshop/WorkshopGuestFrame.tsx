@@ -27,6 +27,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
   const [capabilities, setCapabilities] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [safeMode, setSafeMode] = useState(false)
+  const [isolationWarning, setIsolationWarning] = useState<string | null>(null)
   const [entries, setEntries] = useState<{ html: string; assets: Record<string, string>; url?: string } | null>(null)
 
   const stop = useCallback(async () => {
@@ -93,6 +94,13 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
     const onMessage = (event: MessageEvent) => {
       const data = event.data as { type?: string } | undefined
       if (!data || typeof data.type !== 'string') return
+      if (data.type === 'guest-internals') {
+        const hasInternals = (data as { hasInternals?: boolean }).hasInternals === true
+        const w = window as unknown as { __keGuestInternals?: boolean }
+        w.__keGuestInternals = hasInternals
+        if (hasInternals) setIsolationWarning('E_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）')
+        return
+      }
       if (data.type === 'guest-heartbeat') {
         const w = window as unknown as { __keGuestHeartbeats?: number }
         w.__keGuestHeartbeats = (w.__keGuestHeartbeats ?? 0) + 1
@@ -123,6 +131,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
           停用 guest
         </button>
       </div>
+      {isolationWarning && <div className="mt-1 text-amber-700" data-testid="guest-isolation-warning">{isolationWarning}</div>}
       {error && <div className="mt-1 text-red-600">{error}</div>}
       {entries && (
         <iframe

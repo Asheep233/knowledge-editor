@@ -1,0 +1,133 @@
+{
+  "generated_at": "2026-10-19T01:36:33+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "host_origin": "http://tauri.localhost",
+  "backend": "http://127.0.0.1:8101",
+  "checks": [
+    {
+      "name": "W1 场景启动且 Rust setup 创建两个 guest WebviewWindow",
+      "pass": true,
+      "detail": [
+        "host-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"http://127.0.0.1:8123/guest-iso.html\",\"host_origin\":\"http://tauri.localhost\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-windo",
+        "guest-same-origin opened by rust setup",
+        "guest-custom-origin opened by rust setup"
+      ]
+    },
+    {
+      "name": "W2 同源 guest 可执行 app 命令（whoami 返回自身 label）",
+      "pass": true,
+      "detail": "guest-same-origin"
+    },
+    {
+      "name": "W3 同源 guest 可调用未守卫写命令（证明 app 命令全局可达）",
+      "pass": true,
+      "detail": "C:\\ke-tmp\\uiws-s1-windows-probe\\probe-windows\\guest-unguarded-write.json"
+    },
+    {
+      "name": "W4 同源 guest 被 label 守卫拒绝敏感命令（守卫原型生效）",
+      "pass": true,
+      "detail": "error:E_FORBIDDEN_WEBVIEW:guest-same-origin"
+    },
+    {
+      "name": "W5 同源 guest 可直连后端 loopback（同源 CORS 放行的风险证据）",
+      "pass": true,
+      "detail": "ok:200"
+    },
+    {
+      "name": "W6 独立来源 guest 有回调上报（IPC 被拒时的通道）",
+      "pass": true,
+      "detail": {
+        "origin": "http://127.0.0.1:8123",
+        "href": "http://127.0.0.1:8123/guest-iso.html",
+        "tauriInternals": "object",
+        "tauriGlobal": "object",
+        "whoami": "error:Command whoami not allowed by ACL",
+        "unguarded": "error:Command unguarded_guest_write not allowed by ACL",
+        "fetchBackend": "blocked:TypeError"
+      }
+    },
+    {
+      "name": "W7 独立来源 guest 的 Tauri invoke 被拒（Origin 边界）",
+      "pass": true,
+      "detail": "error:Command whoami not allowed by ACL"
+    },
+    {
+      "name": "W8 独立来源 guest 的未守卫写命令也被拒（无法触达命令面）",
+      "pass": true,
+      "detail": "error:Command unguarded_guest_write not allowed by ACL"
+    },
+    {
+      "name": "W9 独立来源 guest 对后端 loopback 请求被拒",
+      "pass": true,
+      "detail": "blocked:TypeError"
+    },
+    {
+      "name": "W10 独立来源 guest 未产生后端/宿主文件副作用",
+      "pass": true,
+      "detail": "same_write_origin=http://tauri.localhost"
+    }
+  ],
+  "pass_count": 10,
+  "total": 10,
+  "raw": {
+    "scenario": {
+      "exit_code": 0,
+      "results": {
+        "phase": "windows-scenario",
+        "host": {},
+        "guest": {},
+        "boot": {
+          "backend_base": "http://127.0.0.1:8101",
+          "bad_start": false,
+          "fails": 0,
+          "guest_iso_url": "http://127.0.0.1:8123/guest-iso.html",
+          "host_origin": "http://tauri.localhost",
+          "probe_dir": "C:\\ke-tmp\\uiws-s1-windows-probe\\probe-windows",
+          "safe_mode": false,
+          "scenario": "windows"
+        },
+        "platform": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+          "hostHref": "http://tauri.localhost/",
+          "hostOriginActual": "http://tauri.localhost",
+          "backendBase": "http://127.0.0.1:8101",
+          "hostOrigin": "http://tauri.localhost"
+        }
+      },
+      "same": {
+        "origin": "http://tauri.localhost",
+        "href": "http://tauri.localhost/guest-same.html",
+        "tauriInternals": "object",
+        "tauriGlobal": "object",
+        "whoami": "guest-same-origin",
+        "unguarded": "C:\\ke-tmp\\uiws-s1-windows-probe\\probe-windows\\guest-unguarded-write.json",
+        "sensitive": "error:E_FORBIDDEN_WEBVIEW:guest-same-origin",
+        "fetchBackend": "ok:200",
+        "reported": null
+      },
+      "same_unguarded": {
+        "origin": "http://tauri.localhost",
+        "via": "same-origin-window"
+      },
+      "events": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"http://127.0.0.1:8123/guest-iso.html\",\"host_origin\":\"http://tauri.localhost\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-windo\nhost-js: windows-branch-entered\nguest-same-origin opened by rust setup\nguest-custom-origin opened by rust setup\n"
+    },
+    "iso_callback": [
+      {
+        "origin": "http://127.0.0.1:8123",
+        "href": "http://127.0.0.1:8123/guest-iso.html",
+        "tauriInternals": "object",
+        "tauriGlobal": "object",
+        "whoami": "error:Command whoami not allowed by ACL",
+        "unguarded": "error:Command unguarded_guest_write not allowed by ACL",
+        "fetchBackend": "blocked:TypeError"
+      }
+    ]
+  },
+  "findings": {
+    "app_commands_global_across_webviews": true,
+    "same_origin_guest_backend_direct_access": true,
+    "guarded_command_denied_for_guest": true,
+    "custom_origin_guest_ipc_rejected": true,
+    "custom_origin_guest_backend_blocked": true
+  }
+}

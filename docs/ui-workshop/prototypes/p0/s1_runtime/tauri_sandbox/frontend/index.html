@@ -146,6 +146,7 @@
         try {
           var boot = await invoke('boot_state');
           results.boot = boot;
+          try { await invoke('debug_log', { marker: 'boot:' + JSON.stringify(boot).slice(0, 200) }); } catch (e) {}
           results.platform.userAgent = navigator.userAgent;
           results.platform.hostHref = String(location.href);
           results.platform.hostOriginActual = String(location.origin);
@@ -161,6 +162,16 @@
             await finish(results);
             return;
           }
+          if (boot.scenario === 'windows') {
+            results.phase = 'windows-scenario';
+            try { await invoke('debug_log', { marker: 'windows-branch-entered' }); } catch (e) {}
+            // guest 窗口由 Rust setup 创建（命令线程同步创建窗口会死锁）；
+            // 这里等待 guest 页自报告（同源→Rust 命令写文件；独立来源→本机回调服务）。
+            await new Promise(function (r) { setTimeout(r, 15000); }); // 等 guest 自报告
+            await finish(results);
+            return;
+          }
+          try { await invoke('debug_log', { marker: 'normal-branch' }); } catch (e) {}
           if (boot.bad_start) {
             results.phase = 'bad-start-crash';
             await invoke('crash_now'); // Rust 进程退出（模拟坏包启动崩溃）

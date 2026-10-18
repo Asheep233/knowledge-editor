@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>guest-same-origin</title></head>
+<body style="font:12px monospace;background:#caa;color:#000">
+<h4>guest-same-origin window（同 custom protocol 来源）</h4><pre id="out">running…</pre>
+<script>
+(async function () {
+  var out = {
+    origin: String(location.origin), href: String(location.href),
+    tauriInternals: typeof window.__TAURI_INTERNALS__, tauriGlobal: typeof window.__TAURI__,
+    whoami: null, unguarded: null, sensitive: null, fetchBackend: null, reported: null
+  };
+  async function inv(cmd, args) { return window.__TAURI__.core.invoke(cmd, args); }
+  try { out.whoami = await inv('whoami'); } catch (e) { out.whoami = 'error:' + String((e && e.message) || e); }
+  try {
+    out.unguarded = await inv('unguarded_guest_write', { payload: JSON.stringify({ origin: out.origin, via: 'same-origin-window' }) });
+  } catch (e) { out.unguarded = 'error:' + String((e && e.message) || e); }
+  try { out.sensitive = await inv('sensitive_probe'); } catch (e) { out.sensitive = 'error:' + String((e && e.message) || e); }
+  try {
+    var r = await fetch('http://127.0.0.1:8101/api/health', { mode: 'cors' });
+    out.fetchBackend = 'ok:' + r.status;
+  } catch (e) { out.fetchBackend = 'blocked:' + String(e && e.name); }
+  try { out.reported = await inv('report_guest_result', { payload: JSON.stringify(out) }); }
+  catch (e) { out.reported = 'error:' + String((e && e.message) || e); }
+  document.getElementById('out').textContent = JSON.stringify(out, null, 2);
+})();
+</script></body></html>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>guest-custom-origin</title></head>
+<body style="font:12px monospace;background:#aca;color:#000">
+<h4>guest-custom-origin window（独立 custom protocol 来源）</h4><pre id="out">running…</pre>
+<script>
+(async function () {
+  var out = {
+    origin: String(location.origin), href: String(location.href),
+    tauriInternals: typeof window.__TAURI_INTERNALS__, tauriGlobal: typeof window.__TAURI__,
+    whoami: null, unguarded: null, fetchBackend: null
+  };
+  async function inv(cmd, args) { return window.__TAURI__.core.invoke(cmd, args); }
+  try { out.whoami = await inv('whoami'); } catch (e) { out.whoami = 'error:' + String((e && e.message) || e); }
+  try { out.unguarded = await inv('unguarded_guest_write', { payload: 'iso-should-fail' }); }
+  catch (e) { out.unguarded = 'error:' + String((e && e.message) || e); }
+  try {
+    var r = await fetch('http://127.0.0.1:8101/api/health', { mode: 'cors' });
+    out.fetchBackend = 'ok:' + r.status;
+  } catch (e) { out.fetchBackend = 'blocked:' + String(e && e.name); }
+  document.getElementById('out').textContent = JSON.stringify(out, null, 2);
+  // IPC 被拒时用本机回调服务上报（runner 侧收集）
+  try {
+    var img = new Image();
+    img.src = 'http://127.0.0.1:8122/report?data=' + encodeURIComponent(JSON.stringify(out));
+    document.body.appendChild(img);
+  } catch (e) {}
+})();
+</script></body></html>

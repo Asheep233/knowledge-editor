@@ -35,7 +35,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | --- | --- | --- | --- | --- | --- |
 | T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
 | T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
-| T02–T06 | todo | T02: prototypes/p0/s1_runtime/（迷你 Tauri app + Windows 探针）；T04: s3_save/；T06: s5_txn/ | evidence/P0-S1-prototype.md + P0-S1-probe-results.json（Windows/WebView2，23/25 断言，2 项为发现约束）；S3/S5 双平台 10/10 | T02 未测 child WebviewWindow 权限继承/ACL；T03/T05 未开工；T04/T06 未接入真实后端/运行时 | T02b 独立 WebviewWindow 原型；S2/S4 原型；T07 ADR |
+| T02–T06 | todo | T02: prototypes/p0/s1_runtime/（迷你 Tauri app + iframe 探针 + WebviewWindow 探针）；T04: s3_save/；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源实验；T03/T05 未开工；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
 | T07 | todo | | | | 路线 ADR |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
@@ -87,3 +87,15 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   Rust 原生恢复状态机实测：坏启动崩溃 ×2 → safe mode（Rust 写状态）→ 显式恢复，真实进程 `exit 99` 驱动。
   证据：`evidence/P0-S1-prototype.md` + `P0-S1-probe-results.json`。
   下一步：child WebviewWindow + capability/ACL 精确匹配原型（T02b），再决定 iframe/独立窗口路线（T07 ADR）。
+
+## P0 原型进展（S1b child WebviewWindow，2026-10-19）
+
+- **S1b（T02 续，Windows/WebView2 实机 10/10）**：child WebviewWindow 对照实验：
+  - 同源 guest 窗口（http://tauri.localhost）：app 命令全局可达（whoami 返回 guest label；未守卫写命令成功）
+    → 证明 **app 命令默认对所有 webview 可见**；label 守卫命令被拒（防御原型生效）；
+    且同源 guest 可**直连后端 loopback**（`ok:200`）→ 同源包运行域不可用于不受信包；
+  - 独立来源 guest 窗口（http://127.0.0.1:8123）：Tauri ACL 拒绝 app 命令（`Command ... not allowed by ACL`）、
+    后端 CORS 拒绝 loopback（`blocked:TypeError`）、零副作用 → **独立来源窗口具备默认 IPC 隔离**；
+  - 工程坑记录：command handler 内同步 `WebviewWindowBuilder::build()` 会死锁，窗口须在 Rust setup/主线程创建。
+  证据：`evidence/P0-S1b-windows-probe.md` + `P0-S1-windows-probe-results.json`。
+  下一步：capability 文件级 scoping + 自定义协议来源（离线包）实验，随后 T07 ADR 定运行域。

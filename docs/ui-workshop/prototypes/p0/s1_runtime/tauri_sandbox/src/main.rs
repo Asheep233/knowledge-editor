@@ -77,6 +77,8 @@ fn boot_state(state: State<ProbeState>) -> serde_json::Value {
         "host_origin": state.host_origin,
         "bad_start": state.bad_start,
         "probe_dir": state.dir.display().to_string(),
+        "scenario": env::var("S1_SCENARIO").unwrap_or_default(),
+        "guest_iso_url": env::var("S1_GUEST_ISO_URL").unwrap_or_default(),
     })
 }
 
@@ -131,6 +133,49 @@ fn guest_write_probe(state: State<ProbeState>, payload: String) -> Result<String
     Ok(path.display().to_string())
 }
 
+
+/// 返回当前调用方 webview 的 label（证明 app 命令对任意 webview 可见）。
+#[tauri::command]
+fn whoami(webview: tauri::Webview) -> String {
+    webview.label().to_string()
+}
+
+/// **故意不加守卫**的写命令：用于证明 Tauri app 命令默认对所有 webview 可见。
+#[tauri::command]
+fn unguarded_guest_write(state: State<ProbeState>, payload: String) -> Result<String, String> {
+    let path = state.dir.join("guest-unguarded-write.json");
+    fs::create_dir_all(&state.dir).map_err(|e| e.to_string())?;
+    fs::write(&path, payload).map_err(|e| e.to_string())?;
+    Ok(path.display().to_string())
+}
+
+/// 受守卫命令原型：只允许主窗口调用，其余 webview 明确拒绝（按 webview label 绑定）。
+#[tauri::command]
+fn sensitive_probe(webview: tauri::Webview) -> Result<String, String> {
+    if webview.label() != "main" {
+        return Err(format!("E_FORBIDDEN_WEBVIEW:{}", webview.label()));
+    }
+    Ok("sensitive-ok".to_string())
+}
+
+/// 记录 guest 自报告（same-origin guest 可调；custom-origin guest 因 IPC 被拒而无法调用）。
+#[tauri::command]
+fn report_guest_result(state: State<ProbeState>, payload: String) -> Result<String, String> {
+    let path = state.dir.join("guest-report-same.json");
+    fs::create_dir_all(&state.dir).map_err(|e| e.to_string())?;
+    fs::write(&path, payload).map_err(|e| e.to_string())?;
+    Ok(path.display().to_string())
+}
+
+/// 打开两个 guest WebviewWindow 做对照实验：
+/// - guest-same-origin：同 custom protocol 来源（http://tauri.localhost）→ 应能调用 app 命令/访问后端
+/// - guest-custom-origin：独立 custom protocol 来源（uiwsguest://）→ IPC/后端应被拒
+#[tauri::command]
+fn debug_log(state: State<ProbeState>, marker: String) -> Result<(), String> {
+    append_event(&state.dir, &format!("host-js: {}", marker));
+    Ok(())
+}
+
 #[tauri::command]
 fn exit_probe(app: tauri::AppHandle) {
     app.exit(0);
@@ -147,6 +192,43 @@ fn main() {
     };
     tauri::Builder::default()
         .manage(state)
+        .setup(|app| {
+            if env::var("S1_OPEN_GUESTS").map(|v| v == "1").unwrap_or(false) {
+                use tauri::{WebviewUrl, WebviewWindowBuilder};
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                match WebviewWindowBuilder::new(
+                    app,
+                    "guest-same-origin",
+                    WebviewUrl::App("guest-same.html".into()),
+                )
+                .title("guest-same-origin")
+                .inner_size(520.0, 420.0)
+                .build()
+                {
+                    Ok(_) => append_event(&dir, "guest-same-origin opened by rust setup"),
+                    Err(e) => append_event(&dir, &format!("guest-same-origin build error: {e}")),
+                }
+                if let Ok(url) = env::var("S1_GUEST_ISO_URL") {
+                    match url.parse() {
+                        Ok(parsed) => match WebviewWindowBuilder::new(
+                            app,
+                            "guest-custom-origin",
+                            WebviewUrl::External(parsed),
+                        )
+                        .title("guest-custom-origin")
+                        .inner_size(520.0, 420.0)
+                        .build()
+                        {
+                            Ok(_) => append_event(&dir, "guest-custom-origin opened by rust setup"),
+                            Err(e) => append_event(&dir, &format!("guest-custom-origin build error: {e}")),
+                        },
+                        Err(e) => append_event(&dir, &format!("guest iso url parse error: {e}")),
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             boot_state,
             report_results,
@@ -154,6 +236,11 @@ fn main() {
             crash_now,
             recover_to_official,
             guest_write_probe,
+            whoami,
+            unguarded_guest_write,
+            sensitive_probe,
+            report_guest_result,
+            debug_log,
             exit_probe
         ])
         .run(tauri::generate_context!())

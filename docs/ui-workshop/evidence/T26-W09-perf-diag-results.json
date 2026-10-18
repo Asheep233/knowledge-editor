@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-10-19T07:18:11+0800",
+  "scenario": "T26 W09 诊断（plain vs formula / guest 分离）",
+  "checks": [
+    {
+      "name": "W-T26-W09D-1 打开性能分离：plain256 vs formula256 均记录",
+      "pass": true,
+      "detail": {
+        "plain256": {
+          "ms": 60918,
+          "chars": 0,
+          "hadEditorBefore": false
+        },
+        "formula256": {
+          "ms": 10631,
+          "chars": 189541,
+          "hadEditorBefore": false
+        },
+        "small": {
+          "ms": 328,
+          "chars": 1784,
+          "hadEditorBefore": true
+        },
+        "typingSmallMs": 13,
+        "guestMs": 57
+      }
+    },
+    {
+      "name": "W-T26-W09D-2 公式密集显著慢于纯文本（记录归因）",
+      "pass": false,
+      "detail": {
+        "plainMs": 60918,
+        "formulaMs": 10631
+      }
+    },
+    {
+      "name": "W-T26-W09D-3 小文档整段输入延迟（< 500ms）",
+      "pass": true,
+      "detail": {
+        "ms": 13
+      }
+    },
+    {
+      "name": "W-T26-W09D-4 小文档负载下 guest 启用（< 3s）",
+      "pass": true,
+      "detail": {
+        "ms": 57,
+        "active": true
+      }
+    },
+    {
+      "name": "W-T26-W09D-5 主进程存活 / 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 4,
+  "total": 5,
+  "metrics": {
+    "plain256": {
+      "ms": 60918,
+      "chars": 0,
+      "hadEditorBefore": false
+    },
+    "formula256": {
+      "ms": 10631,
+      "chars": 189541,
+      "hadEditorBefore": false
+    },
+    "small": {
+      "ms": 328,
+      "chars": 1784,
+      "hadEditorBefore": true
+    },
+    "typingSmallMs": 13,
+    "guestMs": 57
+  }
+}

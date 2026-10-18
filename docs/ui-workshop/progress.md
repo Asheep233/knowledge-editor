@@ -39,7 +39,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T07 | passed | adr/ADR-001-runtime-route.md、reports/P0-report.md | S1/S1b/S2/S3/S4/S5 原型 + Windows 证据已写入 ADR；P0_READY 里程碑见 P0 报告 | T02–T06 产品化收尾（capability/NodeView/真实后端/打印产品化）在 P1–P3 继续 | 进入 P1（T08→T09→T10） |
 | T08 | passed | core/codec/probe{,2,3}.ts + run_probe*.sh + CANONICAL-RULES.md | probe2（10 类扩展无 DOM 分层，全部可 parse/serialize）；probe3（8 样本保存管线 roundtrip 台账：声明 R1–R6 后 **fixpoint2 8/8 字节稳定**；ke 标记保留、BOM/CRLF 还原）；DOM-free API 边界已明确 | 唯一性细节（如首次空行归并）已按声明规范处理；真实 UI 行为一致性留 T26 复核 | T10 Core 直接引用 ke.ts traits + serializer 边界 |
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
-| T10 | in_progress | frontend/src/core/session/{types,saveCoordinator,memoryTransport,httpTransport,recoveryJournal,+3 测试} | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫；HTTP 映射/恢复日志/崩溃恢复） | 真实 HTTP 端到端联调未跑；产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实加载切换接线/索引 history 绑定未完成（T14/T15/T12） | e2e 联调 T09 + 产品 RecoveryStorage → T11 协议 |
+| T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -206,3 +206,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P1-T10-core-savecoordinator.md`。
 - 下一步：真实 HTTP 端到端联调（Node ↔ uvicorn T09 端点）+ 产品 RecoveryStorage（Tauri 文件）
   → T11 类型化协议契约。
+
+## P1 进度（T10 端到端联调，2026-10-19）
+
+- **T10 e2e 19/19 PASS**：真实隔离 uvicorn（产品后端 T09 `/api/context/*`）+ Node Core
+  SaveCoordinator/HttpTransport/RecoveryJournal 真实保存链：workspace/context 打开、两次保存落盘、
+  journal 提交、requestId 结果查询、revision CAS 冲突、切库旧 epoch stale 不落盘、新 epoch 保存、
+  外部改盘 conflict_external 不覆盖。证据：`evidence/P1-T10-e2e.md` + `T10-e2e-results.json`。
+- 说明：后端跑 WSL Linux（A 证据，非 Windows/WebView2 W 证据）；产品 RecoveryStorage、真实 UI 接线留后续。
+- 下一步：T11 类型化协议契约（host↔guest），然后 T12 分域迁移。

@@ -93,12 +93,13 @@ export class HttpTransport implements SaveTransport {
     if (status === 409) {
       const detail = (body as { detail?: string } | null)?.detail ?? ''
       const stale = /epoch/i.test(detail)
+      const external = /外部/.test(detail)
       return {
         requestId: req.requestId,
         contextId: req.contextId,
         relPath: req.relPath,
         status: stale ? 'stale' : 'conflict',
-        kind: stale ? undefined : 'revision',
+        kind: stale ? undefined : external ? 'external' : 'revision',
         detail,
       }
     }

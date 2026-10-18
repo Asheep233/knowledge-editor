@@ -1,0 +1,196 @@
+{
+  "generatedAt": "2026-10-18T18:05:22.410Z",
+  "base": "http://127.0.0.1:8266",
+  "workspace": "/tmp/ke-t10-e2e.9uRMqA/workspace",
+  "epoch": 2,
+  "checks": [
+    {
+      "name": "workspace/create",
+      "pass": true,
+      "detail": {
+        "status": 409,
+        "detail": "目标目录非空，请使用「打开」"
+      }
+    },
+    {
+      "name": "workspace/open",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "name": "context/open",
+      "pass": true,
+      "detail": {
+        "id": "e2e-ctx",
+        "epoch": 1,
+        "root": "/tmp/ke-t10-e2e.9uRMqA/workspace",
+        "current": "e2e-ctx"
+      }
+    },
+    {
+      "name": "save#1 saved",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "requestId": "req-e2e-1",
+        "result": {
+          "requestId": "req-e2e-1",
+          "contextId": "e2e-ctx",
+          "relPath": "Articles/e2e-note.md",
+          "status": "completed",
+          "revision": 1,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        }
+      }
+    },
+    {
+      "name": "save#1 文件落盘",
+      "pass": true
+    },
+    {
+      "name": "save#1 journal 已提交",
+      "pass": true,
+      "detail": {
+        "pending": 0
+      }
+    },
+    {
+      "name": "save#1 revision 推进 1",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "revision": 1,
+        "lastRequestId": "req-e2e-1"
+      }
+    },
+    {
+      "name": "save#2 saved",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "requestId": "req-e2e-2",
+        "result": {
+          "requestId": "req-e2e-2",
+          "contextId": "e2e-ctx",
+          "relPath": "Articles/e2e-note.md",
+          "status": "completed",
+          "revision": 2,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        }
+      }
+    },
+    {
+      "name": "save#2 revision=2",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "revision": 2,
+        "lastRequestId": "req-e2e-2"
+      }
+    },
+    {
+      "name": "save#2 文件更新",
+      "pass": true
+    },
+    {
+      "name": "requestId 结果查询 completed",
+      "pass": true,
+      "detail": {
+        "requestId": "req-e2e-2",
+        "contextId": "e2e-ctx",
+        "relPath": "Articles/e2e-note.md",
+        "status": "completed",
+        "revision": 2,
+        "accepted": true,
+        "recoveryDurable": true,
+        "fileDurable": true
+      }
+    },
+    {
+      "name": "revision 冲突 → conflict_revision",
+      "pass": true,
+      "detail": {
+        "status": "conflict_revision",
+        "requestId": "req-e2e-3",
+        "result": {
+          "requestId": "req-e2e-3",
+          "contextId": "e2e-ctx",
+          "status": "conflict",
+          "kind": "revision",
+          "currentRevision": 2,
+          "detail": "expectedRevision 已过期"
+        }
+      }
+    },
+    {
+      "name": "revision 冲突不覆盖文件",
+      "pass": true
+    },
+    {
+      "name": "旧 epoch 保存 → stale_context",
+      "pass": true,
+      "detail": {
+        "status": "stale_context",
+        "requestId": "req-e2e-5",
+        "result": {
+          "requestId": "req-e2e-5",
+          "contextId": "e2e-ctx",
+          "relPath": "Articles/e2e-note.md",
+          "status": "stale",
+          "detail": "上下文 epoch 已过期: 期望 2, 收到 1"
+        }
+      }
+    },
+    {
+      "name": "旧 epoch 保存不落盘",
+      "pass": true
+    },
+    {
+      "name": "切库后新 epoch 保存 saved",
+      "pass": true,
+      "detail": {
+        "status": "saved",
+        "requestId": "req-e2e-6",
+        "result": {
+          "requestId": "req-e2e-6",
+          "contextId": "e2e-ctx",
+          "relPath": "Articles/e2e-note.md",
+          "status": "completed",
+          "revision": 3,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        }
+      }
+    },
+    {
+      "name": "新 epoch 文件更新",
+      "pass": true
+    },
+    {
+      "name": "外部改盘 → conflict_external",
+      "pass": true,
+      "detail": {
+        "status": "conflict_external",
+        "requestId": "req-e2e-7",
+        "result": {
+          "requestId": "req-e2e-7",
+          "contextId": "e2e-ctx",
+          "status": "conflict",
+          "kind": "external",
+          "detail": "磁盘内容已被外部修改"
+        }
+      }
+    },
+    {
+      "name": "外部改盘内容不被覆盖",
+      "pass": true
+    }
+  ],
+  "passed": 19,
+  "total": 19
+}

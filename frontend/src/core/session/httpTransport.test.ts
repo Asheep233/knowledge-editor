@@ -50,6 +50,14 @@ describe('HttpTransport（T09 /api/context/*）', () => {
     expect(result.kind).toBe('revision')
   })
 
+  it('409 外部改盘 → conflict(external)', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(409, { detail: '磁盘内容已被外部修改' })) as unknown as typeof fetch
+    const transport = new HttpTransport({ fetchImpl })
+    const result = await transport.write(REQ)
+    expect(result.status).toBe('conflict')
+    expect(result.kind).toBe('external')
+  })
+
   it('非 2xx 抛错（由 SaveCoordinator 视为 abort 并可 reconcile）', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(500, { detail: 'boom' })) as unknown as typeof fetch
     const transport = new HttpTransport({ fetchImpl })

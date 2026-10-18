@@ -46,7 +46,7 @@ ACCEPTANCE A 节：
 | W04 SDK 外部独立开发模板/CLI | NOT_RUN | 未提供外部开发模板与第二套 UI 全任务 |
 | W05 协议 snapshot/subscribe/断连重放 | 部分（握手+snapshot W 7/7） | 产品 host 真实 Broker/Dispatcher + SDK GuestClient 握手/snapshot 已验证；subscribe/断连/慢包/超时 queryResult 未做 |
 | W06 执行/网络边界（IPC/loopback/fetch/worker） | 部分（网络/worker/WS 功能级 W 8/8） | fetch 相对/loopback/外部、worker、WebSocket 均被阻断；越权方法 E_CAPABILITY；guest internals 自检上报；剩余：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归 |
-| W07 原生故障恢复（无限循环/CPU/内存/boot crash） | NOT_RUN | 仅启动 recover/safeMode W；无限循环探针未到达 guest 阶段（环境问题，记录于 `P5-T26-W07-fault-attempt.md`）；架构风险：guest 与宿主同渲染进程可能互相阻塞 |
+| W07 原生故障恢复（无限循环/CPU/内存/boot crash） | 部分（无限循环 W 8/8） | guest busy loop 未阻塞宿主（独立 renderer），心跳检测→suspended→failed+safeMode→停用持久化；**CPU/内存/boot crash/桥接超时/连续启动失败/原生 Rust 恢复/I 门禁未验证** |
 | W09 性能/资源预算 | NOT_RUN | 未做 256/512KB/大量事件压测 |
 | F01–F16 全功能基线逐项 guest 覆盖 | 部分 | 官方 UI 基线回归绿；**guest 入口全任务覆盖**未逐项验证 |
 | 正式发布密钥流程 | NOT_RUN | ADR-003 实施清单未执行（无正式密钥） |

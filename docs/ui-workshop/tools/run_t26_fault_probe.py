@@ -123,6 +123,16 @@ def main() -> int:
     appdata.mkdir(parents=True, exist_ok=True)
     ws = BASE / "workspace"
     (ws / "Articles").mkdir(parents=True)
+    # 修复环境：预置 app_config（recent workspace）与 settings（启动自动打开），避免停在 WorkspacePicker
+    ke_cfg_dir = appdata / "KnowledgeEditor"
+    ke_cfg_dir.mkdir(parents=True, exist_ok=True)
+    (ke_cfg_dir / "app_config.json").write_text(json.dumps({
+        "recent_workspaces": [str(ws)], "recent_documents": [],
+    }, ensure_ascii=False), encoding="utf-8")
+    (ke_cfg_dir / "settings.json").write_text(json.dumps({
+        "schema_version": 1,
+        "startup": {"auto_open_recent_workspace": True},
+    }, ensure_ascii=False), encoding="utf-8")
 
     key = BASE / "key.pem"
     pub = json.loads(subprocess.run([NODE, str(SIGN_TOOL), "--generate-key", str(key)], check=True,
@@ -169,9 +179,18 @@ def main() -> int:
                 time.sleep(0.3)
         inst = invoke(cdp, "workshop_pack_install", {"sourceDir": str(pack)})
         check("W-T26-W07-1 安装签名包（故障包）", inst.get("ok") is True, inst)
-        for text in ("创意工坊", "授予信任"):
-            click_text(cdp, text)
-            time.sleep(1.2)
+        # 等主 UI（自动打开 recent workspace 可能较慢）后再操作工坊
+        for _ in range(120):
+            if "创意工坊" in str(cdp.eval("document.body.innerText || ''")):
+                break
+            time.sleep(0.25)
+        click_text(cdp, "创意工坊")
+        for _ in range(60):
+            if cdp.eval("(() => [...document.querySelectorAll('button')].some(b => (b.textContent||'').includes('启用 guest')))()"):
+                break
+            time.sleep(0.25)
+        click_text(cdp, "授予信任")
+        time.sleep(1.5)
         clicked = click_text(cdp, "启用 guest")
         time.sleep(1.2)
         body = str(cdp.eval("document.body.innerText || ''"))
@@ -191,10 +210,32 @@ def main() -> int:
         except Exception as e:
             host_responsive = False
             status = {"error": f"host unresponsive: {e}"}
-        check("W-T26-W07-3 故障后宿主 IPC 仍可响应（独立恢复前提）", host_responsive, status)
-        check("W-T26-W07-4 会话状态可查询（崩溃/停用可观测）", host_responsive and isinstance(status, dict) and status.get("ok") is True, status)
+        check("W-T26-W07-3 故障后宿主 IPC 仍可响应（guest 无限循环未阻塞宿主）", host_responsive, status)
+        state1 = ((status or {}).get("value") or {}).get("state")
+        check("W-T26-W07-4 心跳中断被检测（会话 suspended/failed 可观测）",
+              host_responsive and state1 in ("suspended", "failed"), {"state": state1})
+        # 持续无心跳 → 连续 crash 超限 → failed + safeMode（原生恢复策略）
+        failed = False
+        safe_mode_ui = False
+        for _ in range(40):
+            st = invoke(cdp, "workshop_pack_session_status", {}, timeout=3.0)
+            state = ((st or {}).get("value") or {}).get("state")
+            if state == "failed":
+                failed = True
+                break
+            time.sleep(0.4)
+        body = str(cdp.eval("document.body.innerText || ''"))
+        safe_mode_ui = "safeMode" in body
+        check("W-T26-W07-5 连续故障超限 → failed + safeMode（宿主侧恢复策略生效）", failed and safe_mode_ui,
+              {"failed": failed, "safeMode": safe_mode_ui})
+        # 停用可持久化（恢复操作可用）
+        click_text(cdp, "停用 guest")
+        time.sleep(1.0)
+        st_stop = invoke(cdp, "workshop_pack_session_status", {}, timeout=3.0)
+        check("W-T26-W07-5b 停用 guest → stopped 持久化（可恢复操作）",
+              ((st_stop or {}).get("value") or {}).get("state") == "stopped", st_stop)
         alive = proc.poll() is None
-        check("W-T26-W07-5 测试进程状态（frozen vs alive）", True, {"alive": alive, "note": "alive 但无响应 = 渲染进程被 guest 阻塞"})
+        check("W-T26-W07-5c 测试进程存活（宿主未被 guest 阻塞/无崩溃）", alive, {"alive": alive})
         upid = user_pid()
         check("W-T26-W07-6 用户实例未受影响", upid.isdigit(), {"user_pid": upid})
         if not host_responsive:

@@ -35,6 +35,7 @@
 | W01 ZIP 离线包 staging/安装/解压安全 | 8/8（I 门禁未做） | `P5-T26-W01-zip.md` |
 | W05 产品 guest 协议线（握手+snapshot） | 7/7（完整协议语义未做） | `P5-T26-W05-protocol.md` |
 | W06 guest 执行/网络边界（功能级） | 8/8（导航/伪造消息未做） | `P5-T26-W06-boundary.md` |
+| W07 guest 无限循环故障（部分类别） | 8/8（CPU/内存/boot crash/I 未做） | `P5-T26-W07-fault.md` |
 
 **总计：真实产品壳 W 探针 11 个场景，全部通过**；原型壳 W 13 探针一键门禁 13/13。
 

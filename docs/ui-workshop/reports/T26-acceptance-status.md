@@ -23,6 +23,7 @@
 | W01 ZIP 离线包 staging/安装 + 解压安全（U+W） | **8/8** | `P5-T26-W01-zip.md` |
 | W05 产品 guest 协议线（Broker/Dispatcher↔SDK 握手 + snapshot） | **7/7** | `P5-T26-W05-protocol.md` |
 | W06 guest 执行/网络边界（fetch/worker/WS/能力越权，功能级） | **8/8** | `P5-T26-W06-boundary.md` |
+| W07 guest 无限循环故障（宿主独立/心跳检测/failed+safeMode/停用） | **8/8（部分类别）** | `P5-T26-W07-fault.md` |
 
 > 说明：A1–A8 全部已通过真实产品壳 W；T26 认证仍需补真实 IME/多 DPI、安装包升级/回滚演练（T27）。
 

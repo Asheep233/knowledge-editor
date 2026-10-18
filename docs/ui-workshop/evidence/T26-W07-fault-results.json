@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T07:10:13+0800",
+  "generated_at": "2026-10-19T07:11:14+0800",
   "scenario": "T26 W07 guest 无限循环故障（宿主独立性验证）",
   "checks": [
     {
@@ -10,50 +10,79 @@
         "value": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368386064528066 }"
+          "updatedAt": "SystemTime { intervals: 134368386650740260 }"
         }
       }
     },
     {
       "name": "W-T26-W07-2 guest 已启用（进入无限循环前）",
-      "pass": false,
+      "pass": true,
       "detail": {
-        "clicked": false,
-        "bodyTail": "KE\nAstraNota\n\nAlpha\n\n以 Markdown 为唯一事实源的本地知识编辑器——选择一个工作区开始\n\n打开已有工作区\n选择已有 workspace 文件夹继续写作\n创建新工作区\n在指定位置初始化空白知识库\n程序与数据分离 · 卸载软件不删除数据\nv1.2.18 · Markdown 为唯一事实源 · 索引可整体重建"
+        "start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "log": [
+          "starting",
+          "active",
+          "active"
+        ],
+        "clicked": true,
+        "bodyTail": "新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-fault\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07 设为 trusted\n已安装包\nT26 Fault Pack com.probe.t26w07\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
       }
     },
     {
-      "name": "W-T26-W07-3 故障后宿主 IPC 仍可响应（独立恢复前提）",
+      "name": "W-T26-W07-3 故障后宿主 IPC 仍可响应（guest 无限循环未阻塞宿主）",
       "pass": true,
       "detail": {
         "ok": true,
         "value": {
           "capabilities": [],
-          "packId": null,
-          "state": "idle",
-          "updatedAt": null
+          "lastError": null,
+          "packId": "com.probe.t26w07",
+          "state": "suspended",
+          "updatedAt": "SystemTime { intervals: 134368386707708073 }"
         }
       }
     },
     {
-      "name": "W-T26-W07-4 会话状态可查询（崩溃/停用可观测）",
+      "name": "W-T26-W07-4 心跳中断被检测（会话 suspended/failed 可观测）",
+      "pass": true,
+      "detail": {
+        "state": "suspended"
+      }
+    },
+    {
+      "name": "W-T26-W07-5 连续故障超限 → failed + safeMode（宿主侧恢复策略生效）",
+      "pass": true,
+      "detail": {
+        "failed": true,
+        "safeMode": true
+      }
+    },
+    {
+      "name": "W-T26-W07-5b 停用 guest → stopped 持久化（可恢复操作）",
       "pass": true,
       "detail": {
         "ok": true,
         "value": {
           "capabilities": [],
-          "packId": null,
-          "state": "idle",
-          "updatedAt": null
+          "lastError": null,
+          "packId": "com.probe.t26w07",
+          "state": "stopped",
+          "updatedAt": "SystemTime { intervals: 134368386724583452 }"
         }
       }
     },
     {
-      "name": "W-T26-W07-5 测试进程状态（frozen vs alive）",
+      "name": "W-T26-W07-5c 测试进程存活（宿主未被 guest 阻塞/无崩溃）",
       "pass": true,
       "detail": {
-        "alive": true,
-        "note": "alive 但无响应 = 渲染进程被 guest 阻塞"
+        "alive": true
       }
     },
     {
@@ -64,6 +93,6 @@
       }
     }
   ],
-  "pass_count": 5,
-  "total": 6
+  "pass_count": 8,
+  "total": 8
 }

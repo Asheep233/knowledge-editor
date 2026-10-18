@@ -90,7 +90,11 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
     const onMessage = (event: MessageEvent) => {
       const data = event.data as { type?: string } | undefined
       if (!data || typeof data.type !== 'string') return
-      if (data.type === 'guest-heartbeat') host.heartbeat()
+      if (data.type === 'guest-heartbeat') {
+        const w = window as unknown as { __keGuestHeartbeats?: number }
+        w.__keGuestHeartbeats = (w.__keGuestHeartbeats ?? 0) + 1
+        host.heartbeat()
+      }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)

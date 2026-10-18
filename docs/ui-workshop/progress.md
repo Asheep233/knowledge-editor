@@ -731,3 +731,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   2 例组件测试通过、tsc 0。证据：`evidence/P3-T19-guest-frame-ui.md`。
 - 下一步：A7/A5 产品 W（CDP 驱动真实产品壳：启用→active→能力子集→移除 iframe→自动 suspended→
   超限 failed+safeMode→停用持久化）。
+
+## P5/T26 进度（A7/A5 产品 W 首跑 8/11 + CSP 发现，2026-10-19）
+
+- 真实产品壳：capacity 拒绝 ✓、trusted 启用 active+iframe ✓、会话状态落盘 ✓、停用 stopped ✓；
+- **CSP `script-src 'self'` 阻断 sandbox srcdoc 内联包脚本 → 心跳 0 → 崩溃检测不触发**；
+  A7/A5 未通过；ADR-004 修订：改用 `workshop://` 自定义协议提供包 origin（含包文档 CSP）。
+  证据：`evidence/P5-T26-A7-A5-guest-attempt.md`。
+- 保留修复：guestHost 无心跳兜底、组件心跳诊断计数、测试构建同步源码流程修正。

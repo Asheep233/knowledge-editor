@@ -48,6 +48,7 @@ export class GuestSessionHost {
   private packId = ''
   private timer: ReturnType<typeof setInterval> | null = null
   private lastHeartbeatAt = 0
+  private startedAt = 0
   private stopped = false
 
   constructor(options: GuestHostOptions) {
@@ -80,6 +81,7 @@ export class GuestSessionHost {
         void this.report(session.state, undefined, session.connection?.capabilities)
       },
     })
+    this.startedAt = Date.now()
     const session = await this.host.start(packId, version)
     const entry = await this.backend.loadEntry(manifest)
     await this.report(session.state, undefined, session.connection?.capabilities)
@@ -96,8 +98,8 @@ export class GuestSessionHost {
     if (this.timer || !this.host) return
     this.timer = setInterval(() => {
       if (this.stopped || !this.host) return
-      if (this.lastHeartbeatAt === 0) return
-      if (Date.now() - this.lastHeartbeatAt > this.options.heartbeatTimeoutMs) {
+      const reference = this.lastHeartbeatAt === 0 ? this.startedAt : this.lastHeartbeatAt
+      if (Date.now() - reference > this.options.heartbeatTimeoutMs) {
         this.lastHeartbeatAt = Date.now() // 避免同一中断重复上报
         void this.host.reportCrash(this.packId, 'heartbeat timeout (guest crash detected)').catch(() => undefined)
       }

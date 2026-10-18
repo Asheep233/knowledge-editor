@@ -27,8 +27,9 @@
 
 ## 3. 未完成项（不得省略）
 
-- **A5 剩余**：能力上限在真实包会话的运行时强制执行（依赖 A7 产品侧 PackageHost 装配）；
-  （信任授予/撤销 UI 已完成 W 11/11，见 `P5-T26-A5-ui.md`）；
+- **A5/A7 剩余**：产品 guest 宿主首跑 W 8/11——能力上限拒绝/启用 active/状态落盘/停用持久化已过，
+  但 **CSP 阻断 srcdoc 包脚本**（心跳 0）→ 需自定义协议 origin（ADR-004 修订）；见
+  `P5-T26-A7-A5-guest-attempt.md`；
 - **A7**：产品侧包隔离宿主（真实入口资源 + 崩溃检测 + 停用/恢复持久化）—— 原型已 W 8/8，产品壳未接；
 - **A8**：`VITE_KE_CORE_SAVE=1` 产品 UI 保存 **已完成 W 9/9**（autosave→`/api/context/write`、frontmatter
   保留；排查中修复 base URL/sidecar 版本/上下文写入 merge 三个真实缺陷），见 `P5-T26-A8-save.md`；

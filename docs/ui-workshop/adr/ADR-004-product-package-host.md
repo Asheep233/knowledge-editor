@@ -19,6 +19,13 @@
 
 ## 决策
 
+## 修订（2026-10-19，A7 首跑 W 发现）
+
+**srcdoc 方案不可行**：产品 CSP `script-src 'self'` 会阻断 sandbox srcdoc 中的包内联脚本（心跳/协议全不执行）。
+→ 采用**自定义协议 `workshop://`**：Rust 注册协议按 packId/version 解析已安装包文件（路径/大小限制），
+iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP），sandbox 保持 `allow-scripts`；
+隔离守卫改为校验 iframe origin + `__TAURI_INTERNALS__` 不可达。
+
 1. **入口资源**：新增产品命令 `workshop_pack_read_asset(id, version, path)`（已实现）：
    - `safe_rel` 路径校验（禁止 `..`/绝对路径）、id/version 同样校验、5MB 上限、仅已安装目录；
    - 首版由产品宿主读取 entry HTML 后以 **sandbox iframe `allow-scripts`（srcdoc，不透明 origin）**

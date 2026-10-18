@@ -1,0 +1,133 @@
+{
+  "generated_at": "2026-10-19T06:14:02+0800",
+  "scenario": "T26 A7/A5 产品 guest 宿主（启用/能力上限/崩溃/safeMode/停用持久化）",
+  "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+  "checks": [
+    {
+      "name": "W-T26-A7/A5-1 隔离产品启动并安装签名包",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368352127735783 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-2 工坊面板打开（真实已安装包）",
+      "pass": true,
+      "detail": {
+        "opened": true
+      }
+    },
+    {
+      "name": "W-T26-A5-1 community 等级启用 → E_CAPABILITY_TIER 拒绝（能力上限）",
+      "pass": true,
+      "detail": {
+        "diag": {
+          "buttons": [
+            "",
+            "全部文档",
+            "最近更新",
+            "标签",
+            "回收站",
+            "新建",
+            "新建",
+            "新建文件夹",
+            "附件 0",
+            "",
+            "设置",
+            "+ 新建文档",
+            "",
+            "大纲",
+            "创意工坊",
+            "关闭",
+            "检查/修复全部包",
+            "选择包并预览…",
+            "回滚",
+            "修复/恢复",
+            "授予信任",
+            "撤销信任",
+            "启用 guest",
+            "停用 guest",
+            "卸载"
+          ],
+          "hasEnable": true,
+          "iframe": false,
+          "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nhello.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-guest\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n已安装包\nT26 Guest Pack com.probe.t26guest\n版本 1.0.0 · 已激活\n信任：community\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：idle\n启用 guest\n停用 guest\n卸载"
+        },
+        "clickedEnable": true,
+        "bodyTail": "arkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-guest\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n已安装包\nT26 Guest Pack com.probe.t26guest\n版本 1.0.0 · 已激活\n信任：community\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n启用 guest\n停用 guest\nE_CAPABILITY_TIER: 信任等级 community 不允许该包声明能力（禁止启用）\n卸载"
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-3 trusted 启用 → guest active + sandbox iframe",
+      "pass": true,
+      "detail": {
+        "active": true,
+        "iframe": true
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-4 会话状态落盘 active（packId/能力子集）",
+      "pass": true,
+      "detail": {
+        "capabilities": [
+          "ui.shell",
+          "panel.sidebar",
+          "context.read"
+        ],
+        "lastError": null,
+        "packId": "com.probe.t26guest",
+        "state": "active",
+        "updatedAt": "SystemTime { intervals: 134368352160021265 }"
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-5a guest 心跳到达宿主（postMessage）",
+      "pass": false,
+      "detail": {
+        "heartbeats": 0
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-5 心跳中断自动检测 → 超限 failed",
+      "pass": false,
+      "detail": {
+        "state": "stopped"
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-6 safeMode 提示出现（guest 禁用）",
+      "pass": false,
+      "detail": "已将 com.probe.t26guest 设为 trusted\n已安装包\nT26 Guest Pack com.probe.t26guest\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n能力：ui.shell, panel.sidebar, context.read\n启用 guest\n停用 guest\n卸载"
+    },
+    {
+      "name": "W-T26-A7/A5-7 停用 guest → 会话状态持久化 stopped",
+      "pass": true,
+      "detail": {
+        "capabilities": [],
+        "lastError": null,
+        "packId": "com.probe.t26guest",
+        "state": "stopped",
+        "updatedAt": "SystemTime { intervals: 134368352407697300 }"
+      }
+    },
+    {
+      "name": "W-T26-A7/A5-8 主进程存活（宿主链路无崩溃）",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A7/A5-9 用户运行中的 AstraNota 未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 8,
+  "total": 11
+}

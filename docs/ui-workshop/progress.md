@@ -55,7 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
-| T26 | in_progress | tools/run_all_w_probes.py；evidence/windows-witnesses-summary.json | **evidence/P5-T26-windows-witnesses.md（13/13 W 探针复跑 PASS，--check 门禁 PASS；含 T19 多资源+心跳崩溃检测）** | 产品壳端到端交互 W（安装/启用/回滚/卸载、T16 隐藏 renderer 打印）需隔离安装；真实 OS IME/多 DPI；Windows 安装包升级回归 | 隔离安装产品 E2E W + 平台矩阵补齐 → 认证结论 |
+| T26 | in_progress | tools/run_all_w_probes.py；**reports/T26-windows-acceptance-plan.md（隔离安装 A1–A8 场景）** | P5-T26-windows-witnesses.md（13/13 W 探针 --check PASS）、T26 验收计划 | 产品隔离安装 E2E A1–A8 未执行；真实 OS 中文 IME/多 DPI；安装包升级/回滚演练 | 按计划执行隔离产品 E2E → 认证结论 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -616,3 +616,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P2-T14-byte-consistency.md` + results JSON。
 - 剩余：flag 开启路径 UI e2e（保存/切档/外部改盘/恢复点）、Windows/WebView2 实机保存 W；
   通过后才评估 `VITE_KE_CORE_SAVE` 默认开启。
+
+## P5 进度（T25 矩阵增强 + T26 验收计划，2026-10-19）
+
+- T25 矩阵基线扩展：补 Core 各模块单测（session 41/protocol 18/broker 18/packs 71/print 14/
+  workshop UI 16）、前端全量 1795、后端 846、产品 cargo 38，与 W/A 证据行同表；--check PASS。
+- T26：`reports/T26-windows-acceptance-plan.md` —— 隔离策略（独立 identifier/数据目录/端口/清理/
+  不发布）、A1–A8 验收场景（启动/打印/recover/safeMode/签名/信任/安装回滚卸载/包宿主/Core 保存）、
+  前置条件与完成定义；执行后方可给认证结论（当前未执行，不冒进）。

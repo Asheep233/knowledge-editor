@@ -37,6 +37,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T01 | passed | tools/build_feature_baseline.py、feature-baseline.csv（130 行，含 hostService/hostCommand/officialPanel/workshopTaskId 映射）、fixtures/、known-failures.md | 源码自动生成 + F01–F16/W 全覆盖映射；fixtures（basic/256KB/512KB/附件）已就绪 | 逐项「真实入口核对」结果列留 T12/T26 验收轮填写（不属于 T01 交付定义） | — |
 | T02–T06 | in_progress | T02: s1_runtime/；T03: s2_editor/；T04: s3_save/；T05: s4_print/ + s1_runtime/print_proto.rs；T06: s5_txn/ | evidence/P0-S1-prototype.md（iframe 23/25）、P0-S1b-windows-probe.md（child WebviewWindow **10/10**）、P0-S2-prototype.md（WebView2 换壳 **10/10**）、P0-S4-prototype.md（WebView2 真实 PDF **6/6**）、S3/S5 双平台 10/10 | T02 尚缺 capability 文件级 scoping/自定义协议来源；T03 未覆盖产品 NodeView/MathLive/真实 IME；T05 未接真实 session revision/隐藏窗口/长文档；T04/T06 未接入真实后端/运行时 | capability scoping + 自定义协议来源；S2/S4；T07 ADR |
 | T07 | passed | adr/ADR-001-runtime-route.md、reports/P0-report.md | S1/S1b/S2/S3/S4/S5 原型 + Windows 证据已写入 ADR；P0_READY 里程碑见 P0 报告 | T02–T06 产品化收尾（capability/NodeView/真实后端/打印产品化）在 P1–P3 继续 | 进入 P1（T08→T09→T10） |
+| T08 | in_progress | core/codec/probe.ts + run_probe.sh | evidence/T08-codec-probe.md + T08-codec-probe.json（纯 Node headless 实测） | product 扩展 DOM 依赖未分层；示例 fixtures roundtrip 未建 | 扩展分层 + roundtrip 台账 + 纯函数边界 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -128,3 +129,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   officialPanel/workshopTaskId 映射与 fixtures/失败台账（逐项结果列留 T12/T26 验收轮）。
 - **P0 阶段报告**：`reports/P0-report.md`（状态 **P0_READY**；交付清单、Windows 证据、限制与下一阶段任务）。
 - 下一阶段：P1（T08 文档 codec → T09 WorkspaceContext/CAS → T10 Core/SaveCoordinator → T11 协议 → T12 分域迁移 → T13 Core 门槛）。
+
+## P1 进度（T08 起步，2026-10-19）
+
+- T08 探针：纯 Node（无 DOM）跑 `@tiptap/markdown` parse→serialize：
+  basic/list/CRLF 可无 DOM 运行；table 链抛 `window` 缺失；frontmatter/未知 ke-* /原始 HTML 需 product 扩展
+  （本探针仅 StarterKit 被转义/规范化）。证据 `evidence/T08-codec-probe.md` + `.json`。
+- 下一步：把 product 扩展按「可直接无 DOM / 需 shim / 必须 UI」分层，建 fixtures roundtrip 字节台账，
+  提取 frontmatter/BOM/CRLF/未知标记的纯函数边界。

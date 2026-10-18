@@ -1,0 +1,42 @@
+[
+  {
+    "name": "basic",
+    "ok": true,
+    "input": "---\ntitle: T\n---\n\n# 标题\n\n段落 **粗体** 与 `code`。\n",
+    "output": "---\n\n## title: T\n\n# 标题\n\n段落 **粗体** 与 `code`。",
+    "same": false
+  },
+  {
+    "name": "list",
+    "ok": true,
+    "input": "- a\n- b\n\n1. c\n2. d\n",
+    "output": "- a\n- b\n\n1. c\n2. d",
+    "same": false
+  },
+  {
+    "name": "table",
+    "ok": false,
+    "error": "[tiptap error]: there is no window object available, so this function cannot be used"
+  },
+  {
+    "name": "crlf",
+    "ok": true,
+    "input": "# t\r\n\r\np\r\n",
+    "output": "# t\n\np",
+    "same": false
+  },
+  {
+    "name": "unknown-comment",
+    "ok": true,
+    "input": "<!-- ke-unknown: {\"a\":1} -->\n\n正文\n",
+    "output": "&lt;!-- ke-unknown: {\"a\":1} --&gt;\n\n正文",
+    "same": false
+  },
+  {
+    "name": "html",
+    "ok": true,
+    "input": "<div data-x=\"1\">raw</div>\n",
+    "output": "&lt;div data-x=\"1\"&gt;raw&lt;/div&gt;",
+    "same": false
+  }
+]

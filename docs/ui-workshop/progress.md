@@ -445,3 +445,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 验证：产品 cargo **34 passed**、release 构建；工坊+packs 测试 53 例；全量前端
   **123 files / 1747 passed + 1 skipped（exit 0）**。
 - 下一步：Windows 端到端交互 W（安装→启用→回滚→卸载）；包签名/来源信任；最终交接报告。
+
+## 交接报告（当前真实状态版，2026-10-19）
+
+- `docs/ui-workshop/HANDOVER.md`：项目级口径 P0_READY（判定表见 §1）、T00–T29 状态总表、
+  Core/后端/Tauri/原型代码索引、9 项 Windows W 证据索引与运行命令、复现验证步骤、
+  剩余风险（OS IME/产品接线/Windows E2E/签名信任等）、下一阶段优先级、约束遵守声明。
+- 本报告不代表工坊可发布；分支仍仅本地、未推送/未 Release。

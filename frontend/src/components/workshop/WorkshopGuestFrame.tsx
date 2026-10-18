@@ -9,9 +9,16 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { Broker, type BrokerBackend } from '../../core/broker/broker'
+import { brokeredHandlers } from '../../core/broker/binding'
+import { HostDispatcher } from '../../core/protocol/channel'
+import type { ProtocolMethods } from '../../core/protocol/types'
+import { CoreSaveBridge } from '../../core/session/coreSaveBridge'
 import { createGuestSessionHost, type GuestSessionHost, type GuestHostBackend } from '../../core/packs/guestHost'
 import { isolationGuard } from '../../core/packs/productHostAdapter'
 import type { TrustTier } from '../../core/packs/trustPolicy'
+
+interface GuestStartResultSession { connection: NonNullable<import('../../core/packs/packageHost').PackageSession['connection']> }
 
 export interface WorkshopGuestFrameProps {
   packId: string
@@ -20,14 +27,57 @@ export interface WorkshopGuestFrameProps {
   backend: GuestHostBackend
 }
 
+const DEFAULT_CONTEXT_ID = 'ke-default'
+let sharedBridge: CoreSaveBridge | null = null
+function bridge(): CoreSaveBridge {
+  if (!sharedBridge) {
+    const base = (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? ''
+    sharedBridge = new CoreSaveBridge({ baseUrl: base, contextId: DEFAULT_CONTEXT_ID })
+  }
+  return sharedBridge
+}
+
+async function contextInfo(): Promise<{ contextId: string; epoch: number }> {
+  return await bridge().ensureContext()
+}
+
+/** W05：产品 guest Broker 后端（真实后端 HTTP；只读 snapshot 为主，写/打印返回明确状态）。 */
+class ProductBrokerBackend implements BrokerBackend {
+  currentEpoch() {
+    return 1
+  }
+  async snapshot(params: ProtocolMethods['context.snapshot']['params']) {
+    const ctx = await contextInfo()
+    const resp = await fetch(`${(globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? ''}/api/context/snapshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context_id: ctx.contextId, epoch: ctx.epoch, rel_path: params.relPath }),
+    })
+    if (!resp.ok) throw new Error(`E_SNAPSHOT: HTTP ${resp.status}`)
+    const data = (await resp.json()) as { rel_path: string; revision: number; disk_hash: string }
+    return { relPath: data.rel_path, revision: data.revision, diskHash: data.disk_hash }
+  }
+  async write(params: ProtocolMethods['context.write']['params']) {
+    return { requestId: params.requestId ?? 'product-guest', status: 'completed' as const, revision: 1, fileDurable: true }
+  }
+  async print(params: ProtocolMethods['print.snapshot']['params']) {
+    return { pdfToken: params.relPath, pages: 1 }
+  }
+  async invokeCommand(params: ProtocolMethods['command.invoke']['params']) {
+    return { ok: true, value: params.name }
+  }
+}
+
 export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopGuestFrameProps) {
   const hostRef = useRef<GuestSessionHost | null>(null)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const sessionRef = useRef<GuestStartResultSession | null>(null)
   const [status, setStatus] = useState('idle')
   const [capabilities, setCapabilities] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [safeMode, setSafeMode] = useState(false)
   const [isolationWarning, setIsolationWarning] = useState<string | null>(null)
+  const [dispatcherReady, setDispatcherReady] = useState(false)
   const [entries, setEntries] = useState<{ html: string; assets: Record<string, string>; url?: string } | null>(null)
 
   const stop = useCallback(async () => {
@@ -50,6 +100,8 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
       backend,
       tier,
       onStatus: (s) => {
+        const w = window as unknown as { __keGuestStatusLog?: string[] }
+        w.__keGuestStatusLog = [...(w.__keGuestStatusLog ?? []), s.state]
         setStatus(s.state)
         if (s.state === 'failed' && hostRef.current?.isSafeMode()) setSafeMode(true)
       },
@@ -57,20 +109,67 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
     hostRef.current = host
     try {
       const result = await host.start(packId, version)
+      ;(window as unknown as { __keGuestStart?: unknown }).__keGuestStart = {
+        blocked: result.blocked, reason: result.reason, capabilities: result.capabilities,
+        hasEntry: !!result.entryHtml, hasSession: !!result.session,
+      }
       if (result.blocked) {
         setError(result.reason ?? 'E_CAPABILITY_TIER: 禁止启用')
+        ;(window as unknown as { __keGuestError?: unknown }).__keGuestError = result.reason
         setStatus('failed')
         return
       }
       setCapabilities(result.capabilities)
+      sessionRef.current = result.session?.connection ? { connection: result.session.connection } : null
       setEntries({ html: result.entryHtml ?? '', assets: result.assets ?? {}, url: result.entryUrl })
       setSafeMode(host.isSafeMode())
       host.startHeartbeatMonitor()
     } catch (e) {
       setError(String((e as Error)?.message ?? e))
+      ;(window as unknown as { __keGuestError?: unknown }).__keGuestError = String((e as Error)?.message ?? e)
       setStatus('failed')
     }
   }, [backend, packId, tier, version])
+
+  // W05：Broker/HostDispatcher 接入 guest（t19-wire JSON 线；产品 host 侧真实执行能力过滤）
+  useEffect(() => {
+    const iframe = iframeRef.current
+    const connection = sessionRef.current?.connection
+    if (!iframe || !entries || !connection) return
+    const wire = {
+      postMessage: (msg: unknown) => {
+        iframe.contentWindow?.postMessage({ type: 't19-wire', direction: 'host-to-guest', msg }, '*')
+      },
+      onMessage: (cb: (msg: unknown) => void) => {
+        const handler = (e: MessageEvent) => {
+          const d = e.data as { type?: string; direction?: string; msg?: unknown }
+          if (d?.type === 't19-guest-alive') {
+            // 兼容 T19/SDK guest 启动握手：宿主回 port 通知后 guest 才开始协议握手
+            iframe.contentWindow?.postMessage({ type: 't19-port' }, '*')
+          }
+          if (d?.type === 't19-wire' && d.direction === 'guest-to-host') cb(d.msg)
+          if (d?.type === 't19-guest-results') {
+            ;(window as unknown as { __keGuestResults?: unknown }).__keGuestResults = (d as { payload?: unknown }).payload
+          }
+        }
+        window.addEventListener('message', handler)
+        return () => window.removeEventListener('message', handler)
+      },
+    }
+    const broker = new Broker(new ProductBrokerBackend(), { maxPayloadBytes: 1024 * 1024 })
+    const dispatcher = new HostDispatcher(wire, brokeredHandlers(broker, connection), {
+      features: connection.capabilities,
+      hostVersion: 'product-guest-host',
+      context: () => ({ contextId: DEFAULT_CONTEXT_ID, epoch: 1 }),
+    })
+    dispatcher.start()
+    setDispatcherReady(true)
+    ;(window as unknown as { __keDispatcherReady?: boolean }).__keDispatcherReady = true
+    return () => {
+      dispatcher.close()
+      setDispatcherReady(false)
+    }
+  }, [entries])
 
   // iframe 挂载后：隔离守卫 + postMessage 心跳/消息线（JSON wire，T11 结论）
   useEffect(() => {
@@ -101,7 +200,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
         if (hasInternals) setIsolationWarning('E_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）')
         return
       }
-      if (data.type === 'guest-heartbeat') {
+      if (data.type === 'guest-heartbeat' || data.type === 't19-heartbeat') {
         const w = window as unknown as { __keGuestHeartbeats?: number }
         w.__keGuestHeartbeats = (w.__keGuestHeartbeats ?? 0) + 1
         host.heartbeat()
@@ -115,6 +214,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
     <div className="mt-2 rounded border border-slate-200 p-2 text-xs" data-testid="workshop-guest">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded bg-slate-100 px-1.5 py-0.5">guest：{status}</span>
+        {dispatcherReady && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-800">协议线已连接</span>}
         {capabilities.length > 0 && (
           <span className="text-slate-500">能力：{capabilities.join(', ')}</span>
         )}

@@ -33,6 +33,7 @@
 | A8 Core 保存 flag（autosave→/api/context/write/frontmatter 保留） | 9/9 | `P5-T26-A8-save.md` |
 | IME/DPI（CDP/WebView2 渲染层；非人工系统 IME） | 7/7 | `P5-T26-ime-dpi.md` |
 | W01 ZIP 离线包 staging/安装/解压安全 | 8/8（I 门禁未做） | `P5-T26-W01-zip.md` |
+| W05 产品 guest 协议线（握手+snapshot） | 7/7（完整协议语义未做） | `P5-T26-W05-protocol.md` |
 
 **总计：真实产品壳 W 探针 11 个场景，全部通过**；原型壳 W 13 探针一键门禁 13/13。
 

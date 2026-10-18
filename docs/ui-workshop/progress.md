@@ -793,3 +793,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - `HANDOVER-FINAL.md`：代码基线/回归数字/11 个真实产品 W 场景证据索引/里程碑判定
   （EXPERIMENTAL_TRUSTED_PACKS）/残余风险/事故记录/下一步建议。
+
+## P6/T26 进度（W05 产品协议线，2026-10-19）
+
+- 产品 guest host 接入真实 Broker/HostDispatcher；SDK GuestClient 经 t19-wire 完成握手 +
+  context.snapshot（真实后端/修订/哈希）；会话状态 active/能力子集；W **7/7 PASS**。
+  证据：`evidence/P5-T26-W05-protocol.md`。
+- W05 剩余：subscribe/断连重连/慢包/超时 queryResult/取消冲突语义、write/print/command 产品实现。

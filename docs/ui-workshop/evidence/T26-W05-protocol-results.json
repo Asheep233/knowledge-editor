@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-10-19T07:07:13+0800",
+  "scenario": "T26 W05 产品 guest 协议线（handshake/snapshot）",
+  "checks": [
+    {
+      "name": "W-T26-W05-1 安装签名包",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368384309643193 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W05-2 产品 host 协议线已连接（Dispatcher/Broker 启动）",
+      "pass": true,
+      "detail": {
+        "diag": {
+          "start": {
+            "blocked": false,
+            "capabilities": [
+              "ui.shell",
+              "context.read"
+            ],
+            "hasEntry": true,
+            "hasSession": true
+          },
+          "log": [
+            "starting",
+            "active",
+            "active"
+          ],
+          "results": {
+            "phase": "t19-guest-done",
+            "handshakeAccepted": [
+              "context.read"
+            ],
+            "snapshot": {
+              "relPath": "Articles/t19.md",
+              "revision": 0,
+              "diskHash": "4792f075bd42d573bbe05ce2fdd805452b0bfad7e73828679ae1c89f78858e05"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "W-T26-W05-3 guest SDK 握手经真实协议线完成",
+      "pass": true,
+      "detail": {
+        "phase": "t19-guest-done",
+        "handshakeAccepted": [
+          "context.read"
+        ],
+        "snapshot": {
+          "relPath": "Articles/t19.md",
+          "revision": 0,
+          "diskHash": "4792f075bd42d573bbe05ce2fdd805452b0bfad7e73828679ae1c89f78858e05"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W05-4 guest 经 Broker 获得真实 context.snapshot",
+      "pass": true,
+      "detail": {
+        "relPath": "Articles/t19.md",
+        "revision": 0,
+        "diskHash": "4792f075bd42d573bbe05ce2fdd805452b0bfad7e73828679ae1c89f78858e05"
+      }
+    },
+    {
+      "name": "W-T26-W05-5 会话状态 active（能力子集）",
+      "pass": true,
+      "detail": {
+        "capabilities": [
+          "ui.shell",
+          "context.read"
+        ],
+        "lastError": null,
+        "packId": "com.probe.t26proto",
+        "state": "active",
+        "updatedAt": "SystemTime { intervals: 134368384327834671 }"
+      }
+    },
+    {
+      "name": "W-T26-W05-6 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-W05-7 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 7,
+  "total": 7
+}

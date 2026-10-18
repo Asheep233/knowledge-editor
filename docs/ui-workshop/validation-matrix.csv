@@ -11,6 +11,7 @@ T14-bridge-e2e-results.json,T14,A,Linux WSL（真实后端）,PASS,11,11,bash co
 T15-ime-zoom-probe-results.json,T15,W,Windows/WebView2（CDP）,PASS,8,8,python run_t15_cdp_probe.py
 T18-broker-probe-results.json,T18,W,Windows/WebView2,PASS,12,12,python run_broker_probe.py
 T19-package-host-probe-results.json,T19,W,Windows/WebView2,PASS,8,8,python run_t19_probe.py
+T20-startup-recover-probe-results.json,T20,W,Windows（真实文件系统）,PASS,9,9,python run_startup_recover_probe.py
 T21-pack-install-probe-results.json,T21,W,Windows（真实文件系统）,PASS,20,20,python run_pack_probe.py
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py

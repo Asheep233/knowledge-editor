@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-10-19T03:48:38+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T20-1 原型播种损坏包（v2 active 损坏 + previous v1）",
+      "pass": true,
+      "detail": "C:\\ke-tmp\\uiws-t20-probe\\probe-seed-a\\events.log"
+    },
+    {
+      "name": "W-T20-2 启动时执行 recover 并产出状态文件",
+      "pass": true,
+      "detail": {
+        "checked": 1,
+        "results": [
+          {
+            "action": "rollback-corrupt-active",
+            "id": "com.probe.recover",
+            "recovered": true,
+            "state": {
+              "active": "1.0.0",
+              "previous": "2.0.0",
+              "updatedAt": "SystemTime { intervals: 134368265002761946 }"
+            }
+          }
+        ],
+        "safeMode": false
+      }
+    },
+    {
+      "name": "W-T20-3 损坏 active 自动回退（recovered + action=rollback-corrupt-active）",
+      "pass": true,
+      "detail": {
+        "result0": {
+          "action": "rollback-corrupt-active",
+          "id": "com.probe.recover",
+          "recovered": true,
+          "state": {
+            "active": "1.0.0",
+            "previous": "2.0.0",
+            "updatedAt": "SystemTime { intervals: 134368265002761946 }"
+          }
+        }
+      }
+    },
+    {
+      "name": "W-T20-4 回退后磁盘 state.json active=1.0.0",
+      "pass": true,
+      "detail": {
+        "active": "1.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368265002761946 }"
+      }
+    },
+    {
+      "name": "W-T20-5 有 previous 时 safeMode=false 且应用正常启动",
+      "pass": true,
+      "detail": {
+        "safeMode": false,
+        "boot": true,
+        "checked": 1
+      }
+    },
+    {
+      "name": "W-T20-6 无 previous 损坏包 → action=corrupt-no-fallback",
+      "pass": true,
+      "detail": {
+        "action": "corrupt-no-fallback",
+        "id": "com.probe.lonely",
+        "recovered": false,
+        "state": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368265066314419 }"
+        }
+      }
+    },
+    {
+      "name": "W-T20-7 启动恢复 safeMode=true",
+      "pass": true,
+      "detail": {
+        "safeMode": true,
+        "checked": 2
+      }
+    },
+    {
+      "name": "W-T20-8 safeMode 下应用仍正常启动（boot + recover 事件）",
+      "pass": true,
+      "detail": {
+        "boot": true,
+        "marker": true
+      }
+    },
+    {
+      "name": "W-T20-9 真实 Windows 文件系统（数据目录在 C:\\ke-tmp）",
+      "pass": true,
+      "detail": "C:\\ke-tmp\\uiws-t20-probe\\data-a"
+    }
+  ],
+  "pass_count": 9,
+  "total": 9,
+  "details": {
+    "b": {
+      "checked": 1,
+      "results": [
+        {
+          "action": "rollback-corrupt-active",
+          "id": "com.probe.recover",
+          "recovered": true,
+          "state": {
+            "active": "1.0.0",
+            "previous": "2.0.0",
+            "updatedAt": "SystemTime { intervals: 134368265002761946 }"
+          }
+        }
+      ],
+      "safeMode": false
+    },
+    "c": {
+      "checked": 2,
+      "results": [
+        {
+          "action": "corrupt-no-fallback",
+          "id": "com.probe.lonely",
+          "recovered": false,
+          "state": {
+            "active": "1.0.0",
+            "previous": null,
+            "updatedAt": "SystemTime { intervals: 134368265066314419 }"
+          }
+        },
+        {
+          "action": "rollback-corrupt-active",
+          "id": "com.probe.recover",
+          "recovered": true,
+          "state": {
+            "active": "1.0.0",
+            "previous": "2.0.0",
+            "updatedAt": "SystemTime { intervals: 134368265129005280 }"
+          }
+        }
+      ],
+      "safeMode": true
+    }
+  }
+}

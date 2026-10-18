@@ -6,7 +6,7 @@
     `main.rs` setup 环境驱动：`S1_PACK_SEED`（安装 v1/v2 + 损坏 active；可选无回退损坏包）与
     `S1_PACK_RECOVER_ON_START`（启动 recover → 写 `workshop-recover-status.json` + 事件）
   - 驱动：`prototypes/p0/s1_runtime/run_startup_recover_probe.py`（Windows Python，三阶段：播种→恢复→safeMode）
-- 原始结果：`evidence/T20-startup-recover-probe-results.json` · 证据类型：**W（Windows 真实文件系统）**
+- 原始结果：`evidence/T20-startup-recover-probe-results.json`（注意：首次运行时 runner 因 `detail` 含 Path 对象导致 JSON 序列化失败，已修复为 `default=str` 并重跑通过） · 证据类型：**W（Windows 真实文件系统）**
 
 ## 实测结果：**9/9 PASS**
 

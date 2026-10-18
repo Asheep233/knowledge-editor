@@ -117,7 +117,7 @@ def main() -> int:
         "details": {"b": status, "c": status_c},
     }
     out = EVID / "T20-startup-recover-probe-results.json"
-    out.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    out.write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(f"\nSUMMARY {summary['pass_count']}/{summary['total']} PASS -> {out}")
     return 0 if summary["pass_count"] == summary["total"] else 1
 

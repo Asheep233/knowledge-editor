@@ -45,13 +45,13 @@ META: dict[str, tuple[str, str, str, str]] = {
 
 # 代码回归基线（由工具链产出，人工记录；更新时同步改这里）
 BASELINE_ROWS = [
-    ("frontend: Core session 单测", "P1/P2", "U", "Linux WSL（happy-dom）", "PASS", "41", "41", "cd frontend && npx vitest run src/core/session"),
+    ("frontend: Core session 单测", "P1/P2", "U", "Linux WSL（happy-dom）", "PASS", "42", "42", "cd frontend && npx vitest run src/core/session"),
     ("frontend: Core protocol 单测", "P1", "U", "Linux WSL", "PASS", "18", "18", "cd frontend && npx vitest run src/core/protocol"),
     ("frontend: Core broker 单测", "P1", "U", "Linux WSL", "PASS", "18", "18", "cd frontend && npx vitest run src/core/broker"),
-    ("frontend: Core packs 单测", "P2/P4", "U", "Linux WSL", "PASS", "71", "71", "cd frontend && npx vitest run src/core/packs"),
+    ("frontend: Core packs 单测", "P2/P4", "U", "Linux WSL", "PASS", "82", "82", "cd frontend && npx vitest run src/core/packs"),
     ("frontend: Core print 单测", "P2", "U", "Linux WSL", "PASS", "14", "14", "cd frontend && npx vitest run src/core/print"),
-    ("frontend: 工坊 UI 单测", "P3/P4", "U", "Linux WSL（happy-dom）", "PASS", "16", "16", "cd frontend && npx vitest run src/components/workshop"),
-    ("frontend: tsc + vitest 全量", "P1–P4", "U", "Linux WSL（happy-dom 组件测试）", "PASS", "1796", "1797", "cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2"),
+    ("frontend: 工坊 UI 单测", "P3/P4", "U", "Linux WSL（happy-dom）", "PASS", "18", "18", "cd frontend && npx vitest run src/components/workshop"),
+    ("frontend: tsc + vitest 全量", "P1–P4", "U", "Linux WSL（happy-dom 组件测试）", "PASS", "1809", "1810", "cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2"),
     ("backend: pytest 全量", "P1", "A", "Linux WSL + Windows Py3.10", "PASS", "847", "847", "python3 -m pytest backend/tests -q（Windows: CI venv）"),
     ("cargo: 产品壳单测", "P2–P4", "U", "Windows（Rust 单元测试）", "PASS", "38", "38", "cd desktop/src-tauri && cargo test --release"),
     ("cargo: 原型壳单测（无独立测试，仅构建）", "P0", "B", "Windows", "BUILD_OK", "", "", "cargo build --release（原型 tauri_sandbox）"),

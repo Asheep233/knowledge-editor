@@ -33,3 +33,11 @@
 - A8 排查修复（coreSaveRuntime base URL、context write frontmatter merge、sidecar 版本问题）后复跑：
   frontend 130 files / **1796 passed** +1 skipped、tsc 0；backend **847 collected / exit 0**；
   产品 cargo **39 passed**；矩阵 **35 行** --check PASS。无回归。
+
+## A7/A5 产品 W 后追加回归（2026-10-19）
+
+- frontend：133 files / **1809 passed** + 1 skipped、tsc 0；
+- backend：**847 collected / exit 0**；
+- 产品 cargo：**44 passed**（新增 workshop_protocol 3 例等）；
+- 验证矩阵：更新基线（session 42/packs 82/workshop UI 18/cargo 44），--check PASS；
+- 无回归（A7/A5 新代码均为增量 + 修复型改动）。

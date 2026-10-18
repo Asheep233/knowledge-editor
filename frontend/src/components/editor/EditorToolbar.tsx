@@ -470,7 +470,12 @@ export default function EditorToolbar({
   }
 
   return (
-    <div className="ke-scroll flex h-10 min-w-0 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border bg-card px-2">
+    <div className="flex h-10 min-w-0 shrink-0 items-stretch border-b border-border bg-card">
+      {/* UI-01 回归修复（v1.2.17 回归）：横向滚动只给**左侧格式控件**，右侧（保存状态/
+          历史/导出）固定不滚动。修复前整条工具栏 `overflow-x-auto`，导出下拉菜单是
+          本容器内的 `absolute` 子元素 → 被滚动容器裁剪（菜单不可见/点「导出」无反应）。
+          回归守卫见 `EditorToolbar.structure.test.tsx`（断言导出按钮祖先链无裁剪容器）。 */}
+      <div className="ke-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
 
       {/* 样式下拉：正文 / 标题1~6（参考稿「正文 ▾」第一段；单行纯图标 → 文字下拉） */}
       <Dropdown
@@ -671,8 +676,9 @@ export default function EditorToolbar({
 
       {/* 右侧：保存 + 保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
       </fieldset>
+      </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5 px-2">
         {/* task-41：视图通道切换（正文 ⇄ 源码）。只读/版本预览/无文档时禁用并给出原因 */}
         {onToggleViewMode ? (
           <button

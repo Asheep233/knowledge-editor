@@ -18,6 +18,7 @@
 | A8 Core 保存 flag 产品 UI（autosave→上下文写/frontmatter 保留） | **9/9** | `P5-T26-A8-save.md` |
 | A7 产品侧包隔离宿主 + A5 能力上限运行时（自定义协议/心跳崩溃/safeMode/停用持久化） | **11/11** | `P5-T26-A7-A5-guest.md` |
 | 原型壳 W 探针一键门禁 | **13/13** | `P5-T26-windows-witnesses.md` |
+| 产品 IME 组词 + DPI/缩放后编辑面可用（CDP/WebView2 渲染层） | **7/7** | `P5-T26-ime-dpi.md` |
 
 > 说明：A1–A8 全部已通过真实产品壳 W；T26 认证仍需补真实 IME/多 DPI、安装包升级/回滚演练（T27）。
 
@@ -35,7 +36,7 @@
 - **A7**：产品侧包隔离宿主（真实入口资源 + 崩溃检测 + 停用/恢复持久化）—— 原型已 W 8/8，产品壳未接；
 - **A8**：`VITE_KE_CORE_SAVE=1` 产品 UI 保存 **已完成 W 9/9**（autosave→`/api/context/write`、frontmatter
   保留；排查中修复 base URL/sidecar 版本/上下文写入 merge 三个真实缺陷），见 `P5-T26-A8-save.md`；
-- **真实 OS 中文 IME / 多 DPI**（T15/T26）；
+- **人工真实系统 IME/多 DPI**（CDP 路径已过 W 7/7，但不能替代人工输入法实测）；
 - **安装包升级/回滚演练**（发布候选阶段 T27）；
 - 正式发布密钥签发/分发流程（ADR-003 实施清单）。
 

@@ -747,3 +747,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 修复：deactivate 覆盖 stopped、failed 时 safeMode 同步、停用按钮可用性；cargo **44 passed**、
   前端 packs/workshop **100 passed**。
 - T26 仅剩：真实 OS 中文 IME/多 DPI、安装包升级/回滚演练（T27）、SDK 协议线/真实 renderer crash 注入。
+
+## P6/T26 进度（IME/DPI 产品 W 7/7，2026-10-19）
+
+- 产品 WebView2 编辑器：IME 组词路径、DPI/缩放（dpr 2→1.5）、缩放后仍可输入且恢复；W 7/7。
+  证据：`evidence/P5-T26-ime-dpi.md`（明确边界：CDP 合成输入，不能替代人工真实 IME 实测）。
+- T26 剩余：人工真实系统 IME/多 DPI、安装包升级/回滚（T27）。

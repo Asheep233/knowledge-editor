@@ -1,0 +1,56 @@
+{
+  "generated_at": "2026-10-19T06:30:53+0800",
+  "scenario": "T26 IME/DPI 产品 W（隔离构建 + CDP）",
+  "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+  "checks": [
+    {
+      "name": "W-T26-IME/DPI-1 产品启动 + 打开文章编辑器",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-IME/DPI-2 编辑器可聚焦（contenteditable）",
+      "pass": true,
+      "detail": {
+        "focused": true
+      }
+    },
+    {
+      "name": "W-T26-IME/DPI-3 IME 组词进入编辑面",
+      "pass": true,
+      "detail": {
+        "text": "初始内容中文组词"
+      }
+    },
+    {
+      "name": "W-T26-IME/DPI-4 DPI/缩放生效（devicePixelRatio 变化）",
+      "pass": true,
+      "detail": {
+        "before": 2,
+        "after": 1.5
+      }
+    },
+    {
+      "name": "W-T26-IME/DPI-5 缩放后编辑面仍可输入且恢复 DPI",
+      "pass": true,
+      "detail": {
+        "text": "初始内容中文组词ZOOMED",
+        "restored": 2
+      }
+    },
+    {
+      "name": "W-T26-IME/DPI-6 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-IME/DPI-7 用户运行中的 AstraNota 未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 7,
+  "total": 7
+}

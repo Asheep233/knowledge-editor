@@ -52,6 +52,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
 | T23 | in_progress | frontend/src/components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/tauriPackAdapter；App flag 入口 | evidence/P3-T23-workshop-panel.md（7 例）、**P3-T23-workshop-integration.md（适配器 6 例 + 入口 3 例 + 全量 122 files/1733 passed）** | 真实包目录选择（dialog/zip）；Windows 端到端交互 W；签名/来源信任/卸载；启动 recover 合并 | Tauri dialog + Windows E2E W → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；**safeMode UI 呈现（徽标/横幅/全部修复）** | evidence/P3-T20-startup-recover.md（cargo 33/33 + build；工坊+pack 43 例；全量 122 files/1737 passed） | Windows 端到端 W；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载 | Windows 包故障启动 W → T24/T26 |
+| T19 | in_progress | frontend/src/core/packs/{packageHost,packageHost.test} | evidence/P3-T19-package-host.md（7 例 U：会话/完整性/崩溃升级/safeMode/重启 epoch/停止） | 真实 guest WebView 会话装配与包入口加载；与 T20 恢复联动；Windows 故障注入 W | 装配真实 guest 会话 → T21/T24 W |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -428,3 +429,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   safeMode 警告横幅；WorkshopEntry 监听 `workshop://recover-status` 显示 safe mode 徽标。
 - 测试：工坊+packs 43 例全过、tsc 0；**全量前端 122 files / 1737 passed + 1 skipped（exit 0）**。
 - 下一步：Windows 端到端交互 W（损坏包启动→safe mode→修复/回滚→卸载）；P2 T14 真实接线。
+
+## P3 进度（T19 包隔离宿主 Core，2026-10-19）
+
+- `PackageHost`：start（校验→受限 Broker 连接）/reportCrash（suspended→超限 failed+deactivate+
+  recover+safeMode）/restart（切库新 epoch）/stop/subscribe；7 例全过、tsc 0。
+  证据：`evidence/P3-T19-package-host.md`。
+- 下一步：真实 guest WebView（iframe）会话装配（Broker/Dispatcher + 包入口资源加载）；
+  与 T20 safeMode UI/启动恢复联动；Windows 故障注入 W；T14 接线决策（见 P2/P3 报告最短路径）。

@@ -35,7 +35,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | --- | --- | --- | --- | --- | --- |
 | T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
 | T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
-| T02–T06 | todo | T06: prototypes/p0/s5_txn/；T04: prototypes/p0/s3_save/ | evidence/P0-S5-prototype.md、evidence/P0-S3-prototype.md（均 Linux+Windows 10/10） | T04/T06 均未接入真实后端/运行时/UI；T02/T03/T05 未开工 | S1/S2/S4 原型；T04/T06 待接入 |
+| T02–T06 | todo | T02: prototypes/p0/s1_runtime/（迷你 Tauri app + Windows 探针）；T04: s3_save/；T06: s5_txn/ | evidence/P0-S1-prototype.md + P0-S1-probe-results.json（Windows/WebView2，23/25 断言，2 项为发现约束）；S3/S5 双平台 10/10 | T02 未测 child WebviewWindow 权限继承/ACL；T03/T05 未开工；T04/T06 未接入真实后端/运行时 | T02b 独立 WebviewWindow 原型；S2/S4 原型；T07 ADR |
 | T07 | todo | | | | 路线 ADR |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
@@ -76,3 +76,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   恢复不覆盖外部新内容；Linux WSL + Windows Python(NTFS) 各 10/10 通过。
   证据：`evidence/P0-S3-prototype.md`。未验证：真实 FastAPI/WorkspaceContext（T09）、
   真实 Core 与 UI 网络时序（T10/W02）。
+
+## P0 原型进展（S1 实机，2026-10-19）
+
+- **S1 运行域/命令面/原生恢复（T02 部分，Windows/WebView2 实机）**：
+  迷你 Tauri 原型（独立 identifier）验证：sandbox iframe（opaque origin）无法访问宿主 DOM、无法导航顶层、
+  无法跨源 fetch 后端/宿主、写请求无副作用；**opaque origin 的 Tauri invoke 被拒**（`Origin header is not a valid URL`）。
+  **发现**：iframe 继承宿主 Tauri 初始化脚本（`__TAURI_INTERNALS__`/`__TAURI__` 可见），且
+  `allow-same-origin` 同源对照 iframe 的 invoke **成功** → 隔离边界是 Origin，iframe 不能当安全边界。
+  Rust 原生恢复状态机实测：坏启动崩溃 ×2 → safe mode（Rust 写状态）→ 显式恢复，真实进程 `exit 99` 驱动。
+  证据：`evidence/P0-S1-prototype.md` + `P0-S1-probe-results.json`。
+  下一步：child WebviewWindow + capability/ACL 精确匹配原型（T02b），再决定 iframe/独立窗口路线（T07 ADR）。

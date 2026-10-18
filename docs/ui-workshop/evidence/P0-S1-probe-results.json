@@ -1,0 +1,258 @@
+{
+  "generated_at": "2026-10-19T01:25:08+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "host_origin": "http://tauri.localhost",
+  "backend": "http://127.0.0.1:8101",
+  "checks": [
+    {
+      "name": "H1 宿主 Tauri IPC 可用（invoke 正常）",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "H2 宿主可访问后端 health",
+      "pass": true,
+      "detail": "ok:200"
+    },
+    {
+      "name": "G1 guest 无 Tauri IPC（__TAURI_INTERNALS__ undefined）",
+      "pass": false,
+      "detail": "object"
+    },
+    {
+      "name": "G2 guest 无全局 Tauri API",
+      "pass": false,
+      "detail": "object"
+    },
+    {
+      "name": "G3 guest 无法访问 parent DOM",
+      "pass": true,
+      "detail": "SecurityError"
+    },
+    {
+      "name": "G4 guest 无法访问 top DOM",
+      "pass": true,
+      "detail": "SecurityError"
+    },
+    {
+      "name": "G5 guest 不能导航宿主顶层",
+      "pass": true,
+      "detail": "SecurityError"
+    },
+    {
+      "name": "G6 guest popup 被 sandbox 阻止",
+      "pass": true,
+      "detail": "null"
+    },
+    {
+      "name": "G7 guest Worker 可运行（沙箱内脚本能力存在）",
+      "pass": true,
+      "detail": "alive"
+    },
+    {
+      "name": "G8 guest 对后端 health 跨源读取被拒",
+      "pass": true,
+      "detail": "blocked:TypeError"
+    },
+    {
+      "name": "G9 guest 对后端写请求被拒",
+      "pass": true,
+      "detail": "blocked:TypeError"
+    },
+    {
+      "name": "G10 guest 对宿主源 fetch 被拒",
+      "pass": true,
+      "detail": "blocked:TypeError"
+    },
+    {
+      "name": "G11 guest WebSocket 探测记录",
+      "pass": true,
+      "detail": "error"
+    },
+    {
+      "name": "G12 guest 下载被 sandbox 记录",
+      "pass": true,
+      "detail": "attempted"
+    },
+    {
+      "name": "G13 guest 写请求无副作用（后端未创建文档）",
+      "pass": true,
+      "detail": "file_exists=False"
+    },
+    {
+      "name": "G14 guest 不能调用宿主 Rust 命令（隔离边界）",
+      "pass": true,
+      "detail": "guestInvoke=error:Origin header is not a valid URL guest_call_file=True"
+    },
+    {
+      "name": "G16 同源 iframe 可调用宿主命令（证明隔离边界=Origin 校验，包必须跨源）",
+      "pass": true,
+      "detail": "sameOriginInvoke=CALLABLE:C:\\ke-tmp\\uiws-s1-probe\\probe-normal\\guest-call.json origin=null href=about:srcdoc"
+    },
+    {
+      "name": "G15 guest 的 Tauri IPC 可见性记录（iframe 继承 webview IPC 证据）",
+      "pass": true,
+      "detail": "tauriInternals=object tauriGlobal=object"
+    },
+    {
+      "name": "H3 Rust 健康标记后 bootPending 清除",
+      "pass": true,
+      "detail": false
+    },
+    {
+      "name": "R1 坏启动模拟崩溃（exit 99）",
+      "pass": true,
+      "detail": "99/99"
+    },
+    {
+      "name": "R2 连续失败后 Rust 进入 safe mode",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "R3 safe mode 由 Rust 状态文件记录",
+      "pass": true,
+      "detail": {
+        "at": "startup",
+        "by": "rust",
+        "fails": 2,
+        "safeMode": true
+      }
+    },
+    {
+      "name": "R4 宿主从 safe mode 显式恢复到官方",
+      "pass": true,
+      "detail": {
+        "at": "user-request",
+        "by": "rust-safe-mode",
+        "to": "official"
+      }
+    },
+    {
+      "name": "R5 恢复后 bootPending 清除",
+      "pass": true,
+      "detail": false
+    },
+    {
+      "name": "R6 事件日志记录 Rust 恢复过程",
+      "pass": true,
+      "detail": "startup-clean\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails="
+    }
+  ],
+  "pass_count": 23,
+  "total": 25,
+  "raw": {
+    "normal": {
+      "exit_code": 0,
+      "results": {
+        "phase": "probe-done",
+        "host": {
+          "tauriInternals": "object",
+          "globalTauri": "object",
+          "invokeOkay": true,
+          "fetchBackend": "ok:200"
+        },
+        "guest": {
+          "origin": "null",
+          "tauriInternals": "object",
+          "tauriGlobal": "object",
+          "guestInvoke": "error:Origin header is not a valid URL",
+          "parentDom": "SecurityError",
+          "topDom": "SecurityError",
+          "topNav": "SecurityError",
+          "popup": "null",
+          "worker": "alive",
+          "fetchBackendHealth": "blocked:TypeError",
+          "fetchBackendWrite": "blocked:TypeError",
+          "fetchHostOrigin": "blocked:TypeError",
+          "websocket": "error",
+          "download": "attempted"
+        },
+        "boot": {
+          "backend_base": "http://127.0.0.1:8101",
+          "bad_start": false,
+          "fails": 0,
+          "host_origin": "http://tauri.localhost",
+          "probe_dir": "C:\\ke-tmp\\uiws-s1-probe\\probe-normal",
+          "safe_mode": false
+        },
+        "platform": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+          "hostHref": "http://tauri.localhost/",
+          "hostOriginActual": "http://tauri.localhost",
+          "backendBase": "http://127.0.0.1:8101",
+          "hostOrigin": "http://tauri.localhost"
+        },
+        "guestSameOrigin": {
+          "origin": "null",
+          "href": "about:srcdoc",
+          "internals": "object",
+          "invoke": "CALLABLE:C:\\ke-tmp\\uiws-s1-probe\\probe-normal\\guest-call.json",
+          "bootFails": 0
+        },
+        "healthMarked": true
+      },
+      "events": "startup-clean\nstartup-clean\nhealthy (bootPending cleared)\n",
+      "recovered": null,
+      "boot_pending_left": false,
+      "safe_mode_file": null
+    },
+    "bad1": {
+      "exit_code": 99,
+      "results": null,
+      "events": "startup-clean\ncrash-now (bootPending written, exit 99)\n",
+      "recovered": null,
+      "boot_pending_left": true,
+      "safe_mode_file": null
+    },
+    "bad2": {
+      "exit_code": 99,
+      "results": null,
+      "events": "startup-clean\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\ncrash-now (bootPending written, exit 99)\n",
+      "recovered": null,
+      "boot_pending_left": true,
+      "safe_mode_file": null
+    },
+    "safe": {
+      "exit_code": 0,
+      "results": {
+        "phase": "safe-mode-recovered",
+        "host": {},
+        "guest": {},
+        "boot": {
+          "backend_base": "http://127.0.0.1:8101",
+          "bad_start": false,
+          "fails": 2,
+          "host_origin": "http://tauri.localhost",
+          "probe_dir": "C:\\ke-tmp\\uiws-s1-probe\\probe-recovery",
+          "safe_mode": true
+        },
+        "platform": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+          "hostHref": "http://tauri.localhost/",
+          "hostOriginActual": "http://tauri.localhost",
+          "backendBase": "http://127.0.0.1:8101",
+          "hostOrigin": "http://tauri.localhost"
+        }
+      },
+      "events": "startup-clean\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=2\nsafe-mode-entered (rust controlled)\nrecovered-to-official\n",
+      "recovered": {
+        "at": "user-request",
+        "by": "rust-safe-mode",
+        "to": "official"
+      },
+      "boot_pending_left": false,
+      "safe_mode_file": {
+        "at": "startup",
+        "by": "rust",
+        "fails": 2,
+        "safeMode": true
+      }
+    }
+  },
+  "findings": {
+    "iframe_inherits_tauri_globals": true,
+    "opaque_origin_invoke_rejected": true,
+    "same_origin_iframe_invoke_allowed": true
+  }
+}

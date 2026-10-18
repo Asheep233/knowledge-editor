@@ -1,0 +1,161 @@
+//! P0-S1 原型宿主：独立来源 sandbox iframe + MessagePort + 精确命令面 + Rust 启动恢复。
+//!
+//! 说明：这是**实验原型**，不是产品代码。用于在真实 Windows/WebView2 上验证：
+//! 1) guest（sandbox allow-scripts 的独立来源 iframe）无法访问宿主 DOM/宿主 Tauri IPC；
+//! 2) guest 对宿主后端 loopback 的读写请求受 CORS/来源校验约束（实测，不靠文本宣称）；
+//! 3) 宿主持有唯一命令面（本原型只暴露 5 个命令），guest 不能调用；
+//! 4) Rust 持有启动恢复：bootPending 计数 → 连续失败进入 safe mode（官方兜底），
+//!    用户/宿主可从 safe mode 显式恢复；恢复动作不依赖 guest JS。
+use std::env;
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
+
+use tauri::State;
+
+#[derive(Clone)]
+struct ProbeState {
+    dir: PathBuf,
+    backend_base: String,
+    host_origin: String,
+    bad_start: bool,
+}
+
+fn probe_dir() -> PathBuf {
+    env::var("S1_PROBE_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| env::temp_dir().join("uiws-s1-probe"))
+}
+
+fn write_json(path: &PathBuf, v: &serde_json::Value) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, serde_json::to_string_pretty(v).unwrap_or_default())
+}
+
+fn read_json(path: &PathBuf) -> Option<serde_json::Value> {
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+}
+
+fn append_event(dir: &PathBuf, line: &str) {
+    let path = dir.join("events.log");
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "{}", line);
+    }
+}
+
+#[tauri::command]
+fn boot_state(state: State<ProbeState>) -> serde_json::Value {
+    let boot_file = state.dir.join("bootPending.json");
+    let fails_file = state.dir.join("boot-fails.json");
+    let mut fails = read_json(&fails_file)
+        .and_then(|v| v.get("fails").and_then(|x| x.as_u64()))
+        .unwrap_or(0) as u32;
+    let mut safe_mode = false;
+    if boot_file.exists() {
+        fails += 1;
+        let _ = write_json(&fails_file, &serde_json::json!({ "fails": fails }));
+        append_event(&state.dir, &format!("startup-with-bootPending fails={}", fails));
+        if fails >= 2 {
+            safe_mode = true;
+            let _ = write_json(
+                &state.dir.join("safe-mode.json"),
+                &serde_json::json!({ "safeMode": true, "fails": fails, "at": "startup", "by": "rust" }),
+            );
+            append_event(&state.dir, "safe-mode-entered (rust controlled)");
+        }
+    } else {
+        append_event(&state.dir, "startup-clean");
+    }
+    serde_json::json!({
+        "safe_mode": safe_mode,
+        "fails": fails,
+        "backend_base": state.backend_base,
+        "host_origin": state.host_origin,
+        "bad_start": state.bad_start,
+        "probe_dir": state.dir.display().to_string(),
+    })
+}
+
+#[tauri::command]
+fn report_results(state: State<ProbeState>, results: String) -> Result<String, String> {
+    let path = state.dir.join("results.json");
+    let tmp = state.dir.join("results.json.tmp");
+    fs::create_dir_all(&state.dir).map_err(|e| e.to_string())?;
+    fs::write(&tmp, &results).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
+fn mark_healthy(state: State<ProbeState>) -> Result<(), String> {
+    let _ = fs::remove_file(state.dir.join("bootPending.json"));
+    let _ = fs::remove_file(state.dir.join("boot-fails.json"));
+    append_event(&state.dir, "healthy (bootPending cleared)");
+    Ok(())
+}
+
+#[tauri::command]
+fn crash_now(state: State<ProbeState>) -> Result<(), String> {
+    write_json(
+        &state.dir.join("bootPending.json"),
+        &serde_json::json!({ "reason": "bad-start-simulated", "at": "before-healthy" }),
+    )
+    .map_err(|e| e.to_string())?;
+    append_event(&state.dir, "crash-now (bootPending written, exit 99)");
+    std::process::exit(99);
+}
+
+#[tauri::command]
+fn recover_to_official(state: State<ProbeState>) -> Result<String, String> {
+    let _ = fs::remove_file(state.dir.join("bootPending.json"));
+    let _ = fs::remove_file(state.dir.join("boot-fails.json"));
+    write_json(
+        &state.dir.join("recovered.json"),
+        &serde_json::json!({ "by": "rust-safe-mode", "to": "official", "at": "user-request" }),
+    )
+    .map_err(|e| e.to_string())?;
+    append_event(&state.dir, "recovered-to-official");
+    Ok("recovered".to_string())
+}
+
+#[tauri::command]
+fn guest_write_probe(state: State<ProbeState>, payload: String) -> Result<String, String> {
+    // 仅写入本次探针的临时目录；用于验证 guest 是否能真正调用宿主命令面。
+    let path = state.dir.join("guest-call.json");
+    fs::create_dir_all(&state.dir).map_err(|e| e.to_string())?;
+    fs::write(&path, payload).map_err(|e| e.to_string())?;
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
+fn exit_probe(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+fn main() {
+    let dir = probe_dir();
+    let _ = fs::create_dir_all(&dir);
+    let state = ProbeState {
+        dir: dir.clone(),
+        backend_base: env::var("S1_BACKEND_BASE").unwrap_or_default(),
+        host_origin: env::var("S1_HOST_ORIGIN").unwrap_or_default(),
+        bad_start: env::var("S1_BAD_START").map(|v| v == "1").unwrap_or(false),
+    };
+    tauri::Builder::default()
+        .manage(state)
+        .invoke_handler(tauri::generate_handler![
+            boot_state,
+            report_results,
+            mark_healthy,
+            crash_now,
+            recover_to_official,
+            guest_write_probe,
+            exit_probe
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running uiws s1 probe");
+}

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>UIWS S1 Probe</title>
+  <style>
+    body { font: 13px/1.6 ui-monospace, monospace; margin: 16px; background: #111; color: #e6e6e6; }
+    pre { white-space: pre-wrap; word-break: break-all; color: #9ff; }
+    iframe { width: 320px; height: 160px; border: 1px dashed #666; margin-top: 8px; background: #222; }
+  </style>
+</head>
+<body>
+  <h3>UIWS S1 Probe（宿主）</h3>
+  <p id="status">running…</p>
+  <div id="frame-host"></div>
+  <pre id="res"></pre>
+  <script>
+    (function () {
+      "use strict";
+      // guest：sandbox allow-scripts = 独立 opaque origin；无 same-origin/popup/download 等能力
+      var GUEST_HTML = [
+        "<!doctype html><html><body><h4>guest</h4>",
+        "<script>",
+        "window.addEventListener('message', async function (ev) {",
+        "  var port = ev.ports && ev.ports[0];",
+        "  if (!port) return;",
+        "  var d = ev.data || {};",
+        "  var out = {};",
+        "  out.origin = String(location.origin);",
+        "  out.tauriInternals = typeof window.__TAURI_INTERNALS__;",
+        "  out.tauriGlobal = typeof window.__TAURI__;",
+        "  try {",
+        "    var t = window.__TAURI__;",
+        "    if (t && t.core && typeof t.core.invoke === 'function') {",
+        "      var bs = await t.core.invoke('boot_state');",
+        "      var gw = await t.core.invoke('guest_write_probe', { payload: JSON.stringify({ from: 'guest-iframe', at: Date.now() }) });",
+        "      out.guestInvoke = 'CALLABLE:' + String(gw);",
+        "      out.guestInvokeBootState = 'ok:' + String(bs && bs.fails);",
+        "    } else { out.guestInvoke = 'no-global-tauri'; }",
+        "  } catch (e) { out.guestInvoke = 'error:' + String((e && e.message) || e); }",
+        "  try { void parent.document; out.parentDom = 'ACCESSIBLE'; } catch (e) { out.parentDom = String(e.name); }",
+        "  try { void top.document; out.topDom = 'ACCESSIBLE'; } catch (e) { out.topDom = String(e.name); }",
+        "  try { top.location.href = String(d.hostOrigin) + '/hacked-by-guest'; out.topNav = 'ALLOWED'; } catch (e) { out.topNav = String(e.name); }",
+        "  try { out.popup = String(window.open('about:blank')); } catch (e) { out.popup = String(e.name); }",
+        "  try {",
+        "    var code = 'self.onmessage=function(){postMessage(\"pong\")}';",
+        "    var w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));",
+        "    out.worker = await new Promise(function (res) {",
+        "      var done = false;",
+        "      w.onmessage = function () { done = true; res('alive'); };",
+        "      w.postMessage('ping');",
+        "      setTimeout(function () { if (!done) res('timeout'); }, 1500);",
+        "    });",
+        "  } catch (e) { out.worker = String(e.name); }",
+        "  async function tf(url, opts) {",
+        "    try { var r = await fetch(url, opts); return 'ok:' + r.status; }",
+        "    catch (e) { return 'blocked:' + String(e.name); }",
+        "  }",
+        "  out.fetchBackendHealth = await tf(String(d.backendBase) + '/api/health', { mode: 'cors' });",
+        "  out.fetchBackendWrite = await tf(String(d.backendBase) + '/api/articles', {",
+        "    mode: 'cors', method: 'POST', headers: { 'Content-Type': 'application/json' },",
+        "    body: JSON.stringify({ title: 'guest-should-fail', content: '' }) });",
+        "  out.fetchHostOrigin = await tf(String(d.hostOrigin) + '/', { mode: 'cors' });",
+        "  try {",
+        "    out.websocket = await new Promise(function (res) {",
+        "      try {",
+        "        var ws = new WebSocket(String(d.wsUrl) + '/');",
+        "        ws.onopen = function () { res('open'); };",
+        "        ws.onerror = function () { res('error'); };",
+        "        setTimeout(function () { res('timeout'); }, 1500);",
+        "      } catch (e) { res(String(e.name)); }",
+        "    });",
+        "  } catch (e) { out.websocket = String(e.name); }",
+        "  try {",
+        "    var a = document.createElement('a');",
+        "    a.href = String(d.backendBase); a.download = 'guest-probe.txt';",
+        "    document.body.appendChild(a); a.click(); a.remove();",
+        "    out.download = 'attempted';",
+        "  } catch (e) { out.download = String(e.name); }",
+        "  port.postMessage(out);",
+        "});",
+        "<" + "/script></body></html>",
+      ].join("\n");
+
+      // 攻击对照：allow-same-origin 的 iframe 与宿主同源 → 若 IPC 可用，说明隔离边界是
+      // Origin 校验（沙箱 opaque origin 被拒），而非 iframe 元素本身；包运行域必须跨源。
+      var GUEST2_HTML = [
+        "<!doctype html><html><body><h4>same-origin guest</h4>",
+        "<script>",
+        "window.addEventListener('message', async function (ev) {",
+        "  var p = ev.ports && ev.ports[0];",
+        "  if (!p) return;",
+        "  var out = { origin: String(location.origin), href: String(location.href), internals: typeof window.__TAURI_INTERNALS__ };",
+        "  try {",
+        "    var g = window.__TAURI__;",
+        "    var bs = await g.core.invoke('boot_state');",
+        "    var w = await g.core.invoke('guest_write_probe', { payload: JSON.stringify({ from: 'same-origin-iframe' }) });",
+        "    out.invoke = 'CALLABLE:' + String(w);",
+        "    out.bootFails = bs && bs.fails;",
+        "  } catch (e) { out.invoke = 'error:' + String((e && e.message) || e); }",
+        "  p.postMessage(out);",
+        "});",
+        "<" + "/script></body></html>",
+      ].join("\n");
+      async function probeSameOrigin(boot) {
+        return await new Promise(function (resolve) {
+          var timer = setTimeout(function () { resolve({ timeout: true }); }, 15000);
+          var ch = new MessageChannel();
+          ch.port1.onmessage = function (ev) { clearTimeout(timer); resolve(ev.data); };
+          var iframe = document.createElement('iframe');
+          iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+          iframe.onload = function () {
+            try {
+              iframe.contentWindow.postMessage({ type: 'init' }, '*', [ch.port2]);
+            } catch (e) { clearTimeout(timer); resolve({ postMessageFailed: String(e) }); }
+          };
+          iframe.srcdoc = GUEST2_HTML;
+          document.getElementById('frame-host').appendChild(iframe);
+        });
+      }
+
+      function invoke(cmd, args) {
+        var g = window.__TAURI__;
+        if (g && g.core && g.core.invoke) return g.core.invoke(cmd, args);
+        var i = window.__TAURI_INTERNALS__;
+        if (i && i.invoke) return i.invoke(cmd, args);
+        return Promise.reject(new Error('no tauri invoke available'));
+      }
+      async function tryFetch(url, opts) {
+        try { var r = await fetch(url, opts); return 'ok:' + r.status; }
+        catch (e) { return 'blocked:' + String(e.name); }
+      }
+      async function finish(results) {
+        var json = JSON.stringify(results, null, 2);
+        try {
+          var p = await invoke('report_results', { results: json });
+          document.getElementById('res').textContent = 'results -> ' + p + '\n\n' + json;
+        } catch (e) {
+          document.getElementById('res').textContent = 'REPORT FAILED: ' + e + '\n' + json;
+        }
+        try { await invoke('exit_probe'); } catch (e) {}
+      }
+
+      (async function main() {
+        var results = { phase: 'start', host: {}, guest: {}, boot: null, platform: {} };
+        try {
+          var boot = await invoke('boot_state');
+          results.boot = boot;
+          results.platform.userAgent = navigator.userAgent;
+          results.platform.hostHref = String(location.href);
+          results.platform.hostOriginActual = String(location.origin);
+          results.platform.backendBase = boot.backend_base;
+          results.platform.hostOrigin = boot.host_origin;
+          document.getElementById('status').textContent =
+            'fails=' + boot.fails + ' safeMode=' + boot.safe_mode;
+
+          if (boot.safe_mode) {
+            results.phase = 'safe-mode';
+            document.getElementById('status').textContent = 'SAFE MODE（Rust 已进入官方兜底）';
+            try { await invoke('recover_to_official'); results.phase = 'safe-mode-recovered'; } catch (e) {}
+            await finish(results);
+            return;
+          }
+          if (boot.bad_start) {
+            results.phase = 'bad-start-crash';
+            await invoke('crash_now'); // Rust 进程退出（模拟坏包启动崩溃）
+            return;
+          }
+
+          results.host.tauriInternals = typeof window.__TAURI_INTERNALS__;
+          results.host.globalTauri = typeof window.__TAURI__;
+          results.host.invokeOkay = !!boot;
+          results.host.fetchBackend = await tryFetch(String(boot.backend_base) + '/api/health');
+
+          var frameHost = document.getElementById('frame-host');
+          var iframe = document.createElement('iframe');
+          iframe.setAttribute('sandbox', 'allow-scripts');
+          iframe.setAttribute('data-testid', 'guest-frame');
+          var guestOut = await new Promise(function (resolve) {
+            var timer = setTimeout(function () { resolve({ timeout: true }); }, 20000);
+            var ch = new MessageChannel();
+            ch.port1.onmessage = function (ev) { clearTimeout(timer); resolve(ev.data); };
+            iframe.onload = function () {
+              try {
+                iframe.contentWindow.postMessage({
+                  type: 'init',
+                  backendBase: boot.backend_base,
+                  hostOrigin: boot.host_origin,
+                  wsUrl: String(boot.backend_base).replace(/^http/, 'ws'),
+                }, '*', [ch.port2]);
+              } catch (e) { clearTimeout(timer); resolve({ postMessageFailed: String(e) }); }
+            };
+            iframe.srcdoc = GUEST_HTML;
+            frameHost.appendChild(iframe);
+          });
+          results.guest = guestOut;
+          try { results.guestSameOrigin = await probeSameOrigin(boot); } catch (e) { results.guestSameOrigin = { error: String(e) }; }
+          results.phase = 'probe-done';
+          try { await invoke('mark_healthy'); results.healthMarked = true; } catch (e) { results.healthMarked = false; }
+          await finish(results);
+        } catch (e) {
+          results.phase = 'error';
+          results.error = String((e && e.stack) || e);
+          await finish(results);
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

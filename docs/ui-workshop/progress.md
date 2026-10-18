@@ -52,7 +52,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
 | T23 | in_progress | components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/{tauriPackAdapter,localTrustStore}；App flag 入口 | P3-T23-workshop-panel.md（7 例）、P3-T23-workshop-integration.md（适配器 6 例+入口 3 例）、**P4-T24-trust-ui.md（信任/签名徽章+授予/撤销；全量 128 files/1783 passed）** | 真实签名数据源；Windows 端到端交互 W；启动 recover 合并；卸载后清理 | Windows E2E W + 签名数据源 → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；safeMode UI；原型 seed/recover 探针 | P3-T20-startup-recover.md（cargo 33/33）、**P3-T20-startup-recover-probe.md（Windows 启动恢复 W 9/9）** | 产品安装目录端到端 W 未做；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载清理 | 产品目录端到端 W + safeMode 阻断策略 → T26 |
-| T19 | in_progress | core/packs/* + probe×3 + 原型 read_asset/seed + **产品 read_asset** | P3-T19-package-host.md（7 U）、W 探针×3（8/8 ×2 + 多资源心跳 8/8）、**P3-T17-pack-asset-command（产品侧入口读取）** | 产品 Host 宿主（ADR-004/A7）：隔离守卫/心跳/停用恢复持久化；真实 renderer crash；zip 离线包；产品 W | ADR-004 A7 实现 → 产品 W |
+| T19 | in_progress | core/packs/* + probe×3 + 原型/产品 read_asset + **产品 session 命令 + host adapter + guestHost** | P3-T19-package-host（7 U）、W 探针×3、P3-T17-pack-asset-command、P3-T19-product-host-adapter（7 U）、**P3-T19-guest-host-controller（4 U）** | UI 薄封装（iframe/隔离守卫/启用停用）/safeMode 禁用；A7/A5 产品 W；真实 renderer crash；zip 离线包 | UI 组件 + A7/A5 W |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
 | T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具、A2–A6/A8 产品 W 探针 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、A5 UI（11/11）、**A8 尝试 6/8（CDP 输入不触发编辑器脏标记，未通过，记录限制）** | A5 能力上限（依赖 A7）、A7 产品包宿主、真实 IME/多 DPI、安装包升级、切档/外部改盘专项 | A7/A5 上限 → 认证 |
@@ -715,3 +715,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 前端 `productHostAdapter`：PackageHostBackend 映射、entry+css/js 注入、会话状态、隔离守卫、
   T24 能力上限（7 例 U、tsc 0）。证据：`evidence/P3-T19-product-host-adapter.md`。
 - 下一步（ADR-004 步骤 4-5）：iframe 心跳宿主组件 + 工坊启用/停用 UI + safeMode 禁用 + A7/A5 产品 W。
+
+## P3/P5 进度（A7 会话控制层，2026-10-19）
+
+- `core/packs/guestHost.ts`：PackageHost 启动+T24 能力上限+真实 entry+心跳崩溃检测+状态落盘+stop，
+  4 例 U（含超时 3 次 → failed + safeMode）通过、tsc 0。
+  证据：`evidence/P3-T19-guest-host-controller.md`。
+- 剩余：`WorkshopGuestFrame` UI 薄封装（sandbox iframe/isolationGuard/postMessage wire/启用停用/
+  safeMode 禁用）→ A7/A5 产品 W。

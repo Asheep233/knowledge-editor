@@ -21,6 +21,12 @@ Test Files  3 passed (3)
      Tests  21 passed (21)
 $ npx tsc -b --noEmit
 TSC_EXIT=0
+
+# 前端全量（确认新 Core 层未破坏既有 108 文件基线）
+$ npx vitest run --maxWorkers=2
+Test Files  111 passed (111)
+     Tests  1638 passed | 1 skipped (1639)
+EXIT=0
 ```
 
 | 用例 | 验证语义 |

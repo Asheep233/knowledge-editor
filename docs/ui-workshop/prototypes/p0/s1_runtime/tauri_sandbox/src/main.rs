@@ -227,6 +227,19 @@ fn main() {
                     }
                 }
             }
+            if env::var("S1_OPEN_S2").map(|v| v == "1").unwrap_or(false) {
+                use tauri::{WebviewUrl, WebviewWindowBuilder};
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                match WebviewWindowBuilder::new(app, "s2-shell", WebviewUrl::App("s2.html".into()))
+                    .title("S2 persistent editor")
+                    .inner_size(900.0, 700.0)
+                    .build()
+                {
+                    Ok(_) => append_event(&dir, "s2-shell opened by rust setup"),
+                    Err(e) => append_event(&dir, &format!("s2-shell build error: {e}")),
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

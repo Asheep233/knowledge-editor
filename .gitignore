@@ -32,3 +32,6 @@ workspace/Modules/*
 .DS_Store
 Thumbs.db
 *.log
+
+# UI workshop prototype 构建产物（用 build_s2_harness.sh 重建）
+docs/ui-workshop/prototypes/p0/s1_runtime/tauri_sandbox/frontend/s2.js

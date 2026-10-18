@@ -1,0 +1,81 @@
+{
+  "generated_at": "2026-10-19T01:38:30+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "S2-1 Rust setup 打开 s2-shell 窗口",
+      "pass": true,
+      "detail": "s2-done"
+    },
+    {
+      "name": "S2-2 editor 创建且初始文档正确",
+      "pass": true,
+      "detail": "初始内容 initial"
+    },
+    {
+      "name": "S2-3 换壳后 view/dom 身份不变（未重建）",
+      "pass": true,
+      "detail": "swap=True back=True"
+    },
+    {
+      "name": "S2-4 换壳后正文内容保持",
+      "pass": true,
+      "detail": "' AAA BBB初始内容 initial' -> ' AAA BBB初始内容 initial'"
+    },
+    {
+      "name": "S2-5 换壳后 undo 继续可用（history 未重建）",
+      "pass": true,
+      "detail": "undo=True redo=True"
+    },
+    {
+      "name": "S2-6 旧 shell 的 editor-host 已空（DOM 被移动而非复制）",
+      "pass": true,
+      "detail": 0
+    },
+    {
+      "name": "S2-7 换壳后焦点/输入可用",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "S2-8 组合输入事件（synthetic IME）不丢内容",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "S2-9 源码草稿跨换壳保持",
+      "pass": true,
+      "detail": "first=True second=True"
+    },
+    {
+      "name": "S2-10 结果来自真实 WebView2（UA 记录）",
+      "pass": true,
+      "detail": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+    }
+  ],
+  "pass_count": 10,
+  "total": 10,
+  "raw_results": {
+    "phase": "s2-done",
+    "editorCreated": true,
+    "viewIdentityInitial": true,
+    "initialDoc": "初始内容 initial",
+    "docAfterEdits": " AAA BBB初始内容 initial",
+    "undoAvailableBeforeSwap": true,
+    "viewIdentitySameAfterSwap": true,
+    "docAfterSwap": " AAA BBB初始内容 initial",
+    "editorHostAfterSwap": "editor-host",
+    "shellAAfterSwapEditorHostChildren": 0,
+    "sourceDraftPreserved": true,
+    "docAfterUndoInShellB": "初始内容 initial",
+    "undoWorkedAfterSwap": true,
+    "redoWorkedAfterSwap": true,
+    "focusInputWorked": true,
+    "compositionSyntheticHandled": true,
+    "viewIdentitySameAfterSecondSwap": true,
+    "docAfterSwapBack": " AAA BBBFOCUS中初始内容 initial",
+    "sourceDraftPreservedAfterSecondSwap": true,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "referrer": ""
+  }
+}

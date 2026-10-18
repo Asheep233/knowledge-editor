@@ -43,7 +43,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
 | T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
 | T18 | in_progress | frontend/src/core/broker/{broker,binding,+2 tests}；protocol command.invoke；probe/* + s1 原型 broker 场景 | evidence/P3-T18-broker.md（**37 例**：broker 9+binding 9+protocol 19）、**P3-T18-broker-probe.md（Windows/WebView2 12/12）** | 真实产品 guest 连接建立/产品壳接线；三档授权 UI（T22）；后端写口来源收紧端到端 | 产品 guest 连接接线 + T22 授权 UI → T21 Windows 包安装 |
-| T21 | in_progress | 原型 tauri_sandbox/src/pack_store_proto.rs + core/packs/probe/* + run_pack_probe.py | **evidence/P3-T21-pack-install-probe.md（Windows 真实文件系统 20/20）** | 未接产品 Tauri 主进程；TS PackStore 与 Rust 单一事实来源未定；下载/扫描/首次安装确认 UI（T22）未做 | Rust store 接产品壳 + 启动 recover → T20/T22/T26 |
+| T21 | in_progress | 原型 pack_store_proto.rs+probe（W 20/20）；**产品壳 desktop/src-tauri/src/pack_store.rs + 命令注册 + 3 Rust 单测** | evidence/P3-T21-pack-install-probe.md（原型 W 20/20）、**P3-T21-product-pack-store.md（产品 cargo 32/32 + release 构建）** | 前端适配器/UI 集成（T23）；卸载/签名；Windows 端到端交互 W；与 T20 启动恢复合并 | 前端 invoke 适配器 + WorkshopPanel 集成 → T21/T26 W |
 | T12 | in_progress | backend: context_registry tree/search/save_article + routers/context.py + 2 test files | evidence/P1-T12-domain-migration-slice.md（只读域 5 例）、**P1-T12-write-domain-slice.md（写域 6 例 + 契约 51 路径/63 方法 + 全量 846 collected 双平台绿）** | 重命名/删除/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 其余写域 + 真实 store 迁移 → T14 接线 |
 | T13 | in_progress | core/gate/t13_gate.ts + run_t13_gate.sh；SaveCoordinator 恢复日志修复 | **P1-T13-core-gate.md（UI-free 门禁 21/21 PASS）**、**P1-T13-instance-probe.md（Windows 单实例/退出协调 6/6）** | 打印 job（T16）、Rust 原生恢复（T20）未覆盖；产品工作区打开流程合并验证待做 | 补打印/Rust 恢复项 → P1 阶段报告 |
 | T14 | in_progress | frontend/src/core/session/productAdapter.ts + test；SaveCoordinator.subscribe | evidence/P2-T14-product-adapter.md（适配层 6 例 + session 29 例 + tsc 0） | 未接真实 EditorArea/SaveQueue（双写开关/恢复点/源码直存兼容）；无 W 证据 | 接线真实 EditorArea + 后端上下文端点 → T15 IME/DPI W |
@@ -386,3 +386,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   确认安装与取消；`WorkshopAdapter` 注入接口（产品=Tauri Rust 命令，测试=内存替身）；
   7 例 React 测试全过（产品测试栈，无新依赖），tsc 0。证据：`evidence/P3-T23-workshop-panel.md`。
 - 下一步：集成进 App/路由（工坊入口）+ 产品 Rust 包命令适配器；真实选择包/进度/取消；Windows W 交互。
+
+## P3 进度（T21 产品壳 Rust 包存储，2026-10-19）
+
+- 产品壳新增 `pack_store.rs`（7 个命令：scan/install/list/verify/activate/rollback/recover）；
+  staging→rename→state 单提交点+journal、哈希/能力/路径校验、损坏自动回退；包目录
+  `app_data_dir()/workshop-packs`（与笔记库隔离）。cargo test **32 passed**（3 个新单测）、
+  release 构建成功。证据：`evidence/P3-T21-product-pack-store.md`。
+- 下一步：前端 `invoke` 适配器 + WorkshopPanel 集成（真实包目录选择/进度/取消）；卸载/签名；
+  Windows 端到端交互 W（T21/T26）；与 T20 启动恢复合并。

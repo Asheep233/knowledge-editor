@@ -1961,6 +1961,7 @@ version = "1.2.18"
 dependencies = [
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

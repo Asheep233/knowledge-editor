@@ -41,6 +41,8 @@
 | S2 持续编辑面换壳 | 10/10 |
 | S4 独立打印真实 PDF | 6/6 |
 | T11 协议传输（MessagePort 关键发现） | 7/7 |
+| T19 包隔离宿主（会话/崩溃/safeMode） | 8/8 |
+| T20 启动恢复/safeMode | 9/9 |
 | T13 单实例/退出协调 | 6/6 |
 | T15 IME/焦点/缩放（CDP） | 8/8 |
 | T18 恶意/故障 guest Broker | 12/12 |
@@ -70,3 +72,14 @@
 - 真实 OS 中文 IME/多 DPI/失焦遮挡、Windows 安装包升级/回滚演练尚未执行（T15/T21/T26）。
 - 产品旧 App 未改动默认行为：所有工坊入口默认关闭（`VITE_KE_WORKSHOP` 未开），不隐藏旧 App/不冒充 Core。
 - 大量证据为原型/核心级（A/U/B），标注明确，未冒充 Windows 认证通过。
+
+
+## 末段状态更新（2026-10-19，本会话末尾刷新）
+
+- **新增 W 证据**：T19 包隔离宿主 8/8、T20 启动恢复/safeMode 9/9（累计 **11 项 Windows 探针**，
+  `validation-matrix.csv` 20 行、`--check` 门禁 PASS）。
+- **T14**：Core 保存桥 + EditorArea flag 接线（`VITE_KE_CORE_SAVE` 默认关闭）+ 真实后端 e2e 11/11；
+  全量前端 128 files/1783 passed（无回归）。字节一致性/flag-on UI e2e/Windows 实机保存 W 仍待做。
+- **T24**：信任策略 10 例 + Ed25519 签名验证 8 例 + 信任授权 UI/过渡持久化（localStorage）；真实密钥
+  信任根、Rust 验签与 Windows 信任演练待做。
+- 完成度口径不变：**项目级仍 `P0_READY`**（工坊未在产品 UX 完整落地，不满足 IMPLEMENTED_WINDOWS_PENDING）。

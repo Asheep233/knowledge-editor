@@ -3,7 +3,7 @@
 > 生成时间：2026-10-19 · 分支：`feat/ui-workshop`（**本地分支，未推送、未发布 Release**）
 > 基线：v1.2.18 `4c71233` + 轻量外观 overlay `e54d37b`（overlay 已作为 P0 前置补丁提交）
 > 本文件是**阶段性交接**：记录已完成/进行中/未开始、证据位置、复现方式、剩余风险与建议路线；
-> 不代表工坊已可发布。
+> 不代表工坊已可发布。最后一次刷新：2026-10-19（会话末段）。
 
 ## 1. 完成度口径（任务包要求）
 
@@ -35,13 +35,13 @@
 | T11 类型化协议 | 🟡 契约+W 传输探针 7/7 | `P1-T11-protocol.md`、`P1-T11-transport-probe.md` |
 | T12 分域迁移 | 🟡 只读域+写域切片 | `P1-T12-domain-migration-slice.md`、`P1-T12-write-domain-slice.md` |
 | T13 Core 门槛 | 🟡 UI-free 21/21 + 单实例 W 6/6 | `P1-T13-core-gate.md`、`P1-T13-instance-probe.md` |
-| T14 EditorSession/官方 shell | 🟡 适配层+Core 桥+EditorArea flag 接线（默认关闭）；字节一致性/Windows W 未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
+| T14 EditorSession/官方 shell | 🟡 适配层+Core 桥（真实后端 e2e 11/11）+EditorArea flag 接线（默认关闭）；字节一致性/flag-on UI e2e/Windows W 未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
 | T15 IME/焦点/缩放 | 🟡 CDP W 8/8；OS IME/多 DPI 未测 | `P2-T15-ime-zoom-probe.md` |
 | T16 打印产品化 | 🟡 Job Core 12 例；产品接线未做 | `P2-T16-print-core.md`、`P0-S4-prototype.md` |
 | T17 包加载器 | 🟡 Core 14 例 + 产品 Rust 存储 | `P3-T17-pack-loader.md`、`P3-T21-product-pack-store.md` |
 | T18 broker/能力隔离 | 🟡 Core 37 例 + W 恶意 guest 12/12 | `P3-T18-broker.md`、`P3-T18-broker-probe.md` |
-| T19 包隔离宿主 | 🟡 Core 7 例 + **W 探针 8/8**；真实入口资源/崩溃信号未接 | `P3-T19-package-host.md`、`P3-T19-package-host-probe.md` |
-| T20 原生恢复/启动 | 🟡 产品启动 recover+safeMode UI + **原型 Windows 故障启动 W 9/9** | `P3-T20-startup-recover.md`、`P3-T20-startup-recover-probe.md` |
+| T19 包隔离宿主 | 🟡 Core 7 例 + **W 探针 8/8**；真实入口资源/真实 WebView 崩溃信号未接 | `P3-T19-package-host.md`、`P3-T19-package-host-probe.md` |
+| T20 原生恢复/启动 | 🟡 产品启动 recover+safeMode UI + **原型 Windows 故障启动 W 9/9**；产品安装目录端到端 W 未做 | `P3-T20-startup-recover.md`、`P3-T20-startup-recover-probe.md` |
 | T21 Windows 安装/升级/回滚 | 🟡 原型 W 20/20；产品命令+前端适配器/卸载；Windows E2E W 未做 | `P3-T21-pack-install-probe.md`、`P3-T21-product-pack-store.md` |
 | T22 首次安装确认 | 🟡 Core 9 例；签名验证/来源信任未做 | `P3-T22-install-confirmation.md` |
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
@@ -90,6 +90,8 @@
 | T20 启动恢复/safeMode（Windows 文件系统） | 9/9 | `run_startup_recover_probe.py` |
 | T19 包隔离宿主（会话/崩溃/safeMode） | 8/8 | `run_t19_probe.py` |
 
+> 合计 **11 项 Windows/WebView2 探针**（自动矩阵 `validation-matrix.csv` 20 行，--check PASS）。
+
 > 所有探针使用**独立原型 identifier + 临时目录**，不触碰用户正在运行的 AstraNota（`D:\AstraNota`）
 > 与真实笔记库；结果 JSON 均在 `docs/ui-workshop/evidence/`。
 
@@ -98,7 +100,7 @@
 ```bash
 git checkout feat/ui-workshop   # 本地分支；HEAD 见 git log
 # 1) 基线回归
-cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 123 files / 1747 passed +1 skipped
+cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 128 files / 1783 passed +1 skipped
 cd ../backend && python3 -m pytest backend/tests -q                  # 846 collected
 # 2) 产品 Tauri
 cd desktop/src-tauri && cargo test --release                          # 34 passed
@@ -130,7 +132,7 @@ bash docs/ui-workshop/core/session/run_t10_e2e.sh                      # 19/19
 2. **T16 产品接线**：隐藏 renderer + Rust PrintToPdf + 取消清理 + 打印 UI。
 3. **T19 真实 guest 会话装配**（Broker/Dispatcher + 包入口 iframe + 崩溃信号）→ T18 产品会话。
 4. **T21/T23 Windows 端到端交互 W**：隔离数据目录演练安装/启用/回滚/卸载 + 损坏包 safeMode。
-5. **T24/T25**：可信包限定与平台验证矩阵 → 之后才可能 `EXPERIMENTAL_TRUSTED_PACKS`。
+5. **T24/T25**：可信包限定（已完成 Core 策略/签名验证/信任 UI，待真实密钥信任根 + Rust 验签 + Windows 演练）与平台验证矩阵（20 行，--check 门禁已接入）→ 之后才可能 `EXPERIMENTAL_TRUSTED_PACKS`。
 6. **T26–T29**：Windows 认证、发布候选、最终交接（需主理人授权才可 Release）。
 
 ## 8. 约束遵守声明

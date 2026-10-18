@@ -545,6 +545,47 @@ pub fn recover_all(root: &Path) -> Value {
     })
 }
 
+/// A7：产品 guest 会话状态（幂等覆盖；供工坊 UI/诊断/恢复读取）。
+fn session_status_path(root: &Path) -> PathBuf {
+    root.join("workshop-session-status.json")
+}
+
+const SESSION_STATES: [&str; 6] = ["idle", "starting", "active", "suspended", "failed", "stopped"];
+
+/// 校验并规范化会话状态（未知状态拒绝，避免 UI/恢复逻辑读到脏数据）。
+pub fn normalize_session_status(status: &Value) -> Result<Value, String> {
+    let state = status.get("state").and_then(|v| v.as_str()).unwrap_or("");
+    if !SESSION_STATES.contains(&state) {
+        return Err(format!("E_SESSION_STATE: 非法会话状态 {state:?}"));
+    }
+    let pack_id = status.get("packId").cloned().unwrap_or(Value::Null);
+    if let Some(id) = pack_id.as_str() {
+        safe_rel(id)?;
+    } else if !pack_id.is_null() {
+        return Err("E_SESSION_STATE: packId 必须是字符串或 null".into());
+    }
+    Ok(json!({
+        "state": state,
+        "packId": pack_id,
+        "capabilities": status.get("capabilities").cloned().unwrap_or(json!([])),
+        "lastError": status.get("lastError").cloned().unwrap_or(Value::Null),
+        "updatedAt": format!("{:?}", std::time::SystemTime::now()),
+    }))
+}
+
+pub fn read_session_status(root: &Path) -> Value {
+    fs::read_to_string(session_status_path(root))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .unwrap_or_else(|| json!({"state": "idle", "packId": null, "capabilities": [], "updatedAt": null}))
+}
+
+pub fn write_session_status(root: &Path, status: &Value) -> Result<Value, String> {
+    let normalized = normalize_session_status(status)?;
+    write_json_atomic(&session_status_path(root), &normalized)?;
+    Ok(normalized)
+}
+
 /// 把启动恢复状态写入应用数据区（供 UI/诊断读取；写失败不阻断启动）。
 pub fn write_recover_status(app_data_root: &Path, status: &Value) -> Result<PathBuf, String> {
     let path = app_data_root.join("workshop-recover-status.json");
@@ -590,6 +631,18 @@ pub fn workshop_pack_read_asset(
         return Err(format!("E_TOO_LARGE: 包资源超过上限 {} bytes", MAX_ASSET_BYTES));
     }
     fs::read_to_string(&file).map_err(|e| format!("E_IO: 读取包资源失败: {e}"))
+}
+
+/// A7：读取 product guest 会话状态（无记录 → idle）。
+#[tauri::command]
+pub fn workshop_pack_session_status(app: AppHandle) -> Result<Value, String> {
+    Ok(read_session_status(&root_of(&app)?))
+}
+
+/// A7：写入 product guest 会话状态（校验 state/packId；原子覆盖）。
+#[tauri::command]
+pub fn workshop_pack_session_report(app: AppHandle, status: Value) -> Result<Value, String> {
+    write_session_status(&root_of(&app)?, &status)
 }
 
 #[tauri::command]
@@ -765,6 +818,25 @@ mod tests {
         let err = install_from_dir(&root, src.to_str().unwrap()).unwrap_err();
         assert!(err.contains("E_SIGNATURE"), "{err}");
         std::env::remove_var("KE_WORKSHOP_PUBKEYS");
+    }
+
+    #[test]
+    fn session_status_roundtrip_and_validation() {
+        let root = tmp_root("session-status");
+        assert_eq!(read_session_status(&root)["state"], "idle");
+        let written = write_session_status(
+            &root,
+            &json!({"state": "active", "packId": "com.test.a", "capabilities": ["context.read"]}),
+        )
+        .unwrap();
+        assert_eq!(written["state"], "active");
+        assert_eq!(written["capabilities"][0], "context.read");
+        let read_back = read_session_status(&root);
+        assert_eq!(read_back["state"], "active");
+        assert_eq!(read_back["packId"], "com.test.a");
+        // 非法状态/非法 packId 拒绝
+        assert!(write_session_status(&root, &json!({"state": "running"})).is_err());
+        assert!(write_session_status(&root, &json!({"state": "active", "packId": "../evil"})).is_err());
     }
 
     #[test]

@@ -332,6 +332,49 @@ pub fn recover(root: &Path, id: &str) -> Result<Value, String> {
     Ok(state)
 }
 
+/// 启动时对全部已安装包执行 recover：清理半成品/损坏回退，并生成状态摘要。
+/// 返回 `{checked, results, safeMode, generatedAt}`；safeMode = 存在无法回退的损坏包。
+pub fn recover_all(root: &Path) -> Value {
+    let mut results: Vec<Value> = vec![];
+    let mut checked = 0usize;
+    let mut safe_mode = false;
+    if let Ok(entries) = fs::read_dir(root) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() || !entry.path().join("state.json").exists() {
+                continue;
+            }
+            checked += 1;
+            let id = entry.file_name().to_string_lossy().to_string();
+            match recover(root, &id) {
+                Ok(mut value) => {
+                    if value.get("action").and_then(|v| v.as_str()) == Some("corrupt-no-fallback") {
+                        safe_mode = true;
+                    }
+                    value["id"] = json!(id);
+                    results.push(value);
+                }
+                Err(e) => {
+                    safe_mode = true;
+                    results.push(json!({"id": id, "error": e}));
+                }
+            }
+        }
+    }
+    json!({
+        "checked": checked,
+        "results": results,
+        "safeMode": safe_mode,
+        "generatedAt": format!("{:?}", std::time::SystemTime::now()),
+    })
+}
+
+/// 把启动恢复状态写入应用数据区（供 UI/诊断读取；写失败不阻断启动）。
+pub fn write_recover_status(app_data_root: &Path, status: &Value) -> Result<PathBuf, String> {
+    let path = app_data_root.join("workshop-recover-status.json");
+    write_json_atomic(&path, status)?;
+    Ok(path)
+}
+
 // ---------------- Tauri commands（产品壳） ----------------
 
 #[tauri::command]
@@ -367,6 +410,16 @@ pub fn workshop_pack_rollback(app: AppHandle, id: String) -> Result<Value, Strin
 #[tauri::command]
 pub fn workshop_pack_recover(app: AppHandle, id: String) -> Result<Value, String> {
     recover(&root_of(&app)?, &id)
+}
+
+// ---------------- Tauri commands（产品壳） ----------------
+
+#[tauri::command]
+pub fn workshop_pack_recover_all(app: AppHandle) -> Result<Value, String> {
+    let root = root_of(&app)?;
+    let status = recover_all(&root);
+    let _ = write_recover_status(&root, &status);
+    Ok(status)
 }
 
 #[cfg(test)]
@@ -415,6 +468,31 @@ mod tests {
         let bad = root.join("src-bad");
         make_pack(&bad, "com.demo.bad", "1.0.0", true);
         assert!(scan_dir(&root, bad.to_str().unwrap()).unwrap_err().contains("E_HASH"));
+    }
+
+    #[test]
+    fn recover_all_reports_clean_and_corrupt_packs() {
+        let root = tmp_root("recover-all");
+        let clean = root.join("src-clean");
+        make_pack(&clean, "com.demo.clean", "1.0.0", false);
+        install_from_dir(&root, clean.to_str().unwrap()).unwrap();
+        let chain = root.join("src-chain-v1");
+        make_pack(&chain, "com.demo.chain2", "1.0.0", false);
+        install_from_dir(&root, chain.to_str().unwrap()).unwrap();
+        let chain2 = root.join("src-chain-v2");
+        make_pack(&chain2, "com.demo.chain2", "2.0.0", false);
+        install_from_dir(&root, chain2.to_str().unwrap()).unwrap();
+        // 损坏 active v2（previous v1 可用）→ recover_all 应自动回退
+        fs::write(root.join("com.demo.chain2/2.0.0/index.html"), b"corrupted").unwrap();
+        let status = recover_all(&root);
+        assert_eq!(status["checked"], 2);
+        assert_eq!(status["safeMode"], false);
+        let results = status["results"].as_array().unwrap();
+        let chain_result = results.iter().find(|r| r["id"] == "com.demo.chain2").unwrap();
+        assert_eq!(chain_result["recovered"], true);
+        assert_eq!(chain_result["state"]["active"], "1.0.0");
+        let path = write_recover_status(&root, &status).unwrap();
+        assert!(path.exists());
     }
 
     #[test]

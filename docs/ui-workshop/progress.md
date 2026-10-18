@@ -51,6 +51,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T16 | in_progress | frontend/src/core/print/{printJob,test} | evidence/P2-T16-print-core.md（12 例 U：快照绑定/状态机/串行/取消/超时/路径校验）+ 既有 S4 真实 PDF W 6/6 | 产品隐藏 renderer+Rust PrintToPdf 接线；长文档分页/主题/源码打印；取消清理与 job 对账；打印 UI + W | 隐藏 renderer 接线 + 长文档 → T21/T26 W |
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
 | T23 | in_progress | frontend/src/components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/tauriPackAdapter；App flag 入口 | evidence/P3-T23-workshop-panel.md（7 例）、**P3-T23-workshop-integration.md（适配器 6 例 + 入口 3 例 + 全量 122 files/1733 passed）** | 真实包目录选择（dialog/zip）；Windows 端到端交互 W；签名/来源信任/卸载；启动 recover 合并 | Tauri dialog + Windows E2E W → T21/T26 |
+| T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + workshop-recover-status.json + workshop://recover-status 事件；adapter dialog 目录选择 | evidence/P3-T20-startup-recover.md（cargo 33/33 + build；adapter 7 例） | safeMode 仅状态标记（前端未呈现/未阻断）；Windows 端到端 W；卸载；与单实例/退出协调状态合并 | safeMode UI 呈现 + Windows 包故障启动 W → T24/T26 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -404,3 +405,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P3-T23-workshop-integration.md`。
 - 下一步：Tauri dialog/真实包目录选择；Windows 端到端交互 W（安装→启用→回滚→卸载）；
   T20 启动 recover/safe mode；签名/来源信任与卸载。
+
+## P3 进度（T20 启动恢复，2026-10-19）
+
+- 产品壳启动 recover：`recover_all` + 状态文件 + `workshop://recover-status` 事件（不阻断启动）；
+  真实 Tauri dialog 目录选择接入包安装入口。cargo test **33 passed**、release 构建；adapter 7 例、tsc 0。
+  证据：`evidence/P3-T20-startup-recover.md`。
+- 下一步：Windows 端到端交互 W（含损坏包启动→safe mode 可见/可修复→安装→回滚→卸载）；
+  safeMode 前端呈现；签名/来源信任；P2/P3 阶段报告。

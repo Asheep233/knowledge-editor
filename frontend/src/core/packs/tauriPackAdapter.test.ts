@@ -2,10 +2,12 @@
 import { invoke } from '@tauri-apps/api/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createTauriPackAdapter } from './tauriPackAdapter'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
+import { choosePackDirectory, createTauriPackAdapter } from './tauriPackAdapter'
 import type { WorkshopAdapter } from '../../components/workshop/WorkshopPanel'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }))
 
 const mockedInvoke = vi.mocked(invoke)
 
@@ -39,6 +41,14 @@ describe('T21/T23 TauriPackAdapter', () => {
     expect(mockedInvoke).toHaveBeenCalledWith('workshop_pack_scan', { sourceDir: 'C:/packs/b' })
     expect(preview).toMatchObject({ token: 'C:/packs/b', packId: 'com.demo.b', source: 'local-file', signature: 'missing', blocked: false })
     expect(preview!.capabilities.find((c) => c.capability === 'ui.shell')!.risk).toBe('medium')
+  })
+
+  it('默认目录选择器使用 Tauri dialog（选择目录）', async () => {
+    vi.mocked(openDialog).mockResolvedValueOnce('C:/packs/picked')
+    await expect(choosePackDirectory()).resolves.toBe('C:/packs/picked')
+    expect(openDialog).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: false }))
+    vi.mocked(openDialog).mockResolvedValueOnce(null as never)
+    await expect(choosePackDirectory()).resolves.toBeNull()
   })
 
   it('chooseSourceDir 返回 null → 不扫描', async () => {

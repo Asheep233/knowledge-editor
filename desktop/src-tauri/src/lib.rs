@@ -140,6 +140,13 @@ pub fn run() {
         .manage(sidecar::SidecarState::default())
         .setup(|app| {
             sidecar::start(app.handle().clone());
+            // UI 工坊 T20：启动时对已安装包执行 recover（清理半成品/损坏回退），
+            // 结果写状态文件并广播（失败不阻断启动）。
+            if let Ok(root) = pack_store::root_of(app.handle()) {
+                let status = pack_store::recover_all(&root);
+                let _ = pack_store::write_recover_status(&root, &status);
+                let _ = app.handle().emit("workshop://recover-status", status);
+            }
             // M5：构建原生菜单（文件/编辑/视图/帮助）
             let _ = menu::build(app.handle());
             // 窗口图标固定为 256×256 高分辨率源（任务栏/Alt-Tab 从大图高质下采样，
@@ -173,6 +180,7 @@ pub fn run() {
             pack_store::workshop_pack_activate,
             pack_store::workshop_pack_rollback,
             pack_store::workshop_pack_recover,
+            pack_store::workshop_pack_recover_all,
             print::export_pdf,
             print::preview_pdf,
             print::discard_preview_pdf,

@@ -6,13 +6,14 @@
  * （扫描/预览不写盘，confirm 才 install）。
  */
 import { invoke } from '@tauri-apps/api/core'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
 import type { InstalledPackView, InstallPreviewView, RecoverResultView, WorkshopAdapter } from '../../components/workshop/WorkshopPanel'
 import { capabilityRisk } from './installPolicy'
 
 export interface TauriPackAdapterOptions {
   invokeImpl?: typeof invoke
-  /** 产品 UI 注入：选择本地包目录（未来接 Tauri dialog）；未注入时返回 null（暂不可选包）。 */
+  /** 选择本地包目录（默认使用 Tauri dialog 插件选择目录；测试可注入替身） */
   chooseSourceDir?: () => Promise<string | null>
 }
 
@@ -42,8 +43,15 @@ function err(e: unknown): Error {
   return e instanceof Error ? e : new Error(String(e))
 }
 
+/** 默认目录选择：Tauri dialog 插件（目录选择，单选）。 */
+export async function choosePackDirectory(): Promise<string | null> {
+  const selected = await openDialog({ directory: true, multiple: false, title: '选择 UI 工坊包目录（含 manifest.json）' })
+  return typeof selected === 'string' ? selected : null
+}
+
 export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): WorkshopAdapter {
   const call = options.invokeImpl ?? invoke
+  const chooseSourceDir = options.chooseSourceDir ?? choosePackDirectory
   return {
     async listInstalled(): Promise<InstalledPackView[]> {
       try {
@@ -61,7 +69,7 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
       }
     },
     async stageFromFile(): Promise<InstallPreviewView | null> {
-      const dir = await options.chooseSourceDir?.()
+      const dir = await chooseSourceDir()
       if (!dir) return null
       let scan: ScanResponse
       try {

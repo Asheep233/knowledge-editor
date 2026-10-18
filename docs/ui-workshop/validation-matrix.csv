@@ -21,17 +21,20 @@ T26-A3-recover-results.json,T26/A3,W,Windows 产品壳（隔离构建，启动 r
 T26-A4-A6-install-results.json,T26/A4+A6,W,Windows 产品壳（隔离构建，签名安装/生命周期）,PASS,16,16,python tools/run_t26_install_probe.py
 T26-A5-ui-results.json,T26/A5,W,Windows 产品壳（隔离构建，工坊信任 UI）,PASS,11,11,python tools/run_t26_ui_probe.py
 T26-A7-A5-guest-results.json,?,U?,?,PASS,11,11,
+T26-A7-isolation-results.json,?,U?,?,PASS,5,5,
 T26-A8-save-results.json,?,U?,?,PASS,9,9,
+T26-IME-DPI-results.json,?,U?,?,PASS,7,7,
+T26-W01-zip-results.json,?,U?,?,PASS,8,8,
 T26-isolated-smoke-results.json,?,U?,?,PASS,7,7,
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py
 frontend: Core session 单测,P1/P2,U,Linux WSL（happy-dom）,PASS,42,42,cd frontend && npx vitest run src/core/session
 frontend: Core protocol 单测,P1,U,Linux WSL,PASS,18,18,cd frontend && npx vitest run src/core/protocol
 frontend: Core broker 单测,P1,U,Linux WSL,PASS,18,18,cd frontend && npx vitest run src/core/broker
-frontend: Core packs 单测,P2/P4,U,Linux WSL,PASS,82,82,cd frontend && npx vitest run src/core/packs
+frontend: Core packs 单测,P2/P4,U,Linux WSL,PASS,83,83,cd frontend && npx vitest run src/core/packs
 frontend: Core print 单测,P2,U,Linux WSL,PASS,14,14,cd frontend && npx vitest run src/core/print
 frontend: 工坊 UI 单测,P3/P4,U,Linux WSL（happy-dom）,PASS,18,18,cd frontend && npx vitest run src/components/workshop
-frontend: tsc + vitest 全量,P1–P4,U,Linux WSL（happy-dom 组件测试）,PASS,1809,1810,cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2
+frontend: tsc + vitest 全量,P1–P4,U,Linux WSL（happy-dom 组件测试）,PASS,1811,1812,cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2
 backend: pytest 全量,P1,A,Linux WSL + Windows Py3.10,PASS,847,847,python3 -m pytest backend/tests -q（Windows: CI venv）
 cargo: 产品壳单测,P2–P4,U,Windows（Rust 单元测试）,PASS,38,38,cd desktop/src-tauri && cargo test --release
 cargo: 原型壳单测（无独立测试，仅构建）,P0,B,Windows,BUILD_OK,,,cargo build --release（原型 tauri_sandbox）

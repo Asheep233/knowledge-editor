@@ -53,6 +53,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T23 | in_progress | frontend/src/components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/tauriPackAdapter；App flag 入口 | evidence/P3-T23-workshop-panel.md（7 例）、**P3-T23-workshop-integration.md（适配器 6 例 + 入口 3 例 + 全量 122 files/1733 passed）** | 真实包目录选择（dialog/zip）；Windows 端到端交互 W；签名/来源信任/卸载；启动 recover 合并 | Tauri dialog + Windows E2E W → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；**safeMode UI 呈现（徽标/横幅/全部修复）** | evidence/P3-T20-startup-recover.md（cargo 33/33 + build；工坊+pack 43 例；全量 122 files/1737 passed） | Windows 端到端 W；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载 | Windows 包故障启动 W → T24/T26 |
 | T19 | in_progress | core/packs/{packageHost,+test}；probe/{t19_guest,t19_host,build} + s1 原型 t19 场景 | evidence/P3-T19-package-host.md（7 例 U）、**P3-T19-package-host-probe.md（Windows/WebView2 **8/8**）** | 包入口资源真实加载（T17 产品化）；真实 WebView 崩溃信号；停用/恢复状态持久化与 T20 联动；Windows 端到端交互 W | 真实入口加载 + 崩溃信号 → T21/T26 W |
+| T24 | in_progress | frontend/src/core/packs/{trustPolicy,trustPolicy.test}；packageHost 能力上限 | evidence/P4-T24-trust-policy.md（**10 例**：签名/等级/能力上限/授权持久化/运行期裁剪；packs 49 例） | 真实签名验证（PKI）与来源信任 UI；Rust 持久化 TrustStore；T20/T21 端到端合并；Windows W | 签名验证 + TrustStore 产品化 → T25/T26 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -461,3 +462,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P3-T19-package-host-probe.md` + results JSON。
 - 剩余：真实包入口资源加载（T17 产品化）、真实 WebView 崩溃信号、与 T20 safeMode UI/持久化联动、
   Windows 端到端交互 W。下一步：T14 接线决策/最小实现；T24 可信包限定 Core。
+
+## P4 进度（T24 可信包限定 Core，2026-10-19）
+
+- `trustPolicy`：builtin/trusted/community 三档、签名/下载未签名策略、等级能力限制（阻止而非静默裁剪）、
+  `requiresExplicitConfirm`、TrustStore 授权持久化；PackageHost 运行期 `capabilityCeiling` 裁剪 Broker 能力。
+- 测试：packs **49 例**（trust 9 + packageHost 新增 1）全过、tsc 0。
+  证据：`evidence/P4-T24-trust-policy.md`。
+- 下一步：真实签名验证（PKI）与来源信任 UI（工坊控制面 grant/revoke）；Rust 持久化 TrustStore；
+  T20/T21 端到端合并；Windows 交互 W；T25 平台矩阵骨架。

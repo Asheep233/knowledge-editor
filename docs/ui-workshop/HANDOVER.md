@@ -45,7 +45,8 @@
 | T21 Windows 安装/升级/回滚 | 🟡 原型 W 20/20；产品命令+前端适配器/卸载；Windows E2E W 未做 | `P3-T21-pack-install-probe.md`、`P3-T21-product-pack-store.md` |
 | T22 首次安装确认 | 🟡 Core 9 例；签名验证/来源信任未做 | `P3-T22-install-confirmation.md` |
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
-| T24–T29 | ⬜ 未开始 | 依赖 P4/P5（可信包限定、平台矩阵、Windows 认证、发布候选、最终交接） |
+| T24 可信包限定 | 🟡 Core 10 例（信任等级/签名策略/能力上限/授权持久化）；真实 PKI/UI 未做 | `P4-T24-trust-policy.md` |
+| T25–T29 | ⬜ 未开始 | 依赖 P4/P5（平台矩阵、Windows 认证、发布候选、最终交接） |
 
 ## 3. 代码交付索引
 

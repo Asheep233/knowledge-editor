@@ -113,6 +113,16 @@ describe('T19 包隔离宿主', () => {
     expect(seen).toContain('stopped')
   })
 
+  it('运行期能力上限：信任等级裁剪后的能力才进入 Broker 连接', async () => {
+    const host = new PackageHost({
+      backend: backend(),
+      binding: () => ({ contextId: 'ctx-A', epoch: 1 }),
+      capabilityCeiling: (_packId, declared) => declared.filter((c) => c !== 'ui.shell'),
+    })
+    const session = await host.start('com.demo.hello', '1.0.0')
+    expect(session.connection?.capabilities).toEqual(['context.read'])
+  })
+
   it('无 DOM/React 依赖（源码守卫）', async () => {
     const fs = await import('node:fs')
     const raw = fs.readFileSync('src/core/packs/packageHost.ts', 'utf8')

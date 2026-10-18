@@ -45,6 +45,8 @@ export interface PackageHostOptions {
   /** 崩溃后是否自动 recover（默认 true） */
   autoRecover?: boolean
   role?: BrokerRole
+  /** 运行期能力上限（信任等级 ∩ manifest；默认不额外限制） */
+  capabilityCeiling?: (packId: string, declared: string[]) => string[]
   onSessionChange?: (session: PackageSession) => void
 }
 
@@ -52,7 +54,8 @@ const NOW = () => Date.now()
 
 export class PackageHost {
   private readonly backend: PackageHostBackend
-  private readonly options: Required<Omit<PackageHostOptions, 'onSessionChange'>> & Pick<PackageHostOptions, 'onSessionChange'>
+  private readonly options: Required<Omit<PackageHostOptions, 'onSessionChange' | 'capabilityCeiling'>> &
+    Pick<PackageHostOptions, 'onSessionChange' | 'capabilityCeiling'>
   private readonly sessions = new Map<string, PackageSession>()
   private readonly listeners = new Set<(s: PackageSession) => void>()
   private safeMode = false
@@ -65,6 +68,7 @@ export class PackageHost {
       maxCrashes: options.maxCrashes ?? 3,
       autoRecover: options.autoRecover ?? true,
       role: options.role ?? 'guest',
+      capabilityCeiling: options.capabilityCeiling,
       onSessionChange: options.onSessionChange,
     }
   }
@@ -97,12 +101,14 @@ export class PackageHost {
       }
       const manifest = await this.backend.readManifest(packId, version)
       const binding = this.options.binding()
+      const declared = [...manifest.capabilities]
+      const capped = this.options.capabilityCeiling?.(packId, declared) ?? declared
       const connection: BrokerConnection = {
         connectionId: `session-${packId}-${version}-${NOW()}`,
         packId,
         packVersion: version,
         role: this.options.role,
-        capabilities: [...manifest.capabilities],
+        capabilities: capped,
         contextId: binding.contextId,
         epoch: binding.epoch,
         declaredCommands: (manifest.commands ?? []).map((c) => c.name),

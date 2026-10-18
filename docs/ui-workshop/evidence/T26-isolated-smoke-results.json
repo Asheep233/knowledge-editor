@@ -1,0 +1,83 @@
+{
+  "generated_at": "2026-10-19T04:49:17.2130175+08:00",
+  "scenario": "T26 隔离安装产品冒烟（A1 部分 / A3 部分）",
+  "platform": "Windows 11 + WebView2（真实产品壳测试构建，独立 identifier）",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\knowledgeeditor.exe",
+  "identifier_expected": "com.astranota.uiws.e2e",
+  "checks": [
+    {
+      "name": "W-T26-S1 隔离 identifier 测试构建可产出（com.astranota.uiws.e2e）",
+      "pass": true,
+      "detail": "src-tauri 副本 + config identifier/productName/frontendDist 覆盖，cargo build 成功；strings 校验二进制含 e2e identifier"
+    },
+    {
+      "name": "W-T26-S2 测试实例可启动并显示主窗口（真实 Windows/WebView2）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "title": "AstraNota",
+        "handle": true
+      }
+    },
+    {
+      "name": "W-T26-S3 隔离数据目录（独立 identifier appData）",
+      "pass": true,
+      "detail": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e"
+    },
+    {
+      "name": "W-T26-S4 产品启动 recover 真实执行（status 文件生成，checked=0/safeMode=false）",
+      "pass": true,
+      "detail": {
+        "checked": 0,
+        "generatedAt": "SystemTime { intervals: 134368301388250401 }",
+        "results": [],
+        "safeMode": false
+      }
+    },
+    {
+      "name": "W-T26-S5 隔离单实例：第二测试实例不产生重复实例",
+      "pass": true,
+      "detail": {
+        "second_instance_exited": true
+      }
+    },
+    {
+      "name": "W-T26-S6 用户运行中的 App 未受影响（PID 不变）",
+      "pass": true,
+      "detail": {
+        "before": 69108,
+        "after": 69108
+      }
+    },
+    {
+      "name": "W-T26-S7 测试进程清理（无残留）",
+      "pass": true,
+      "detail": true
+    }
+  ],
+  "pass_count": 7,
+  "total": 7,
+  "raw": {
+    "generated_at": "2026-10-19T04:49:17.2130175+08:00",
+    "exe": "F:\\Work\\Dev\\cargo-target\\release\\knowledgeeditor.exe",
+    "identifier_expected": "com.astranota.uiws.e2e",
+    "test_pid": 41928,
+    "alive_after_14s": true,
+    "window_title": "AstraNota",
+    "window_handle_nonzero": true,
+    "isolated_appdata": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e",
+    "appdata_created": true,
+    "appdata_file_count": 1,
+    "backend_log_files": {},
+    "second_instance_exited": true,
+    "user_app_pid_before": 69108,
+    "user_app_pid_after": 69108,
+    "user_app_untouched": true,
+    "test_process_cleaned": true
+  },
+  "notes": [
+    "测试构建方式：复制 desktop/src-tauri 到 C:\\ke-tmp\\uiws-t26\\src-tauri，覆盖 identifier=com.astranota.uiws.e2e、productName、frontendDist 绝对路径后用全局 CARGO_TARGET_DIR 构建（复用依赖缓存）。",
+    "sidecar 后端未随 cargo build 打包：本次冒烟未验证后端/工作区功能（A2/A4-A8 需 tauri build 打包或手动放置 sidecar 命名二进制）。",
+    "EV 文件中的 workshop-recover-status 由产品壳 setup 启动恢复真实写入。"
+  ]
+}

@@ -55,7 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
-| T26 | in_progress | tools/run_all_w_probes.py；**reports/T26-windows-acceptance-plan.md（隔离安装 A1–A8 场景）** | P5-T26-windows-witnesses.md（13/13 W 探针 --check PASS）、T26 验收计划 | 产品隔离安装 E2E A1–A8 未执行；真实 OS 中文 IME/多 DPI；安装包升级/回滚演练 | 按计划执行隔离产品 E2E → 认证结论 |
+| T26 | in_progress | run_all_w_probes.py、T26 验收计划、**隔离测试构建工具文档 + 产品冒烟** | P5-T26-windows-witnesses（13/13 W）、**P5-T26-isolated-smoke.md（7/7：隔离 identifier 构建/主窗口/独立 appData/启动 recover/单实例/用户 App 不受影响/清理）** | A2/A4–A8（sidecar/后端相关）未执行；真实 OS 中文 IME/多 DPI；安装包升级/回滚 | 隔离 sidecar 打包 + A2–A8 脚本化 → 认证 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -624,3 +624,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - T26：`reports/T26-windows-acceptance-plan.md` —— 隔离策略（独立 identifier/数据目录/端口/清理/
   不发布）、A1–A8 验收场景（启动/打印/recover/safeMode/签名/信任/安装回滚卸载/包宿主/Core 保存）、
   前置条件与完成定义；执行后方可给认证结论（当前未执行，不冒进）。
+
+## P6/T26 进度（隔离产品冒烟，2026-10-19）
+
+- 打通 T26 隔离测试构建：复制 src-tauri + 覆盖 identifier/productName/frontendDist → cargo build
+  （TAURI_CONFIG 环境覆盖对 plain cargo 无效，已改为副本方案）；启动真实产品壳测试实例：
+  W **7/7 PASS** —— 主窗口、独立 appData、**产品启动 recover 状态文件真实生成**、隔离单实例、
+  用户运行中的 AstraNota（PID 69108）不受影响、进程清理。
+  证据：`evidence/P5-T26-isolated-smoke.md` + results JSON；步骤：`tools/t26_isolated_build.md`。
+- 限制：cargo 裸构建无 sidecar；A2/A4–A8 需 `tauri build` 打包 sidecar 后执行。

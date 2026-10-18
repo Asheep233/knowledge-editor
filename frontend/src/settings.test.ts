@@ -4,6 +4,9 @@ import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
   applyTheme,
+  getCachedSettings,
+  loadSettings,
+  saveSettings,
   DEFAULT_SETTINGS,
   mergeSettings,
   normalizeSettings,
@@ -12,6 +15,30 @@ import {
   sanitizeTheme,
 } from './settings'
 import { SHORTCUT_UNBOUND } from './state/shortcuts'
+
+describe('外观包设置持久化', () => {
+  it('外观字符串整体替换，且主题和其他显示偏好保留', () => {
+    const base = mergeSettings(DEFAULT_SETTINGS, { ui: { theme: 'dark', displayPreference: { density: 'compact', appearanceV1: '{"old":true}' } } })
+    const next = mergeSettings(base, { ui: { displayPreference: { appearanceV1: '{"new":true}' } } })
+    expect(next.ui.theme).toBe('dark')
+    expect(next.ui.displayPreference).toEqual({ density: 'compact', appearanceV1: '{"new":true}' })
+    expect(normalizeSettings(next).ui.displayPreference).toEqual(next.ui.displayPreference)
+  })
+
+  it('显式要求持久化时，存储失败不提交缓存', async () => {
+    await loadSettings()
+    const previous = getCachedSettings()
+    const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
+    try {
+      await expect(saveSettings({ ui: { displayPreference: { appearanceV1: 'new' } } }, { requirePersistence: true })).rejects.toThrow('QuotaExceededError')
+      expect(getCachedSettings()).toBe(previous)
+    } finally {
+      storage.mockRestore()
+    }
+  })
+})
 
 describe('sanitizeTheme', () => {
   it('接受 system/light/dark', () => {

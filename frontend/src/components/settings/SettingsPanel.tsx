@@ -26,6 +26,8 @@ import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-lig
 import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
 import { askConfirm } from '../common/PromptDialog'
 import ShortcutsSection from './ShortcutsSection'
+import AppearanceSection from './AppearanceSection'
+import { getAppearanceStatus } from '../../appearance/controller'
 
 interface Props {
   open: boolean
@@ -61,6 +63,7 @@ const SCROLL_EPSILON = 2
 export default function SettingsPanel({ open, onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS)
   const [ready, setReady] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
   const [indexBusy, setIndexBusy] = useState(false)
   const [indexResult, setIndexResult] = useState<string | null>(null)
   // 分组导航（参考稿 §3.6：常规 / 外观 / 快捷键 / 维护；左栏点击 = 右侧锚点跳转）
@@ -72,6 +75,15 @@ export default function SettingsPanel({ open, onClose }: Props) {
   const clickSuppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** 当前滚动同步函数（定时器/点击处理器复用，避免合成事件） */
   const syncGroupRef = useRef<() => void>(() => undefined)
+
+  // 保持设置组件挂载，预览确认条通过 portal 显示在主界面上。
+  useEffect(() => {
+    if (!open) return
+    const sync = () => setPreviewing(getAppearanceStatus().mode === 'preview')
+    sync()
+    window.addEventListener('ke:appearance-changed', sync)
+    return () => window.removeEventListener('ke:appearance-changed', sync)
+  }, [open])
 
   // 右侧滚动监听：更新左栏激活态（scroll + 参考线比较；**不是** IntersectionObserver）。
   // task-37 修复：旧实现只在 `open` 时用 `document.getElementById` 取一次目标元素并缓存，
@@ -230,7 +242,8 @@ export default function SettingsPanel({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div data-ke-slot="settings" data-ke-appearance-scope="chrome" className="fixed inset-0 z-50 flex flex-col bg-background"
+      style={previewing ? { display: 'none' } : undefined} aria-hidden={previewing || undefined}>
       {/* 顶栏：标题行 */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2">
@@ -384,7 +397,7 @@ export default function SettingsPanel({ open, onClose }: Props) {
                 <section aria-labelledby="section-appearance">
                   <div className="flex items-baseline justify-between gap-4">
                     <h2 id="section-appearance" className="text-[14px] font-semibold whitespace-nowrap text-foreground">外观</h2>
-                    <p className="text-[12px] text-muted-foreground">主题与界面强调色</p>
+                    <p className="text-[12px] text-muted-foreground">主题、强调色与自定义外观包</p>
                   </div>
                   <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
                     <div className="flex flex-col divide-y divide-border">
@@ -439,6 +452,9 @@ export default function SettingsPanel({ open, onClose }: Props) {
                         />
                       </SettingRow>
                     </div>
+                  </div>
+                  <div className="mt-4">
+                    <AppearanceSection />
                   </div>
                 </section>
               </div>

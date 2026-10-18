@@ -44,6 +44,7 @@ import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, type AppSettings } from './settings'
+import { initializeAppearance } from './appearance/controller'
 import { shouldBlockUnload } from './state/closeGuard'
 import { bootMark, BOOT_PHASE, type BootPhase } from './bootTimings'
 import horizontalLogoLight from './assets/astranota/astranota-horizontal-light-800x200.png'
@@ -231,6 +232,7 @@ export default function App() {
       .then((s) => {
         if (!alive) return
         applyTheme(s.ui.theme, s.ui.accentColor)
+        initializeAppearance(s)
         settingsRef.current = s
         // 主题变化后通知下游（若有依赖设置的组件需要重读设置缓存）。
         setSettingsReady(true)

@@ -11,6 +11,7 @@ import './index.css'
 import './print.css'
 import App from './App'
 import { applyTheme, loadSettings } from './settings'
+import { initializeAppearance, installAppearanceApi } from './appearance/controller'
 
 interface RuntimeInfo {
   api_base: string
@@ -91,6 +92,7 @@ async function bootstrap() {
   const settingsTask = loadSettings()
     .then((s) => {
       applyTheme(s.ui.theme, s.ui.accentColor)
+      initializeAppearance(s)
       return s
     })
     .catch(() => undefined)
@@ -101,6 +103,7 @@ async function bootstrap() {
   }
   // handoff §8.3：渲染前应用主题，避免首屏闪烁（App 内启动 effect 幂等兜底）
   await settingsTask
+  installAppearanceApi()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

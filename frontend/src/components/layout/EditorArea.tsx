@@ -1441,12 +1441,14 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           <div
             className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-card px-2"
             data-testid="tab-strip"
+            data-ke-slot="editor-tabs"
+            data-ke-appearance-scope="chrome"
           >
             <TabBarSlot />
           </div>
           {/* task-70：打印时必须隐藏工具栏（它在 <main> 内，没有语义标签可依赖）
               —— 用 `display: contents` 包装，屏幕态零布局影响，打印态由 print.css 隐藏 */}
-          <div data-ke-toolbar="" className="contents">
+          <div data-ke-toolbar="" data-ke-slot="editor-toolbar" data-ke-appearance-scope="chrome" className="contents">
           <EditorToolbar
             saveLabel={saveLabel}
             onSave={() => void saveNow()}

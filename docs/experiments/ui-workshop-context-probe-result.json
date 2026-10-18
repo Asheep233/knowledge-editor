@@ -1,0 +1,14 @@
+{
+  "baseline": "v1.2.16 9dd19e7, existing backend unmodified",
+  "method": "deterministic context interleaving with temporary fixtures",
+  "mixed_context_probe": {
+    "first_file_changed": true,
+    "second_file_unchanged": true,
+    "first_index_updates": [],
+    "second_index_updates": [
+      "Articles/shared.md"
+    ]
+  },
+  "request_cannot_reject_stale_workspace": true,
+  "scope": "backend boundary only; not an official-UI reproduction or concurrency stress test"
+}

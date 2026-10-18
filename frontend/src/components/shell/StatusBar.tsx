@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 
 export function StatusBar({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex h-[34px] shrink-0 items-center gap-4 overflow-x-hidden border-t border-border bg-muted px-3 text-[11px] leading-none text-muted-foreground">
+    <div data-ke-slot="shell-status" data-ke-appearance-scope="chrome" className="flex h-[34px] shrink-0 items-center gap-4 overflow-x-hidden border-t border-border bg-muted px-3 text-[11px] leading-none text-muted-foreground">
       {children}
     </div>
   )

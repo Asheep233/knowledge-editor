@@ -246,7 +246,10 @@ export async function loadSettings(): Promise<AppSettings> {
 }
 
 /** 保存设置（部分补丁），返回合并后的完整设置并刷新内存缓存。 */
-export async function saveSettings(patch: SettingsPatch): Promise<AppSettings> {
+export async function saveSettings(
+  patch: SettingsPatch,
+  options?: { requirePersistence?: boolean },
+): Promise<AppSettings> {
   if (isTauri()) {
     const { invoke } = await import('@tauri-apps/api/core')
     cache = await invoke<AppSettings>('update_settings', { patch })
@@ -254,7 +257,9 @@ export async function saveSettings(patch: SettingsPatch): Promise<AppSettings> {
     const next = mergeSettings(cache ?? DEFAULT_SETTINGS, patch)
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(next))
-    } catch {
+    } catch (error) {
+      // 外观包等显式安装操作必须确认已落盘，失败时不更新内存或界面。
+      if (options?.requirePersistence) throw error
       /* localStorage 不可用时忽略（内存缓存仍生效） */
     }
     cache = next

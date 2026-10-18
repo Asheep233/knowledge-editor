@@ -126,6 +126,9 @@ KnowledgeEditor/
 |---|---|
 | `docs/markdown-extension-spec.md` | Markdown 扩展规范（注释 / 模块 / 附件 / 视频标记） |
 | `docs/document-format.md` | 文档格式手册（ke_version / KE_KINDS / 字段顺序，当前实现为准） |
+| `docs/custom-appearance-api.md` | 自定义 UI 外观包与 Agent 接口、功能边界及升级恢复策略（基于 v1.2.16） |
+| `docs/ui-workshop-design.md` | UI 创意工坊与整套前端替换的架构提案：自由度、内核抽离、一键切换及升级兼容 |
+| `docs/ui-workshop-feasibility.md` | UI 工坊全面可行性评估：源码/实验依据、推荐架构、技术路线、工作量和验收门槛 |
 | `docs/phase0-architecture.html` | Phase 0 架构设计（技术方案 / 数据结构 / 风险分析） |
 | `docs/phase7-plan.md` | Phase 7 桌面化实施规划（总纲 / 里程碑 / 决策点） |
 | `docs/phase7-report.md` | Phase 7 实施报告（桌面化与回归发布 v1.0.0，含构建方式与已知限制） |

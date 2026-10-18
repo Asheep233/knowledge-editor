@@ -26,17 +26,17 @@ export interface AppShellProps {
 
 export function AppShell({ header, left, main, right, statusBar }: AppShellProps) {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div data-ke-slot="shell-root" className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
       {header}
-      <div className="flex min-h-0 flex-1">
+      <div data-ke-slot="shell-body" className="flex min-h-0 flex-1">
         {left ? (
-          <aside className="flex h-full w-[280px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+          <aside data-ke-slot="shell-navigation" data-ke-appearance-scope="chrome" className="flex h-full w-[280px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
             {left}
           </aside>
         ) : null}
-        <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">{main}</main>
+        <main data-ke-slot="shell-main" className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">{main}</main>
         {right ? (
-          <aside className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+          <aside data-ke-slot="shell-inspector" data-ke-appearance-scope="chrome" className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
             {right}
           </aside>
         ) : null}

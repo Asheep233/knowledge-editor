@@ -55,7 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
-| T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具、A2/A3/A4/A6 产品 W 探针 | P5-T26-windows-witnesses（13/13 W）、smoke（7/7）、A2 打印（9/9）、A3 recover（9/9）、**A4+A6 签名安装/生命周期（16/16；修复 activate 非幂等缺陷，cargo 39）** | A5/A7/A8；真实 OS 中文 IME/多 DPI；安装包升级 | A5–A8 脚本化 → 认证 |
+| T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具、A2/A3/A4/A5/A6 产品 W 探针 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、**A5 工坊信任 UI（11/11：入口/真实列表/签名徽章/授予撤销/TrustStore 持久化）** | A5 能力上限运行时（依赖 A7）、A7 产品包宿主、A8 Core 保存 flag；真实 IME/多 DPI；安装包升级 | A7/A8 → 认证 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -667,3 +667,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   recover/safeMode 9/9、A4+A6 16/16、原型 13/13）；A7/A8/真实 IME/多 DPI/安装包升级未完成 →
   **T26 未最终认证**；项目级仍 `P0_READY`（不冒进）。
 - 下一阶段顺序：A5/A7（产品包宿主+信任 UI）→ A8 → 真实 IME/多 DPI → 安装包升级/回滚 → 认证评估。
+
+## P6/T26 进度（A5 工坊信任 UI 产品 W 11/11，2026-10-19）
+
+- flag 构建（VITE_KE_WORKSHOP=1）+ 隔离工作区/测试构建 + CDP DOM 交互：工坊入口可见、面板加载
+  真实已安装包列表、真实签名徽章 valid、授予 trusted → localStorage TrustStore 持久化 + 徽章更新、
+  撤销 → community 清除；用户实例不受影响。证据：`evidence/P5-T26-A5-ui.md`。
+- A5 剩余：能力上限在真实包会话的运行时强制执行（依赖 A7 产品侧包宿主装配）。

@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-10-19T05:10:56+0800",
+  "scenario": "T26 A5 工坊信任 UI（flag 构建 + 真实产品命令）",
+  "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+  "publicKeyHex": "70d68e8f3684469b6d3abb6aeed5571d9dd179aa066eeeaa68c9e0c210773f3d",
+  "checks": [
+    {
+      "name": "W-T26-A5-1 产品实例启动 + IPC 就绪",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A5-2 预装签名包成功",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368314528225592 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A5-3 flag 构建下工坊入口可见（创意工坊）",
+      "pass": true,
+      "detail": {
+        "hasEntry": true
+      }
+    },
+    {
+      "name": "W-T26-A5-4 面板打开并加载真实已安装包列表",
+      "pass": true,
+      "detail": {
+        "opened": true,
+        "panel": true
+      }
+    },
+    {
+      "name": "W-T26-A5-5 列表显示真实签名徽章（valid）",
+      "pass": true,
+      "detail": {
+        "hasSignature": true
+      }
+    },
+    {
+      "name": "W-T26-A5-6 默认信任等级 community",
+      "pass": true,
+      "detail": {
+        "hasTier": true
+      }
+    },
+    {
+      "name": "W-T26-A5-7 授予 trusted → TrustStore 持久化",
+      "pass": true,
+      "detail": {
+        "clicked": true,
+        "stored": "{\"com.probe.t26ui\":\"trusted\"}"
+      }
+    },
+    {
+      "name": "W-T26-A5-8 面板徽章更新为 trusted",
+      "pass": true,
+      "detail": {
+        "hasTrusted": true
+      }
+    },
+    {
+      "name": "W-T26-A5-9 撤销信任 → community（持久化清除）",
+      "pass": true,
+      "detail": {
+        "clicked": true,
+        "stored": null
+      }
+    },
+    {
+      "name": "W-T26-A5-10 主进程存活（UI 链路无崩溃）",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A5-11 用户运行中的 AstraNota 未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "82360"
+      }
+    }
+  ],
+  "pass_count": 11,
+  "total": 11
+}

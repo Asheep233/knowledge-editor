@@ -43,6 +43,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
 | T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
 | T18 | in_progress | frontend/src/core/broker/{broker,binding,+2 tests}；protocol command.invoke；probe/* + s1 原型 broker 场景 | evidence/P3-T18-broker.md（**37 例**：broker 9+binding 9+protocol 19）、**P3-T18-broker-probe.md（Windows/WebView2 12/12）** | 真实产品 guest 连接建立/产品壳接线；三档授权 UI（T22）；后端写口来源收紧端到端 | 产品 guest 连接接线 + T22 授权 UI → T21 Windows 包安装 |
+| T21 | in_progress | 原型 tauri_sandbox/src/pack_store_proto.rs + core/packs/probe/* + run_pack_probe.py | **evidence/P3-T21-pack-install-probe.md（Windows 真实文件系统 20/20）** | 未接产品 Tauri 主进程；TS PackStore 与 Rust 单一事实来源未定；下载/扫描/首次安装确认 UI（T22）未做 | Rust store 接产品壳 + 启动 recover → T20/T22/T26 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -280,3 +281,13 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 证据：`evidence/P3-T18-broker.md`、`P3-T18-broker-probe.md` + `T18-broker-probe-results.json`。
 - 下一步：真实产品 guest 连接建立（包激活 → 能力集合 → 协议会话）与 T22 授权 UI；T21 Windows 包安装/
   回滚实机；T12 分域迁移继续。
+
+## P3 进度（T21 原生包存储 W 证据，2026-10-19）
+
+- Rust 原生包存储原型 `pack_store_proto.rs`（T17 语义等价）：staging→rename、state.json 单提交点+journal、
+  清单/能力/路径/sha256 校验、activate/rollback/verify/recover；真实 WebView2 窗口驱动。
+- **Windows 真实文件系统探针 20/20 PASS**：安装/升级/回滚、损坏自动回退、坏哈希/穿越/重复拒绝、
+  崩溃注入 state 不变、无 staging/journal 残留、磁盘文件内容与损坏保持校验。
+  证据：`evidence/P3-T21-pack-install-probe.md` + `T21-pack-install-probe-results.json`。
+- 下一步：Rust store 接产品 Tauri 主进程 + 启动 recover（T20）；TS PackStore 与 Rust 单一事实来源决策；
+  T22 下载/候选扫描/首次安装确认 UI。

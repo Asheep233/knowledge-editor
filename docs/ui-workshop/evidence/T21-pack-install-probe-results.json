@@ -1,0 +1,256 @@
+{
+  "generated_at": "2026-10-19T02:27:27+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T21-1 Rust setup 打开 pack-render 窗口",
+      "pass": true,
+      "detail": [
+        "startup-clean",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"pack_root\":\"C:\\\\ke-tmp\\\\uiws-t21-probe\\\\data\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t21-probe\\\\probe-pack\"",
+        "pack-render opened by rust setup"
+      ]
+    },
+    {
+      "name": "W-T21-2 探针完成（无异常）",
+      "pass": true,
+      "detail": {
+        "phase": "pack-probe-done",
+        "error": null
+      }
+    },
+    {
+      "name": "W-T21-3 安装 v1 后 active=1.0.0",
+      "pass": true,
+      "detail": {
+        "active": "1.0.0",
+        "previous": null,
+        "updatedAt": "SystemTime { intervals: 134368216266267279 }"
+      }
+    },
+    {
+      "name": "W-T21-4 升级 v2 后 active=2.0.0, previous=1.0.0",
+      "pass": true,
+      "detail": {
+        "active": "2.0.0",
+        "previous": "1.0.0",
+        "updatedAt": "SystemTime { intervals: 134368216266399838 }"
+      }
+    },
+    {
+      "name": "W-T21-5 回滚成功（rollback 返回 active=1.0.0）",
+      "pass": true,
+      "detail": {
+        "active": "1.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368216266508008 }"
+      }
+    },
+    {
+      "name": "W-T21-6 verify v1/v2 均通过",
+      "pass": true,
+      "detail": {
+        "v1": true,
+        "v2": true
+      }
+    },
+    {
+      "name": "W-T21-7 损坏 active 后 verify=false",
+      "pass": true,
+      "detail": false
+    },
+    {
+      "name": "W-T21-8 recover 自动回滚损坏 active",
+      "pass": true,
+      "detail": {
+        "action": "rollback-corrupt-active",
+        "recovered": true,
+        "state": {
+          "active": "2.0.0",
+          "previous": "1.0.0",
+          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+        }
+      }
+    },
+    {
+      "name": "W-T21-9 坏哈希安装被拒（E_HASH）且未生成版本目录",
+      "pass": true,
+      "detail": {
+        "err": "E_HASH: 哈希不匹配: index.html",
+        "verify": false
+      }
+    },
+    {
+      "name": "W-T21-10 路径穿越被拒（E_PATH）",
+      "pass": true,
+      "detail": "E_PATH: 非法路径: ../evil.html"
+    },
+    {
+      "name": "W-T21-11 重复安装被拒（E_DUPLICATE）",
+      "pass": true,
+      "detail": "E_DUPLICATE: 版本已安装 com.probe.hello@2.0.0"
+    },
+    {
+      "name": "W-T21-12 崩溃注入后 state 不变",
+      "pass": true,
+      "detail": {
+        "crash": "E_INJECTED: fail_after_rename 注入失败",
+        "after": {
+          "active": "2.0.0",
+          "previous": "1.0.0",
+          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+        },
+        "before": {
+          "active": "2.0.0",
+          "previous": "1.0.0",
+          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+        }
+      }
+    },
+    {
+      "name": "W-T21-13 崩溃后无孤儿版本（recover 后 verify=false，无 journal 残留）",
+      "pass": true,
+      "detail": {
+        "recover": {
+          "action": "clean",
+          "active": "2.0.0",
+          "previous": "1.0.0",
+          "recovered": false,
+          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+        },
+        "verifyOrphan": false
+      }
+    },
+    {
+      "name": "W-T21-14 重新安装 v4 成功 final active=4.0.0",
+      "pass": true,
+      "detail": {
+        "active": "4.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+      }
+    },
+    {
+      "name": "W-T21-15 磁盘 state.json active=4.0.0 previous=2.0.0",
+      "pass": true,
+      "detail": {
+        "active": "4.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+      }
+    },
+    {
+      "name": "W-T21-16 磁盘版本目录 1.0.0/2.0.0/4.0.0 存在且 3.0.0 不存在",
+      "pass": true,
+      "detail": [
+        "1.0.0",
+        "2.0.0",
+        "4.0.0"
+      ]
+    },
+    {
+      "name": "W-T21-17 无 staging/journal 残留",
+      "pass": true,
+      "detail": {
+        "staging": false,
+        "txn": false
+      }
+    },
+    {
+      "name": "W-T21-18 磁盘文件内容与最近安装一致",
+      "pass": true,
+      "detail": "<html>v4</html>"
+    },
+    {
+      "name": "W-T21-19 损坏文件保持损坏（未被静默修复）",
+      "pass": true,
+      "detail": "corrupted"
+    },
+    {
+      "name": "W-T21-20 真实 Windows 文件系统/环境",
+      "pass": true,
+      "detail": "C:\\ke-tmp\\uiws-t21-probe\\data"
+    }
+  ],
+  "pass_count": 20,
+  "total": 20,
+  "raw_results": {
+    "phase": "pack-probe-done",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "packRoot": "C:\\ke-tmp\\uiws-t21-probe\\data",
+    "stateAfterInstallV1": {
+      "active": "1.0.0",
+      "previous": null,
+      "updatedAt": "SystemTime { intervals: 134368216266267279 }"
+    },
+    "stateAfterInstallV2": {
+      "active": "2.0.0",
+      "previous": "1.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266399838 }"
+    },
+    "verifyV1": true,
+    "verifyV2": true,
+    "stateAfterRollback": {
+      "active": "1.0.0",
+      "previous": "2.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266508008 }"
+    },
+    "verifyCorrupted": false,
+    "recoverFromCorruption": {
+      "action": "rollback-corrupt-active",
+      "recovered": true,
+      "state": {
+        "active": "2.0.0",
+        "previous": "1.0.0",
+        "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+      }
+    },
+    "badHashError": "E_HASH: 哈希不匹配: index.html",
+    "verifyRejectedV3": false,
+    "traversalError": "E_PATH: 非法路径: ../evil.html",
+    "duplicateError": "E_DUPLICATE: 版本已安装 com.probe.hello@2.0.0",
+    "crashError": "E_INJECTED: fail_after_rename 注入失败",
+    "stateAfterCrash": {
+      "active": "2.0.0",
+      "previous": "1.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+    },
+    "stateBeforeCrash": {
+      "active": "2.0.0",
+      "previous": "1.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+    },
+    "recoverAfterCrash": {
+      "action": "clean",
+      "active": "2.0.0",
+      "previous": "1.0.0",
+      "recovered": false,
+      "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+    },
+    "verifyOrphanV4": false,
+    "reinstallV4": {
+      "active": "4.0.0",
+      "previous": "2.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+    },
+    "finalState": {
+      "active": "4.0.0",
+      "previous": "2.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+    }
+  },
+  "disk": {
+    "state": {
+      "active": "4.0.0",
+      "previous": "2.0.0",
+      "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+    },
+    "versions": [
+      "1.0.0",
+      "2.0.0",
+      "4.0.0"
+    ],
+    "staging": false,
+    "txn": false
+  }
+}

@@ -162,6 +162,12 @@
             await finish(results);
             return;
           }
+          if (boot.scenario === 'pack') {
+            results.phase = 'pack-host-idle';
+            document.getElementById('status').textContent = 'T21 pack probe running in separate window…';
+            await new Promise(function (r) { setTimeout(r, 60000); });
+            return;
+          }
           if (boot.scenario === 'broker') {
             results.phase = 'broker-host-idle';
             document.getElementById('status').textContent = 'T18 broker probe running in separate window…';

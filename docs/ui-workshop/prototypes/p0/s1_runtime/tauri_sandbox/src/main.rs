@@ -11,6 +11,7 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+mod pack_store_proto;
 mod print_proto;
 
 use tauri::State;
@@ -81,6 +82,7 @@ fn boot_state(state: State<ProbeState>) -> serde_json::Value {
         "probe_dir": state.dir.display().to_string(),
         "scenario": env::var("S1_SCENARIO").unwrap_or_default(),
         "print_target": env::var("S1_PRINT_TARGET").unwrap_or_default(),
+        "pack_root": env::var("S1_PACK_ROOT").unwrap_or_default(),
         "guest_iso_url": env::var("S1_GUEST_ISO_URL").unwrap_or_default(),
     })
 }
@@ -230,6 +232,19 @@ fn main() {
                     }
                 }
             }
+            if env::var("S1_OPEN_PACK").map(|v| v == "1").unwrap_or(false) {
+                use tauri::{WebviewUrl, WebviewWindowBuilder};
+                let dir = probe_dir();
+                let _ = fs::create_dir_all(&dir);
+                match WebviewWindowBuilder::new(app, "pack-render", WebviewUrl::App("pack.html".into()))
+                    .title("T21 native pack store probe")
+                    .inner_size(900.0, 700.0)
+                    .build()
+                {
+                    Ok(_) => append_event(&dir, "pack-render opened by rust setup"),
+                    Err(e) => append_event(&dir, &format!("pack-render build error: {e}")),
+                }
+            }
             if env::var("S1_OPEN_BROKER").map(|v| v == "1").unwrap_or(false) {
                 use tauri::{WebviewUrl, WebviewWindowBuilder};
                 let dir = probe_dir();
@@ -297,6 +312,13 @@ fn main() {
             report_guest_result,
             debug_log,
             print_proto::print_window_pdf,
+            pack_store_proto::pack_install,
+            pack_store_proto::pack_state,
+            pack_store_proto::pack_verify,
+            pack_store_proto::pack_activate,
+            pack_store_proto::pack_rollback,
+            pack_store_proto::pack_recover,
+            pack_store_proto::pack_corrupt,
             exit_probe
         ])
         .run(tauri::generate_context!())

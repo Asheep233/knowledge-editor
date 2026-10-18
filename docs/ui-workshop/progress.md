@@ -40,6 +40,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T08 | passed | core/codec/probe{,2,3}.ts + run_probe*.sh + CANONICAL-RULES.md | probe2（10 类扩展无 DOM 分层，全部可 parse/serialize）；probe3（8 样本保存管线 roundtrip 台账：声明 R1–R6 后 **fixpoint2 8/8 字节稳定**；ke 标记保留、BOM/CRLF 还原）；DOM-free API 边界已明确 | 唯一性细节（如首次空行归并）已按声明规范处理；真实 UI 行为一致性留 T26 复核 | T10 Core 直接引用 ke.ts traits + serializer 边界 |
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
+| T11 | in_progress | frontend/src/core/protocol/{types,channel,contract.test} | evidence/P1-T11-protocol.md（12 例契约测试 + tsc 0 + 契约快照守卫） | Tauri 传输最小探针（Windows）与 iframe MessagePort 适配器未做；方法表未覆盖 P3 包命令 | Tauri 传输探针（S1 原型扩展）→ T12 分域迁移 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -215,3 +216,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   外部改盘 conflict_external 不覆盖。证据：`evidence/P1-T10-e2e.md` + `T10-e2e-results.json`。
 - 说明：后端跑 WSL Linux（A 证据，非 Windows/WebView2 W 证据）；产品 RecoveryStorage、真实 UI 接线留后续。
 - 下一步：T11 类型化协议契约（host↔guest），然后 T12 分域迁移。
+
+## P1 进度（T11 协议契约，2026-10-19）
+
+- 新增 Core 协议包 `frontend/src/core/protocol/`：
+  - 单一类型来源：协议版本 1、10 种结构化错误码、握手/请求/响应/取消/事件消息、方法表
+    （capabilities/snapshot/write/print.snapshot）、`ProtocolPort` 传输抽象、`PROTOCOL_CONTRACT` 快照；
+  - `GuestClient`/`HostDispatcher`：版本+能力协商、类型化 request、取消（AbortSignal）、超时、
+    错误码化、事件广播；`createInMemoryPorts` 端口模拟；
+  - 契约测试 12 例全过、tsc 0、DOM/React 源码守卫。
+  证据：`evidence/P1-T11-protocol.md`。
+- 下一步：Tauri 传输最小探针（Windows WebView2 MessagePort 握手，复用/扩展 S1 原型）→ T12 分域迁移。

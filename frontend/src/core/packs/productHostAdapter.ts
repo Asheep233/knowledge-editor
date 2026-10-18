@@ -34,8 +34,12 @@ export interface SessionStatus {
   updatedAt?: string | null
 }
 
+const WORKSHOP_ORIGIN = 'http://workshop.localhost'
+
 export interface ProductHostBackend extends PackageHostBackend {
   loadEntry(manifest: PackManifest): Promise<LoadedPackEntry>
+  /** A7：包入口的独立 origin URL（workshop 自定义协议；Windows 映射为 http://workshop.localhost） */
+  entryUrl(manifest: PackManifest): string
   sessionStatus(): Promise<SessionStatus>
   reportSession(status: SessionStatus): Promise<SessionStatus>
 }
@@ -55,8 +59,9 @@ export function createProductHostBackend(options: ProductHostAdapterOptions = {}
       const raw = await readAsset(packId, version, 'manifest.json')
       return validateManifest(JSON.parse(raw))
     },
-    async deactivate(packId: string): Promise<void> {
-      await call('workshop_pack_session_report', { status: { state: 'stopped', packId } })
+    async deactivate(_packId: string): Promise<void> {
+      // 产品侧 guest 为 webview 内 iframe，无独立进程需要停用；会话状态由宿主
+      // onSessionChange → reportSession 负责（此处不得写 stopped，否则会覆盖 failed/safeMode 状态）。
     },
     async recover(packId: string): Promise<{ recovered: boolean; action: string }> {
       const result = (await call('workshop_pack_recover', { id: packId })) as { recovered?: boolean; action?: string }
@@ -83,6 +88,12 @@ export function createProductHostBackend(options: ProductHostAdapterOptions = {}
         }
       }
       return { html, assets }
+    },
+    entryUrl(manifest: PackManifest): string {
+      const seg = [manifest.id, manifest.version, manifest.entry.html]
+        .map((x) => x.split('/').map((p) => encodeURIComponent(p)).join('/'))
+        .join('/')
+      return `${WORKSHOP_ORIGIN}/${seg}`
     },
     async sessionStatus(): Promise<SessionStatus> {
       return (await call('workshop_pack_session_status')) as SessionStatus

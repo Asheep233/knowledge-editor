@@ -17,6 +17,8 @@ import { capabilityCeilingFor } from './productHostAdapter'
 
 export interface GuestHostBackend extends PackageHostBackend {
   loadEntry(manifest: PackManifest): Promise<{ html: string; assets: Record<string, string> }>
+  /** A7：独立 origin 入口 URL（可选；有则 iframe 用 src 加载，否则回退 srcdoc） */
+  entryUrl?(manifest: PackManifest): string
   reportSession(status: { state: string; packId?: string | null; capabilities?: string[]; lastError?: string | null }): Promise<unknown>
 }
 
@@ -35,6 +37,7 @@ export interface GuestStartResult {
   reason?: string
   session?: PackageSession
   entryHtml?: string
+  entryUrl?: string
   assets?: Record<string, string>
   capabilities: string[]
 }
@@ -84,8 +87,9 @@ export class GuestSessionHost {
     this.startedAt = Date.now()
     const session = await this.host.start(packId, version)
     const entry = await this.backend.loadEntry(manifest)
+    const entryUrl = this.backend.entryUrl?.(manifest)
     await this.report(session.state, undefined, session.connection?.capabilities)
-    return { blocked: false, session, entryHtml: entry.html, assets: entry.assets, capabilities: ceiling }
+    return { blocked: false, session, entryHtml: entry.html, entryUrl, assets: entry.assets, capabilities: ceiling }
   }
 
   /** guest 心跳（UI 收到 postMessage 后调用）。 */

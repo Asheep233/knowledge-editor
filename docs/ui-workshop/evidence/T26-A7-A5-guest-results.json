@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T06:14:02+0800",
+  "generated_at": "2026-10-19T06:23:22+0800",
   "scenario": "T26 A7/A5 产品 guest 宿主（启用/能力上限/崩溃/safeMode/停用持久化）",
   "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
   "checks": [
@@ -11,7 +11,7 @@
         "value": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368352127735783 }"
+          "updatedAt": "SystemTime { intervals: 134368357940203811 }"
         }
       }
     },
@@ -82,27 +82,27 @@
         "lastError": null,
         "packId": "com.probe.t26guest",
         "state": "active",
-        "updatedAt": "SystemTime { intervals: 134368352160021265 }"
+        "updatedAt": "SystemTime { intervals: 134368357972437426 }"
       }
     },
     {
       "name": "W-T26-A7/A5-5a guest 心跳到达宿主（postMessage）",
-      "pass": false,
+      "pass": true,
       "detail": {
-        "heartbeats": 0
+        "heartbeats": 1
       }
     },
     {
       "name": "W-T26-A7/A5-5 心跳中断自动检测 → 超限 failed",
-      "pass": false,
+      "pass": true,
       "detail": {
-        "state": "stopped"
+        "state": "failed"
       }
     },
     {
       "name": "W-T26-A7/A5-6 safeMode 提示出现（guest 禁用）",
-      "pass": false,
-      "detail": "已将 com.probe.t26guest 设为 trusted\n已安装包\nT26 Guest Pack com.probe.t26guest\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n能力：ui.shell, panel.sidebar, context.read\n启用 guest\n停用 guest\n卸载"
+      "pass": true,
+      "detail": "st 设为 trusted\n已安装包\nT26 Guest Pack com.probe.t26guest\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n能力：ui.shell, panel.sidebar, context.read\nsafeMode：guest 已禁用\n启用 guest\n停用 guest\n卸载"
     },
     {
       "name": "W-T26-A7/A5-7 停用 guest → 会话状态持久化 stopped",
@@ -112,7 +112,7 @@
         "lastError": null,
         "packId": "com.probe.t26guest",
         "state": "stopped",
-        "updatedAt": "SystemTime { intervals: 134368352407697300 }"
+        "updatedAt": "SystemTime { intervals: 134368358011226190 }"
       }
     },
     {
@@ -128,6 +128,6 @@
       }
     }
   ],
-  "pass_count": 8,
+  "pass_count": 11,
   "total": 11
 }

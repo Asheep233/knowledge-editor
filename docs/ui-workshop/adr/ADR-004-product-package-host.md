@@ -66,5 +66,5 @@ iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP�
 3. ✅ 前端 `core/packs/productHostAdapter.ts`：PackageHostBackend/命令映射/entry 注入/隔离守卫/能力上限（7 例 U）；
 4. ✅ `core/packs/guestHost.ts` 会话控制层（启动/能力上限/心跳/状态落盘，4 例 U）；
    工坊面板「启用/停用 guest」+ safeMode 禁用（✅ UI 最小闭环，2 例 U；A7 W 待做）；
-5. 产品 W A7 探针（CDP：启用→会话→崩溃→safeMode→停用持久化）+ A5 能力上限验证；
+5. ✅ 产品 W A7 探针 + A5 能力上限验证（W 11/11，`P5-T26-A7-A5-guest.md`）；
 6. 文档/证据/台账更新，之后重新评估 T26 认证。

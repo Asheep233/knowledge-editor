@@ -45,8 +45,9 @@ describe('A7 productHostAdapter', () => {
       return undefined
     })
     expect(await adapter.verify('p', '1.0.0')).toBe(true)
+    // deactivate 不写会话状态（避免覆盖 failed/safeMode；由宿主 onSessionChange 负责）
     await adapter.deactivate('p')
-    expect(invokeImpl).toHaveBeenCalledWith('workshop_pack_session_report', { status: { state: 'stopped', packId: 'p' } })
+    expect(invokeImpl).not.toHaveBeenCalledWith('workshop_pack_session_report', expect.anything())
     expect(await adapter.recover('p')).toEqual({ recovered: true, action: 'rollback-corrupt-active' })
   })
 

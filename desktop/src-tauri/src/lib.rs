@@ -5,6 +5,7 @@
 
 mod pack_store;
 mod print_snapshot;
+mod workshop_protocol;
 mod print;
 mod menu;
 mod settings;
@@ -125,6 +126,10 @@ fn app_cancel_pending_reload() {
 pub fn run() {
     tauri::Builder::default()
         // P1-12：多实例互斥（需在 setup 之前注册）。第二实例启动时回调聚焦已有主窗口后退出。
+        // A7：workshop 自定义协议（已安装包独立 origin；包文档自带 CSP）
+        .register_uri_scheme_protocol("workshop", |ctx, request| {
+            workshop_protocol::handle(ctx.app_handle(), request)
+        })
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 // v1.1.6 加固：关窗后实例可能处于「隐藏但未退出」状态（退出链偶发挂起），

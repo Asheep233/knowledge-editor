@@ -16,7 +16,10 @@
 | A6 安装→启用→回滚→卸载（磁盘 state 校验） | **通过** | 同上（A4+A6 合计 16/16） |
 | A5 工坊信任 UI（入口/真实列表/签名徽章/授予撤销/TrustStore 持久化） | **11/11** | `P5-T26-A5-ui.md` |
 | A8 Core 保存 flag 产品 UI（autosave→上下文写/frontmatter 保留） | **9/9** | `P5-T26-A8-save.md` |
+| A7 产品侧包隔离宿主 + A5 能力上限运行时（自定义协议/心跳崩溃/safeMode/停用持久化） | **11/11** | `P5-T26-A7-A5-guest.md` |
 | 原型壳 W 探针一键门禁 | **13/13** | `P5-T26-windows-witnesses.md` |
+
+> 说明：A1–A8 全部已通过真实产品壳 W；T26 认证仍需补真实 IME/多 DPI、安装包升级/回滚演练（T27）。
 
 ## 2. 本轮发现并修复的真实缺陷（W 价值）
 
@@ -27,9 +30,8 @@
 
 ## 3. 未完成项（不得省略）
 
-- **A5/A7 剩余**：产品 guest 宿主首跑 W 8/11——能力上限拒绝/启用 active/状态落盘/停用持久化已过，
-  但 **CSP 阻断 srcdoc 包脚本**（心跳 0）→ 需自定义协议 origin（ADR-004 修订）；见
-  `P5-T26-A7-A5-guest-attempt.md`；
+- **A5/A7**：已完成（`P5-T26-A7-A5-guest.md` W 11/11）；首跑失败记录保留于
+  `P5-T26-A7-A5-guest-attempt.md`（CSP 发现 → 自定义协议修复）；
 - **A7**：产品侧包隔离宿主（真实入口资源 + 崩溃检测 + 停用/恢复持久化）—— 原型已 W 8/8，产品壳未接；
 - **A8**：`VITE_KE_CORE_SAVE=1` 产品 UI 保存 **已完成 W 9/9**（autosave→`/api/context/write`、frontmatter
   保留；排查中修复 base URL/sidecar 版本/上下文写入 merge 三个真实缺陷），见 `P5-T26-A8-save.md`；
@@ -39,7 +41,7 @@
 
 ## 4. 认证判定
 
-- 当前**不满足** T26 最终完成定义（A1–A8 全绿）；按完成度词汇若需对外表述，项目级仍为
+- 当前**接近但未满足** T26 最终完成定义（A1–A8 全绿 ✅ 已达成；仍缺真实 IME/多 DPI、安装包升级演练）；按完成度词汇若需对外表述，项目级仍为
   **`P0_READY`**（工坊尚未在产品 UX 完整落地），不得使用 `EXPERIMENTAL_TRUSTED_PACKS` /
   `LOCAL_WORKSHOP_RELEASE_CANDIDATE` 等更高状态。
 - 建议下一阶段顺序：A5/A7（产品包宿主 + 信任 UI）→ A8 → 真实 IME/多 DPI → 安装包升级/回滚 →

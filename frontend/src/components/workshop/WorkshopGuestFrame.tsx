@@ -27,7 +27,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
   const [capabilities, setCapabilities] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [safeMode, setSafeMode] = useState(false)
-  const [entries, setEntries] = useState<{ html: string; assets: Record<string, string> } | null>(null)
+  const [entries, setEntries] = useState<{ html: string; assets: Record<string, string>; url?: string } | null>(null)
 
   const stop = useCallback(async () => {
     if (hostRef.current) {
@@ -48,7 +48,10 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
     const host = createGuestSessionHost({
       backend,
       tier,
-      onStatus: (s) => setStatus(s.state),
+      onStatus: (s) => {
+        setStatus(s.state)
+        if (s.state === 'failed' && hostRef.current?.isSafeMode()) setSafeMode(true)
+      },
     })
     hostRef.current = host
     try {
@@ -59,7 +62,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
         return
       }
       setCapabilities(result.capabilities)
-      setEntries({ html: result.entryHtml ?? '', assets: result.assets ?? {} })
+      setEntries({ html: result.entryHtml ?? '', assets: result.assets ?? {}, url: result.entryUrl })
       setSafeMode(host.isSafeMode())
       host.startHeartbeatMonitor()
     } catch (e) {
@@ -111,7 +114,12 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
         <button type="button" className="rounded border px-2 py-1" disabled={safeMode || status === 'active' || status === 'starting'} onClick={() => void enable()}>
           启用 guest
         </button>
-        <button type="button" className="rounded border px-2 py-1" disabled={status !== 'active'} onClick={() => void stop()}>
+        <button
+          type="button"
+          className="rounded border px-2 py-1"
+          disabled={status === 'idle' || status === 'stopped'}
+          onClick={() => void stop()}
+        >
           停用 guest
         </button>
       </div>
@@ -122,7 +130,7 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
           title={`workshop-guest-${packId}`}
           sandbox="allow-scripts"
           className="mt-2 h-40 w-full rounded border border-slate-200"
-          srcDoc={entries.html}
+          {...(entries.url ? { src: entries.url } : { srcDoc: entries.html })}
         />
       )}
     </div>

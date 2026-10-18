@@ -17,6 +17,10 @@
 **2026-10-19 UI 工坊 T12 只读域切片（显式评审更新）**：
 新增 `/api/context/tree`、`/api/context/search` 2 个路径 / 2 个方法 + 2 个请求 schema。
 基线由 48 路径 / 60 方法 → **50 路径 / 62 方法**。既有全局端点行为不变（App 可继续使用）。
+
+**2026-10-19 UI 工坊 T12 写域切片（显式评审更新）**：
+新增 `/api/context/article/save` 1 个路径 / 1 个方法 + 1 个请求 schema。
+基线由 50 路径 / 62 方法 → **51 路径 / 63 方法**。既有全局端点行为不变。
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ SNAPSHOT_PATHS = [
     "/api/attachments/list",
     "/api/attachments/orphans",
     "/api/attachments/{rel_path}",
+    "/api/context/article/save",
     "/api/context/close",
     "/api/context/current",
     "/api/context/lease",
@@ -104,7 +109,7 @@ def test_openapi_method_count(client):
         len([m for m in item if m in {"get", "post", "put", "delete", "patch"}])
         for item in resp.json()["paths"].values()
     )
-    assert methods == 62, f"方法端点数偏离实测基线 62，实际 {methods}"
+    assert methods == 63, f"方法端点数偏离实测基线 63，实际 {methods}"
 
 
 # P3-19：schema 签名快照——字段名/类型/required 的改动也会被冻结契约拦截，
@@ -129,6 +134,15 @@ SNAPSHOT_SCHEMAS = {
     "Body_import_package_api_import_package_post": ["file:string:req"],
     "Body_upload_attachment_api_attachments_post": ["file:string:req"],
     # 2026-10-19 UI 工坊 T09 纵向切片新增（/api/context/*）
+    "ContextArticleSaveReq": [
+        "content:string:opt",
+        "context_id:string:req",
+        "epoch:integer:req",
+        "expected_revision:integer:req",
+        "rel_path:string:req",
+        "request_id:anyOf:null+string:opt",
+        "title:string:req",
+    ],
     "ContextIdReq": ["id:string:req"],
     "ContextLeaseReq": ["epoch:integer:req", "id:string:req"],
     "ContextOpenReq": ["id:string:req", "root:string:req"],

@@ -88,6 +88,7 @@ CONTRACT_TRASH_PATHS = ["/api/trash", "/api/trash/restore", "/api/trash/{id}"]
 # 2026-10-19 UI 工坊 T09 纵向切片（显式评审更新）：新增 /api/context/* 增量接口。
 # 与回收站（2026-09-15）同样是**预期增量**：既有端点未改动，快照只做加法。
 WORKSHOP_CONTEXT_PATHS = [
+    "/api/context/article/save",
     "/api/context/close",
     "/api/context/current",
     "/api/context/lease",
@@ -100,8 +101,17 @@ WORKSHOP_CONTEXT_PATHS = [
     "/api/context/tree",
     "/api/context/write",
 ]
-WORKSHOP_CONTEXT_METHODS = 11
+WORKSHOP_CONTEXT_METHODS = 12
 WORKSHOP_CONTEXT_SCHEMAS = {
+    "ContextArticleSaveReq": [
+        "content:string:opt",
+        "context_id:string:req",
+        "epoch:integer:req",
+        "expected_revision:integer:req",
+        "rel_path:string:req",
+        "request_id:anyOf:null+string:opt",
+        "title:string:req",
+    ],
     "ContextIdReq": ["id:string:req"],
     "ContextLeaseReq": ["epoch:integer:req", "id:string:req"],
     "ContextOpenReq": ["id:string:req", "root:string:req"],

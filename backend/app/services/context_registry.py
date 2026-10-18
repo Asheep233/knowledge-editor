@@ -223,6 +223,37 @@ class ContextRegistry:
             self._results[request_id] = result
             return result
 
+    def save_article(
+        self,
+        ctx_id: str,
+        epoch: int,
+        rel_path: str,
+        title: str,
+        content: str,
+        expected_revision: int,
+        request_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """T12 写域切片：受控文章保存（限定 Articles/**.md，带 frontmatter title + ke_version）。"""
+        title = (title or "").strip()
+        if not title:
+            raise ContextError(400, "文章标题不能为空")
+        rel = self._safe_rel(Path("."), rel_path, allowed_tops=None)
+        if not rel.startswith("Articles/") or not rel.endswith(".md"):
+            raise ContextError(400, f"文章路径必须位于 Articles/**/*.md: {rel_path!r}")
+        body = content or ""
+        raw = body
+        if not body.lstrip().startswith("---"):
+            escaped = title.replace('"', '\\"')
+            raw = f'---\ntitle: "{escaped}"\nke_version: 1\n---\n\n{body}'
+        with self._lock:
+            ctx = self._require_bound(ctx_id, epoch)
+            rel = self._safe_rel(ctx.root, rel, allowed_tops=None)
+            full = ctx.root / rel
+            result = self.write(ctx_id, epoch, rel, raw, expected_revision, request_id)
+            if result.get("status") == "completed":
+                result = {**result, "title": title, "article": True, "file": str(full)}
+            return result
+
     def query_result(self, request_id: str) -> Optional[dict[str, Any]]:
         return self._results.get(request_id)
 

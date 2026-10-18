@@ -61,6 +61,16 @@ class ContextSearchReq(BaseModel):
     limit: int = Field(50, ge=1, le=200)
 
 
+class ContextArticleSaveReq(BaseModel):
+    context_id: str = Field(..., min_length=1)
+    epoch: int
+    rel_path: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1)
+    content: str = ""
+    expected_revision: int
+    request_id: str | None = None
+
+
 class ContextWriteReq(BaseModel):
     context_id: str = Field(..., min_length=1)
     epoch: int
@@ -141,6 +151,16 @@ def context_tree(req: ContextTreeReq) -> dict:
 def context_search(req: ContextSearchReq) -> dict:
     try:
         return registry.search(req.context_id, req.epoch, req.query, req.limit)
+    except ContextError as exc:
+        raise _http(exc) from exc
+
+
+@router.post("/article/save")
+def context_article_save(req: ContextArticleSaveReq) -> dict:
+    try:
+        return registry.save_article(
+            req.context_id, req.epoch, req.rel_path, req.title, req.content, req.expected_revision, req.request_id
+        )
     except ContextError as exc:
         raise _http(exc) from exc
 

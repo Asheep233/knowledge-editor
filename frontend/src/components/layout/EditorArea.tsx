@@ -28,6 +28,7 @@ import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } 
 import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
 import { slugForDownload } from '../../editor/import-export'
 import { applyDocTraits, captureDocTraits, frontmatterBlockOf, KE_VERSION, newId, stripFrontmatter, withFrontmatter, type DocTraits } from '../../editor/ke'
+import { coreSaveEnabled, saveViaCore } from '../../core/session/coreSaveRuntime'
 import { attachmentNode } from '../../editor/upload'
 import { applyMathDeleteCursor, applyMathInsertCursor, applyMathSaveCursor, isMathNode, locateMathById } from '../../editor/math/cursor'
 import { markdownForSave, pruneEmptyMathBlocks } from '../../editor/math/emptyBlocks'
@@ -445,7 +446,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           // 草稿/恢复点：内部数据，恒 LF、无 BOM —— 不套 traits（规范 §2.6 只约束文档写入）
           await registerRecoveryPoint(docId, md)
           // F-4/F-5：文档写入前还原该文档的 BOM/换行特征（编辑器内部一律 LF）
-          const saved = await saveArticle(docId, applyDocTraits(md, traitsFor(docId)), signal)
+          // T14（ADR-002 步骤 2）：flag 开启时当前文档 WYSIWYG 直写经 Core（禁止双写）；
+          // 默认关闭 → 完全走旧链。非当前文档（切档快照保存）继续走旧链。
+          const written = applyDocTraits(md, traitsFor(docId))
+          const articlePath = stillCurrent() ? articleRef.current?.path : undefined
+          const usedCore = coreSaveEnabled() && !!articlePath
+          let saved: Awaited<ReturnType<typeof saveArticle>>
+          if (usedCore && articlePath) {
+            await saveViaCore(articlePath, written, signal)
+            saved = { content: written } as Awaited<ReturnType<typeof saveArticle>>
+          } else {
+            saved = await saveArticle(docId, written, signal)
+          }
           // task-42 FAIL（B1/B1b，独立验证）：WYSIWYG 保存也必须刷新「最近一次落盘原文」。
           // 否则「编辑 → 直接切到源码」时 enterSourceMode 在 flush 续体里读到的仍是旧盘面
           // （App 的 article 回写要等 re-render 后的载入 effect 才生效）→ textarea 初值落后，
@@ -453,7 +465,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           lastSavedRawRef.current.set(docId, saved.content)
           const latest = docSeq(docId) === seq
           if (stillCurrent()) setSaveState(latest ? 'saved' : 'dirty')
-          onSaved?.(docId, saved)
+          // Core 路径返回的 saved 只有 content（ArticleMeta 由 App 现有状态维护）→ 不覆盖 article meta
+          // Core 路径返回的 saved 只有 content（ArticleMeta 由 App 现有状态维护）→ 不覆盖 article meta
+          onSaved?.(docId, usedCore ? undefined : saved)
           if (latest) {
             void clearRecoveryPoint(docId)
             // S-1：该次保存覆盖了最新编辑、且该文档仍是当前文档 → 清除「未保存」标记，
@@ -595,6 +609,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             void clearRecoveryPoint(docId)
             if (articleRef.current?.id === docId) draftRegRef.current?.markSaved(true)
           }
+          // Core 路径返回的 saved 只有 content（ArticleMeta 由 App 现有状态维护）→ 不覆盖 article meta
           onSaved?.(docId, saved)
         } catch (e) {
           if (signal?.aborted) {

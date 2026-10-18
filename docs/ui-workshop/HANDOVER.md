@@ -35,7 +35,7 @@
 | T11 类型化协议 | 🟡 契约+W 传输探针 7/7 | `P1-T11-protocol.md`、`P1-T11-transport-probe.md` |
 | T12 分域迁移 | 🟡 只读域+写域切片 | `P1-T12-domain-migration-slice.md`、`P1-T12-write-domain-slice.md` |
 | T13 Core 门槛 | 🟡 UI-free 21/21 + 单实例 W 6/6 | `P1-T13-core-gate.md`、`P1-T13-instance-probe.md` |
-| T14 EditorSession/官方 shell | 🟡 适配层完成，未接真实 EditorArea | `P2-T14-product-adapter.md` |
+| T14 EditorSession/官方 shell | 🟡 适配层+Core 桥+EditorArea flag 接线（默认关闭）；字节一致性/Windows W 未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
 | T15 IME/焦点/缩放 | 🟡 CDP W 8/8；OS IME/多 DPI 未测 | `P2-T15-ime-zoom-probe.md` |
 | T16 打印产品化 | 🟡 Job Core 12 例；产品接线未做 | `P2-T16-print-core.md`、`P0-S4-prototype.md` |
 | T17 包加载器 | 🟡 Core 14 例 + 产品 Rust 存储 | `P3-T17-pack-loader.md`、`P3-T21-product-pack-store.md` |

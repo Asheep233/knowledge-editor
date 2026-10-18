@@ -115,8 +115,13 @@ describe('C. 草稿 / 恢复点路径不受 traits 影响', () => {
 describe('D. 源码级守卫（EditorArea 真的接线了）', () => {
   const src = readFileSync(resolve(process.cwd(), 'src/components/layout/EditorArea.tsx'), 'utf8')
 
-  it('D1 保存路径：文档写入经过 applyDocTraits(md, traitsFor(docId))', () => {
-    expect(src).toMatch(/saveArticle\(\s*docId,\s*applyDocTraits\(md,\s*traitsFor\(docId\)\)/)
+  it('D1 保存路径：文档写入经过 applyDocTraits(md, traitsFor(docId))（旧链 + T14 Core flag 分支共用 written）', () => {
+    // T14（ADR-002 步骤2）：traits 还原先算出 written，再按 flag 选择旧链（saveArticle）或 Core（saveViaCore）；
+    // 两条路径都必须使用已还原 traits 的 written，防止回归成「直接写编辑器 LF 内容」。
+    expect(src).toMatch(/const written = applyDocTraits\(md,\s*traitsFor\(docId\)\)/)
+    expect(src).toMatch(/saveArticle\(\s*docId,\s*written,?\s*signal\)/)
+    expect(src).toMatch(/saveViaCore\(articlePath,\s*written,\s*signal\)/)
+    expect(src).toMatch(/coreSaveEnabled\(\)\s*&&\s*!!articlePath/)
   })
 
   it('D2 载入路径：捕获磁盘原文特征（切档 / 保存回包 / 历史恢复 三处）', () => {

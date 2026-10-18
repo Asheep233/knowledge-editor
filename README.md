@@ -2,9 +2,11 @@
 
 本地优先（Local-first）的个人知识创作软件：知乎式所见即所得编辑体验 × Obsidian 式本地文件组织 × 可复用 Markdown 模块系统。
 
-当前正式版 **v1.2.17**（按 41F + 61sol 两份独立审查合并修复 30+ 项）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.17)
+当前正式版 **v1.2.18**（修复 v1.2.17「导出」按钮无反应回归；含 41F + 61sol 两份独立审查合并修复 30+ 项）· Windows 安装包见 [GitHub Releases](https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.18)
 
-> **v1.2.17（2026-10-18，Latest）**：按两份 v1.2.16 独立审查（41F 广度/E2E、61sol/Codex Windows 原生/严谨性）合并修复
+> **v1.2.18（2026-10-18，Latest）**：修复 v1.2.17 引入的「导出」按钮无反应回归（工具栏横向滚动容器裁剪导出下拉菜单）；其余内容同 v1.2.17。
+>
+> **v1.2.17（2026-10-18）**：按两份 v1.2.16 独立审查（41F 广度/E2E、61sol/Codex Windows 原生/严谨性）合并修复
 > **发布门禁 P1**、**CI 四 job 全绿**（此前自 2026-10-13 起红）与 **二批功能/防御/工程门禁项**；
 > 经 WebView2 真机验收（UI/冲突处理/PDF 颜色/关闭握手）与安装包验收（版本一致性/底栏版本/干净退出）。
 > 明细见 [CHANGELOG_DEV.md](./CHANGELOG_DEV.md) 与 [`docs/release-notes-v1.2.17.md`](./docs/release-notes-v1.2.17.md)。

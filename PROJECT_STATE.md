@@ -1,14 +1,14 @@
 # PROJECT_STATE.md
 
 > 项目状态唯一快速参考。每次阶段变更或影响架构的修改后更新。
-> 最后更新：2026-10-18（**v1.2.17 已发布（Latest）**） | 维护依据：`CHANGELOG_DEV.md`（权威流水）、`docs/release-notes-v1.2.17.md`、`docs/release-policy.md`、`docs/agent-handover-v1.2.16.md`、代码版本常量
+> 最后更新：2026-10-18（**v1.2.18 已发布（Latest）**） | 维护依据：`CHANGELOG_DEV.md`（权威流水）、`docs/release-notes-v1.2.17.md`、`docs/release-policy.md`、`docs/agent-handover-v1.2.16.md`、代码版本常量
 
 ## 当前状态
 
 | 项 | 值 |
 | --- | --- |
-| 当前开发阶段 | v1.1.x → **v1.2.x 持续发布**（v1.2.13–v1.2.16 补记见 `CHANGELOG_DEV.md`）；**v1.2.17 已发布（Latest，2026-10-18）**：两份 v1.2.16 独立审查（41F / 61sol）合并修复完成 —— 发布门禁 P1、CI 四 job 全绿、二批功能/防御/工程门禁、发版文档断档（L-23/24/25）已处理；WebView2 真机关键项与安装包验收通过 |
-| 当前版本号 | 正式版 **v1.2.17（Latest）**（9 处版本源经 `node scripts/bump-version.mjs 1.2.17` 统一更新；**勿用全局正则改 lock**） |
+| 当前开发阶段 | v1.1.x → **v1.2.x 持续发布**（v1.2.13–v1.2.16 补记见 `CHANGELOG_DEV.md`）；**v1.2.18 已发布（Latest，2026-10-18）**：v1.2.17（两份 v1.2.16 独立审查合并修复 30+ 项）+ v1.2.18 补丁（修复 v1.2.17 引入的「导出」按钮无反应回归）；发布门禁 P1、CI 四 job 全绿、WebView2 真机关键项与安装包验收（v1.2.18：7/7）通过 |
+| 当前版本号 | 正式版 **v1.2.18（Latest）**（9 处版本源经 `node scripts/bump-version.mjs 1.2.18` 统一更新；**勿用全局正则改 lock**） |
 | 质量基线（2026-10-18） | pytest **827 collected**（WSL + Windows Py3.10 双环境全绿，平台相关 skip 保留）· tsc **0** · vitest **103 files / 1574 passed + 1 skipped** · cargo test **29/29** · CI（Desktop / Windows pytest+vitest / Backend Linux / Frontend Linux）**四 job 全绿** · 真机 WebView2 dev 构建关键项验收通过（UI-01 / M-10 / M-11 / PDF 颜色 / SD-02 握手）· 安装包真机验收 **6/6**（侧车 1.2.17 / 底栏后端 v1.2.17 / 无版本不一致 / 干净退出；明细见 `docs/release-notes-v1.2.17.md`） |
 | 启动方式 | `.\scripts\start.ps1`（前后端一键启动）/ `.\scripts\stop.ps1`（一键停止，含无 runtime.json 的端口+特征兜底） |
 | 前端地址 | http://localhost:5173 |
@@ -35,7 +35,7 @@
 
 ## 正在进行的任务
 
-- **v1.2.17 已发布（2026-10-18，Latest）**：真机验收（WebView2 关键项 + 安装包 6/6）、bump、侧车重建、NSIS 安装包 + manifest/versions、GitHub Release 全部完成；资产哈希见 `docs/release-notes-v1.2.17.md` §九。**后续**：观察本版真机使用反馈；依赖 advisory / 条件风险加固 / FTS 索引本体按主理人决定暂缓。
+- **v1.2.18 已发布（2026-10-18，Latest）**：v1.2.17 全部修复 + 补丁（「导出」按钮回归，安装包真机验收 7/7：版本一致性/底栏 v1.2.18/导出菜单可见可点/干净退出）；资产哈希见 `docs/release-notes-v1.2.18.md` 末节。**后续**：观察本版真机使用反馈；依赖 advisory / 条件风险加固 / FTS 索引本体按主理人决定暂缓。
 - Phase 7 M0（环境与脚手架）已完成：Rust 1.97.1 + VS Build Tools 17.14.37（MSVC 14.44 / SDK 10.0.26100）就绪；`desktop/` Tauri v2 工程创建（`cargo build` 通过，`tauri dev` 冒烟窗口显示 UI）。
 - Phase 7 M1（后端侧车）已完成：`backend/run.py`（PyInstaller 入口）+ 单文件打包（12,637,746 B，含 11 个 uvicorn 隐藏导入）放入 `desktop/src-tauri/binaries/`（带 target triple 后缀）；Rust Sidecar Manager（`desktop/src-tauri/src/sidecar.rs`）实现四段式流程（清理旧进程 → 动态端口 → 拉起 + health 握手 → 写 runtime.json），含崩溃自动拉起（≤3 次）与退出清理（优雅终止 → 5s 超时 → PID 树强杀）。`tauri dev` 集成冒烟通过：窗口 → 侧车 → UI 全链路、退出无残留、崩溃自动恢复均验证。
 - Phase 7 M2（前端适配）已完成：`main.tsx` 挂载前 `invoke('get_runtime_info')` 注入 `window.__KE_API_BASE__`（`'__TAURI_INTERNALS__' in window` 检测，失败回退 Vite 代理）；`client.ts` 新增 `apiBase()` 统一拼接（含 4 处直接 fetch 与 uploadAttachment）；P9 `attachmentUrl` 合并至 client.ts（逐段 URI 编码）；P10 `package.json` 补 `test` 脚本（vitest run）+ CI frontend job 加 Unit tests + 新增 `backend/tests/test_openapi_snapshot.py`（36 路径 / 47 方法快照断言）。验收通过：vitest 62/62、typecheck、build（1.94 MB）、后端快照 2 passed、dev 冒烟（CORS 修复后 7 项核心 API 抽测全通过、退出清理无残留）、release 冒烟（`cargo build --release` → health/OPTIONS/GET 全 200 → WM_CLOSE 全清理）。

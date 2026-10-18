@@ -1,7 +1,8 @@
 # AstraNota v1.2.18（修复 v1.2.17「导出」按钮无反应回归）
 
-> **状态：待发布** —— 修复已提交 master 并通过全量门禁与真机复验；
-> 是否立即发布补丁需主理人确认（v1.2.17 已发布且受影响）。
+> **状态：已发布（v1.2.18，Latest）** —— https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.18
+> 发布依据：主理人 2026-10-18 批准；流程按 `docs/release-policy.md` 执行（bump → 构建 → 安装包真机验收 → Release）。
+> 本文即 GitHub Release 正文来源（已做本机路径卫生检查）。
 
 **建议升级（仅影响 v1.2.17 用户）。** 本版修复一个由 v1.2.17 引入的界面回归：**点击工具栏「导出」按钮无任何反应**。
 
@@ -33,3 +34,13 @@
 - 搜索短词（<3 字）走 LIKE 全表扫描，超大库下比 FTS 慢（结果正确）。
 - npm/pip 依赖 advisory 升级、NSIS 安装期 TEMP 竞争 / 侧车 PID 复用等条件风险加固、
   多词搜索 FTS 索引本体 —— 按主理人决定暂缓，观察使用反馈后再排批次。
+
+
+## 发布资产（v1.2.18）
+
+| 资产 | 大小 | sha256 |
+| --- | --- | --- |
+| `AstraNota_1.2.18_x64-setup.exe` | 50,878,896 B | `795a8844453cc3024fa049b9e84ab65a8b2fcdcccca48194813ff30716afee42` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（侧车） | 46,233,365 B | `32f43ae5e50447e6c0a0f2a4de328d5746ad7ebac708acd32c0a30b2b634e907` |
+| `manifest.sha256`（85 个产物清单） | 10,917 B | `99b1d2766bbc04f4ff77939f16a844cfa499496f451200489f449cb484903026` |
+| `versions.json` | 19,344 B | `ffc3a3d165d6139ec16841c96e30b78113b506cd872552a02b2fbc079d168b0f` |

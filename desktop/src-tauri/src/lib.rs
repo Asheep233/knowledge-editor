@@ -195,6 +195,7 @@ pub fn run() {
             pack_store::workshop_pack_scan,
             pack_store::workshop_pack_install,
             pack_store::workshop_pack_list,
+            pack_store::workshop_pack_read_asset,
             pack_store::workshop_pack_verify,
             pack_store::workshop_pack_activate,
             pack_store::workshop_pack_rollback,

@@ -569,6 +569,29 @@ pub fn workshop_pack_list(app: AppHandle) -> Result<Value, String> {
     Ok(list_packs(&root_of(&app)?))
 }
 
+/// A7/T17：读取**已安装包**的入口资源（路径安全 + 大小上限；供产品 guest 宿主加载真实 entry）。
+#[tauri::command]
+pub fn workshop_pack_read_asset(
+    app: AppHandle,
+    id: String,
+    version: String,
+    path: String,
+) -> Result<String, String> {
+    const MAX_ASSET_BYTES: u64 = 5 * 1024 * 1024;
+    let rel = safe_rel(&path)?;
+    let id = safe_rel(&id)?;           // id 同样不得含路径穿越
+    let version = safe_rel(&version)?;
+    let file = id_dir(&root_of(&app)?, &id).join(&version).join(&rel);
+    if !file.is_file() {
+        return Err(format!("E_NOT_FOUND: 包资源不存在 {}@{}:{rel}", id, version));
+    }
+    let meta = fs::metadata(&file).map_err(|e| format!("E_IO: {e}"))?;
+    if meta.len() > MAX_ASSET_BYTES {
+        return Err(format!("E_TOO_LARGE: 包资源超过上限 {} bytes", MAX_ASSET_BYTES));
+    }
+    fs::read_to_string(&file).map_err(|e| format!("E_IO: 读取包资源失败: {e}"))
+}
+
 #[tauri::command]
 pub fn workshop_pack_verify(app: AppHandle, id: String, version: String) -> Result<bool, String> {
     verify_pack(&root_of(&app)?, &id, &version)
@@ -742,6 +765,22 @@ mod tests {
         let err = install_from_dir(&root, src.to_str().unwrap()).unwrap_err();
         assert!(err.contains("E_SIGNATURE"), "{err}");
         std::env::remove_var("KE_WORKSHOP_PUBKEYS");
+    }
+
+    #[test]
+    fn read_asset_paths_and_content() {
+        let root = tmp_root("read-asset");
+        let src = root.join("src");
+        make_pack(&src, "com.test.asset", "1.0.0", false);
+        install_from_dir(&root, src.to_str().unwrap()).unwrap();
+        let iddir = root.join("com.test.asset");
+        // 直接验证路径安全函数（命令本体需要 AppHandle；此处覆盖底层约束）
+        assert!(safe_rel("index.html").is_ok());
+        assert!(safe_rel("../evil").is_err());
+        assert!(safe_rel("/abs").is_err());
+        assert!(safe_rel("a\\..\\b").is_err());
+        let content = fs::read_to_string(iddir.join("1.0.0").join("index.html")).unwrap();
+        assert!(content.contains("com.test.asset"));
     }
 
     #[test]

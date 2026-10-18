@@ -41,7 +41,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
 | T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
-| T17 | in_progress | frontend/src/core/packs/{manifest,store,+test} | evidence/P3-T17-pack-loader.md（14 例 U：清单无损拒绝/安装事务/回滚/崩溃恢复/损坏回退） | 真实 Tauri fs 与 Windows 安装证据；候选扫描/首次安装确认 UI；能力执行强制（T18）；包签名 | Tauri fs 适配 + T18 broker 强制 → Windows 安装证据（T21） |
+| T17 | in_progress | core/packs/{manifest,store,trustPolicy,signature}+tests；产品 pack_store 安装/验签/**read_asset** | P3-T17-pack-loader.md（14）、P4-T24 签名/信任链、**P3-T17-pack-asset-command.md（产品 read_asset，cargo 40）** | 产品侧 guest 宿主（A7，ADR-004）与 A7/A5 W；zip 离线包；首次安装确认 UI | A7 宿主 → A7/A5 W |
 | T18 | in_progress | frontend/src/core/broker/{broker,binding,+2 tests}；protocol command.invoke；probe/* + s1 原型 broker 场景 | evidence/P3-T18-broker.md（**37 例**：broker 9+binding 9+protocol 19）、**P3-T18-broker-probe.md（Windows/WebView2 12/12）** | 真实产品 guest 连接建立/产品壳接线；三档授权 UI（T22）；后端写口来源收紧端到端 | 产品 guest 连接接线 + T22 授权 UI → T21 Windows 包安装 |
 | T21 | in_progress | 原型 pack_store_proto.rs+probe（W 20/20）；产品壳 pack_store.rs（scan/install/list/verify/activate/rollback/recover/**uninstall**）+ 命令注册 + Rust 测试；前端适配器/UI 集成 | evidence/P3-T21-pack-install-probe.md（W 20/20）、P3-T21-product-pack-store.md（**cargo 34/34 + release 构建**）、P3-T23-workshop-integration.md | 签名校验；Windows 端到端交互 W（安装→启用→回滚→卸载）；升级 UI；与 T20 启动恢复合并 | Windows E2E W → T21/T26 |
 | T12 | in_progress | backend: context_registry tree/search/save_article + routers/context.py + 2 test files | evidence/P1-T12-domain-migration-slice.md（只读域 5 例）、**P1-T12-write-domain-slice.md（写域 6 例 + 契约 51 路径/63 方法 + 全量 846 collected 双平台绿）** | 重命名/删除/附件/导入导出/print job 未绑定；真实 store/indexer/history/watcher 未迁移；前端未切换调用 | 其余写域 + 真实 store 迁移 → T14 接线 |
@@ -52,7 +52,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T22 | in_progress | frontend/src/core/packs/{installPolicy,installPolicy.test} | evidence/P3-T22-install-confirmation.md（9 例 U：预览/风险/签名阻止/显式确认门禁/一次性 token/过期/一致性；packs 共 23 例） | 工坊控制面 UI（T23）；真实下载/签名验证；来源信任持久化；Windows W 交互 | T23 工坊控制面 UI + 签名验证 → T21/T26 W |
 | T23 | in_progress | components/workshop/{WorkshopPanel,WorkshopEntry,+tests}；core/packs/{tauriPackAdapter,localTrustStore}；App flag 入口 | P3-T23-workshop-panel.md（7 例）、P3-T23-workshop-integration.md（适配器 6 例+入口 3 例）、**P4-T24-trust-ui.md（信任/签名徽章+授予/撤销；全量 128 files/1783 passed）** | 真实签名数据源；Windows 端到端交互 W；启动 recover 合并；卸载后清理 | Windows E2E W + 签名数据源 → T21/T26 |
 | T20 | in_progress | desktop pack_store recover_all + lib.rs setup 启动恢复 + 状态文件/事件；adapter dialog；safeMode UI；原型 seed/recover 探针 | P3-T20-startup-recover.md（cargo 33/33）、**P3-T20-startup-recover-probe.md（Windows 启动恢复 W 9/9）** | 产品安装目录端到端 W 未做；safeMode 未阻断危险操作；与单实例/退出协调合并；卸载清理 | 产品目录端到端 W + safeMode 阻断策略 → T26 |
-| T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
+| T19 | in_progress | core/packs/* + probe×3 + 原型 read_asset/seed + **产品 read_asset** | P3-T19-package-host.md（7 U）、W 探针×3（8/8 ×2 + 多资源心跳 8/8）、**P3-T17-pack-asset-command（产品侧入口读取）** | 产品 Host 宿主（ADR-004/A7）：隔离守卫/心跳/停用恢复持久化；真实 renderer crash；zip 离线包；产品 W | ADR-004 A7 实现 → 产品 W |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
 | T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具、A2–A6/A8 产品 W 探针 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、A5 UI（11/11）、**A8 尝试 6/8（CDP 输入不触发编辑器脏标记，未通过，记录限制）** | A5 能力上限（依赖 A7）、A7 产品包宿主、真实 IME/多 DPI、安装包升级、切档/外部改盘专项 | A7/A5 上限 → 认证 |
@@ -699,3 +699,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 排查中修复 3 个真实缺陷：Core 桥 base URL、sidecar 版本不匹配（旧打包后端无 /api/context）、
   上下文写入丢 frontmatter（后端 merge 语义 + 测试）。
 - 证据：`evidence/P5-T26-A8-save.md`；A8 期间自动化限制尝试保留于 `P5-T26-A8-save-attempt.md`。
+
+## P3/P5 进度（ADR-004 + 产品 read_asset，2026-10-19）
+
+- `adr/ADR-004-product-package-host.md`：产品侧包隔离宿主设计——真实 entry 经产品命令读取、
+  sandbox iframe + **隔离守卫**（验证是否继承 Tauri globals，失败禁用包）、Core PackageHost/Broker 装配、
+  能力上限（T24 信任等级 ∩ manifest）、心跳崩溃检测与停用/恢复/safeMode、flag 门控、验收与实施顺序；
+- 已实现 A7 第一步：产品 `workshop_pack_read_asset`（路径/大小/未安装安全校验，cargo **40 passed**）。
+  证据：`evidence/P3-T17-pack-asset-command.md`。

@@ -40,7 +40,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T08 | passed | core/codec/probe{,2,3}.ts + run_probe*.sh + CANONICAL-RULES.md | probe2（10 类扩展无 DOM 分层，全部可 parse/serialize）；probe3（8 样本保存管线 roundtrip 台账：声明 R1–R6 后 **fixpoint2 8/8 字节稳定**；ke 标记保留、BOM/CRLF 还原）；DOM-free API 边界已明确 | 唯一性细节（如首次空行归并）已按声明规范处理；真实 UI 行为一致性留 T26 复核 | T10 Core 直接引用 ke.ts traits + serializer 边界 |
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
-| T11 | in_progress | frontend/src/core/protocol/{types,channel,contract.test} | evidence/P1-T11-protocol.md（12 例契约测试 + tsc 0 + 契约快照守卫） | Tauri 传输最小探针（Windows）与 iframe MessagePort 适配器未做；方法表未覆盖 P3 包命令 | Tauri 传输探针（S1 原型扩展）→ T12 分域迁移 |
+| T11 | in_progress | frontend/src/core/protocol/{types,channel,contract.test}；probe/{guest_probe,host_probe,build} + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（12 例契约 + tsc 0）、**P1-T11-transport-probe.md（Windows/WebView2 7/7）** | 生产版 iframeTransport（channel/背压/错误映射）未产品化；未接包加载器 T17；大消息/背压未测 | 生产 iframeTransport + T17 接入 → T12 分域迁移 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -227,3 +227,14 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   - 契约测试 12 例全过、tsc 0、DOM/React 源码守卫。
   证据：`evidence/P1-T11-protocol.md`。
 - 下一步：Tauri 传输最小探针（Windows WebView2 MessagePort 握手，复用/扩展 S1 原型）→ T12 分域迁移。
+
+## P1 进度（T11 传输探针，2026-10-19）
+
+- **Windows/WebView2 传输探针 7/7 PASS**：真实 protocol `GuestClient`（sandbox iframe）↔ 真实 `HostDispatcher`
+  （主窗口）完成 handshake（能力协商/context-epoch 绑定）、类型化 `context.write`（completed/fileDurable）、
+  host→guest 事件（theme-changed/context-changed）；UA=Edg/155 证明真实 WebView2。
+- **关键发现**：MessagePort 无法 transfer 进 opaque-origin sandbox iframe（e.data.port 为空），
+  退化为 window.postMessage JSON 桥后全部通过 → 首发 guest 传输定为 postMessage JSON 桥（结构化 clone +
+  channel/方向标签）；MessagePort 需独立 origin/WebviewWindow（T18 决策）。
+- 证据：`evidence/P1-T11-transport-probe.md` + `T11-transport-probe-results.json`。
+- 下一步：生产版 iframeTransport（channel/背压/错误映射/版本握手）+ 接包加载器（T17）→ T12 分域迁移。

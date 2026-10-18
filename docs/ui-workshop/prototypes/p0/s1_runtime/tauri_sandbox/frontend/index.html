@@ -162,6 +162,12 @@
             await finish(results);
             return;
           }
+          if (boot.scenario === 'protocol') {
+            results.phase = 'protocol-host-idle';
+            document.getElementById('status').textContent = 'T11 protocol probe running in separate window…';
+            await new Promise(function (r) { setTimeout(r, 60000); });
+            return;
+          }
           if (boot.scenario === 's4') {
             results.phase = 's4-host-idle';
             document.getElementById('status').textContent = 'S4 print harness running in print window…';

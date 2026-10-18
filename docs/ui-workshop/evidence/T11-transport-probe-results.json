@@ -1,0 +1,129 @@
+{
+  "generated_at": "2026-10-19T02:18:32+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T11-1 Rust setup 打开 protocol-render 窗口",
+      "pass": true,
+      "detail": [
+        "startup-clean",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t11-probe\\\\probe-protocol\",\"safe_mode\":false,\"scenario\":\"protocol\"}",
+        "protocol-render opened by rust setup",
+        "host-js: protocol-probe-reported"
+      ]
+    },
+    {
+      "name": "W-T11-2 guest 侧协议完成（非 timeout/error）",
+      "pass": true,
+      "detail": {
+        "phase": "protocol-done",
+        "guest": "guest-done",
+        "error": null
+      }
+    },
+    {
+      "name": "W-T11-3 握手成功 + 能力协商（write 被接受）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "features": [
+          "write",
+          "print"
+        ]
+      }
+    },
+    {
+      "name": "W-T11-4 握手返回 context/epoch 绑定",
+      "pass": true,
+      "detail": {
+        "ctx": "ctx-proto",
+        "epoch": 1
+      }
+    },
+    {
+      "name": "W-T11-5 类型化 request 往返（context.write completed/fileDurable）",
+      "pass": true,
+      "detail": {
+        "requestId": "probe-write-1",
+        "status": "completed",
+        "revision": 1,
+        "accepted": true,
+        "recoveryDurable": true,
+        "fileDurable": true
+      }
+    },
+    {
+      "name": "W-T11-6 host→guest 事件投递（theme-changed/context-changed）",
+      "pass": true,
+      "detail": [
+        "theme-changed",
+        "context-changed"
+      ]
+    },
+    {
+      "name": "W-T11-7 真实 WebView2 环境（UA Edg）",
+      "pass": true,
+      "detail": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+    }
+  ],
+  "pass_count": 7,
+  "total": 7,
+  "raw_results": {
+    "phase": "protocol-done",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "hostDispatcherStarted": true,
+    "guest": {
+      "phase": "guest-done",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+      "handshakeOk": true,
+      "handshake": {
+        "type": "handshake.response",
+        "ok": true,
+        "protocolVersion": 1,
+        "hostVersion": "probe-host-1",
+        "acceptedFeatures": [
+          "write",
+          "print"
+        ],
+        "contextId": "ctx-proto",
+        "epoch": 1
+      },
+      "acceptedFeatures": [
+        "write",
+        "print"
+      ],
+      "contextId": "ctx-proto",
+      "epoch": 1,
+      "write": {
+        "requestId": "probe-write-1",
+        "status": "completed",
+        "revision": 1,
+        "accepted": true,
+        "recoveryDurable": true,
+        "fileDurable": true
+      },
+      "events": [
+        {
+          "type": "theme-changed",
+          "theme": "dark"
+        },
+        {
+          "type": "context-changed",
+          "contextId": "ctx-proto",
+          "epoch": 1
+        }
+      ]
+    },
+    "hostEmittedEvents": [
+      {
+        "type": "theme-changed",
+        "theme": "dark"
+      },
+      {
+        "type": "context-changed",
+        "contextId": "ctx-proto",
+        "epoch": 1
+      }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-19T04:12:20+0800",
+  "generated_at": "2026-10-19T04:34:21+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
-  "probe_count": 11,
-  "passed_count": 11,
+  "probe_count": 12,
+  "passed_count": 12,
   "pass_with_findings_count": 1,
   "failed_count": 0,
   "all_pass": true,
@@ -14,9 +14,9 @@
       "passed": 23,
       "total": 25,
       "expected": 23,
-      "duration_s": 5.8,
+      "duration_s": 5.4,
       "exit_code": 1,
-      "tail": "\nSUMMARY 23/25 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S1-probe-results.json\n[1019/040854.644:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/040855.459:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/040856.078:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/040856.976:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412"
+      "tail": "\nSUMMARY 23/25 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S1-probe-results.json\n[1019/043033.042:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/043033.863:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/043034.490:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/043035.124:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412"
     },
     {
       "probe": "S1b child WebviewWindow",
@@ -25,9 +25,9 @@
       "passed": 10,
       "total": 10,
       "expected": 10,
-      "duration_s": 19.3,
+      "duration_s": 18.9,
       "exit_code": 0,
-      "tail": "PASS W8 独立来源 guest 的未守卫写命令也被拒（无法触达命令面） | error:Command unguarded_guest_write not allowed by ACL\nPASS W9 独立来源 guest 对后端 loopback 请求被拒 | blocked:TypeError\nPASS W10 独立来源 guest 未产生后端/宿主文件副作用 | same_write_origin=http://tauri.localhost\n\nSUMMARY 10/10 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S1-windows-probe-results.json\n[1019/040915.952:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412"
+      "tail": "PASS W8 独立来源 guest 的未守卫写命令也被拒（无法触达命令面） | error:Command unguarded_guest_write not allowed by ACL\nPASS W9 独立来源 guest 对后端 loopback 请求被拒 | blocked:TypeError\nPASS W10 独立来源 guest 未产生后端/宿主文件副作用 | same_write_origin=http://tauri.localhost\n\nSUMMARY 10/10 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S1-windows-probe-results.json\n[1019/043054.104:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412"
     },
     {
       "probe": "S2 持续编辑面换壳",
@@ -47,7 +47,7 @@
       "passed": 6,
       "total": 6,
       "expected": 6,
-      "duration_s": 23.1,
+      "duration_s": 23.2,
       "exit_code": 0,
       "tail": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.\nPASS S4-4 真实 PDF 生成且含未保存内容（PyMuPDF 文本校验） | {'size': 90002, 'pages': 1, 'text_has_mark': True, 'text_snippet': 'S4 独立打印快照\\n未保存正文标记：UNSAVED-SNAPSHOT-MARK\\n行内公式：\\n；根号：\\n列A\\n列B\\n1\\n2\\nsnapshot revision = 7（未保存内容）\\nE = mc2\\n\\u200b\\n\\u200b\\n2\\na +b\\n2\\n2\\n'}\nPASS S4-5 打印不隐式保存：源笔记 sha256 不变 | 3116793755fcdb58\nPASS S4-6 PDF 输出在系统临时目录（工作区之外） | C:\\ke-tmp\\uiws-s4-probe\\probe-s4\\snapshot.pdf\n\nSUMMARY 6/6 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S4-probe-results.json"
     },
@@ -80,9 +80,9 @@
       "passed": 8,
       "total": 8,
       "expected": 8,
-      "duration_s": 13.3,
+      "duration_s": 13.4,
       "exit_code": 0,
-      "tail": "PASS W-T15-5 IME 组词输入进入编辑面 | {'text': ' AAA BBBFOCUS中初始内容 initial中文组词'}\nPASS W-T15-6 IME 输入可撤销（history 正常） | {'afterIme': ' AAA BBBFOCUS中初始内容 initial中文组词', 'afterUndo': ' AAA BBBFOCUS中初始内容 initial'}\nPASS W-T15-7 缩放可用且 dpr 变化（Tauri setZoom） | {'result': 'ok', 'dprBefore': 2, 'dprAfter': 2.5, 'visualViewportScale': 1}\nPASS W-T15-8 缩放后编辑面仍可输入 |  AAA BBBFOCUS中初始内容 initialZOOMED\n\nSUMMARY 8/8 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T15-ime-zoom-probe-results.json"
+      "tail": "PASS W-T15-5 IME 组词输入进入编辑面 | {'text': ' AAA BBBzhongwenFOCUS中中文组词初始内容 initial'}\nPASS W-T15-6 IME 输入可撤销（history 正常） | {'afterIme': ' AAA BBBzhongwenFOCUS中中文组词初始内容 initial', 'afterUndo': ' AAA BBBzhongwen初始内容 initial'}\nPASS W-T15-7 缩放可用且 dpr 变化（Tauri setZoom） | {'result': 'ok', 'dprBefore': 2, 'dprAfter': 2.5, 'visualViewportScale': 1}\nPASS W-T15-8 缩放后编辑面仍可输入 |  AAA BBBzhongwenZOOMED初始内容 initial\n\nSUMMARY 8/8 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T15-ime-zoom-probe-results.json"
     },
     {
       "probe": "T18 恶意/故障 guest Broker",
@@ -107,15 +107,26 @@
       "tail": "PASS W-T19-5 崩溃未超限 → suspended（可重启） | ['suspended', 'suspended']\nPASS W-T19-6 崩溃超限 → failed | failed\nPASS W-T19-7 超限触发停用+recover+safeMode | {'deactivate': 1, 'recover': 1, 'safeMode': True}\nPASS W-T19-8 真实 WebView2（UA Edg） | Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\n\nSUMMARY 8/8 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T19-package-host-probe-results.json"
     },
     {
+      "probe": "T19 包入口真实资源",
+      "script": "run_t19_entry_probe.py",
+      "status": "PASS",
+      "passed": 8,
+      "total": 8,
+      "expected": 8,
+      "duration_s": 22.3,
+      "exit_code": 0,
+      "tail": "PASS W-T19E-5 guest 经 Broker 握手+只读 snapshot（能力放行） | {'handshake': ['context.read'], 'snapshot': {'relPath': 'Articles/t19.md', 'revision': 1, 'diskHash': 't19-hash'}}\nPASS W-T19E-6 崩溃未超限 → suspended | ['suspended', 'suspended']\nPASS W-T19E-7 超限 → failed + 停用 + recover + safeMode | {'state': 'failed', 'deactivate': 1, 'recover': 1, 'safeMode': True}\nPASS W-T19E-8 真实 Windows 文件系统/环境 | {'ua': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'root': 'C:\\\\ke-tmp\\\\uiws-t19-entry\\\\data'}\n\nSUMMARY 8/8 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T19-pack-entry-probe-results.json"
+    },
+    {
       "probe": "T20 启动恢复/safeMode",
       "script": "run_startup_recover_probe.py",
       "status": "PASS",
       "passed": 9,
       "total": 9,
       "expected": 9,
-      "duration_s": 26.2,
+      "duration_s": 26.0,
       "exit_code": 0,
-      "tail": "PASS W-T20-6 无 previous 损坏包 → action=corrupt-no-fallback | {'action': 'corrupt-no-fallback', 'id': 'com.probe.lonely', 'recovered': False, 'state': {'active': '1.0.0', 'previous': None, 'updatedAt': 'SystemTime { intervals: 134368279052135718 }'}}\nPASS W-T20-7 启动恢复 safeMode=true | {'safeMode': True, 'checked': 2}\nPASS W-T20-8 safeMode 下应用仍正常启动（boot + recover 事件） | {'boot': True, 'marker': True}\nPASS W-T20-9 真实 Windows 文件系统（数据目录在 C:\\ke-tmp） | C:\\ke-tmp\\uiws-t20-probe\\data-a\n\nSUMMARY 9/9 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T20-startup-recover-probe-results.json"
+      "tail": "PASS W-T20-6 无 previous 损坏包 → action=corrupt-no-fallback | {'action': 'corrupt-no-fallback', 'id': 'com.probe.lonely', 'recovered': False, 'state': {'active': '1.0.0', 'previous': None, 'updatedAt': 'SystemTime { intervals: 134368292257758683 }'}}\nPASS W-T20-7 启动恢复 safeMode=true | {'safeMode': True, 'checked': 2}\nPASS W-T20-8 safeMode 下应用仍正常启动（boot + recover 事件） | {'boot': True, 'marker': True}\nPASS W-T20-9 真实 Windows 文件系统（数据目录在 C:\\ke-tmp） | C:\\ke-tmp\\uiws-t20-probe\\data-a\n\nSUMMARY 9/9 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T20-startup-recover-probe-results.json"
     },
     {
       "probe": "T21 原生包存储",

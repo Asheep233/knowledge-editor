@@ -251,6 +251,36 @@ fn main() {
                     append_event(&probe, "pack-seeded");
                 }
             }
+            if let Ok(dir) = env::var("S1_PACK_SEED_PACK_DIR") {
+                // T19：从真实包目录安装（manifest + assets），供 guest entry 资源加载探针使用
+                if let Ok(root) = env::var("S1_PACK_ROOT") {
+                    if let Ok(text) = fs::read_to_string(std::path::Path::new(&dir).join("manifest.json")) {
+                        if let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&text) {
+                            let id = manifest.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            let version = manifest.get("version").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                            let api = manifest.get("apiVersion").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                            let caps: Vec<String> = manifest.get("capabilities").and_then(|v| v.as_array())
+                                .map(|a| a.iter().filter_map(|c| c.as_str().map(|s| s.to_string())).collect())
+                                .unwrap_or_default();
+                            let mut files = HashMap::new();
+                            let mut hashes = HashMap::new();
+                            if let Some(assets) = manifest.get("assets").and_then(|v| v.as_array()) {
+                                for asset in assets {
+                                    let path = asset.get("path").and_then(|v| v.as_str()).unwrap_or("");
+                                    if let Ok(content) = fs::read_to_string(std::path::Path::new(&dir).join(path)) {
+                                        hashes.insert(path.to_string(), crate::pack_store_proto::sha256_hex_pub(&content));
+                                        files.insert(path.to_string(), content);
+                                    }
+                                }
+                            }
+                            match crate::pack_store_proto::pack_install(root, id, version, api, caps, files, hashes, None) {
+                                Ok(_) => append_event(&probe, "pack-seeded-from-dir"),
+                                Err(e) => append_event(&probe, &format!("pack-seeded-from-dir error: {e}")),
+                            }
+                        }
+                    }
+                }
+            }
             if env::var("S1_PACK_RECOVER_ON_START").map(|v| v == "1").unwrap_or(false) {
                 if let Ok(root) = env::var("S1_PACK_ROOT") {
                     let status = crate::pack_store_proto::pack_recover_all(&root);
@@ -393,6 +423,7 @@ fn main() {
             pack_store_proto::pack_rollback,
             pack_store_proto::pack_recover,
             pack_store_proto::pack_corrupt,
+            pack_store_proto::pack_read_asset,
             exit_probe
         ])
         .build(tauri::generate_context!())

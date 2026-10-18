@@ -10,6 +10,7 @@ T13-instance-probe-results.json,T13,W,Windows（Tauri 主壳）,PASS,6,6,python 
 T14-bridge-e2e-results.json,T14,A,Linux WSL（真实后端）,PASS,11,11,bash core/session/run_t14_bridge_e2e.sh
 T15-ime-zoom-probe-results.json,T15,W,Windows/WebView2（CDP）,PASS,8,8,python run_t15_cdp_probe.py
 T18-broker-probe-results.json,T18,W,Windows/WebView2,PASS,12,12,python run_broker_probe.py
+T19-pack-entry-probe-results.json,T19,W,Windows/WebView2（已安装包 entry）,PASS,8,8,python run_t19_entry_probe.py
 T19-package-host-probe-results.json,T19,W,Windows/WebView2,PASS,8,8,python run_t19_probe.py
 T20-startup-recover-probe-results.json,T20,W,Windows（真实文件系统）,PASS,9,9,python run_startup_recover_probe.py
 T21-pack-install-probe-results.json,T21,W,Windows（真实文件系统）,PASS,20,20,python run_pack_probe.py

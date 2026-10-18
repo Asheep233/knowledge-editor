@@ -31,6 +31,7 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T15-ime-zoom-probe-results.json": ("T15", "W", "Windows/WebView2（CDP）", "python run_t15_cdp_probe.py"),
     "T18-broker-probe-results.json": ("T18", "W", "Windows/WebView2", "python run_broker_probe.py"),
     "T19-package-host-probe-results.json": ("T19", "W", "Windows/WebView2", "python run_t19_probe.py"),
+    "T19-pack-entry-probe-results.json": ("T19", "W", "Windows/WebView2（已安装包 entry）", "python run_t19_entry_probe.py"),
     "T21-pack-install-probe-results.json": ("T21", "W", "Windows（真实文件系统）", "python run_pack_probe.py"),
     "T20-startup-recover-probe-results.json": ("T20", "W", "Windows（真实文件系统）", "python run_startup_recover_probe.py"),
 }

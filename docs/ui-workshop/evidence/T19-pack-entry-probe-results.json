@@ -1,0 +1,137 @@
+{
+  "generated_at": "2026-10-19T04:33:31+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "checks": [
+    {
+      "name": "W-T19E-1 setup 从真实包目录安装成功",
+      "pass": true,
+      "detail": [
+        "pack-seeded-from-dir"
+      ]
+    },
+    {
+      "name": "W-T19E-2 已安装包 manifest/entry 落盘",
+      "pass": true,
+      "detail": {
+        "manifest": true,
+        "entry": true
+      }
+    },
+    {
+      "name": "W-T19E-3 guest entry 来自已安装包（非内联 fallback）",
+      "pass": true,
+      "detail": {
+        "source": "pack-entry",
+        "bytes": 7807,
+        "err": null
+      }
+    },
+    {
+      "name": "W-T19E-4 host+guest 探针完成",
+      "pass": true,
+      "detail": {
+        "host": "t19-done",
+        "guest": "t19-guest-done",
+        "error": null
+      }
+    },
+    {
+      "name": "W-T19E-5 guest 经 Broker 握手+只读 snapshot（能力放行）",
+      "pass": true,
+      "detail": {
+        "handshake": [
+          "context.read"
+        ],
+        "snapshot": {
+          "relPath": "Articles/t19.md",
+          "revision": 1,
+          "diskHash": "t19-hash"
+        }
+      }
+    },
+    {
+      "name": "W-T19E-6 崩溃未超限 → suspended",
+      "pass": true,
+      "detail": [
+        "suspended",
+        "suspended"
+      ]
+    },
+    {
+      "name": "W-T19E-7 超限 → failed + 停用 + recover + safeMode",
+      "pass": true,
+      "detail": {
+        "state": "failed",
+        "deactivate": 1,
+        "recover": 1,
+        "safeMode": true
+      }
+    },
+    {
+      "name": "W-T19E-8 真实 Windows 文件系统/环境",
+      "pass": true,
+      "detail": {
+        "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "root": "C:\\ke-tmp\\uiws-t19-entry\\data"
+      }
+    }
+  ],
+  "pass_count": 8,
+  "total": 8,
+  "raw_results": {
+    "phase": "t19-done",
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
+    "sessionStarted": true,
+    "connection": {
+      "connectionId": "session-com.probe.t19-1.0.0-1792355590443",
+      "packId": "com.probe.t19",
+      "packVersion": "1.0.0",
+      "role": "guest",
+      "capabilities": [
+        "context.read"
+      ],
+      "contextId": "ctx-t19",
+      "epoch": 1,
+      "declaredCommands": []
+    },
+    "guestSource": "pack-entry",
+    "entryBytes": 7807,
+    "packId": "com.probe.t19entry",
+    "brokerStarted": true,
+    "guest": {
+      "phase": "t19-guest-done",
+      "handshakeAccepted": [
+        "context.read"
+      ],
+      "snapshot": {
+        "relPath": "Articles/t19.md",
+        "revision": 1,
+        "diskHash": "t19-hash"
+      }
+    },
+    "crashStates": [
+      "suspended",
+      "suspended"
+    ],
+    "overLimitState": "failed",
+    "safeMode": true,
+    "diag": {
+      "iframeLoaded": true,
+      "messages": [
+        "t19-guest-alive",
+        "t19-wire",
+        "t19-wire",
+        "t19-guest-results"
+      ],
+      "states": [
+        "starting",
+        "active",
+        "suspended",
+        "suspended",
+        "failed"
+      ],
+      "deactivateCalls": 1,
+      "recoverCalls": 1
+    }
+  }
+}

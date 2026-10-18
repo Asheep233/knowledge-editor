@@ -59,12 +59,33 @@ async function main(): Promise<void> {
   result.sessionStarted = session.state === 'active'
   result.connection = session.connection ?? null
 
+  // T19 升级：优先从**已安装包**读取 entry HTML（真实资源加载）；失败回退内联 guest（探针健壮性）
+  let entryHtml: string | null = null
+  try {
+    const boot = (await tauriInvoke('boot_state')) as { pack_root?: string }
+    if (boot.pack_root) {
+      const html = (await tauriInvoke('pack_read_asset', {
+        root: boot.pack_root, id: 'com.probe.t19entry', version: '1.0.0', path: 'index.html',
+      })) as string
+      if (typeof html === 'string' && html.length > 0) {
+        entryHtml = html
+        result.guestSource = 'pack-entry'
+        result.entryBytes = html.length
+        result.packId = 'com.probe.t19entry'
+      }
+    }
+  } catch (e) {
+    result.entryError = String((e as Error)?.message ?? e)
+  }
   const iframe = document.createElement('iframe')
   iframe.setAttribute('sandbox', 'allow-scripts')
   iframe.id = 't19-guest'
   iframe.style.cssText = 'width:320px;height:80px;border:1px solid #999'
   document.body.appendChild(iframe)
-  iframe.srcdoc = `<!doctype html><html><body><div>t19 guest</div><script>${guestCode}<\/script></body></html>`
+  iframe.srcdoc =
+    entryHtml ??
+    `<!doctype html><html><body><div>t19 guest</div><script>${guestCode}<\/script></body></html>`
+  if (!entryHtml) result.guestSource = 'inline-fallback' 
   const wire = {
     postMessage: (msg: unknown) => iframe.contentWindow?.postMessage({ type: 't19-wire', direction: 'host-to-guest', msg }, '*'),
     onMessage: (cb: (msg: unknown) => void) => {

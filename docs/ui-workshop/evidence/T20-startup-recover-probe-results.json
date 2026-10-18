@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T04:11:57+0800",
+  "generated_at": "2026-10-19T04:33:57+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -20,7 +20,7 @@
             "state": {
               "active": "1.0.0",
               "previous": "2.0.0",
-              "updatedAt": "SystemTime { intervals: 134368278988326849 }"
+              "updatedAt": "SystemTime { intervals: 134368292194449165 }"
             }
           }
         ],
@@ -38,7 +38,7 @@
           "state": {
             "active": "1.0.0",
             "previous": "2.0.0",
-            "updatedAt": "SystemTime { intervals: 134368278988326849 }"
+            "updatedAt": "SystemTime { intervals: 134368292194449165 }"
           }
         }
       }
@@ -49,7 +49,7 @@
       "detail": {
         "active": "1.0.0",
         "previous": "2.0.0",
-        "updatedAt": "SystemTime { intervals: 134368278988326849 }"
+        "updatedAt": "SystemTime { intervals: 134368292194449165 }"
       }
     },
     {
@@ -71,7 +71,7 @@
         "state": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368279052135718 }"
+          "updatedAt": "SystemTime { intervals: 134368292257758683 }"
         }
       }
     },
@@ -110,7 +110,7 @@
           "state": {
             "active": "1.0.0",
             "previous": "2.0.0",
-            "updatedAt": "SystemTime { intervals: 134368278988326849 }"
+            "updatedAt": "SystemTime { intervals: 134368292194449165 }"
           }
         }
       ],
@@ -126,7 +126,7 @@
           "state": {
             "active": "1.0.0",
             "previous": null,
-            "updatedAt": "SystemTime { intervals: 134368279052135718 }"
+            "updatedAt": "SystemTime { intervals: 134368292257758683 }"
           }
         },
         {
@@ -136,7 +136,7 @@
           "state": {
             "active": "1.0.0",
             "previous": "2.0.0",
-            "updatedAt": "SystemTime { intervals: 134368279115354791 }"
+            "updatedAt": "SystemTime { intervals: 134368292320645128 }"
           }
         }
       ],

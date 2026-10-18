@@ -10,8 +10,8 @@
     - `restart`：崩溃计数未超限且版本仍完整 → 重新建立会话（**切库后读取新 epoch**）；
     - `stop`：stopped + deactivate；`subscribe` 会话状态（UI/原生状态上报）。
   - `packageHost.test.ts` 7 例
-- 证据类型：**U（Core 单测）+ W（Windows/WebView2 实机探针 8/8，见 `P3-T19-package-host-probe.md`）**；
-  真实包入口资源加载（T17 产品化）与真实 WebView 崩溃信号尚未接入
+- 证据类型：**U（Core 单测）+ W（Windows/WebView2 实机探针 8/8 内联 guest；升级版 8/8 已安装包 entry，
+  见 `P3-T19-package-host-probe.md`、`P3-T19-pack-entry-probe.md`）**；真实 WebView 崩溃信号尚未接入
 
 ## 测试结果
 

@@ -40,7 +40,7 @@
 | T16 打印产品化 | 🟡 Job Core 12 例 + 产品隐藏 renderer/PrintToPdf 管线（env 门控）；Windows E2E W 未做 | `P2-T16-print-core.md`、`P2-T16-product-print.md`、`P0-S4-prototype.md` |
 | T17 包加载器 | 🟡 Core 14 例 + 产品 Rust 存储 | `P3-T17-pack-loader.md`、`P3-T21-product-pack-store.md` |
 | T18 broker/能力隔离 | 🟡 Core 37 例 + W 恶意 guest 12/12 | `P3-T18-broker.md`、`P3-T18-broker-probe.md` |
-| T19 包隔离宿主 | 🟡 Core 7 例 + **W 探针 8/8**；真实入口资源/真实 WebView 崩溃信号未接 | `P3-T19-package-host.md`、`P3-T19-package-host-probe.md` |
+| T19 包隔离宿主 | 🟡 Core 7 例 + W 8/8 + **已安装包 entry 真实资源 W 8/8**；真实 WebView 崩溃信号/多资源未接 | `P3-T19-package-host.md`、`P3-T19-package-host-probe.md`、`P3-T19-pack-entry-probe.md` |
 | T20 原生恢复/启动 | 🟡 产品启动 recover+safeMode UI + **原型 Windows 故障启动 W 9/9**；产品安装目录端到端 W 未做 | `P3-T20-startup-recover.md`、`P3-T20-startup-recover-probe.md` |
 | T21 Windows 安装/升级/回滚 | 🟡 原型 W 20/20；产品命令+前端适配器/卸载；Windows E2E W 未做 | `P3-T21-pack-install-probe.md`、`P3-T21-product-pack-store.md` |
 | T22 首次安装确认 | 🟡 Core 9 例；签名验证/来源信任未做 | `P3-T22-install-confirmation.md` |
@@ -90,9 +90,10 @@
 | T21 原生包存储（Windows 文件系统） | 20/20 | `run_pack_probe.py` |
 | T20 启动恢复/safeMode（Windows 文件系统） | 9/9 | `run_startup_recover_probe.py` |
 | T19 包隔离宿主（会话/崩溃/safeMode） | 8/8 | `run_t19_probe.py` |
+| T19 已安装包 entry 真实资源 | 8/8 | `run_t19_entry_probe.py` |
 
-> 合计 **11 项 Windows/WebView2 探针**；一键复跑：`python docs/ui-workshop/tools/run_all_w_probes.py --check`
-> （11/11 PASS，见 `P5-T26-windows-witnesses.md`）；静态矩阵 `validation-matrix.csv` 20 行 --check PASS。
+> 合计 **12 项 Windows/WebView2 探针**；一键复跑：`python docs/ui-workshop/tools/run_all_w_probes.py --check`
+> （12/12 PASS，见 `P5-T26-windows-witnesses.md`）；静态矩阵 `validation-matrix.csv` 21 行 --check PASS。
 
 > 所有探针使用**独立原型 identifier + 临时目录**，不触碰用户正在运行的 AstraNota（`D:\AstraNota`）
 > 与真实笔记库；结果 JSON 均在 `docs/ui-workshop/evidence/`。

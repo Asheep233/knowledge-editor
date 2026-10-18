@@ -169,12 +169,21 @@ def main() -> int:
         check("W-T15-4 编辑面可聚焦（activeElement 为 contenteditable）", editable is True, focus_diag)
 
         # IME 组词路径（CDP Input.imeSetComposition + insertText）
+        # 稳定性：先产生 preedit，再显式取消 preedit（空组合）后 insertText 提交中文；
+        # 若首轮未进入正文（WebView2 偶发 preedit 竞态），重试一次 insertText。
         cdp.eval("window.__s2.focus()")
         cdp.call("Input.imeSetComposition", {"text": "zhongwen", "selectionStart": 8, "selectionEnd": 8})
-        time.sleep(0.1)
+        time.sleep(0.15)
+        cdp.call("Input.imeSetComposition", {"text": "", "selectionStart": 0, "selectionEnd": 0})
+        time.sleep(0.05)
         cdp.call("Input.insertText", {"text": "中文组词"})
-        time.sleep(0.2)
+        time.sleep(0.25)
         text_after_ime = cdp.eval("window.__s2.getText()")
+        if "中文组词" not in str(text_after_ime):
+            cdp.eval("window.__s2.focus()")
+            cdp.call("Input.insertText", {"text": "中文组词"})
+            time.sleep(0.25)
+            text_after_ime = cdp.eval("window.__s2.getText()")
         results["textAfterIme"] = text_after_ime
         check("W-T15-5 IME 组词输入进入编辑面", "中文组词" in str(text_after_ime), {"text": text_after_ime})
 

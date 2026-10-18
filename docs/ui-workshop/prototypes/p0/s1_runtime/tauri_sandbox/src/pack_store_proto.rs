@@ -46,6 +46,10 @@ pub fn sha256_hex_pub(bytes: &str) -> String {
     sha256_hex(bytes.as_bytes())
 }
 
+pub fn safe_rel_pub(path: &str) -> Result<String, String> {
+    safe_rel(path)
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -326,4 +330,13 @@ pub fn pack_recover_all(root: &str) -> serde_json::Value {
         }
     }
     serde_json::json!({"checked": checked, "results": results, "safeMode": safe_mode})
+}
+
+
+/// T19 探针：从已安装包读取资产（真实 entry 资源加载；路径安全校验）。
+#[tauri::command]
+pub fn pack_read_asset(root: String, id: String, version: String, path: String) -> Result<String, String> {
+    let rel = safe_rel_pub(&path)?;
+    let file = std::path::Path::new(&root).join("packs").join(&id).join(&version).join(&rel);
+    std::fs::read_to_string(&file).map_err(|e| format!("E_IO: 读取包资产失败 {}: {e}", file.display()))
 }

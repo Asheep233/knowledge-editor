@@ -1,0 +1,29 @@
+# P6 证据：会话末段全量回归 + W 门禁复跑（2026-10-19）
+
+- 环境：WSL Ubuntu（前端/后端）+ Windows 11 + WebView2 155（产品壳/原型探针）
+- 目的：在多次产品修复（PrintRenderState manage、activate 幂等、打印 ready 握手等）后做一次
+  **全量回归 + 全部 W 探针复跑**，确认无回归；数字用于 HANDOVER/总结基线。
+
+## 结果
+
+| 套件 | 结果 |
+| --- | --- |
+| frontend `tsc -b --noEmit` | 0 错 |
+| frontend `vitest --maxWorkers=2` | **130 files / 1795 passed + 1 skipped（exit 0）** |
+| backend `pytest backend/tests` | **exit 0**（846 用例，WSL；Windows 平台此前同套件绿） |
+| 产品 `cargo test --release` | **39 passed**（+ release 构建成功） |
+| 原型 W 探针一键门禁（13 探针） | **13/13 PASS**（`run_all_w_probes.py --check`） |
+| 验证矩阵 | **34 行**（W/A/U/B 分层），`--check` PASS |
+
+## 本轮修掉的探针稳定性缺陷
+
+- **T20 runner boot 检测竞态**：`host-js: boot` 事件可能晚于 recover 状态落盘，单次读取导致
+  W-T20-5 偶发 FAIL（本次全量门禁复跑暴露）→ 改为最长 3s 轮询等待；T20 恢复 9/9，
+  全量 W 门禁恢复 **13/13 PASS**。
+- 说明：该缺陷在 runner 判读层，不影响产品行为；已记录避免以后误判。
+
+## 结论
+
+- 前端/后端/产品 Rust/原型 W 门禁全部绿；无已知回归；
+- 真实产品壳 T26 A1–A6 证据仍有效（本轮未改动相关实现，除既有修复）；A7/A8/IME/多 DPI/
+  安装包升级仍未完成，T26 未最终认证。

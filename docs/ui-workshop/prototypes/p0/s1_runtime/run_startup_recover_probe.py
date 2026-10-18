@@ -48,7 +48,14 @@ def run_phase(name: str, data_root: Path, extra_env: dict, event_marker: str, re
                 payload = json.loads(f.read_text(encoding="utf-8"))
             except Exception:
                 payload = None
-    boot_ok = (probe / "events.log").exists() and "host-js: boot" in (probe / "events.log").read_text(encoding="utf-8", errors="replace")
+    # boot 事件可能晚于 recover 状态落盘：轮询等待（避免误判，曾导致 W-T20-5 偶发 FAIL）
+    boot_ok = False
+    boot_end = time.time() + 3.0
+    while time.time() < boot_end:
+        if (probe / "events.log").exists() and "host-js: boot" in (probe / "events.log").read_text(encoding="utf-8", errors="replace"):
+            boot_ok = True
+            break
+        time.sleep(0.2)
     try:
         p.wait(timeout=5)
     except subprocess.TimeoutExpired:

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T04:42:36+0800",
+  "generated_at": "2026-10-19T05:26:38+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -83,7 +83,7 @@
     "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
     "sessionStarted": true,
     "connection": {
-      "connectionId": "session-com.probe.t19-1.0.0-1792356133257",
+      "connectionId": "session-com.probe.t19-1.0.0-1792358775627",
       "packId": "com.probe.t19",
       "packVersion": "1.0.0",
       "role": "guest",
@@ -144,7 +144,7 @@
       "recoverCalls": 1,
       "heartbeatCount": 3,
       "autoDetectedCrashes": 1,
-      "lastHeartbeatAt": 1792356133892
+      "lastHeartbeatAt": 1792358776276
     }
   }
 }

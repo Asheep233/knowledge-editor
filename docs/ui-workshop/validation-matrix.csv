@@ -8,7 +8,7 @@ T11-transport-probe-results.json,T11,W,Windows/WebView2,PASS,7,7,python run_prot
 T13-core-gate-results.json,T13,A,Linux WSL（真实后端+Core）,PASS,21,21,bash core/gate/run_t13_gate.sh
 T13-instance-probe-results.json,T13,W,Windows（Tauri 主壳）,PASS,6,6,python run_instance_probe.py
 T14-bridge-e2e-results.json,T14,A,Linux WSL（真实后端）,PASS,11,11,bash core/session/run_t14_bridge_e2e.sh
-T14-byte-consistency-results.json,?,U?,?,PASS,12,12,
+T14-byte-consistency-results.json,T14,A,Linux WSL（真实后端，旧链 vs Core 字节一致）,PASS,12,12,bash core/session/run_t14_byte_consistency.sh
 T15-ime-zoom-probe-results.json,T15,W,Windows/WebView2（CDP）,PASS,8,8,python run_t15_cdp_probe.py
 T18-broker-probe-results.json,T18,W,Windows/WebView2,PASS,12,12,python run_broker_probe.py
 T19-multiasset-probe-results.json,T19,W,Windows/WebView2（多资源+心跳崩溃检测）,PASS,8,8,python run_t19_multiasset_probe.py
@@ -16,6 +16,11 @@ T19-pack-entry-probe-results.json,T19,W,Windows/WebView2（已安装包 entry）
 T19-package-host-probe-results.json,T19,W,Windows/WebView2,PASS,8,8,python run_t19_probe.py
 T20-startup-recover-probe-results.json,T20,W,Windows（真实文件系统）,PASS,9,9,python run_startup_recover_probe.py
 T21-pack-install-probe-results.json,T21,W,Windows（真实文件系统）,PASS,20,20,python run_pack_probe.py
+T26-A2-print-results.json,T26/A2,W,Windows 产品壳（隔离构建，隐藏 renderer 打印）,PASS,9,9,python tools/run_t26_print_probe.py
+T26-A3-recover-results.json,T26/A3,W,Windows 产品壳（隔离构建，启动 recover/safeMode）,PASS,9,9,python tools/run_t26_recover_probe.py
+T26-A4-A6-install-results.json,T26/A4+A6,W,Windows 产品壳（隔离构建，签名安装/生命周期）,PASS,16,16,python tools/run_t26_install_probe.py
+T26-A5-ui-results.json,T26/A5,W,Windows 产品壳（隔离构建，工坊信任 UI）,PASS,11,11,python tools/run_t26_ui_probe.py
+T26-isolated-smoke-results.json,?,U?,?,PASS,7,7,
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py
 frontend: Core session 单测,P1/P2,U,Linux WSL（happy-dom）,PASS,41,41,cd frontend && npx vitest run src/core/session

@@ -35,6 +35,12 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T19-multiasset-probe-results.json": ("T19", "W", "Windows/WebView2（多资源+心跳崩溃检测）", "python run_t19_multiasset_probe.py"),
     "T21-pack-install-probe-results.json": ("T21", "W", "Windows（真实文件系统）", "python run_pack_probe.py"),
     "T20-startup-recover-probe-results.json": ("T20", "W", "Windows（真实文件系统）", "python run_startup_recover_probe.py"),
+    "T14-byte-consistency-results.json": ("T14", "A", "Linux WSL（真实后端，旧链 vs Core 字节一致）", "bash core/session/run_t14_byte_consistency.sh"),
+    "T26-A2-print-results.json": ("T26/A2", "W", "Windows 产品壳（隔离构建，隐藏 renderer 打印）", "python tools/run_t26_print_probe.py"),
+    "T26-A3-recover-results.json": ("T26/A3", "W", "Windows 产品壳（隔离构建，启动 recover/safeMode）", "python tools/run_t26_recover_probe.py"),
+    "T26-A4-A6-install-results.json": ("T26/A4+A6", "W", "Windows 产品壳（隔离构建，签名安装/生命周期）", "python tools/run_t26_install_probe.py"),
+    "T26-A5-ui-results.json": ("T26/A5", "W", "Windows 产品壳（隔离构建，工坊信任 UI）", "python tools/run_t26_ui_probe.py"),
+
 }
 
 # 代码回归基线（由工具链产出，人工记录；更新时同步改这里）

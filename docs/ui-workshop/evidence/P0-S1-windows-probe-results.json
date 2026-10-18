@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T04:39:55+0800",
+  "generated_at": "2026-10-19T05:23:46+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "host_origin": "http://tauri.localhost",
   "backend": "http://127.0.0.1:8101",
@@ -8,8 +8,8 @@
       "name": "W1 场景启动且 Rust setup 创建两个 guest WebviewWindow",
       "pass": true,
       "detail": [
-        "guest-same-origin opened by rust setup",
         "host-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"http://127.0.0.1:8123/guest-iso.html\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"prob",
+        "guest-same-origin opened by rust setup",
         "guest-custom-origin opened by rust setup"
       ]
     },
@@ -111,7 +111,7 @@
         "origin": "http://tauri.localhost",
         "via": "same-origin-window"
       },
-      "events": "guest-same-origin opened by rust setup\nstartup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"http://127.0.0.1:8123/guest-iso.html\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"prob\nhost-js: windows-branch-entered\nguest-custom-origin opened by rust setup\nexit-requested\n"
+      "events": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"http://127.0.0.1:8123/guest-iso.html\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"prob\nhost-js: windows-branch-entered\nguest-same-origin opened by rust setup\nguest-custom-origin opened by rust setup\nexit-requested\n"
     },
     "iso_callback": [
       {

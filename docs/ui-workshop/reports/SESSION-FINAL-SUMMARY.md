@@ -26,8 +26,8 @@
 | frontend `vitest --maxWorkers=2` | **130 files / 1793 passed + 1 skipped** |
 | backend `pytest` | **846 collected**（WSL 3.14 + Windows 3.10 全绿） |
 | 产品 `cargo test --release` | **34 passed**（+ release 构建成功） |
-| W 探针一键门禁 | **13/13 PASS**（`run_all_w_probes.py --check`） |
-| 验证矩阵 | 29 行，`--check` PASS |
+| W 探针一键门禁 | **13/13 PASS**（`run_all_w_probes.py --check`，含 T20 判读竞态修复） |
+| 验证矩阵 | **34 行**，`--check` PASS |
 | 真实产品壳 W（T26） | A1 7/7、A2 9/9、A3 9/9、A4+A6 16/16（隔离构建） |
 
 ## 3. 任务状态（摘要）
@@ -73,3 +73,11 @@ bash docs/ui-workshop/core/session/run_t10_e2e.sh        # 19/19
   行为可回退；旧链路保留。
 - 未冒充 W：所有 W 证据来自 Windows/WebView2 实机探针；单测/A 证据（Linux 后端/happy-dom）明确标注。
 - 分支仅本地：未 push、未发布 Release；v1.2.18 发布物本次会话未改动。
+
+## 7. 末段全量验证（2026-10-19）
+
+- frontend：130 files / 1795 passed + 1 skipped（tsc 0）；backend pytest exit 0（846 用例）；
+  产品 cargo **39 passed**；原型 W 门禁 **13/13 PASS**；验证矩阵 **34 行** --check PASS。
+- 修掉 T20 探针 boot 判读竞态（runner 层，非产品行为）；证据：`evidence/P6-final-verification.md`。
+- T26 真实产品壳 A1–A6 已完成（smoke 7/7、打印 9/9、recover 9/9、A4+A6 16/16、A5 UI 11/11）；
+  A7/A8/IME/多 DPI/安装包升级未完成 → T26 未认证；项目级仍 `P0_READY`。

@@ -7,14 +7,14 @@
 ## 1. 本轮会话交付概览
 
 - **分支**：`feat/ui-workshop`（本地，**未推送、未发布 Release**；基线 v1.2.18 `4c71233` + overlay `e54d37b`）
-- **提交**：40+ 独立提交（每项「实现→证据→台账→提交」）
+- **提交**：60+ 独立提交（每项「实现→证据→台账→提交」）
 - **文档/证据**：`docs/ui-workshop/` 下 50+ 份 evidence、4 份阶段报告、3 份 ADR、130 行功能矩阵、
   20 行验证矩阵、11 项 Windows W 探针一键门禁
 - **代码新增（产品仓库内）**：
   - Core：`frontend/src/core/{session,protocol,broker,packs,print}/`（session/protocol/broker/packs/print，
     100+ 单测，全部无 DOM/React 依赖）
   - 产品后端：`/api/context/*` 上下文 API（51 路径/63 方法，846 collected 双平台绿）
-  - 产品 Tauri：`pack_store.rs`（8 命令 + 启动 recover）、`print_snapshot.rs`（隐藏 renderer + 快照打印）
+  - 产品 Tauri：`pack_store.rs`（8 命令 + 启动 recover + 验签）、`print_snapshot.rs`（隐藏 renderer + ready 握手 + 快照打印）
   - 产品前端：工坊控制面 UI（默认 flag 关闭）、EditorArea Core 保存 flag 分支（默认关闭）
   - 原型：`docs/ui-workshop/prototypes/p0/*` + 11 个 Windows W 探针运行器
 
@@ -26,8 +26,9 @@
 | frontend `vitest --maxWorkers=2` | **130 files / 1793 passed + 1 skipped** |
 | backend `pytest` | **846 collected**（WSL 3.14 + Windows 3.10 全绿） |
 | 产品 `cargo test --release` | **34 passed**（+ release 构建成功） |
-| W 探针一键门禁 | **11/11 PASS**（`run_all_w_probes.py --check`） |
-| 验证矩阵 | 20 行，`--check` PASS |
+| W 探针一键门禁 | **13/13 PASS**（`run_all_w_probes.py --check`） |
+| 验证矩阵 | 29 行，`--check` PASS |
+| 真实产品壳 W（T26） | A1 7/7、A2 9/9、A3 9/9、A4+A6 16/16（隔离构建） |
 
 ## 3. 任务状态（摘要）
 

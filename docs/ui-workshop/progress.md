@@ -660,3 +660,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 修复真实缺陷：`workshop_pack_activate` 非幂等会破坏 previous/rollback 目标 → 幂等返回 + 单测
   （cargo **39 passed**）。证据：`evidence/P5-T26-A4-A6-install.md`。
 - 剩余 A5/A7/A8、真实 IME/多 DPI、安装包升级/回滚演练。
+
+## P6/T26 阶段验收（2026-10-19）
+
+- `reports/T26-acceptance-status.md`：A1–A6 已完成（真实产品壳 W：smoke 7/7、打印 9/9、
+  recover/safeMode 9/9、A4+A6 16/16、原型 13/13）；A7/A8/真实 IME/多 DPI/安装包升级未完成 →
+  **T26 未最终认证**；项目级仍 `P0_READY`（不冒进）。
+- 下一阶段顺序：A5/A7（产品包宿主+信任 UI）→ A8 → 真实 IME/多 DPI → 安装包升级/回滚 → 认证评估。

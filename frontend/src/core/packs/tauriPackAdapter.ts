@@ -13,6 +13,7 @@ import { capabilityRisk } from './installPolicy'
 import { LocalTrustStore, defaultTrustStorage } from './localTrustStore'
 import type { KeyValueStorage } from './localTrustStore'
 import type { TrustStore, TrustTier } from './trustPolicy'
+import { createProductHostBackend, type ProductHostBackend } from './productHostAdapter'
 
 export interface TauriPackAdapterOptions {
   invokeImpl?: typeof invoke
@@ -132,6 +133,10 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
       } catch (e) {
         throw err(e)
       }
+    },
+    /** A7：创建产品 guest 宿主后端（命令映射；供工坊「启用 guest」使用） */
+    createGuestBackend(): ProductHostBackend {
+      return createProductHostBackend({ invokeImpl: options.invokeImpl })
     },
     async tierOf(packId: string): Promise<TrustTier> {
       return await trustStore.tierOf(packId)

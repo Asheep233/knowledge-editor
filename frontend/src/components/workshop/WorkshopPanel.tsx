@@ -8,6 +8,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import type { TrustTier } from '../../core/packs/trustPolicy'
+import type { ProductHostBackend } from '../../core/packs/productHostAdapter'
+import { WorkshopGuestFrame } from './WorkshopGuestFrame'
 
 export interface InstalledPackView {
   id: string
@@ -69,6 +71,8 @@ export interface WorkshopAdapter {
   tierOf?(packId: string): Promise<TrustTier>
   grantTrust?(packId: string, tier: TrustTier): Promise<void>
   revokeTrust?(packId: string): Promise<void>
+  /** A7：创建产品 guest 宿主后端（可选能力；有则允许启用/停用 guest） */
+  createGuestBackend?(): ProductHostBackend
 }
 
 export interface WorkshopPanelProps {
@@ -365,6 +369,14 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
                       >
                         撤销信任
                       </button>
+                    )}
+                    {adapter.createGuestBackend && pack.active && (
+                      <WorkshopGuestFrame
+                        packId={pack.id}
+                        version={pack.version}
+                        tier={pack.tier ?? 'community'}
+                        backend={adapter.createGuestBackend()}
+                      />
                     )}
                     {adapter.uninstall && (
                       <button

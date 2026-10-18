@@ -1,0 +1,151 @@
+{
+  "generated_at": "2026-10-19T05:01:31+0800",
+  "scenario": "T26 A3 启动 recover / safeMode（真实产品壳隔离构建）",
+  "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+  "app_data": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e",
+  "checks": [
+    {
+      "name": "W-T26-A3-1 场景A：启动生成 recover 状态文件",
+      "pass": true,
+      "detail": {
+        "checked": 1,
+        "generatedAt": "SystemTime { intervals: 134368308849580920 }",
+        "results": [
+          {
+            "action": "rollback-corrupt-active",
+            "id": "com.probe.t26recover",
+            "recovered": true,
+            "state": {
+              "active": "1.0.0",
+              "previous": "2.0.0",
+              "updatedAt": "SystemTime { intervals: 134368308849568377 }"
+            }
+          }
+        ],
+        "safeMode": false
+      }
+    },
+    {
+      "name": "W-T26-A3-2 场景A：损坏 active 自动回退（action=rollback-corrupt-active）",
+      "pass": true,
+      "detail": {
+        "action": "rollback-corrupt-active",
+        "id": "com.probe.t26recover",
+        "recovered": true,
+        "state": {
+          "active": "1.0.0",
+          "previous": "2.0.0",
+          "updatedAt": "SystemTime { intervals: 134368308849568377 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A3-3 场景A：磁盘 state.active 回退为 1.0.0",
+      "pass": true,
+      "detail": {
+        "active": "1.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368308849568377 }"
+      }
+    },
+    {
+      "name": "W-T26-A3-4 场景A：safeMode=false（有可用回退）",
+      "pass": true,
+      "detail": false
+    },
+    {
+      "name": "W-T26-A3-5 场景A：产品主进程存活（启动未被恢复阻断）",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "W-T26-A3-6 场景B：无回退损坏包 → action=corrupt-no-fallback",
+      "pass": true,
+      "detail": {
+        "action": "corrupt-no-fallback",
+        "id": "com.probe.t26recover",
+        "recovered": false,
+        "state": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "1792357287.7875748"
+        }
+      }
+    },
+    {
+      "name": "W-T26-A3-7 场景B：启动进入 safeMode=true",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "W-T26-A3-8 场景B：safeMode 下产品主进程仍存活",
+      "pass": true,
+      "detail": true
+    },
+    {
+      "name": "W-T26-A3-9 用户运行中的 AstraNota 未受影响（PID 存在）",
+      "pass": true,
+      "detail": {
+        "user_pid": "82360"
+      }
+    }
+  ],
+  "pass_count": 9,
+  "total": 9,
+  "raw": {
+    "a": {
+      "name": "A rollback-corrupt-active",
+      "status": {
+        "checked": 1,
+        "generatedAt": "SystemTime { intervals: 134368308849580920 }",
+        "results": [
+          {
+            "action": "rollback-corrupt-active",
+            "id": "com.probe.t26recover",
+            "recovered": true,
+            "state": {
+              "active": "1.0.0",
+              "previous": "2.0.0",
+              "updatedAt": "SystemTime { intervals: 134368308849568377 }"
+            }
+          }
+        ],
+        "safeMode": false
+      },
+      "disk_state": {
+        "active": "1.0.0",
+        "previous": "2.0.0",
+        "updatedAt": "SystemTime { intervals: 134368308849568377 }"
+      },
+      "alive": true,
+      "user_pid": "82360"
+    },
+    "b": {
+      "name": "B corrupt-no-fallback/safeMode",
+      "status": {
+        "checked": 1,
+        "generatedAt": "SystemTime { intervals: 134368308883382221 }",
+        "results": [
+          {
+            "action": "corrupt-no-fallback",
+            "id": "com.probe.t26recover",
+            "recovered": false,
+            "state": {
+              "active": "1.0.0",
+              "previous": null,
+              "updatedAt": "1792357287.7875748"
+            }
+          }
+        ],
+        "safeMode": true
+      },
+      "disk_state": {
+        "active": "1.0.0",
+        "previous": null,
+        "updatedAt": "1792357287.7875748"
+      },
+      "alive": true,
+      "user_pid": "82360"
+    }
+  }
+}

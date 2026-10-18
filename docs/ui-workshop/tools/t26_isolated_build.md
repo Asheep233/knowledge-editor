@@ -33,3 +33,17 @@ if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
 ```
 
 红线：不推送、不发布；不使用真实笔记库；不杀用户运行中的进程；测试结束清理临时目录/进程。
+
+# 6) 固定测试构建（关键：测试构建与主构建共享 CARGO_TARGET_DIR 会互相覆盖 release 二进制）
+
+```powershell
+New-Item -ItemType Directory -Force 'C:\ke-tmp\uiws-t26\bin' | Out-Null
+Copy-Item 'F:\Work\Dev\cargo-target\release\knowledgeeditor.exe' 'C:\ke-tmp\uiws-t26\bin\' -Force
+Copy-Item 'F:\Work\Dev\cargo-target\release\knowledgeeditor-backend*.exe' 'C:\ke-tmp\uiws-t26\bin\' -Force
+# 随后恢复主构建（否则下一轮 cargo build 会用测试 identifier 覆盖主二进制）
+```
+
+- T26 探针（`run_t26_print_probe.py` / `run_t26_recover_probe.py`）EXE 指向
+  `C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`；
+- 若误用主构建启动：单实例插件会接管（进程 exit 0、无窗口）——不是功能失败，先用 strings 校验
+  identifier 再排查。

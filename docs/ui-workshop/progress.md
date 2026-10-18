@@ -55,7 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
-| T26 | in_progress | run_all_w_probes.py、T26 验收计划、隔离构建工具、**A2 打印 W 探针** | P5-T26-windows-witnesses（13/13 W）、P5-T26-isolated-smoke.md（7/7）、**P5-T26-A2-print.md（真实产品壳快照打印 W 9/9；修复 PrintRenderState 未 manage 缺陷）** | A3 启动 recover/safeMode 产品级、A4/A6 签名安装/回滚卸载、A5/A7/A8；真实 OS 中文 IME/多 DPI；安装包升级 | A3–A8 脚本化执行 → 认证 |
+| T26 | in_progress | run_all_w_probes.py、T26 验收计划、隔离构建工具、A2/A3 产品 W 探针 | P5-T26-windows-witnesses（13/13 W）、P5-T26-isolated-smoke（7/7）、P5-T26-A2-print（9/9）、**P5-T26-A3-recover（9/9：产品启动回退/无回退 safeMode/不阻断启动）** | A4/A5/A6/A7/A8；真实 OS 中文 IME/多 DPI；安装包升级 | A4–A8 脚本化执行 → 认证 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -644,3 +644,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   IPC 失败）。证据：`evidence/P5-T26-A2-print.md`。
 - **事故记录**：首版 runner 误用 `taskkill /IM knowledgeeditor.exe` 误杀用户运行中 App（原 PID 69108）；
   已修复清理规则（PID/路径白名单）并重启用户 App（PID 82360 正常）。T26 文档已写入禁止按镜像名杀进程红线。
+
+## P6/T26 进度（A3 启动 recover/safeMode 产品 W，2026-10-19）
+
+- **A3 完成（W 9/9）**：产品级启动恢复场景 A（v2 损坏 + previous v1 → 自动回退、磁盘 active=1.0.0、
+  safeMode=false）与场景 B（无回退 → corrupt-no-fallback、safeMode=true），两场景主进程均存活；
+  用户运行实例未受影响。证据：`evidence/P5-T26-A3-recover.md`。
+- 工程发现：测试构建与主构建共享 target 会互相覆盖 exe（误用主构建会被单实例接管、静默退出）；
+  已将测试构建固定到 `C:\ke-tmp\uiws-t26\bin`，A2 在稳定路径复跑仍 9/9。

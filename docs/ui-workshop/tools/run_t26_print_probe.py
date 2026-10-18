@@ -19,7 +19,7 @@ from pathlib import Path
 import websocket  # websocket-client
 
 REPO = Path(r"F:\Work\KE Project\knowledge-editor")
-EXE = Path(r"F:\Work\Dev\cargo-target\release\knowledgeeditor.exe")
+EXE = Path(r"C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe")
 BASE = Path(r"C:\ke-tmp\uiws-t26-print")
 EVID = REPO / "docs" / "ui-workshop" / "evidence"
 CDP_PORT = 9600 + (os.getpid() % 200)

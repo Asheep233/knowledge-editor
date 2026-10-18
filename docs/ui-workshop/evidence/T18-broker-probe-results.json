@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T02:25:05+0800",
+  "generated_at": "2026-10-19T04:11:07+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -7,7 +7,7 @@
       "pass": true,
       "detail": [
         "startup-clean",
-        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t18-probe\\\\probe-broker\",\"safe_mode\":false,\"scenario\":\"broker\"}",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-t18-probe\\\\probe-broker\",\"safe_mode\":false,\"scenario\":",
         "broker-render opened by rust setup"
       ]
     },

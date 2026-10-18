@@ -1,0 +1,132 @@
+{
+  "generated_at": "2026-10-19T04:12:20+0800",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
+  "probe_count": 11,
+  "passed_count": 11,
+  "pass_with_findings_count": 1,
+  "failed_count": 0,
+  "all_pass": true,
+  "results": [
+    {
+      "probe": "S1 iframe 运行域（含 2 项已知发现）",
+      "script": "run_s1_probe.py",
+      "status": "PASS_WITH_FINDINGS",
+      "passed": 23,
+      "total": 25,
+      "expected": 23,
+      "duration_s": 5.8,
+      "exit_code": 1,
+      "tail": "\nSUMMARY 23/25 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S1-probe-results.json\n[1019/040854.644:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/040855.459:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/040856.078:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412\n[1019/040856.976:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412"
+    },
+    {
+      "probe": "S1b child WebviewWindow",
+      "script": "run_s1_windows_probe.py",
+      "status": "PASS",
+      "passed": 10,
+      "total": 10,
+      "expected": 10,
+      "duration_s": 19.3,
+      "exit_code": 0,
+      "tail": "PASS W8 独立来源 guest 的未守卫写命令也被拒（无法触达命令面） | error:Command unguarded_guest_write not allowed by ACL\nPASS W9 独立来源 guest 对后端 loopback 请求被拒 | blocked:TypeError\nPASS W10 独立来源 guest 未产生后端/宿主文件副作用 | same_write_origin=http://tauri.localhost\n\nSUMMARY 10/10 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S1-windows-probe-results.json\n[1019/040915.952:ERROR:ui\\gfx\\win\\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412"
+    },
+    {
+      "probe": "S2 持续编辑面换壳",
+      "script": "run_s2_probe.py",
+      "status": "PASS",
+      "passed": 10,
+      "total": 10,
+      "expected": 10,
+      "duration_s": 22.5,
+      "exit_code": 0,
+      "tail": "PASS S2-7 换壳后焦点/输入可用 | True\nPASS S2-8 组合输入事件（synthetic IME）不丢内容 | True\nPASS S2-9 源码草稿跨换壳保持 | first=True second=True\nPASS S2-10 结果来自真实 WebView2（UA 记录） | Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\n\nSUMMARY 10/10 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S2-probe-results.json"
+    },
+    {
+      "probe": "S4 独立打印真实 PDF",
+      "script": "run_s4_probe.py",
+      "status": "PASS",
+      "passed": 6,
+      "total": 6,
+      "expected": 6,
+      "duration_s": 23.1,
+      "exit_code": 0,
+      "tail": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.\nPASS S4-4 真实 PDF 生成且含未保存内容（PyMuPDF 文本校验） | {'size': 90002, 'pages': 1, 'text_has_mark': True, 'text_snippet': 'S4 独立打印快照\\n未保存正文标记：UNSAVED-SNAPSHOT-MARK\\n行内公式：\\n；根号：\\n列A\\n列B\\n1\\n2\\nsnapshot revision = 7（未保存内容）\\nE = mc2\\n\\u200b\\n\\u200b\\n2\\na +b\\n2\\n2\\n'}\nPASS S4-5 打印不隐式保存：源笔记 sha256 不变 | 3116793755fcdb58\nPASS S4-6 PDF 输出在系统临时目录（工作区之外） | C:\\ke-tmp\\uiws-s4-probe\\probe-s4\\snapshot.pdf\n\nSUMMARY 6/6 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\P0-S4-probe-results.json"
+    },
+    {
+      "probe": "T11 协议传输",
+      "script": "run_protocol_probe.py",
+      "status": "PASS",
+      "passed": 7,
+      "total": 7,
+      "expected": 7,
+      "duration_s": 22.5,
+      "exit_code": 0,
+      "tail": "PASS W-T11-4 握手返回 context/epoch 绑定 | {'ctx': 'ctx-proto', 'epoch': 1}\nPASS W-T11-5 类型化 request 往返（context.write completed/fileDurable） | {'requestId': 'probe-write-1', 'status': 'completed', 'revision': 1, 'accepted': True, 'recoveryDurable': True, 'fileDurable': True}\nPASS W-T11-6 host→guest 事件投递（theme-changed/context-changed） | ['theme-changed', 'context-changed']\nPASS W-T11-7 真实 WebView2 环境（UA Edg） | Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\n\nSUMMARY 7/7 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T11-transport-probe-results.json"
+    },
+    {
+      "probe": "T13 单实例/退出协调",
+      "script": "run_instance_probe.py",
+      "status": "PASS",
+      "passed": 6,
+      "total": 6,
+      "expected": 6,
+      "duration_s": 3.0,
+      "exit_code": 0,
+      "tail": "PASS W-T13I-3 实例 1 收到 second-instance 事件 | ['second-instance-detected']\nPASS W-T13I-4 实例 1 仍在运行 | None\nPASS W-T13I-5 WM_CLOSE 后进程退出 | {'exit': 0}\nPASS W-T13I-6 退出协调标记落盘（ExitRequested/Exit） | {'exit_requested': True, 'exit': True}\n\nSUMMARY 6/6 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T13-instance-probe-results.json"
+    },
+    {
+      "probe": "T15 IME/焦点/缩放（CDP）",
+      "script": "run_t15_cdp_probe.py",
+      "status": "PASS",
+      "passed": 8,
+      "total": 8,
+      "expected": 8,
+      "duration_s": 13.3,
+      "exit_code": 0,
+      "tail": "PASS W-T15-5 IME 组词输入进入编辑面 | {'text': ' AAA BBBFOCUS中初始内容 initial中文组词'}\nPASS W-T15-6 IME 输入可撤销（history 正常） | {'afterIme': ' AAA BBBFOCUS中初始内容 initial中文组词', 'afterUndo': ' AAA BBBFOCUS中初始内容 initial'}\nPASS W-T15-7 缩放可用且 dpr 变化（Tauri setZoom） | {'result': 'ok', 'dprBefore': 2, 'dprAfter': 2.5, 'visualViewportScale': 1}\nPASS W-T15-8 缩放后编辑面仍可输入 |  AAA BBBFOCUS中初始内容 initialZOOMED\n\nSUMMARY 8/8 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T15-ime-zoom-probe-results.json"
+    },
+    {
+      "probe": "T18 恶意/故障 guest Broker",
+      "script": "run_broker_probe.py",
+      "status": "PASS",
+      "passed": 12,
+      "total": 12,
+      "expected": 12,
+      "duration_s": 22.2,
+      "exit_code": 0,
+      "tail": "PASS W-T18-9 未知方法 → E_UNKNOWN_METHOD | E_UNKNOWN_METHOD\nPASS W-T18-10 opaque iframe 直接调 Tauri 原生命令被拒 | rejected: Origin header is not a valid URL\nPASS W-T18-11 攻击后 host 仍健康 | True\nPASS W-T18-12 真实 WebView2（UA Edg） | Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\n\nSUMMARY 12/12 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T18-broker-probe-results.json"
+    },
+    {
+      "probe": "T19 包隔离宿主",
+      "script": "run_t19_probe.py",
+      "status": "PASS",
+      "passed": 8,
+      "total": 8,
+      "expected": 8,
+      "duration_s": 22.2,
+      "exit_code": 0,
+      "tail": "PASS W-T19-5 崩溃未超限 → suspended（可重启） | ['suspended', 'suspended']\nPASS W-T19-6 崩溃超限 → failed | failed\nPASS W-T19-7 超限触发停用+recover+safeMode | {'deactivate': 1, 'recover': 1, 'safeMode': True}\nPASS W-T19-8 真实 WebView2（UA Edg） | Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)\n\nSUMMARY 8/8 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T19-package-host-probe-results.json"
+    },
+    {
+      "probe": "T20 启动恢复/safeMode",
+      "script": "run_startup_recover_probe.py",
+      "status": "PASS",
+      "passed": 9,
+      "total": 9,
+      "expected": 9,
+      "duration_s": 26.2,
+      "exit_code": 0,
+      "tail": "PASS W-T20-6 无 previous 损坏包 → action=corrupt-no-fallback | {'action': 'corrupt-no-fallback', 'id': 'com.probe.lonely', 'recovered': False, 'state': {'active': '1.0.0', 'previous': None, 'updatedAt': 'SystemTime { intervals: 134368279052135718 }'}}\nPASS W-T20-7 启动恢复 safeMode=true | {'safeMode': True, 'checked': 2}\nPASS W-T20-8 safeMode 下应用仍正常启动（boot + recover 事件） | {'boot': True, 'marker': True}\nPASS W-T20-9 真实 Windows 文件系统（数据目录在 C:\\ke-tmp） | C:\\ke-tmp\\uiws-t20-probe\\data-a\n\nSUMMARY 9/9 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T20-startup-recover-probe-results.json"
+    },
+    {
+      "probe": "T21 原生包存储",
+      "script": "run_pack_probe.py",
+      "status": "PASS",
+      "passed": 20,
+      "total": 20,
+      "expected": 20,
+      "duration_s": 22.2,
+      "exit_code": 0,
+      "tail": "PASS W-T21-17 无 staging/journal 残留 | {'staging': False, 'txn': False}\nPASS W-T21-18 磁盘文件内容与最近安装一致 | <html>v4</html>\nPASS W-T21-19 损坏文件保持损坏（未被静默修复） | corrupted\nPASS W-T21-20 真实 Windows 文件系统/环境 | C:\\ke-tmp\\uiws-t21-probe\\data\n\nSUMMARY 20/20 PASS -> F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\evidence\\T21-pack-install-probe-results.json"
+    }
+  ]
+}

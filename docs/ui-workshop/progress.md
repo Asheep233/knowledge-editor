@@ -55,6 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/{packageHost,+test}；probe/{t19_guest,t19_host,build} + s1 原型 t19 场景 | evidence/P3-T19-package-host.md（7 例 U）、**P3-T19-package-host-probe.md（Windows/WebView2 **8/8**）** | 包入口资源真实加载（T17 产品化）；真实 WebView 崩溃信号；停用/恢复状态持久化与 T20 联动；Windows 端到端交互 W | 真实入口加载 + 崩溃信号 → T21/T26 W |
 | T24 | in_progress | core/packs/{trustPolicy,signature,keyring,localTrustStore,+tests}；工坊信任 UI；packageHost 能力上限 | P4-T24-trust-policy.md（10）、P4-T24-pack-signature.md（8）、P4-T24-trust-ui.md、**P4-T24-keyring.md（信任根轮换/撤销/过期 8 例）** | 真实发布密钥签发/分发；签名工具链与 Rust 验签；TrustStore 产品化；Windows E2E 安全演练 | 发布密钥 + 工具链/Rust 验签 → T21/T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
+| T26 | in_progress | tools/run_all_w_probes.py；evidence/windows-witnesses-summary.json | **evidence/P5-T26-windows-witnesses.md（11/11 W 探针复跑 PASS，--check 门禁 PASS）** | 产品壳端到端交互 W（安装/启用/回滚/卸载、T16 隐藏 renderer 打印）需隔离安装；真实 OS IME/多 DPI；Windows 安装包升级回归 | 隔离安装产品 E2E W + 平台矩阵补齐 → 认证结论 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -544,3 +545,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   **130 files / 1793 passed + 1 skipped**、tsc 0。证据：`evidence/P2-T16-product-print.md`。
 - 下一步：隔离安装 Windows 端到端 W（隐藏 renderer/PDF/取消清理）；renderer ready 握手；
   长文档分页/主题/源码模式；打印 UI 接线与取消对账。
+
+## P5 进度（T26 W 证据一键门禁，2026-10-19）
+
+- `tools/run_all_w_probes.py`：顺序复跑 11 项 Windows/WebView2 W 探针并聚合，
+  结果 **11/11 PASS**（S1 的 2 项已知发现标 PASS_WITH_FINDINGS），`--check` 门禁 PASS；
+  产出 `evidence/windows-witnesses-summary.json`。证据：`evidence/P5-T26-windows-witnesses.md`。
+- 剩余：产品壳端到端交互 W（隔离安装）、真实 OS IME/多 DPI、Windows 安装包升级回归；
+  之后才能给 T26 认证结论（不冒进）。

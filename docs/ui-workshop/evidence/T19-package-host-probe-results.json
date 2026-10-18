@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T03:23:15+0800",
+  "generated_at": "2026-10-19T04:11:30+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -24,7 +24,7 @@
       "name": "W-T19-3 PackageHost 会话 active 且连接受限（guest/能力/epoch）",
       "pass": true,
       "detail": {
-        "connectionId": "session-com.probe.t19-1.0.0-1792351374759",
+        "connectionId": "session-com.probe.t19-1.0.0-1792354269889",
         "packId": "com.probe.t19",
         "packVersion": "1.0.0",
         "role": "guest",
@@ -85,7 +85,7 @@
     "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
     "sessionStarted": true,
     "connection": {
-      "connectionId": "session-com.probe.t19-1.0.0-1792351374759",
+      "connectionId": "session-com.probe.t19-1.0.0-1792354269889",
       "packId": "com.probe.t19",
       "packVersion": "1.0.0",
       "role": "guest",

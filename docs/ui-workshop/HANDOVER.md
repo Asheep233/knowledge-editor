@@ -47,7 +47,8 @@
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
 | T24 可信包限定 | 🟡 Core 信任策略10+签名8+信任UI/过渡持久化；信任根/Rust 验签未做 | `P4-T24-trust-policy.md`、`P4-T24-pack-signature.md`、`P4-T24-trust-ui.md` |
 | T25 平台验证矩阵 | 🟡 自动生成矩阵 18 行（9 W/2 A/2 A/U/3 回归/1 构建） | `P4-T25-validation-matrix.md`、`validation-matrix.csv` |
-| T26–T29 | ⬜ 未开始 | Windows 认证、发布候选、最终交接（需主理人授权） |
+| T26 Windows 认证 | 🟡 **11/11 W 探针一键复跑 PASS**（`run_all_w_probes.py --check`）；产品 E2E W 待隔离安装 | `P5-T26-windows-witnesses.md` |
+| T27–T29 | ⬜ 未开始 | 发布候选/最终交接（需主理人授权） |
 
 ## 3. 代码交付索引
 
@@ -90,7 +91,8 @@
 | T20 启动恢复/safeMode（Windows 文件系统） | 9/9 | `run_startup_recover_probe.py` |
 | T19 包隔离宿主（会话/崩溃/safeMode） | 8/8 | `run_t19_probe.py` |
 
-> 合计 **11 项 Windows/WebView2 探针**（自动矩阵 `validation-matrix.csv` 20 行，--check PASS）。
+> 合计 **11 项 Windows/WebView2 探针**；一键复跑：`python docs/ui-workshop/tools/run_all_w_probes.py --check`
+> （11/11 PASS，见 `P5-T26-windows-witnesses.md`）；静态矩阵 `validation-matrix.csv` 20 行 --check PASS。
 
 > 所有探针使用**独立原型 identifier + 临时目录**，不触碰用户正在运行的 AstraNota（`D:\AstraNota`）
 > 与真实笔记库；结果 JSON 均在 `docs/ui-workshop/evidence/`。

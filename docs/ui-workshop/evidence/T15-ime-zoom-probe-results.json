@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-10-19T02:50:06+0800",
+  "generated_at": "2026-10-19T04:10:44+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
       "name": "W-T15-1 连接的 CDP 页面存在（WebView2 remote debugging）",
       "pass": true,
       "detail": {
-        "port": 9468,
+        "port": 9444,
         "diag": {
           "targets": [
             [

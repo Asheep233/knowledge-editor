@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T02:27:27+0800",
+  "generated_at": "2026-10-19T04:12:20+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -25,7 +25,7 @@
       "detail": {
         "active": "1.0.0",
         "previous": null,
-        "updatedAt": "SystemTime { intervals: 134368216266267279 }"
+        "updatedAt": "SystemTime { intervals: 134368279194585315 }"
       }
     },
     {
@@ -34,7 +34,7 @@
       "detail": {
         "active": "2.0.0",
         "previous": "1.0.0",
-        "updatedAt": "SystemTime { intervals: 134368216266399838 }"
+        "updatedAt": "SystemTime { intervals: 134368279194680168 }"
       }
     },
     {
@@ -43,7 +43,7 @@
       "detail": {
         "active": "1.0.0",
         "previous": "2.0.0",
-        "updatedAt": "SystemTime { intervals: 134368216266508008 }"
+        "updatedAt": "SystemTime { intervals: 134368279194756372 }"
       }
     },
     {
@@ -68,7 +68,7 @@
         "state": {
           "active": "2.0.0",
           "previous": "1.0.0",
-          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+          "updatedAt": "SystemTime { intervals: 134368279194855816 }"
         }
       }
     },
@@ -98,12 +98,12 @@
         "after": {
           "active": "2.0.0",
           "previous": "1.0.0",
-          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+          "updatedAt": "SystemTime { intervals: 134368279194855816 }"
         },
         "before": {
           "active": "2.0.0",
           "previous": "1.0.0",
-          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+          "updatedAt": "SystemTime { intervals: 134368279194855816 }"
         }
       }
     },
@@ -116,7 +116,7 @@
           "active": "2.0.0",
           "previous": "1.0.0",
           "recovered": false,
-          "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+          "updatedAt": "SystemTime { intervals: 134368279194855816 }"
         },
         "verifyOrphan": false
       }
@@ -127,7 +127,7 @@
       "detail": {
         "active": "4.0.0",
         "previous": "2.0.0",
-        "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+        "updatedAt": "SystemTime { intervals: 134368279195153436 }"
       }
     },
     {
@@ -136,7 +136,7 @@
       "detail": {
         "active": "4.0.0",
         "previous": "2.0.0",
-        "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+        "updatedAt": "SystemTime { intervals: 134368279195153436 }"
       }
     },
     {
@@ -181,19 +181,19 @@
     "stateAfterInstallV1": {
       "active": "1.0.0",
       "previous": null,
-      "updatedAt": "SystemTime { intervals: 134368216266267279 }"
+      "updatedAt": "SystemTime { intervals: 134368279194585315 }"
     },
     "stateAfterInstallV2": {
       "active": "2.0.0",
       "previous": "1.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266399838 }"
+      "updatedAt": "SystemTime { intervals: 134368279194680168 }"
     },
     "verifyV1": true,
     "verifyV2": true,
     "stateAfterRollback": {
       "active": "1.0.0",
       "previous": "2.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266508008 }"
+      "updatedAt": "SystemTime { intervals: 134368279194756372 }"
     },
     "verifyCorrupted": false,
     "recoverFromCorruption": {
@@ -202,7 +202,7 @@
       "state": {
         "active": "2.0.0",
         "previous": "1.0.0",
-        "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+        "updatedAt": "SystemTime { intervals: 134368279194855816 }"
       }
     },
     "badHashError": "E_HASH: 哈希不匹配: index.html",
@@ -213,37 +213,37 @@
     "stateAfterCrash": {
       "active": "2.0.0",
       "previous": "1.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+      "updatedAt": "SystemTime { intervals: 134368279194855816 }"
     },
     "stateBeforeCrash": {
       "active": "2.0.0",
       "previous": "1.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+      "updatedAt": "SystemTime { intervals: 134368279194855816 }"
     },
     "recoverAfterCrash": {
       "action": "clean",
       "active": "2.0.0",
       "previous": "1.0.0",
       "recovered": false,
-      "updatedAt": "SystemTime { intervals: 134368216266628323 }"
+      "updatedAt": "SystemTime { intervals: 134368279194855816 }"
     },
     "verifyOrphanV4": false,
     "reinstallV4": {
       "active": "4.0.0",
       "previous": "2.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+      "updatedAt": "SystemTime { intervals: 134368279195153436 }"
     },
     "finalState": {
       "active": "4.0.0",
       "previous": "2.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+      "updatedAt": "SystemTime { intervals: 134368279195153436 }"
     }
   },
   "disk": {
     "state": {
       "active": "4.0.0",
       "previous": "2.0.0",
-      "updatedAt": "SystemTime { intervals: 134368216266901156 }"
+      "updatedAt": "SystemTime { intervals: 134368279195153436 }"
     },
     "versions": [
       "1.0.0",

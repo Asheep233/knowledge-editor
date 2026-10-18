@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T01:25:08+0800",
+  "generated_at": "2026-10-19T04:08:56+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "host_origin": "http://tauri.localhost",
   "backend": "http://127.0.0.1:8101",
@@ -136,7 +136,7 @@
     {
       "name": "R6 事件日志记录 Rust 恢复过程",
       "pass": true,
-      "detail": "startup-clean\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails="
+      "detail": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":true,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_r"
     }
   ],
   "pass_count": 23,
@@ -172,9 +172,13 @@
           "backend_base": "http://127.0.0.1:8101",
           "bad_start": false,
           "fails": 0,
+          "guest_iso_url": "",
           "host_origin": "http://tauri.localhost",
+          "pack_root": "",
+          "print_target": "",
           "probe_dir": "C:\\ke-tmp\\uiws-s1-probe\\probe-normal",
-          "safe_mode": false
+          "safe_mode": false,
+          "scenario": ""
         },
         "platform": {
           "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
@@ -192,7 +196,7 @@
         },
         "healthMarked": true
       },
-      "events": "startup-clean\nstartup-clean\nhealthy (bootPending cleared)\n",
+      "events": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\p\nhost-js: normal-branch\nstartup-clean\nhealthy (bootPending cleared)\nexit-requested\n",
       "recovered": null,
       "boot_pending_left": false,
       "safe_mode_file": null
@@ -200,7 +204,7 @@
     "bad1": {
       "exit_code": 99,
       "results": null,
-      "events": "startup-clean\ncrash-now (bootPending written, exit 99)\n",
+      "events": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":true,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\pr\nhost-js: normal-branch\ncrash-now (bootPending written, exit 99)\n",
       "recovered": null,
       "boot_pending_left": true,
       "safe_mode_file": null
@@ -208,7 +212,7 @@
     "bad2": {
       "exit_code": 99,
       "results": null,
-      "events": "startup-clean\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\ncrash-now (bootPending written, exit 99)\n",
+      "events": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":true,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\pr\nhost-js: normal-branch\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":true,\"fails\":1,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\pr\nhost-js: normal-branch\ncrash-now (bootPending written, exit 99)\n",
       "recovered": null,
       "boot_pending_left": true,
       "safe_mode_file": null
@@ -223,9 +227,13 @@
           "backend_base": "http://127.0.0.1:8101",
           "bad_start": false,
           "fails": 2,
+          "guest_iso_url": "",
           "host_origin": "http://tauri.localhost",
+          "pack_root": "",
+          "print_target": "",
           "probe_dir": "C:\\ke-tmp\\uiws-s1-probe\\probe-recovery",
-          "safe_mode": true
+          "safe_mode": true,
+          "scenario": ""
         },
         "platform": {
           "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0",
@@ -235,7 +243,7 @@
           "hostOrigin": "http://tauri.localhost"
         }
       },
-      "events": "startup-clean\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=2\nsafe-mode-entered (rust controlled)\nrecovered-to-official\n",
+      "events": "startup-clean\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":true,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\pr\nhost-js: normal-branch\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=1\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":true,\"fails\":1,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\pr\nhost-js: normal-branch\ncrash-now (bootPending written, exit 99)\nstartup-with-bootPending fails=2\nsafe-mode-entered (rust controlled)\nhost-js: boot:{\"backend_base\":\"http://127.0.0.1:8101\",\"bad_start\":false,\"fails\":2,\"guest_iso_url\":\"\",\"host_origin\":\"http://tauri.localhost\",\"pack_root\":\"\",\"print_target\":\"\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s1-probe\\\\p\nrecovered-to-official\nexit-requested\n",
       "recovered": {
         "at": "user-request",
         "by": "rust-safe-mode",

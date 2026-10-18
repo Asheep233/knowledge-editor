@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T01:41:14+0800",
+  "generated_at": "2026-10-19T04:10:04+0800",
   "exe": "F:\\Work\\Dev\\cargo-target\\release\\uiws-s1-probe.exe",
   "checks": [
     {
@@ -7,7 +7,7 @@
       "pass": true,
       "detail": [
         "startup-clean",
-        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"print_target\":\"C:\\\\ke-tmp\\\\uiws-s4-probe\\\\probe-s4\\\\snapshot.pdf\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s4-probe\\\\probe-s4\",",
+        "host-js: boot:{\"backend_base\":\"\",\"bad_start\":false,\"fails\":0,\"guest_iso_url\":\"\",\"host_origin\":\"\",\"pack_root\":\"\",\"print_target\":\"C:\\\\ke-tmp\\\\uiws-s4-probe\\\\probe-s4\\\\snapshot.pdf\",\"probe_dir\":\"C:\\\\ke-tmp\\\\uiws-s4-pr",
         "print-render opened by rust setup",
         "startup-clean"
       ]

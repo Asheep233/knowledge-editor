@@ -37,7 +37,7 @@
 | T13 Core 门槛 | 🟡 UI-free 21/21 + 单实例 W 6/6 | `P1-T13-core-gate.md`、`P1-T13-instance-probe.md` |
 | T14 EditorSession/官方 shell | 🟡 适配层+Core 桥（真实后端 e2e 11/11）+EditorArea flag 接线（默认关闭）；字节一致性/flag-on UI e2e/Windows W 未做 | `P2-T14-product-adapter.md`、`P2-T14-core-save-bridge.md`、`P2-T14-editor-wiring.md` |
 | T15 IME/焦点/缩放 | 🟡 CDP W 8/8；OS IME/多 DPI 未测 | `P2-T15-ime-zoom-probe.md` |
-| T16 打印产品化 | 🟡 Job Core 12 例 + 产品隐藏 renderer/PrintToPdf 管线（env 门控）；Windows E2E W 未做 | `P2-T16-print-core.md`、`P2-T16-product-print.md`、`P0-S4-prototype.md` |
+| T16 打印产品化 | 🟡 Job Core 12 例 + 产品管线；**真实产品壳多资源打印 W 9/9（A2）**；长文档分页/主题/打印 UI 未做 | `P2-T16-product-print.md`、`P5-T26-A2-print.md`、`P0-S4-prototype.md` |
 | T17 包加载器 | 🟡 Core 14 例 + 产品 Rust 存储 | `P3-T17-pack-loader.md`、`P3-T21-product-pack-store.md` |
 | T18 broker/能力隔离 | 🟡 Core 37 例 + W 恶意 guest 12/12 | `P3-T18-broker.md`、`P3-T18-broker-probe.md` |
 | T19 包隔离宿主 | 🟡 Core 7 例 + W×3（内联/已安装包 entry/**多资源+心跳崩溃检测**各 8/8）；真实 renderer crash/子资源完整性未接 | `P3-T19-package-host.md`、`P3-T19-package-host-probe.md`、`P3-T19-pack-entry-probe.md` |
@@ -47,7 +47,7 @@
 | T23 工坊控制面 | 🟡 UI 骨架+flag 入口+全量回归绿；真实交互 W 未做 | `P3-T23-workshop-panel.md`、`P3-T23-workshop-integration.md` |
 | T24 可信包限定 | 🟡 信任策略10+签名8+keyring8+信任UI+产品 Rust 验签+打包签名工具+**签名数据源贯通 UI**；正式发布密钥流程/Windows 验签 E2E 未做 | `P4-T24-trust-policy.md`、`P4-T24-pack-signature.md`、`P4-T24-trust-ui.md`、`P4-T24-keyring.md`、`P4-T24-rust-signature.md` |
 | T25 平台验证矩阵 | 🟡 自动生成矩阵 18 行（9 W/2 A/2 A/U/3 回归/1 构建） | `P4-T25-validation-matrix.md`、`validation-matrix.csv` |
-| T26 Windows 认证 | 🟡 13/13 W 探针 + **隔离测试构建/产品冒烟 7/7 W**（主窗口/独立 appData/启动 recover/单实例/用户 App 不受影响）；A2/A4–A8 未执行 | `P5-T26-windows-witnesses.md`、`T26-windows-acceptance-plan.md`、`P5-T26-isolated-smoke.md` |
+| T26 Windows 认证 | 🟡 13/13 原型 W + 隔离冒烟 7/7 + **A2 产品打印 W 9/9**；A3–A8 未执行；**有事故记录（误杀用户 App，已恢复）** | `P5-T26-windows-witnesses.md`、`T26-windows-acceptance-plan.md`、`P5-T26-isolated-smoke.md`、`P5-T26-A2-print.md` |
 | T27–T29 | ⬜ 未开始 | 发布候选/最终交接（需主理人授权） |
 
 ## 2b. 安全与密钥流程

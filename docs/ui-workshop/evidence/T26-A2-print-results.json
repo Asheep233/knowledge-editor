@@ -1,0 +1,83 @@
+{
+  "generated_at": "2026-10-19T04:57:06+0800",
+  "scenario": "T26 A2 快照打印（真实产品壳隔离构建）",
+  "exe": "F:\\Work\\Dev\\cargo-target\\release\\knowledgeeditor.exe",
+  "checks": [
+    {
+      "name": "W-T26-A2-1 隔离产品实例启动 + WebView2 remote debugging 可用",
+      "pass": true,
+      "detail": {
+        "port": 9772,
+        "targets": [
+          "http://tauri.localhost/",
+          "about:blank"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-A2-2 主窗口执行上下文可用（含 __TAURI_INTERNALS__.invoke）",
+      "pass": true,
+      "detail": {
+        "ready": true
+      }
+    },
+    {
+      "name": "W-T26-A2-2b 隐藏打印 renderer 创建成功（状态文件 ok）",
+      "pass": true,
+      "detail": {
+        "ok": true
+      }
+    },
+    {
+      "name": "W-T26-A2-3 快照打印返回成功",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "path": "C:\\ke-tmp\\uiws-t26-print\\out\\a2-print.pdf"
+      }
+    },
+    {
+      "name": "W-T26-A2-4 PDF 生成、%PDF 头、大小合理",
+      "pass": true,
+      "detail": {
+        "exists": true,
+        "size": 63258,
+        "head": "%PDF"
+      }
+    },
+    {
+      "name": "W-T26-A2-5 已存在目标 → 拒绝覆盖",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "error": "目标文件已存在，拒绝覆盖：C:\\ke-tmp\\uiws-t26-print\\out\\a2-print.pdf"
+      }
+    },
+    {
+      "name": "W-T26-A2-6 非法路径（相对路径）→ E_PATH 拒绝",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "error": "E_PATH: 打印输出必须是绝对路径: relative/out.pdf"
+      }
+    },
+    {
+      "name": "W-T26-A2-7 ready 握手生效（无 E_PRINT_RENDER_TIMEOUT 兜底）",
+      "pass": true,
+      "detail": {
+        "logTail": []
+      }
+    },
+    {
+      "name": "W-T26-A2-8 用户运行中的 AstraNota 未受影响（PID 存在）",
+      "pass": true,
+      "detail": {
+        "user_pid": "82360"
+      }
+    }
+  ],
+  "pass_count": 9,
+  "total": 9,
+  "pdf": "C:\\ke-tmp\\uiws-t26-print\\out\\a2-print.pdf",
+  "pdf_size": 63258
+}

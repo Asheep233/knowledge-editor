@@ -139,11 +139,23 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(sidecar::SidecarState::default())
+        // T16：打印 renderer 就绪状态（命令 State 注入必需）
+        .manage(print_snapshot::PrintRenderState::default())
         .setup(|app| {
             sidecar::start(app.handle().clone());
             // T16：env 门控的隐藏打印 renderer（默认不创建，不影响既有行为）
             if std::env::var("KE_WS_PRINT_RENDER").map(|v| v == "1").unwrap_or(false) {
-                if let Err(e) = print_snapshot::ensure_render_window(app.handle()) {
+                let result = print_snapshot::ensure_render_window(app.handle());
+                // 可观测性：状态写入 app data（不依赖 stderr 控制台）
+                if let Ok(dir) = app.path().app_data_dir() {
+                    let _ = std::fs::create_dir_all(&dir);
+                    let status = match &result {
+                        Ok(()) => serde_json::json!({"ok": true}),
+                        Err(e) => serde_json::json!({"ok": false, "error": e}),
+                    };
+                    let _ = std::fs::write(dir.join("print-render-status.json"), status.to_string());
+                }
+                if let Err(e) = result {
                     eprintln!("[ws] {e}");
                 }
             }

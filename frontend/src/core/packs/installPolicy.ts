@@ -46,6 +46,11 @@ const CAPABILITY_RISK: Record<string, CapabilityRisk> = {
   'print.request': { capability: 'print.request', risk: 'low', summary: '请求打印当前文档的可信快照' },
 }
 
+/** 能力 → 风险视图（UI 适配器复用；未知能力按 high 处理）。 */
+export function capabilityRisk(capability: string): CapabilityRisk {
+  return CAPABILITY_RISK[capability] ?? { capability, risk: 'high', summary: '未识别的能力声明' }
+}
+
 export interface PreviewInput {
   manifest: PackManifest
   source: PackSource
@@ -57,9 +62,7 @@ export interface PreviewInput {
 export function buildInstallPreview(input: PreviewInput): InstallPreview {
   const { manifest } = input
   const signature: SignatureStatus = input.signature ?? 'missing'
-  const caps: CapabilityRisk[] = manifest.capabilities.map(
-    (cap) => CAPABILITY_RISK[cap] ?? { capability: cap, risk: 'high', summary: '未识别的能力声明' },
-  )
+  const caps: CapabilityRisk[] = manifest.capabilities.map((cap) => capabilityRisk(cap))
   const warnings: string[] = []
   let blocked = false
   let blockReason: string | undefined

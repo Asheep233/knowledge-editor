@@ -27,6 +27,7 @@ import LeftSidebar from './components/layout/LeftSidebar'
 import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
+import { WorkshopEntry } from './components/workshop/WorkshopEntry'
 import {
   TabsContext,
   adjacentTabId,
@@ -1180,6 +1181,8 @@ export default function App() {
     </TabsContext.Provider>
 
       {/* 设置面板（Phase 7 M3） */}
+      <WorkshopEntry enabled={(import.meta.env.VITE_KE_WORKSHOP ?? '') === '1'} />
+
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       {/* 外部修改提示（Phase 4.3） */}

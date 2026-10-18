@@ -190,6 +190,7 @@ pub fn run() {
             pack_store::workshop_pack_recover_all,
             pack_store::workshop_pack_uninstall,
             print_snapshot::print_snapshot_pdf,
+            print_snapshot::print_snapshot_ready,
             print::export_pdf,
             print::preview_pdf,
             print::discard_preview_pdf,

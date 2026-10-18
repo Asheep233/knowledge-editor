@@ -5,10 +5,21 @@
 //! - 隐藏 renderer 窗口由启动时创建（env `KE_WS_PRINT_RENDER=1`；命令里创建窗口会死锁）；
 //! - 输出路径安全：必须是绝对路径、不覆盖已有文件；失败不 panic；
 //! - 产品 UI 接线（T23/打印对话框）与 Windows 端到端 W 验收在后续任务。
+use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
+
+/// 打印 renderer 就绪状态（token → 已就绪）。由注入脚本在 document/fonts 就绪后回调。
+#[derive(Default)]
+pub struct PrintRenderState {
+    pub ready: Mutex<HashMap<String, bool>>,
+}
+
+static PRINT_TOKEN_SEQ: AtomicU64 = AtomicU64::new(1);
 
 pub const PRINT_RENDER_WINDOW: &str = "print-render";
 
@@ -30,10 +41,31 @@ pub fn ensure_render_window(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// renderer 就绪回调（来自注入脚本；校验窗口 label 与 token）。
+#[tauri::command]
+pub fn print_snapshot_ready(
+    window: tauri::WebviewWindow,
+    token: String,
+    state: State<'_, PrintRenderState>,
+) -> Result<(), String> {
+    if window.label() != PRINT_RENDER_WINDOW {
+        return Err("E_PRINT_RENDER: 非法调用窗口".into());
+    }
+    if let Ok(mut ready) = state.ready.lock() {
+        ready.insert(token, true);
+    }
+    Ok(())
+}
+
+fn is_ready(state: &PrintRenderState, token: &str) -> bool {
+    state.ready.lock().map(|m| m.get(token).copied().unwrap_or(false)).unwrap_or(false)
+}
+
 /// 把快照 HTML 注入隐藏 renderer 并打印到 target。
 #[tauri::command]
 pub async fn print_snapshot_pdf(
     app: AppHandle,
+    state: State<'_, PrintRenderState>,
     html: String,
     target: String,
     content_width: Option<f64>,
@@ -48,14 +80,35 @@ pub async fn print_snapshot_pdf(
     let window = app
         .get_webview_window(PRINT_RENDER_WINDOW)
         .ok_or_else(|| "E_PRINT_RENDER: 打印 renderer 未创建（需要以 KE_WS_PRINT_RENDER=1 启动）".to_string())?;
+    // T16 收尾：**显式 ready 握手**（token）替代固定 sleep：
+    // 注入脚本在 document/fonts 就绪后经 __TAURI_INTERNALS__.invoke('print_snapshot_ready') 回调。
+    let token = PRINT_TOKEN_SEQ.fetch_add(1, Ordering::SeqCst).to_string();
     let script = format!(
-        "document.open();document.write({});document.close();",
-        serde_json::to_string(&html).map_err(|e| format!("E_PRINT_HTML: HTML 序列化失败: {e}"))?
+        "document.open();document.write({html});document.close();\
+         (function(){{var t={token};\
+           var send=function(){{try{{window.__TAURI_INTERNALS__.invoke('print_snapshot_ready',{{token:t}});}}catch(e){{}}}};\
+           var go=function(){{requestAnimationFrame(function(){{(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(send);}});}};\
+           if(document.readyState==='complete')go();else window.addEventListener('load',go);}})();",
+        html = serde_json::to_string(&html).map_err(|e| format!("E_PRINT_HTML: HTML 序列化失败: {e}"))?,
+        token = serde_json::to_string(&token).map_err(|e| format!("E_PRINT_TOKEN: {e}"))?,
     );
     window.eval(&script).map_err(|e| format!("E_PRINT_RENDER: 注入快照失败: {e}"))?;
-    // 等布局/字体就绪（快照 HTML 应内联样式与字体；产品后续可改为显式 ready 握手）
-    tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(400)))
-        .await
-        .map_err(|e| format!("E_PRINT_RENDER: 等待布局失败: {e}"))?;
+    // 轮询就绪（≤5s）；超时仍继续打印（记录警告，避免环境差异导致打印不可用）
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if is_ready(&state, &token) {
+            break;
+        }
+        if Instant::now() >= deadline {
+            eprintln!("[ws] E_PRINT_RENDER_TIMEOUT: renderer ready 手超时，继续打印");
+            break;
+        }
+        tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(30)))
+            .await
+            .map_err(|e| format!("E_PRINT_RENDER: 等待就绪失败: {e}"))?;
+    }
+    if let Ok(mut ready) = state.ready.lock() {
+        ready.remove(&token);
+    }
     crate::print::render_window_pdf_to(app, PRINT_RENDER_WINDOW.to_string(), path, content_width).await
 }

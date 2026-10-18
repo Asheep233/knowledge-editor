@@ -12,7 +12,15 @@
   - `frontend/src/core/print/tauriPrintTransport.ts`：`PrintTransport` 产品实现（invoke
     `print_snapshot_pdf`；支持 AbortSignal，取消不调用命令）；
   - 测试：`tauriPrintTransport.test.ts` 2 例
-- 证据类型：**U/B（产品 Rust 构建 + cargo 34 单测 + 前端单测/全量回归）**；
+- T16 收尾更新（2026-10-19）：**显式 ready 握手替代固定等待**
+  - `print_snapshot.rs` 新增 `PrintRenderState` + `print_snapshot_ready` 命令（校验调用窗口为
+    renderer）；`print_snapshot_pdf` 生成 token → 注入脚本在 `document/fonts` 就绪后经
+    `window.__TAURI_INTERNALS__.invoke('print_snapshot_ready',{token})` 回调 → Rust 轮询 ≤5s
+    （超时记录 `E_PRINT_RENDER_TIMEOUT` 并继续打印，避免环境差异导致不可用）；
+  - `lib.rs` 注册 state + 命令；cargo test **38 passed**、release 构建成功；
+  - 限制：握手路径未在产品运行时做 W 验证（隔离安装 T26 执行）；renderer 页需允许
+    `__TAURI_INTERNALS__`（Tauri 默认注入，非 `withGlobalTauri`）。
+- 证据类型：**U/B（产品 Rust 构建 + cargo 38 单测 + 前端单测/全量回归）**；
   **产品端到端 W 未做**（运行时创建隐藏窗口需隔离安装，避免干扰用户正在运行的 AstraNota）
 
 ## 验证结果

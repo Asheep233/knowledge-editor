@@ -108,7 +108,11 @@ def cleanup_stale_test_apps() -> None:
 def launch(keyring: dict) -> tuple[subprocess.Popen, CDP, Path]:
     cleanup_stale_test_apps()
     log = BASE / f"app-{int(time.time()*1000)}.log"
+    # 红线：产品 data_dir() = %APPDATA%\KnowledgeEditor（不随 identifier 变化）→ 必须隔离 APPDATA
+    isolated_appdata = BASE / "appdata"
+    isolated_appdata.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
+    env["APPDATA"] = str(isolated_appdata)
     env["KE_WORKSHOP_PUBKEYS"] = json.dumps(keyring)
     env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = f"--remote-debugging-port={CDP_PORT}"
     proc = subprocess.Popen([str(EXE)], env=env, stdout=open(log, "w", encoding="utf-8"), stderr=subprocess.STDOUT)

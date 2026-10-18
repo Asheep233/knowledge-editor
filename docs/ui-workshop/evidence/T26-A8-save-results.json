@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-10-19T05:38:52+0800",
+  "scenario": "T26 A8 Core 保存 flag（真实产品 UI，VITE_KE_CORE_SAVE=1）",
+  "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+  "checks": [
+    {
+      "name": "W-T26-A8-1 flag 构建产品启动 + 工作区主 UI 就绪",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A8-2 打开文章并加载编辑器",
+      "pass": true,
+      "detail": {
+        "opened": true,
+        "editor": true,
+        "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nhello.md\n附件 0\n设置\nhello\n正文\n模块\n导出\nArticles\nhello\n更新于 2026/10/19 05:38:01\n·\n4 字\n·\nKE v1\n\n初始内容\n\n文档属性\n标题\n标签\n类型\n文档\n字数\n4\n创建时间\n2026/10/19 05:38:01\n修改时间\n2026/10/19 05:38:01\n大小\n40 B\n保存位置\nArticles/hello.md\nKE 版本\nv—\nfrontmatter\n{\n  \"title\": \"hello\"\n}\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\n历史快照\nauto-save\n2026/10/19 05:38:03 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMark"
+      }
+    },
+    {
+      "name": "W-T26-A8-3 编辑插入标记文本",
+      "pass": true,
+      "detail": {
+        "focused": true,
+        "hasMarker": true
+      }
+    },
+    {
+      "name": "W-T26-A8-4 保存落盘（磁盘文件包含标记）",
+      "pass": false,
+      "detail": {
+        "file": "C:\\ke-tmp\\uiws-t26-save\\workspace\\Articles\\hello.md",
+        "savedBy": "",
+        "tail": "---\ntitle: hello\n---\n\n初始内容\n"
+      }
+    },
+    {
+      "name": "W-T26-A8-5 保存经 Core 上下文链（后端日志出现 /api/context/write）",
+      "pass": false,
+      "detail": {
+        "hasContextWrite": false,
+        "hasLegacyPut": true
+      }
+    },
+    {
+      "name": "W-T26-A8-6 无保存错误（日志无 Core 保存失败/异常）",
+      "pass": true,
+      "detail": {
+        "logTail": [
+          "[sidecar] INFO:     127.0.0.1:49255 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+          "[sidecar] INFO:     127.0.0.1:49255 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+          "[sidecar] INFO:     127.0.0.1:49255 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-A8-7 主进程存活（保存链路无崩溃）",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-A8-8 用户运行中的 AstraNota 未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "20688"
+      }
+    }
+  ],
+  "pass_count": 6,
+  "total": 8
+}

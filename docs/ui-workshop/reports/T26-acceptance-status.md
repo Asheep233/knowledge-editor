@@ -29,7 +29,8 @@
 - **A5 剩余**：能力上限在真实包会话的运行时强制执行（依赖 A7 产品侧 PackageHost 装配）；
   （信任授予/撤销 UI 已完成 W 11/11，见 `P5-T26-A5-ui.md`）；
 - **A7**：产品侧包隔离宿主（真实入口资源 + 崩溃检测 + 停用/恢复持久化）—— 原型已 W 8/8，产品壳未接；
-- **A8**：`VITE_KE_CORE_SAVE=1` 的产品 UI 保存/切档/外部改盘/恢复点验证；
+- **A8**：`VITE_KE_CORE_SAVE=1` 的产品 UI 保存验证 **尝试未通过（CDP 合成输入不触发 ProseMirror 脏标记，
+  自动化限制）**，见 `P5-T26-A8-save-attempt.md`；需真实键盘输入/测试入口重试；
 - **真实 OS 中文 IME / 多 DPI**（T15/T26）；
 - **安装包升级/回滚演练**（发布候选阶段 T27）；
 - 正式发布密钥签发/分发流程（ADR-003 实施清单）。
@@ -41,3 +42,17 @@
   `LOCAL_WORKSHOP_RELEASE_CANDIDATE` 等更高状态。
 - 建议下一阶段顺序：A5/A7（产品包宿主 + 信任 UI）→ A8 → 真实 IME/多 DPI → 安装包升级/回滚 →
   重新评估认证与状态词汇。
+
+## 5. 隔离缺陷与操作事故（2026-10-19，必须披露）
+
+- **产品 `data_dir()` 不随 identifier 变化**（`%APPDATA%\KnowledgeEditor`）：T26 测试构建早期版本
+  与用户运行实例共享该目录 → 测试实例读取到用户真实 app_config 的最近工作区，A8 首跑在 UI 上
+  **只读显示**了用户真实工作区列表（无编辑/保存；索引/设置未被测试改写，已核对 mtime）。
+  修复：全部 T26 runner 注入 `APPDATA=<隔离目录>`（已提交），之后 A8 只显示隔离工作区；
+  已删除真实 app_config 中被测试注入的 1 条 `hello.md` recent_document 记录。
+- **两次误杀用户 App**：① 早期 runner 清理误用 `taskkill /IM knowledgeeditor.exe`；
+  ② 一次清理命令误用 `Stop-Process -Id <用户 PID>`。均已即时重启用户 App（当前运行正常），
+  红线已写入工具文档：**测试进程只按自身 PID 终止；sidecar 只按测试路径白名单清理；
+  禁止引用/操作 `D:\AstraNota` 用户进程**。
+- 遗留：真实 `%APPDATA%\KnowledgeEditor\runtime\runtime.json` 可能仍记录测试 PID（stale）；
+  用户 App 下次启动会重写/清理，不影响数据。

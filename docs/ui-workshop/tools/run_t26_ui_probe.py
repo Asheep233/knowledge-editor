@@ -148,7 +148,11 @@ def main() -> int:
                    check=True, capture_output=True, text=True)
 
     # 2) 启动（flag 构建 + 信任根）
+    # 红线：产品 data_dir() = %APPDATA%\KnowledgeEditor（不随 identifier 变化）→ 必须隔离 APPDATA
+    isolated_appdata = BASE / "appdata"
+    isolated_appdata.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
+    env["APPDATA"] = str(isolated_appdata)
     env["KE_WORKSHOP_PUBKEYS"] = json.dumps({"k1": {"key": pub_hex}})
     env["KE_WORKSPACE"] = str(ws)
     env["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = f"--remote-debugging-port={CDP_PORT}"

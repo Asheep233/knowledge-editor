@@ -18,7 +18,8 @@ from pathlib import Path
 
 REPO = Path(r"F:\Work\KE Project\knowledge-editor")
 EXE = Path(r"C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe")
-APPDATA = Path(os.environ.get("APPDATA", r"C:\Users\y8882\AppData\Roaming"))
+# 红线：产品 data_dir() = %APPDATA%\KnowledgeEditor（不随 identifier 变化）→ APPDATA 必须隔离
+APPDATA = BASE / "appdata"
 APP_DATA = APPDATA / "com.astranota.uiws.e2e"
 PACK_ROOT = APP_DATA / "workshop-packs"
 EVID = REPO / "docs" / "ui-workshop" / "evidence"
@@ -64,7 +65,7 @@ def run_scenario(name: str, setup) -> dict:
     if APPDATA.exists() and APP_DATA.exists():
         shutil.rmtree(APP_DATA, ignore_errors=True)
     setup()
-    proc = subprocess.Popen([str(EXE)], env={**os.environ})
+    proc = subprocess.Popen([str(EXE)], env={**os.environ, "APPDATA": str(APPDATA)})
     status = None
     try:
         status_file = PACK_ROOT / "workshop-recover-status.json"

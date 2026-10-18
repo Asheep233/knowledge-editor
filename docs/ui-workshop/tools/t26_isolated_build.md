@@ -47,3 +47,12 @@ Copy-Item 'F:\Work\Dev\cargo-target\release\knowledgeeditor-backend*.exe' 'C:\ke
   `C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`；
 - 若误用主构建启动：单实例插件会接管（进程 exit 0、无窗口）——不是功能失败，先用 strings 校验
   identifier 再排查。
+
+# 7) 数据目录隔离（重要，2026-10-19 事故后强制）
+
+- 产品 `data_dir() = %APPDATA%\KnowledgeEditor`，**不随 identifier 变化**：测试构建若共享真实 APPDATA，
+  会读取用户 app_config/recent workspace（只读显示用户数据）并覆盖 runtime.json/logs。
+- 所有 T26 runner 必须注入：`env["APPDATA"] = <隔离目录>`（例 `C:\ke-tmp\uiws-t26-xxx\appdata`），
+  并确保 `KE_WORKSPACE` 指向隔离工作区。
+- **红线**：不得按镜像名或用户 PID 杀进程；测试进程只按自身 Popen PID 终止，sidecar 仅按
+  `C:\ke-tmp\uiws-t26\bin\*` / `F:\Work\Dev\cargo-target\*` 路径白名单清理。

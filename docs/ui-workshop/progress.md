@@ -55,7 +55,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T19 | in_progress | core/packs/* + probe/{t19_guest,t19_host,t19_entry} + 原型 pack_read_asset/seed-from-dir | P3-T19-package-host.md（7 U）、W 探针×3（8/8 内联、8/8 已安装包 entry、**8/8 多资源+心跳崩溃检测**） | 真实 renderer process crash/导航失败；字体/图片/子资源完整性；zip 离线包与 T17/T21 合并；T20 联动；产品 E2E | SDK 心跳协议化 + 子资源完整性 → T26 |
 | T24 | in_progress | core/packs/* + 工坊信任 UI + 产品 Rust 验签 + 打包器签名工具 + **签名数据源接线（list/scan→UI）** | trust-policy（10）、pack-signature（8+parity）、trust-ui、keyring（8）、rust-signature（cargo 38/38）、sign-tool（5/5）、**signature-datasource（列表/预览真实签名状态；全量 130 files/1795 passed）** | 正式发布密钥流程；Windows 验签安装 E2E；非 active 版本签名/审计 | 发布密钥流程 + Windows 验签 E2E → T26 |
 | T25 | in_progress | docs/ui-workshop/tools/build_validation_matrix.py；validation-matrix.csv（18 行） | evidence/P4-T25-validation-matrix.md（自动生成矩阵：9 项 W、2 项 A、2 项 A/U、3 项回归基线、1 项构建） | 产品 E2E W/真实 IME/多 DPI 列未加入；CI 门禁化；随 T26 补平台版本列 | 矩阵 CI 门禁 + T26 认证数据 → 发布候选评估 |
-| T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具、A2/A3/A4/A5/A6 产品 W 探针 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、**A5 工坊信任 UI（11/11：入口/真实列表/签名徽章/授予撤销/TrustStore 持久化）** | A5 能力上限运行时（依赖 A7）、A7 产品包宿主、A8 Core 保存 flag；真实 IME/多 DPI；安装包升级 | A7/A8 → 认证 |
+| T26 | in_progress | run_all_w_probes.py、T26 计划、隔离构建工具（APPDATA 隔离已强制）、A2–A6 产品 W 探针、A8 尝试 | P5-T26-windows-witnesses（13/13）、smoke（7/7）、A2（9/9）、A3（9/9）、A4+A6（16/16）、A5 UI（11/11）、**A8 尝试 6/8（CDP 输入不触发编辑器脏标记，未通过，记录限制）** | A8 真实输入/测试入口重试；A5 能力上限（依赖 A7）；A7 产品包宿主；真实 IME/多 DPI；安装包升级；隔离事故披露 | A7/A8 重试 → 认证 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -674,3 +674,13 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   真实已安装包列表、真实签名徽章 valid、授予 trusted → localStorage TrustStore 持久化 + 徽章更新、
   撤销 → community 清除；用户实例不受影响。证据：`evidence/P5-T26-A5-ui.md`。
 - A5 剩余：能力上限在真实包会话的运行时强制执行（依赖 A7 产品侧包宿主装配）。
+
+## P6/T26 进度（A8 尝试 + 隔离事故披露，2026-10-19）
+
+- A8（Core 保存 flag 产品 UI）尝试：产品启动/文章打开/编辑器加载/标记写入均成功，但 CDP 合成输入
+  未触发 ProseMirror 事务/autosave（日志仅 GET），保存校验失败 → **A8 未通过，记录自动化限制**，
+  不得当证据；证据：`evidence/P5-T26-A8-save-attempt.md`。
+- **隔离缺陷**：产品 data_dir 不随 identifier 变化 → 测试构建需注入隔离 APPDATA（已修复全部 runner）；
+  早期运行只读显示了用户真实工作区列表（无编辑/保存）；已清理真实 app_config 中被注入的 hello.md 记录。
+- **操作事故**：两次误杀用户 App（taskkill 镜像名 / 误用用户 PID），均已重启并写入红线；后续仅按
+  测试进程 PID + 路径白名单清理。

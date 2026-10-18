@@ -35,6 +35,7 @@ function makeAdapter(overrides: Partial<WorkshopAdapter> = {}): WorkshopAdapter 
     rollback: vi.fn(async () => undefined),
     recover: vi.fn(async () => ({ recovered: true, action: 'rollback-corrupt-active' })),
     recoverAll: vi.fn(async () => ({ checked: 2, safeMode: false, results: [] })),
+    uninstall: vi.fn(async () => undefined),
     ...overrides,
   }
 }
@@ -155,6 +156,26 @@ describe('T23 创意工坊控制面 UI', () => {
     expect(adapter.recoverAll).toHaveBeenCalled()
     expect(text()).toContain('已检查 3 个包')
     expect(container.querySelector('[role="alert"]')!.textContent).toContain('safe mode')
+  })
+
+  it('卸载按钮：内联二次确认后调用 adapter.uninstall 并刷新', async () => {
+    const adapter = makeAdapter()
+    await mount(adapter)
+    await click(buttonByText('卸载'))
+    expect(container.querySelector('[role="alertdialog"]')).toBeTruthy()
+    expect(adapter.uninstall).not.toHaveBeenCalled()
+    await click(buttonByText('确认卸载'))
+    expect(adapter.uninstall).toHaveBeenCalledWith('com.demo.hello')
+    expect(text()).toContain('已卸载 com.demo.hello')
+  })
+
+  it('卸载二次确认可取消（不调用 adapter）', async () => {
+    const adapter = makeAdapter()
+    await mount(adapter)
+    await click(buttonByText('卸载'))
+    await click(buttonByText('取消'))
+    expect(adapter.uninstall).not.toHaveBeenCalled()
+    expect(container.querySelector('[role="alertdialog"]')).toBeNull()
   })
 
   it('adapter 报错时展示可读错误', async () => {

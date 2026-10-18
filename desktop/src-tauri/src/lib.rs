@@ -181,6 +181,7 @@ pub fn run() {
             pack_store::workshop_pack_rollback,
             pack_store::workshop_pack_recover,
             pack_store::workshop_pack_recover_all,
+            pack_store::workshop_pack_uninstall,
             print::export_pdf,
             print::preview_pdf,
             print::discard_preview_pdf,

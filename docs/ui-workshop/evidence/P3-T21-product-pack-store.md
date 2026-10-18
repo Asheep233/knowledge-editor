@@ -6,7 +6,7 @@
     - 命令：`workshop_pack_scan`（安装前预览：身份/能力/apiVersion/哈希校验）、
       `workshop_pack_install`（staging→rename→state 单提交点+journal）、`workshop_pack_list`、
       `workshop_pack_verify`、`workshop_pack_activate`、`workshop_pack_rollback`、`workshop_pack_recover`
-      （active 损坏自动回退 previous）
+      （active 损坏自动回退 previous）、**`workshop_pack_uninstall`**（写空 state 后删除包目录，失败回滚 state）
   - `desktop/src-tauri/src/lib.rs`：注册上述命令（既有命令/行为不变）
   - `desktop/src-tauri/Cargo.toml`：新增 `sha2 = "0.10"`（只用于包资产哈希校验）
 - 证据类型：**U/B（产品 Rust 单测 + Release 构建）**；尚未由产品前端调用（适配器/UI 集成下一步），
@@ -16,7 +16,7 @@
 
 ```text
 $ cargo test --release        # 产品壳（含 3 个新 pack_store 单测）
-test result: ok. 32 passed; 0 failed; 0 ignored
+test result: ok. 34 passed; 0 failed; 0 ignored
 $ cargo build --release
 Finished `release` profile [optimized]
 knowledgeeditor.exe  15,508,992 B
@@ -28,6 +28,8 @@ knowledgeeditor.exe  15,508,992 B
 | `scan_ok_and_tampered_blocked` | 合法包扫描 preview（packId/blocked=false）；资产被篡改 → `E_HASH` 拒绝 |
 | `install_list_rollback_recover_chain` | 安装 v1 → 升级 v2（active/previous）→ list 仅含已安装包 → verify →
   回滚交换 → 损坏 active → recover 自动回退到 previous（`rollback-corrupt-active`） |
+| `uninstall_removes_pack_and_state` | 安装→卸载（目录删除、list 空、重复卸载 E_NOT_FOUND） |
+| 前端适配器/UI | `workshop_pack_uninstall` 适配；面板「卸载」**内联二次确认**（非原生 confirm）、确认后刷新 |
 
 ## 结论
 
@@ -36,4 +38,5 @@ knowledgeeditor.exe  15,508,992 B
 - 尚未完成（T21 继续）：
   1. 前端适配器（`invoke` 包装）+ T23 WorkshopPanel 集成（含真实包目录选择/进度/取消）；
   2. Windows 端到端交互 W 证据（安装→启用→回滚→卸载，含损坏/safe mode 路径）（T21/T26）；
-  3. 包签名/来源校验接入、包卸载与清理、与 T20 Rust 原生恢复/单实例启动流程合并。
+  3. 包签名/来源校验接入、**卸载清理（命令+UI 已落地，待 Windows W 交互验收）**、与 T20 Rust 原生恢复/
+     单实例启动流程合并；包更新（upgrade UI）与回滚入口的可视化验收。

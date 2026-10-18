@@ -68,6 +68,12 @@ describe('T21/T23 TauriPackAdapter', () => {
     await expect(adapter().recover('com.demo.b')).resolves.toEqual({ recovered: true, action: 'rollback-corrupt-active' })
   })
 
+  it('uninstall 调用 workshop_pack_uninstall', async () => {
+    mockedInvoke.mockResolvedValueOnce({ uninstalled: 'com.demo.a' })
+    await adapter().uninstall!('com.demo.a')
+    expect(mockedInvoke).toHaveBeenCalledWith('workshop_pack_uninstall', { id: 'com.demo.a' })
+  })
+
   it('recoverAll 调用 workshop_pack_recover_all 并映射 safeMode', async () => {
     mockedInvoke.mockResolvedValueOnce({ checked: 2, safeMode: true, results: [] })
     await expect(adapter().recoverAll!()).resolves.toEqual({ checked: 2, safeMode: true, results: [] })

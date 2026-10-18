@@ -111,6 +111,13 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
         throw err(e)
       }
     },
+    async uninstall(packId: string): Promise<void> {
+      try {
+        await call('workshop_pack_uninstall', { id: packId })
+      } catch (e) {
+        throw err(e)
+      }
+    },
     async recoverAll(): Promise<RecoverAllView> {
       try {
         const res = (await call('workshop_pack_recover_all')) as { checked?: number; safeMode?: boolean; results?: unknown }

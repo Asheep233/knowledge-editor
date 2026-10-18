@@ -293,6 +293,24 @@ pub fn rollback(root: &Path, id: &str) -> Result<Value, String> {
     Ok(next)
 }
 
+/// 卸载包：先写空 state 提交（active/previous=null），再删除包目录；删除失败回滚 state。
+pub fn uninstall(root: &Path, id: &str) -> Result<Value, String> {
+    if !state_path(root, id).exists() {
+        return Err(format!("E_NOT_FOUND: 包未安装 {id}"));
+    }
+    let before = state_of(root, id);
+    let empty = json!({"active": null, "previous": null,
+        "updatedAt": format!("{:?}", std::time::SystemTime::now())});
+    write_json_atomic(&state_path(root, id), &empty)?;
+    match fs::remove_dir_all(id_dir(root, id)) {
+        Ok(()) => Ok(json!({"uninstalled": id, "previousState": before})),
+        Err(e) => {
+            let _ = write_json_atomic(&state_path(root, id), &before);
+            Err(format!("E_IO: 删除包目录失败: {e}"))
+        }
+    }
+}
+
 pub fn recover(root: &Path, id: &str) -> Result<Value, String> {
     let txn: Option<Value> = fs::read_to_string(txn_path(root, id)).ok().and_then(|s| serde_json::from_str(&s).ok());
     let before = state_of(root, id);
@@ -415,6 +433,11 @@ pub fn workshop_pack_recover(app: AppHandle, id: String) -> Result<Value, String
 // ---------------- Tauri commands（产品壳） ----------------
 
 #[tauri::command]
+pub fn workshop_pack_uninstall(app: AppHandle, id: String) -> Result<Value, String> {
+    uninstall(&root_of(&app)?, &id)
+}
+
+#[tauri::command]
 pub fn workshop_pack_recover_all(app: AppHandle) -> Result<Value, String> {
     let root = root_of(&app)?;
     let status = recover_all(&root);
@@ -468,6 +491,20 @@ mod tests {
         let bad = root.join("src-bad");
         make_pack(&bad, "com.demo.bad", "1.0.0", true);
         assert!(scan_dir(&root, bad.to_str().unwrap()).unwrap_err().contains("E_HASH"));
+    }
+
+    #[test]
+    fn uninstall_removes_pack_and_state() {
+        let root = tmp_root("uninstall");
+        let src = root.join("src");
+        make_pack(&src, "com.demo.gone", "1.0.0", false);
+        install_from_dir(&root, src.to_str().unwrap()).unwrap();
+        assert!(verify_pack(&root, "com.demo.gone", "1.0.0").unwrap());
+        let out = uninstall(&root, "com.demo.gone").unwrap();
+        assert_eq!(out["uninstalled"], "com.demo.gone");
+        assert!(!root.join("com.demo.gone").exists());
+        assert!(uninstall(&root, "com.demo.gone").is_err()); // 已卸载
+        assert!(list_packs(&root)["packs"].as_array().unwrap().is_empty());
     }
 
     #[test]

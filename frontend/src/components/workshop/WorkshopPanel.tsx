@@ -57,6 +57,8 @@ export interface WorkshopAdapter {
   recover(packId: string): Promise<RecoverResultView>
   /** 全部包启动恢复（产品壳 workshop_pack_recover_all；可选能力） */
   recoverAll?(): Promise<RecoverAllView>
+  /** 卸载包（可选能力） */
+  uninstall?(packId: string): Promise<void>
 }
 
 export interface WorkshopPanelProps {
@@ -78,6 +80,7 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [recoverStatus, setRecoverStatus] = useState<RecoverAllView | null>(null)
+  const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -141,6 +144,15 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
       const status = await adapter.recoverAll()
       setRecoverStatus(status)
       setMessage(`已检查 ${status.checked} 个包${status.safeMode ? '（存在无法自动恢复的包）' : ''}`)
+      await refresh()
+    })
+
+  const onUninstall = (packId: string) =>
+    run(async () => {
+      if (!adapter.uninstall) return
+      setConfirmUninstall(null)
+      await adapter.uninstall(packId)
+      setMessage(`已卸载 ${packId}`)
       await refresh()
     })
 
@@ -286,8 +298,29 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
                     >
                       修复/恢复
                     </button>
+                    {adapter.uninstall && (
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-xs text-red-600 disabled:opacity-40"
+                        disabled={busy}
+                        onClick={() => setConfirmUninstall(pack.id)}
+                      >
+                        卸载
+                      </button>
+                    )}
                   </div>
                 </div>
+                {confirmUninstall === pack.id && (
+                  <div role="alertdialog" aria-label={`确认卸载 ${pack.id}`} className="mt-2 flex items-center gap-2 rounded bg-red-50 px-2 py-1 text-xs text-red-700">
+                    <span>确定卸载 {pack.id}？该包版本目录会被删除。</span>
+                    <button type="button" className="rounded border px-2 py-0.5" disabled={busy} onClick={() => void onUninstall(pack.id)}>
+                      确认卸载
+                    </button>
+                    <button type="button" className="rounded border px-2 py-0.5" onClick={() => setConfirmUninstall(null)}>
+                      取消
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

@@ -26,7 +26,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 已知失败归属：无新增；历史 v1.2.16 报告中「3 个 Linux 超长文件名失败」在当前基线未复现
   （参见 CHANGELOG_DEV v1.2.17：已随 CI 可移植性修复收敛）。
 测试数据目录：临时目录/沙箱（C:\ke-tmp\ke-sandbox 等）；禁止真实笔记。
-当前里程碑状态：**P0_READY**；**P1 阶段状态：`P1_READY_PENDING`**（T08 passed；T09–T13 核心闭环与 Windows 证据已交付，剩余项见 `reports/P1-report.md`）
+当前里程碑状态：**P0_READY**（项目级口径不变）；P1 `P1_READY_PENDING`；P2 `in_progress`；P3 `EXPERIMENTAL_CORE_ONLY`。判定依据见 `reports/P1-report.md`、`reports/P2-P3-report.md`
 ```
 
 ## 任务进度
@@ -413,3 +413,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   证据：`evidence/P3-T20-startup-recover.md`。
 - 下一步：Windows 端到端交互 W（含损坏包启动→safe mode 可见/可修复→安装→回滚→卸载）；
   safeMode 前端呈现；签名/来源信任；P2/P3 阶段报告。
+
+## P2/P3 阶段报告（2026-10-19）
+
+- `reports/P2-P3-report.md`：P2 in_progress（T14 适配层/T15 CDP W 8/8/T16 打印 Core）、
+  P3 EXPERIMENTAL_CORE_ONLY（T17/T18+W/T20 启动恢复/T21 产品 Rust+W/T22/T23 UI 集成），
+  **项目级仍判 `P0_READY`**（工坊未在产品 UX 完整落地，不满足 IMPLEMENTED_WINDOWS_PENDING）；
+  给出证据索引、完成度判定表、最短路径优先级与风险清单。
+- 测试基线：前端 122 files/1733 passed+1 skipped；后端 846 collected；产品 cargo 33 passed。

@@ -35,7 +35,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | --- | --- | --- | --- | --- | --- |
 | T00 | in_progress | e54d37b（overlay）、scripts/ui-workshop/{sandbox-env,collect-env,bench}.sh/ps1、docs/ui-workshop/fixtures/、tools/make_fixtures.py | evidence/T00-baseline.md、evidence/T00-measurements.md、evidence/env-*.txt | 两 shell 预热/内存/切换、Windows 侧启动与 PDF 基线尚未采集 | Windows 测量脚本 + 数据采集 |
 | T01 | in_progress | tools/build_feature_baseline.py、feature-baseline.csv（130 行种子）、fixtures/、known-failures.md | CSV 生成自源码（shortcuts/API/toolbar/settings/menu/验收域）；officialBaselineResult 均 NOT_RUN | 需逐项真实入口核对并填结果（130 行），补 packA/B 入口列 | 逐域核对 F01–F16 → 填 result；再谈 W01+ |
-| T02–T06 | todo | | | | P0 五原型（S1 运行域/S2 编辑面/S3 保存/S4 打印/S5 事务） |
+| T02–T06 | todo | T06: prototypes/p0/s5_txn/（registry.py + 10 tests + demo） | evidence/P0-S5-prototype.md（Linux + Windows 10/10） | T06 未接入真实运行时/包格式/Rust 指针；T02/T03/T04/T05 未开工 | S1/S2/S3/S4 原型；T06 待接入 |
 | T07 | todo | | | | 路线 ADR |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
@@ -58,3 +58,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - `docs/ui-workshop/tools/build_feature_baseline.py` → `feature-baseline.csv`：
   130 行种子（快捷键动作 42 / API 路由 / 工具栏 / 设置 / 原生菜单 / 导出与对话框 / F01–F16+W 验收域）
 - `docs/ui-workshop/known-failures.md`：当前无新增失败；历史 3 条登记且本基线未复现
+
+## P0 原型进展（2026-10-19）
+
+- **S5 包/私有状态原子事务（T06 部分）**：`prototypes/p0/s5_txn/` 完成不可变安装
+  （路径穿越/zip bomb/篡改/同版本改字节拒绝）、单提交点激活（journal→fsync→os.replace）、
+  崩溃恢复（4 个提交点进程终止用例）、回滚不动 Core 笔记、私有状态隔离与迁移回调；
+  Linux WSL + Windows Python(NTFS) 各 10/10 通过。证据：`evidence/P0-S5-prototype.md`。
+  未验证：真实运行时/包格式/Tauri/Rust 指针（留给 T17–T20）。

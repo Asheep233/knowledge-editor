@@ -150,3 +150,13 @@ bash docs/ui-workshop/core/session/run_t10_e2e.sh                      # 19/19
 - 未隐藏旧 App 来冒充 Core 抽离（所有工坊入口默认关闭；旧行为可通过 flag 回退）。
 - 未把 happy-dom/Linux Chromium 结果当作 Windows/WebView2 证据（W 证据均来自本机 Windows 实机探针）。
 - 分支仅本地：**未 push、未发布 Release**（本次会话未改 v1.2.18 发布物）。
+
+## 9. 里程碑评估（2026-10-19）
+
+- 按 ACCEPTANCE A 节口径：当前里程碑 = **`EXPERIMENTAL_TRUSTED_PACKS`**（只允许受信实验包；
+  隔离/离线/恢复仍列未通过项）；**不**声明更高状态。
+- 完整逐项评估与未完成门禁清单：`reports/milestone-assessment.md`；
+- T27 安装/覆盖升级（W08/I）计划与可执行步骤：`reports/T27-installer-upgrade-plan.md`
+  （需专用测试环境/主理人授权后执行）。
+- 复核命令：`python docs/ui-workshop/tools/build_validation_matrix.py --check`；
+  `python docs/ui-workshop/tools/run_all_w_probes.py --check`（需 Windows + 原型构建）。

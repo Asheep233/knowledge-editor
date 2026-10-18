@@ -759,3 +759,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - guest 独立 origin `http://workshop.localhost`；guest 仍可见 __TAURI_INTERNALS__ 但 invoke 实测
   timeout（remote IPC 未生效）→ W 5/5 PASS，附**残余风险**与硬化清单（SDK 自检/配置审计/独立
   WebviewWindow 评估）。证据：`evidence/P5-T26-A7-isolation.md`。
+
+## P6/P7 进度（T27 计划 + 里程碑评估，2026-10-19）
+
+- `reports/T27-installer-upgrade-plan.md`：安装/覆盖升级/降级/兼容 I 证据计划（可执行构建命令、
+  场景断言 U1–U6、证据采集、红线：专用环境/授权/不碰用户安装）。
+- `reports/milestone-assessment.md`：按 ACCEPTANCE A 节口径逐项核对，当前里程碑
+  **`EXPERIMENTAL_TRUSTED_PACKS`**（受信实验包；隔离残余风险/离线包/恢复 I 门禁/表单交接/SDK/
+  协议线/网络边界/性能未通过或 NOT_RUN 均列出）；不声明更高状态。
+- HANDOVER 增加「里程碑评估」段。

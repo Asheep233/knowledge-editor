@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-18T20:17:26.497Z",
+  "via": "docs/ui-workshop/tools/sign_pack.mjs --self-test",
+  "checks": [
+    {
+      "name": "canonical payload 与 TS/Rust 字面量逐字节一致",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "ed25519 签名可被标准实现验证",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "篡改清单后验签失败",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "私钥 PEM 重新导入后签名一致（确定性签名）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "公钥 raw hex 为 64 hex chars",
+      "pass": true,
+      "detail": "215be950416298dc106261038f67a909bcb3e710402f4a9547f138e3dfb84bc4"
+    }
+  ],
+  "passed": 5,
+  "total": 5,
+  "payload": "{\"id\":\"com.demo.signed\",\"name\":\"Signed Pack\",\"version\":\"1.0.0\",\"apiVersion\":1,\"capabilities\":[\"ui.shell\"],\"entry\":{\"html\":\"index.html\",\"sdk\":null},\"commands\":[{\"name\":\"demo.hello\",\"handler\":\"hello\"}],\"assets\":[{\"path\":\"index.html\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"size\":null}]}"
+}

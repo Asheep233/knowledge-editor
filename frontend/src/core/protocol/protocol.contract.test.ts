@@ -39,7 +39,7 @@ describe('T11 协议契约（host↔guest）', () => {
     expect(PROTOCOL_CONTRACT.protocolVersion).toBe(PROTOCOL_VERSION)
     expect([...PROTOCOL_CONTRACT.methods]).toEqual(['protocol.capabilities', 'context.snapshot', 'context.write', 'print.snapshot'])
     expect([...PROTOCOL_CONTRACT.errorCodes].sort()).toEqual(
-      ['E_BAD_PAYLOAD', 'E_CANCELED', 'E_CAPABILITY', 'E_CONFLICT', 'E_FORBIDDEN', 'E_INTERNAL', 'E_STALE_CONTEXT', 'E_TIMEOUT', 'E_UNKNOWN_METHOD', 'E_VERSION'],
+      ['E_BAD_PAYLOAD', 'E_BUSY', 'E_CANCELED', 'E_CAPABILITY', 'E_CONFLICT', 'E_FORBIDDEN', 'E_INTERNAL', 'E_STALE_CONTEXT', 'E_TIMEOUT', 'E_UNKNOWN_METHOD', 'E_VERSION'],
     )
     expect([...PROTOCOL_CONTRACT.events]).toEqual(['context-changed', 'theme-changed', 'selection-changed', 'document-saved', 'host-shutdown'])
     expect([...PROTOCOL_CONTRACT.messageTypes].sort()).toEqual(['cancel', 'event', 'handshake', 'handshake.response', 'request', 'response'])

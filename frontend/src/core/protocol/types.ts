@@ -23,6 +23,7 @@ export type ErrorCode =
   | 'E_CAPABILITY'
   | 'E_CANCELED'
   | 'E_TIMEOUT'
+  | 'E_BUSY'
   | 'E_STALE_CONTEXT'
   | 'E_CONFLICT'
   | 'E_INTERNAL'
@@ -158,6 +159,7 @@ export const PROTOCOL_CONTRACT = Object.freeze({
     'E_CAPABILITY',
     'E_CANCELED',
     'E_TIMEOUT',
+    'E_BUSY',
     'E_STALE_CONTEXT',
     'E_CONFLICT',
     'E_INTERNAL',

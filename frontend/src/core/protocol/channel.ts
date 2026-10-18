@@ -54,6 +54,8 @@ export interface GuestClientOptions {
   requestedFeatures?: string[]
   /** 默认请求超时（ms） */
   timeoutMs?: number
+  /** 同一时刻最大在途请求数（背压；超出以 E_BUSY 拒绝，retryable） */
+  maxInflight?: number
 }
 
 interface PendingCall {
@@ -120,6 +122,10 @@ export class GuestClient {
   async request<M extends MethodName>(method: M, params: ProtocolMethods[M]['params'], opts: { timeoutMs?: number; signal?: AbortSignal } = {}): Promise<ProtocolMethods[M]['result']> {
     if (!this.handshakeResult) throw new ProtocolCallError(protocolError('E_VERSION', '未完成握手'))
     if (opts.signal?.aborted) throw new ProtocolCallError(protocolError('E_CANCELED', '请求已取消'))
+    const maxInflight = this.options.maxInflight ?? 64
+    if (this.pending.size >= maxInflight) {
+      throw new ProtocolCallError(protocolError('E_BUSY', `在途请求已达上限 ${maxInflight}`, { maxInflight }, true))
+    }
     const requestId = `req-${++this.seq}-${Math.random().toString(36).slice(2, 8)}`
     const controller = new AbortController()
     const onAbort = () => {

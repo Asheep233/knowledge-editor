@@ -40,7 +40,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 | T08 | passed | core/codec/probe{,2,3}.ts + run_probe*.sh + CANONICAL-RULES.md | probe2（10 类扩展无 DOM 分层，全部可 parse/serialize）；probe3（8 样本保存管线 roundtrip 台账：声明 R1–R6 后 **fixpoint2 8/8 字节稳定**；ke 标记保留、BOM/CRLF 还原）；DOM-free API 边界已明确 | 唯一性细节（如首次空行归并）已按声明规范处理；真实 UI 行为一致性留 T26 复核 | T10 Core 直接引用 ke.ts traits + serializer 边界 |
 | T09 | in_progress | 原型 core/workspace_context/；**产品切片** backend/app/services/context_registry.py + routers/context.py + tests/test_ui_workshop_context.py + 契约快照更新 | evidence/P1-T09-workspace-context.md（原型双平台 10/10）、P1-T09-product-slice.md（产品后端 8 例 + 全量 835 collected exit 0，WSL/Windows） | 注册表内存态；既有业务端点仍全局 workspace_root 未绑定；附件/导入/恢复/打印 job 绑定与真实慢 I/O in-flight 查询留 T12/T10 | T12 分域迁移统一 ContextRegistry + T10 Core 接入 |
 | T10 | in_progress | frontend/src/core/session/*；联调 core/session/e2e_t10.ts + run_t10_e2e.sh | evidence/P1-T10-core-savecoordinator.md（21 例 U + tsc 0 + 无 DOM/React 守卫）、**P1-T10-e2e.md（真实后端 19/19 PASS）** | 产品 RecoveryStorage（Tauri 文件/IndexedDB）未实现；真实 UI 加载/切换接线、慢 I/O in-flight、索引 history 绑定未完成（T14/T15/T12） | 产品 RecoveryStorage + T11 协议 |
-| T11 | in_progress | frontend/src/core/protocol/{types,channel,contract.test}；probe/{guest_probe,host_probe,build} + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（12 例契约 + tsc 0）、**P1-T11-transport-probe.md（Windows/WebView2 7/7）** | 生产版 iframeTransport（channel/背压/错误映射）未产品化；未接包加载器 T17；大消息/背压未测 | 生产 iframeTransport + T17 接入 → T12 分域迁移 |
+| T11 | in_progress | frontend/src/core/protocol/{types,channel,transport,+tests}；probe/* + s1 原型 protocol 场景 | evidence/P1-T11-protocol.md（**18 例**：契约/传输/大消息/channel 隔离/背压 E_BUSY）、P1-T11-transport-probe.md（Windows/WebView2 **7/7**） | iframe 浏览器 DOM 适配器未入包（探针 ad-hoc，归 T17）；事件背压未做；P3 包命令未入方法表 | T17 包加载器接入正式 iframeAdapter → T12 分域迁移 |
 | T08–T28 | todo | | | | 按 TASKS.md 依赖推进 |
 
 ## 单项验收记录
@@ -238,3 +238,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   channel/方向标签）；MessagePort 需独立 origin/WebviewWindow（T18 决策）。
 - 证据：`evidence/P1-T11-transport-probe.md` + `T11-transport-probe-results.json`。
 - 下一步：生产版 iframeTransport（channel/背压/错误映射/版本握手）+ 接包加载器（T17）→ T12 分域迁移。
+
+## P1 进度（T11 传输核心，2026-10-19）
+
+- 新增 `core/protocol/transport.ts`（DOM-free）：带 `channelId`/方向标签的 wire 传输（信封
+  `{__keProtoChannel, dir, payload}`、隔离/畸形丢弃计数、内存端点对）；`GuestClient` 增加背压
+  （`maxInflight` 超出 → `E_BUSY` retryable，错误码契约显式升级）。
+- 测试：协议层 **18 例全过**（契约 12 + 传输 6：wire 往返/256KB 大消息/channel 隔离/畸形/背压/错误），tsc 0。
+- 下一步：T17 包加载器接入正式 iframe DOM 适配器；T12 分域迁移。

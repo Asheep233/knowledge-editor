@@ -1,0 +1,178 @@
+[
+  {
+    "name": "KeDocument/KeBlockquote",
+    "targetMd": "> 引用\n\n正文\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "> 引用\n\n正文",
+    "tokensKept": [
+      {
+        "token": "> 引用",
+        "kept": true
+      },
+      {
+        "token": "正文",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "ListExtension(OrderedListParen/KeListItem)",
+    "targetMd": "1) 甲\n2) 乙\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "1. 甲\n2. 乙",
+    "tokensKept": [
+      {
+        "token": "1)",
+        "kept": false
+      },
+      {
+        "token": "甲",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "MathExtension/MathBlockExtension",
+    "targetMd": "行内 $E=mc^2$\n\n$$\n\\int_0^1 x^2\n$$\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "行内 $E=mc^2$\n\n$$\n\\int_0^1 x^2\n$$",
+    "tokensKept": [
+      {
+        "token": "$E=mc^2$",
+        "kept": true
+      },
+      {
+        "token": "$$",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "NoteExtension",
+    "targetMd": "<!-- ke-note: {\"kind\":\"note\",\"id\":\"n1\",\"title\":\"T\",\"tone\":\"b",
+    "importOk": true,
+    "parseOk": true,
+    "output": "<!-- ke-note: {\"kind\":\"note\",\"id\":\"n1\",\"title\":\"T\",\"color\":\"blue\"} -->\n内容\n<!-- /ke-note -->",
+    "tokensKept": [
+      {
+        "token": "ke-note",
+        "kept": true
+      },
+      {
+        "token": "内容",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "Footnote/Footnotes",
+    "targetMd": "正文[^1]\n\n[^1]: 注释内容\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "正文[^1](注释内容)",
+    "tokensKept": [
+      {
+        "token": "[^1]",
+        "kept": true
+      },
+      {
+        "token": "注释内容",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "TableMarkdown/GfmTableFallback",
+    "targetMd": "| a | b |\n| --- | --- |\n| 1 | 2 |\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "\n| a   | b   |\n| --- | --- |\n| 1   | 2   |\n",
+    "tokensKept": [
+      {
+        "token": "| a | b |",
+        "kept": false
+      },
+      {
+        "token": "| 1 | 2 |",
+        "kept": false
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "GenericFallback(unknown ke-*)",
+    "targetMd": "<!-- ke-unknown: {\"a\":1} -->\n\n正文\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "<!-- ke-unknown: {\"a\":1} -->\n\n正文",
+    "tokensKept": [
+      {
+        "token": "ke-unknown",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "HtmlPassthrough",
+    "targetMd": "<div data-x=\"1\">raw</div>\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "<div data-x=\"1\">raw</div>\n",
+    "tokensKept": [
+      {
+        "token": "<div",
+        "kept": true
+      },
+      {
+        "token": "raw",
+        "kept": true
+      }
+    ],
+    "bytesEqual": true
+  },
+  {
+    "name": "Attachment/Video/Module",
+    "targetMd": "<!-- ke-attach: {\"kind\":\"attach\",\"id\":\"a1\",\"src\":\"Attachment",
+    "importOk": true,
+    "parseOk": true,
+    "output": "<!-- ke-attach: {\"kind\":\"attach\",\"id\":\"a1\",\"type\":\"file\",\"src\":\"Attachments/files/sample.pdf\"} -->\n\n<!-- ke-video: {\"kind\":\"video\",\"id\":\"v1\",\"src\":\"Attachments/videos/demo.mp4\",\"controls\":true,\"autoplay\":false,\"loop\":false} -->",
+    "tokensKept": [
+      {
+        "token": "ke-attach",
+        "kept": true
+      },
+      {
+        "token": "Attachments/files/sample.pdf",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  },
+  {
+    "name": "ImageMarkdown",
+    "targetMd": "![示例](Attachments/images/sample.png)\n",
+    "importOk": true,
+    "parseOk": true,
+    "output": "![示例](Attachments/images/sample.png)",
+    "tokensKept": [
+      {
+        "token": "![示例]",
+        "kept": true
+      },
+      {
+        "token": "Attachments/images/sample.png",
+        "kept": true
+      }
+    ],
+    "bytesEqual": false
+  }
+]

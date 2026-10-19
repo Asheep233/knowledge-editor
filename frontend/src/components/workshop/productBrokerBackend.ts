@@ -13,7 +13,10 @@
  * - W02：`command.invoke` 白名单命令（article.setTitle/setTags）；
  * - T26 F03：`command.invoke` 新增 `editor.*` **受控编辑器命令桥**（14 条最小白名单，
  *   需连接具备 `editor.commands.readonly`；真正执行由主窗口 EditorArea 注册的
- *   `window.__KE_WORKSHOP_EDITOR__` 受控执行器完成，不暴露任意命令）。
+ *   `window.__KE_WORKSHOP_EDITOR__` 受控执行器完成，不暴露任意命令）；
+ * - W07 task-27：editor.* 协议名统一为**小写 kebab**（`editor.bullet-list` 等，可写入
+ *   manifest.commands[].name 的 `^[a-z][a-z0-9.-]{1,80}$` 校验），内部映射到 camelCase
+ *   执行键；旧 camelCase 协议名保留兼容接受（manifest 无法声明，legacy）。
  */
 import { connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
 import { createProductPrintRenderer } from '../../core/print/productPrintRenderer'
@@ -59,7 +62,69 @@ export const WORKSHOP_EDITOR_COMMAND_WHITELIST = [
 ] as const
 
 export type WorkshopEditorCommand = (typeof WORKSHOP_EDITOR_COMMAND_WHITELIST)[number]
-export type WorkshopEditorInvokeName = `editor.${WorkshopEditorCommand}`
+
+/**
+ * T26 F03 / W07 task-27：**协议名 → 内部执行键**映射。
+ *
+ * 协议名必须能写进 `manifest.commands[].name`，而该字段校验为
+ * `^[a-z][a-z0-9.-]{1,80}$`（**不允许大写**）→ 多词命令必须用 kebab-case：
+ * `editor.bullet-list` / `editor.ordered-list` / `editor.code-block`；单命令词保持 `editor.bold` 等。
+ * 内部执行键（camelCase，与 EditorArea `WORKSHOP_EDITOR_EXECUTORS` 对齐）仅用于宿主执行映射。
+ * 旧 camelCase 协议名（如 `editor.bulletList`）保留**兼容接受**（既有测试/直调），但 manifest
+ * 无法声明（schema 不允许大写），属于显式 legacy 路径。
+ */
+const PROTOCOL_TO_COMMAND = {
+  'editor.bold': 'bold',
+  'editor.italic': 'italic',
+  'editor.underline': 'underline',
+  'editor.strike': 'strike',
+  'editor.code': 'code',
+  'editor.heading1': 'heading1',
+  'editor.heading2': 'heading2',
+  'editor.heading3': 'heading3',
+  'editor.bullet-list': 'bulletList',
+  'editor.ordered-list': 'orderedList',
+  'editor.blockquote': 'blockquote',
+  'editor.code-block': 'codeBlock',
+  'editor.undo': 'undo',
+  'editor.redo': 'redo',
+} as const satisfies Record<string, WorkshopEditorCommand>
+
+/** 规范化（可与 manifest 声明）的协议名集合，顺序与白名单一致。 */
+export type WorkshopEditorProtocolName = keyof typeof PROTOCOL_TO_COMMAND
+
+export const WORKSHOP_EDITOR_PROTOCOL_NAMES = Object.keys(PROTOCOL_TO_COMMAND) as WorkshopEditorProtocolName[]
+
+/** 协议名（含 legacy camelCase）联合类型。 */
+export type WorkshopEditorInvokeName = WorkshopEditorProtocolName | `editor.${WorkshopEditorCommand}`
+
+export interface ResolvedWorkshopEditorCommand {
+  /** 内部执行键（交给 EditorArea 执行器） */
+  command: WorkshopEditorCommand
+  /** 规范化协议名（kebab，可写入 manifest） */
+  protocolName: WorkshopEditorProtocolName
+  /** true = 命中的是旧 camelCase 兼容名（manifest 无法声明，仅直调兼容） */
+  legacy: boolean
+}
+
+/** `editor.*` 名称 → 内部执行键（规范 kebab 优先；旧 camelCase 兼容一次）。未知 → null。 */
+export function resolveWorkshopEditorCommand(name: unknown): ResolvedWorkshopEditorCommand | null {
+  if (typeof name !== 'string' || !name.startsWith('editor.')) return null
+  const canonical = PROTOCOL_TO_COMMAND[name as WorkshopEditorProtocolName]
+  if (canonical) {
+    return { command: canonical, protocolName: name as WorkshopEditorProtocolName, legacy: false }
+  }
+  // 兼容旧 camelCase：editor.bulletList / editor.orderedList / editor.codeBlock 等
+  const legacyKey = name.slice('editor.'.length)
+  if ((WORKSHOP_EDITOR_COMMAND_WHITELIST as readonly string[]).includes(legacyKey)) {
+    const command = legacyKey as WorkshopEditorCommand
+    const protocolName = (Object.keys(PROTOCOL_TO_COMMAND) as WorkshopEditorProtocolName[]).find(
+      (key) => PROTOCOL_TO_COMMAND[key] === command,
+    )
+    return protocolName ? { command, protocolName, legacy: true } : null
+  }
+  return null
+}
 
 /** 受控执行器返回（`error` 为符号名，如 E_COMMAND_NOT_ALLOWED / E_EDITOR_NOT_READY）。 */
 export interface WorkshopEditorExecutorResult {
@@ -82,10 +147,9 @@ export function getWorkshopEditorExecutor(): WorkshopEditorExecutor | null {
   return executor && typeof executor.execute === 'function' ? executor : null
 }
 
-/** `editor.<command>` 且命令在白名单内（大小写敏感：只接受小写映射名）。 */
+/** `editor.*` 且能解析到白名单内部键（规范 kebab 或旧 camelCase；大小写敏感）。 */
 export function isWorkshopEditorInvokeName(name: unknown): name is WorkshopEditorInvokeName {
-  if (typeof name !== 'string' || !name.startsWith('editor.')) return false
-  return (WORKSHOP_EDITOR_COMMAND_WHITELIST as readonly string[]).includes(name.slice('editor.'.length))
+  return resolveWorkshopEditorCommand(name) !== null
 }
 
 let sharedBridge: CoreSaveBridge | null = null
@@ -335,10 +399,11 @@ export class ProductBrokerBackend implements BrokerBackend {
     name: WorkshopEditorInvokeName,
     conn: BrokerConnection,
   ): Promise<ProtocolMethods['command.invoke']['result']> {
-    if (!isWorkshopEditorInvokeName(name)) {
+    const resolved = resolveWorkshopEditorCommand(name)
+    if (!resolved) {
       throw protocolError('E_FORBIDDEN', `E_COMMAND_NOT_ALLOWED: 未授权编辑命令 ${String(name)}`, {
         name,
-        whitelist: [...WORKSHOP_EDITOR_COMMAND_WHITELIST],
+        protocolNames: [...WORKSHOP_EDITOR_PROTOCOL_NAMES],
       })
     }
     if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
@@ -349,18 +414,22 @@ export class ProductBrokerBackend implements BrokerBackend {
     }
     const executor = getWorkshopEditorExecutor()
     if (!executor) {
-      throw protocolError('E_INTERNAL', 'E_EDITOR_NOT_READY: 编辑器未就绪（主窗口 EditorArea 未挂载）', { name })
+      throw protocolError('E_INTERNAL', 'E_EDITOR_NOT_READY: 编辑器未就绪（主窗口 EditorArea 未挂载）', {
+        name,
+        protocolName: resolved.protocolName,
+      })
     }
-    const command = name.slice('editor.'.length)
     let result: WorkshopEditorExecutorResult
     try {
-      result = executor.execute(command)
+      // 协议名（kebab/legacy）→ 内部执行键（EditorArea 白名单映射）
+      result = executor.execute(resolved.command)
     } catch (e) {
       throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${String((e as Error)?.message ?? e)}`, { name })
     }
     if (!result || result.ok !== true) {
       throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${result?.error ?? '执行器未返回成功'}`, { name })
     }
+    // 契约形状保持 {ok,value:{name,executed}}（回显 guest 请求的原始协议名；映射细节不扩返回面）
     return { ok: true, value: { name, executed: true } }
   }
 

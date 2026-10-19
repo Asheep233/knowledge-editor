@@ -5,14 +5,17 @@ import { Broker, type BrokerConnection } from '../../core/broker/broker'
 import { brokeredHandlers } from '../../core/broker/binding'
 import { GuestClient, HostDispatcher, ProtocolCallError, createInMemoryPorts } from '../../core/protocol/channel'
 import { resetPrintTokensForTests, lookupPrintToken } from '../../core/print/printTokenRegistry'
+import { validateManifest } from '../../core/packs/manifest'
 import type { PrintRenderer, PrintTransport } from '../../core/print/printJob'
 import {
   ProductBrokerBackend,
   WORKSHOP_EDITOR_COMMAND_WHITELIST,
+  WORKSHOP_EDITOR_PROTOCOL_NAMES,
   getWorkshopEditorExecutor,
   isWorkshopEditorInvokeName,
   normalizeGuestPrintRelPath,
   resetGuestContextBridgeForTests,
+  resolveWorkshopEditorCommand,
   type ProductBrokerBackendOptions,
 } from './productBrokerBackend'
 import { WORKSHOP_EDITOR_EXECUTORS, createWorkshopEditorExecutor } from '../layout/EditorArea'
@@ -652,5 +655,101 @@ describe('T26 F03 EditorArea 受控执行器（白名单映射/边角）', () =>
       ok: false,
       error: 'E_COMMAND_EXECUTION_FAILED',
     })
+  })
+})
+
+// ---------------- W07 task-27：kebab 协议名映射（manifest schema 可声明） ----------------
+
+describe('W07 task-27 editor.* 协议名（kebab）映射修复', () => {
+  afterEach(() => {
+    delete (window as unknown as { __KE_WORKSHOP_EDITOR__?: FakeExecutor }).__KE_WORKSHOP_EDITOR__
+  })
+
+  it('三 kebab 命令被接受并映射到正确执行器键（bulletList/orderedList/codeBlock）', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const cases: Array<[string, string]> = [
+      ['editor.bullet-list', 'bulletList'],
+      ['editor.ordered-list', 'orderedList'],
+      ['editor.code-block', 'codeBlock'],
+    ]
+    for (const [name] of cases) {
+      const result = await backend.invokeCommand({ name }, editorConn())
+      expect(result).toEqual({ ok: true, value: { name, executed: true } })
+    }
+    expect(executor.execute.mock.calls.map((call) => call[0])).toEqual(['bulletList', 'orderedList', 'codeBlock'])
+  })
+
+  it('14 条规范协议名全部合法（匹配 manifest.commands[].name 正则），且 kebab 三命令在列', () => {
+    expect(WORKSHOP_EDITOR_PROTOCOL_NAMES).toHaveLength(14)
+    for (const name of WORKSHOP_EDITOR_PROTOCOL_NAMES) {
+      expect(name).toMatch(/^[a-z][a-z0-9.-]{1,80}$/)
+    }
+    expect(WORKSHOP_EDITOR_PROTOCOL_NAMES).toEqual(
+      expect.arrayContaining(['editor.bullet-list', 'editor.ordered-list', 'editor.code-block']),
+    )
+    expect(WORKSHOP_EDITOR_PROTOCOL_NAMES).not.toContain('editor.bulletList')
+  })
+
+  it('manifest 校验：kebab 协议名可声明；camelCase 多词名被 schema 拒绝（修复动机）', () => {
+    const base = {
+      id: 'com.probe.t27',
+      name: 'T27 Pack',
+      version: '1.0.0',
+      apiVersion: 1,
+      capabilities: ['ui.shell', 'editor.commands.readonly'],
+      entry: { html: 'index.html' },
+      assets: [{ path: 'index.html', sha256: 'a'.repeat(64) }],
+    }
+    expect(() =>
+      validateManifest({ ...base, commands: [{ name: 'editor.bullet-list', handler: 'noop' }] }),
+    ).not.toThrow()
+    expect(() =>
+      validateManifest({ ...base, commands: [{ name: 'editor.bulletList', handler: 'noop' }] }),
+    ).toThrow(/非法命令名/)
+  })
+
+  it('旧 camelCase 兼容接受并正确映射（显式 legacy；manifest 不可声明）', async () => {
+    const resolved = resolveWorkshopEditorCommand('editor.bulletList')
+    expect(resolved).toEqual({ command: 'bulletList', protocolName: 'editor.bullet-list', legacy: true })
+    expect(isWorkshopEditorInvokeName('editor.bulletList')).toBe(true)
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const result = await backend.invokeCommand({ name: 'editor.bulletList' }, editorConn())
+    expect(result).toEqual({ ok: true, value: { name: 'editor.bulletList', executed: true } })
+    expect(executor.execute).toHaveBeenCalledWith('bulletList')
+  })
+
+  it('未知/非法 kebab 名 → E_COMMAND_NOT_ALLOWED（E_FORBIDDEN），执行器零调用', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    for (const name of ['editor.clear-content', 'editor.bulletlist', 'editor.bullet_list', 'editor.BOLD']) {
+      const err = await rejection(backend.invokeCommand({ name }, editorConn()))
+      expect(err.code).toBe('E_FORBIDDEN')
+      expect(String(err.message)).toContain('E_COMMAND_NOT_ALLOWED')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('kebab 命令能力缺失 → E_CAPABILITY，执行器零调用', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'editor.code-block' }, editorConn(['ui.shell'])))
+    expect(err.code).toBe('E_CAPABILITY')
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('真实 Broker 链路：manifest 声明 kebab 命令后可调用；未声明仍 E_FORBIDDEN', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const broker = new Broker(backend, {})
+    const declared = { ...editorConn(), declaredCommands: ['editor.bullet-list'] }
+    const result = await broker.handle('command.invoke', { name: 'editor.bullet-list' }, declared)
+    expect(result).toEqual({ ok: true, value: { name: 'editor.bullet-list', executed: true } })
+    expect(executor.execute).toHaveBeenCalledWith('bulletList')
+
+    const undeclared = { ...editorConn(), declaredCommands: [] as string[] }
+    const err = await rejection(broker.handle('command.invoke', { name: 'editor.ordered-list' }, undeclared))
+    expect(err.code).toBe('E_FORBIDDEN')
   })
 })

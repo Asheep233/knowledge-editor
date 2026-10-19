@@ -1,31 +1,34 @@
-# UI 工坊最终交接（最终交付状态 · 2026-10-19）
+# UI 工坊最终交接（最终交付状态 · 2026-10-19 末段收敛）
 
+> **最终状态一句话**：代码与真实产品 W 证据已收敛（frontend **143 files/1931 passed + 1 skipped**、
+> tsc 0；backend **847**；产品 cargo **67**；矩阵 **59 行 --check PASS**）；里程碑
+> **`EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节），**明确不声明** `IMPLEMENTED_WINDOWS_PENDING`
+> 完成态 / `LOCAL_WORKSHOP_RELEASE_CANDIDATE`（T27 I 门禁未执行、人工 IME/多 DPI 未做、F 覆盖部分、
+> W07 3 项已知限制）；**T26 任务级最终认证未达成**。分支 `feat/ui-workshop` **本地，未推送、未 Release**。
+>
 > 本文是 **UI 创意工坊任务的最终交付状态文档**。完整阶段记录见 `HANDOVER.md`（阶段快照，数字已过时）、
 > `reports/SESSION-FINAL-SUMMARY.md`；逐任务台账见 `progress.md`；里程碑判定见
 > `reports/milestone-assessment.md`；一页式状态表见 `reports/FINAL-DELIVERY-STATUS.md`。
-> **分支：`feat/ui-workshop`（本地分支，未推送、未发布 Release）。**
-> **项目里程碑：`EXPERIMENTAL_TRUSTED_PACKS`（ACCEPTANCE A 节口径）；不声明更高状态。**
-> **T26 任务级最终认证：未达成**（A1–A8 W 证据已齐，但仍缺人工真实 IME/多 DPI、T27 安装升级
-> I 门禁与 W 部分类别——详见 §3、§5）。
+> 整理前 HEAD = `0737e7f`；本文末尾「最终收敛」小节为本轮交付收口记录。
 
 ## 1. 代码与回归基线
 
-- 分支：`feat/ui-workshop`，基线 v1.2.18 `4c71233` + overlay `e54d37b`；交付整理提交见
-  `git log --oneline -1`（本文件所在提交）；
-- 最近一次全量回归（2026-10-19 交付整理时复跑/核对）：
+- 分支：`feat/ui-workshop`，基线 v1.2.18 `4c71233` + overlay `e54d37b`；本轮最终收敛前 HEAD =
+  `0737e7f`（交付收敛提交见 `git log --oneline -1`）；
+- 最近一次全量回归（2026-10-19 末段；本轮交付收敛时复核）：
 
 | 套件 | 结果 | 说明 |
 | --- | --- | --- |
 | frontend `tsc -b --noEmit` | **0 错** | WSL |
-| frontend `vitest run --maxWorkers=2` | **134 files / 1819 passed + 1 skipped** | WSL/happy-dom（U 级） |
-| backend `pytest backend/tests -q` | **847 collected / exit 0** | WSL；Windows Py3.10 曾全绿 |
-| 产品壳 `cargo test --release` | **50 passed** | Windows（Rust 单测） |
+| frontend `vitest run --maxWorkers=2` | **143 files / 1931 passed + 1 skipped** | WSL/happy-dom（U 级）；收敛时本地复跑确认 |
+| backend `pytest backend/tests -q` | **847 collected / exit 0** | WSL；收敛时本地复跑确认（Windows Py3.10 曾全绿） |
+| 产品壳 `cargo test --release` | **67 passed** | Windows（Rust 单测，引自 `P6-final-verification.md`；WSL 未复跑） |
 | 原型 W 探针一键门禁 | **13/13 PASS** | `run_all_w_probes.py --check`（Windows/WebView2） |
-| 平台验证矩阵 | **51 行**，`--check` **PASS**（含 T27 就绪检查 READINESS 行，显式 NOT_READY、非验收通过） | `build_validation_matrix.py --check` |
+| 平台验证矩阵 | **59 行**，`--check` **PASS**（44 个 results JSON 全覆盖；另含 F16 结构性审计 NOT_RUN 行、T27 就绪检查 READINESS 行，显式 NOT_READY、非验收通过；W07 boot/bridge 与 F 台账为 PASS_WITH_FINDINGS） | `build_validation_matrix.py --check` |
 
-> 核对口径：frontend（tsc 0、134 files/1819 passed + 1 skipped）与 backend（847 collected/exit 0）在
-> 交付整理时本地复跑确认；产品 cargo 50、原型 W 13/13 引自 `P6-final-verification.md` 与
-> `P5-T26-windows-witnesses.md`（Windows 侧本次交付整理未复跑，数字为最近一次记录）。
+> 核对口径：frontend（tsc 0、143 files/1931 passed + 1 skipped）与 backend（847 collected/exit 0）在
+> 本轮收敛时本地复跑确认；产品 cargo 67、原型 W 13/13 引自 `P6-final-verification.md` 与
+> `P5-T26-windows-witnesses.md`（Windows 侧本轮未复跑，数字为最近一次记录）。
 
 复现命令：
 
@@ -69,12 +72,15 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 | W01 ZIP 离线包 staging/安装/解压安全（zip-slip/条目数/总量防护） | **W 8/8**（I 门禁未做） | `P5-T26-W01-zip.md` |
 | W02 表单交接 title/tags：guest→Broker→宿主后端原子写 frontmatter；未知命令拒绝 | **W 8/8（title/tags 切片）** | `P5-T26-W02-form.md` |
 | W02 表单交接 Core 状态机（幂等/迟到/原子/失败可重试） | **U 6/6** | `P5-T26-W02-formhandoff.md` |
+| W02 停用后迟到请求/旧连接失效（重放验证，不落盘；注入方式如实标注） | **W 12/12** | `P5-T26-W02-form.md`（追加） |
 | W04 外部开发者路径：脚手架→外部签名→产品安装→启用（无需改宿主源码） | **W 7/7 + 脚手架自检 5/5** | `P5-T26-W04-sdk.md`、`W04-scaffold-selftest.json` |
 | W04 SDK 发布形态：独立 `docs/ui-workshop/sdk/` dist（iife+ESM）→ autoConnect 握手/真实 snapshot | **W 7/7 + SDK 自检 4/4** | `P5-T26-W04-sdk-dist.md` |
 | W05 产品 guest 协议线：Broker/Dispatcher↔SDK 握手 + context.snapshot | **W 7/7** | `P5-T26-W05-protocol.md` |
 | W06 guest 执行/网络边界：fetch 相对/loopback/外部阻断、worker 不执行、WS 不连接、越权 E_CAPABILITY | **W 8/8（功能级）** | `P5-T26-W06-boundary.md` |
 | W07 guest 无限循环故障：宿主不阻塞/心跳 suspended→failed+safeMode/停用持久化 | **W 8/8（无限循环类别）** | `P5-T26-W07-fault.md` |
 | W07 扩展故障类别：guest 内存压力（2048MB/宿主 IPC max 3.6ms/注入崩溃检出 1.0s）+ CPU 压力（≈0.80 core/长任务饥饿 1.6s 检出） | **W 21/21（内存 11/11 + CPU 10/10，部分）** | `P5-T26-W07-fault-mem.md` |
+| W07 boot crash/连续启动失败（v2 修复后复测：A2-10 孤儿自愈/B1-4 失败日志/B3-4 备份重置闭环） | **W 43/45 PASS_WITH_FINDINGS**（剩 B1-6/B2-5 运行期无自愈，已知设计限制） | `P5-T26-W07-fault-boot.md` |
+| W07 桥接超时/sidecar 故障/原生 Rust 恢复（v6 修复后复测：B-6/A-10/B-4/B-5/B-8/C1-4/C2-2/C3-5/C2-3 共 9 缺口闭环） | **W 45/46 PASS_WITH_FINDINGS**（剩 C2-7 no-fallback 不可自动修复，已知设计限制） | `P5-T26-W07-fault-bridge.md` |
 | W09 性能（工坊口径）：无双编辑器/无逐字符广播/无持续泄漏 | **W 6/6 PASS** | `P5-T26-W09-workshop.md` |
 | W09 大文档首开性能（产品既有 `@tiptap/markdown` 解析限制） | **记录 FAIL（已知限制，非工坊回归）** | `P5-T26-W09-perf.md`、`-diag`、`-plain` |
 | 原型壳 W 探针一键门禁（S1/S1b/S2/S4/T11/T13/T15/T18/T19×3/T20/T21） | **13/13 PASS** | `P5-T26-windows-witnesses.md` |
@@ -84,19 +90,37 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 | 检查 | 结果 | 证据 |
 | --- | --- | --- |
 | T27 安装/覆盖升级 I 门禁就绪 dry-run（只读，不安装） | **NOT_READY 6/8**：候选 1.2.18 安装包 + 28 个历史安装包 + NSIS 配置齐备；阻塞=未授权 `KE_T27_AUTHORIZED` + 未声明 `KE_T27_ISOLATED_ENV` | `P5-T26-W08-gate-prep.md`、`T27-gate-readiness.json` |
-| W08 覆盖升级/降级/兼容 I 证据 | **NOT_RUN** | 计划：`reports/T27-installer-upgrade-plan.md` |
+| W08 覆盖升级/降级/兼容 I 证据 | **NOT_RUN** | 计划/交接：`reports/T27-installer-upgrade-plan.md`、`T27-CLOUD-EXECUTION-HANDOFF.md`、`T27-I-GATE-RUNBOOK.md` |
+
+### 2.4 G / F 结构性缺口闭环与逐项台账（2026-10-19 后段）
+
+| 项 | 结果 | 证据 |
+| --- | --- | --- |
+| G1/G2 guest 内容读通道 + 真实写通道（context.write trusted/builtin，删除假桩；CAS 冲突） | **W 14/14 PASS** | `P5-T26-G1G2-content-io.md`、`T26-G1G2-results.json` |
+| G3/G4 print.snapshot 真实打印管线 + 宿主事件（document-saved/context-changed/theme-changed 到达 guest） | **U+W 18/18 PASS**（首轮 14/18 的 4 失败与修复如实记录） | `P5-T26-G3G4-print-events.md` |
+| G7 pack A/B 参考 UI（vendored 发布 SDK；A 侧栏读/打印/事件，B Dock 写/命令） | **W 24/24 PASS**（参考包≠F 逐项覆盖） | `P5-T26-G7-reference-packs.md`、`packs/pack-a`、`packs/pack-b` |
+| F03 官方 UI 快捷键/工具栏域（含产品 FINDING：Ctrl+Shift+B 引用快捷键被覆盖） | **42/42 全 PASS**（修复 `f4759a2` 后 W 复测 6/6） | `P5-T26-F-ledger.md`（v6）、`P5-T26-F03-fail-audit.md` |
+| F16 原生菜单结构审计（只读 `menu.rs` 11 项 MenuItem/加速键/事件分发） | **11/11 结构性审计（U/静态）；W/DOM NOT_RUN** | `P5-T26-F16-native-menu-audit.md` |
+| F01–F16 逐项台账（官方 UI + pack A/B 三路径） | checks **71/76**；CSV **130 行**：官方 UI **60 PASS / 0 FAIL / 70 NOT_RUN**；F 台账自述登记 72/130（直核：含 PASS 行 61） | `P5-T26-F-ledger.md`、`feature-baseline.csv` |
+| F01–F16 guest 原生入口覆盖量化审计（静态 + U 复跑） | **未达成**：已实现 0 / 部分 3 / 未实现 13；`packAEntry`/`packBEntry` 大量 NOT_RUN（能力面不可达，如实登记） | `reports/F01-F16-COVERAGE.md` |
 
 ## 3. 里程碑判定（ACCEPTANCE A 节）
 
 - **当前里程碑：`EXPERIMENTAL_TRUSTED_PACKS`**（受信实验包可用；隔离、离线限制或恢复仍有未通过项）。
   判定依据：只允许受信包（信任等级强制/验签/撤销/TrustStore/信任 UI 已有产品 W 证据）；隔离
   （独立 origin 成立但 `__TAURI_INTERNALS__` 可见、invoke 实测 timeout → 残余风险）；离线
-  （ZIP 离线包功能级 W，但更深攻击面与 I 门禁未做）；恢复（启动 recover/safeMode 产品 W，但
-  W03/W07 I 恢复门禁未做）。
-- **不声明**：`IMPLEMENTED_WINDOWS_PENDING` 完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`。
+  （ZIP 离线包功能级 W，但更深攻击面与 I 门禁未做）；恢复（启动 recover/safeMode 与 W07 故障恢复
+  已有多类 W 证据，但 W03/W07 的 I 恢复门禁未做，且 W07 有 3 项已知限制）。
+- **明确不声明**：`IMPLEMENTED_WINDOWS_PENDING` 完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`。理由：
+  ① **T27 安装/覆盖升级/回滚 I 门禁未执行**（就绪检查 NOT_READY 6/8，云端执行材料已备、待授权）；
+  ② **人工真实系统 IME / 多 DPI 未做**（CDP/WebView2 渲染层 W 7/7 不能替代人工实测）；
+  ③ **F01–F16 覆盖部分**（官方 UI 逐项台账 60 PASS/0 FAIL/70 NOT_RUN；guest 原生入口覆盖未达成）；
+  ④ **W07 3 项已定稿已知限制**（C2-7、B1-6、B2-5，需卸载/重启恢复，不计划修复）。
 - **T26 任务级最终认证：未达成**。A1–A8 已有真实产品壳 W 证据（见 §2.1），但 T26 完成定义还要求
   人工真实 IME/多 DPI、T27 安装升级/回滚演练、W 门禁全部通过；当前这些未完成（见 §5）。
-- 完整逐项核对：`reports/milestone-assessment.md`（W07 行含扩展探针进展）。
+- W07 已达到「覆盖 4 类故障（无限循环/内存/CPU/boot/bridge，其中 boot/bridge 为 PASS_WITH_FINDINGS）」
+  的程度，但按如实口径仍为**部分通过**（3 项已知限制 + I 门禁未做）。
+- 完整逐项核对：`reports/milestone-assessment.md`（W07 行含全部扩展探针结果）。
 
 ## 4. 残余风险（必须随交付说明）
 
@@ -105,33 +129,36 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
    实现细节，Tauri/WebView2 升级可能改变行为。已实现 guest 自检上报 + 宿主残余风险提示；
    Tauri 升级后必须复跑 `run_t26_guest_isolation_probe.py`。见 ADR-004、`P5-T26-A7-isolation.md`；
 2. **人工真实系统 IME/多 DPI 未验证**：CDP/WebView2 渲染层路径已过 W 7/7，但不能替代人工输入法
-   与多显示器实测；
-3. **安装/覆盖升级/回滚 I 证据未执行**：T27 就绪检查 NOT_READY（待主理人授权 + 专用隔离环境）；
-   W08/W01 I 门禁仍 NOT_RUN；
-4. **W 部分类别**：W02 剩余（公式/重命名草稿、迟到命令、候选启动失败、提交后 UI 同步、IME 交接）、
+   与多显示器实测（清单 `reports/MANUAL-IME-DPI-CHECKLIST.md` 待主理人执行）；
+3. **安装/覆盖升级/回滚 I 证据未执行**：T27 就绪检查 NOT_READY（待主理人授权 + 专用隔离环境/云端
+   VM）；W08/W01 I 门禁仍 NOT_RUN；云端执行单与产物清单已备；
+4. **W07 已知设计限制 3 项**：C2-7（corrupt-no-fallback 不自动修复，避免危及用户数据）、B1-6/B2-5
+   （资源恢复后运行期不自动重试，需重启应用，重启可恢复）；均已定稿、行为诚实可观测；
+5. **F01–F16 覆盖部分**：官方 UI 台账 60 PASS/0 FAIL/70 NOT_RUN；F03 42/42 全 PASS、F16 仅结构性审计、
+   F14 最终导出 Documents 未执行；guest 原生入口整体覆盖未达成（静态审计 0 已实现/3 部分/13 未实现）；
+6. **W 部分类别**：W02 剩余（公式/重命名草稿、候选启动失败、提交后 UI 同步、IME 交接）、
    W05 剩余（subscribe/断连重放/慢包/超时）、W06 剩余（导航/下载/伪造消息系统化、loopback 白名单、
-   Tauri 升级回归）、W07 剩余（boot crash、桥接超时、连续启动失败、原生 Rust 恢复、I 门禁；
-   内存场景崩溃为 CDP `Page.crash` 注入、非自然 OOM，2GB 压力上限受同机安全约束）；
-5. **W09 大文档首开慢**：产品既有 `@tiptap/markdown` 解析超线性限制（非工坊回归），需产品性能优化；
-6. **SDK 正式发布流程缺失**：SDK 以仓库内 dist 形态提供（iife/ESM，`private:true`），npm/tgz
-   发布流程、文档站、示例集、发布密钥分发规范未做；
-7. **无正式发布密钥流程**：ADR-003 实施清单未执行（当前使用测试密钥/信任根）。
+   Tauri 升级回归）、W09 全量预算复跑；
+7. **W09 大文档首开慢**：产品既有 `@tiptap/markdown` 解析超线性限制（非工坊回归），需产品性能优化；
+8. **SDK 正式发布流程缺失 / 无正式发布密钥流程**：SDK 以仓库内 dist 形态提供（iife/ESM，`private:true`），
+   npm/tgz 发布流程、文档站/示例集、发布密钥分发规范未做；ADR-003 实施清单未执行（当前为测试密钥/信任根）。
 
 ## 5. NOT_RUN / 未完成清单（阻止更高状态）
 
 | 门禁 | 状态 | 说明 |
 | --- | --- | --- |
-| 人工真实系统 IME / 多 DPI | **NOT_RUN** | 需人工中文输入法与多显示器实测 |
-| W08 覆盖升级/降级/兼容（I 证据） | **NOT_RUN**（就绪检查 NOT_READY 6/8） | `reports/T27-installer-upgrade-plan.md`；需授权 + 专用环境 |
-| W03 包与私有状态回滚（I 门禁） | **NOT_RUN** | Core 有 store/recover（U 级）；I 门禁未做 |
+| T27 安装/覆盖升级/降级/回滚/卸载 I 门禁（W08/W03/W01 I） | **NOT_RUN**（就绪检查 NOT_READY 6/8） | 材料齐备：`reports/T27-CLOUD-EXECUTION-HANDOFF.md`（云端 Codex 执行单）、`T27-I-GATE-RUNBOOK.md`、`T27-ARTIFACTS.md`（28 个安装包 sha256）；阻塞=授权 + 隔离环境 |
+| 人工真实系统 IME / 多 DPI | **NOT_RUN** | 需人工中文输入法与多显示器实测；清单 `reports/MANUAL-IME-DPI-CHECKLIST.md` |
 | W01 I 门禁 / 更深 zip 攻击面 | **部分** | U+W 8/8；I 未执行；zip bomb 深层/嵌套未覆盖 |
-| W02 表单交接完整语义 | **部分** | title/tags W 8/8；公式/重命名草稿、迟到命令、候选启动失败、UI 同步、IME 交接未做 |
-| W04 外部开发者完整路径 | **部分** | 脚手架/签名/安装/启用 W 7/7 + SDK 发布形态 W 7/7 + 自检；npm/tgz 发布流程、文档站/示例集、第二套 UI 全任务未做 |
+| W02 表单交接完整语义 | **部分** | title/tags W 8/8 + 迟到请求/旧连接 W 12/12；公式/重命名草稿、候选启动失败、UI 同步、IME 交接未做 |
+| W04 外部开发者完整路径 | **部分** | 外部路径 W 7/7 + SDK 发布形态 W 7/7 + 自检；npm/tgz 发布流程、文档站/示例集、第二套 UI 全任务未做 |
 | W05 协议完整语义 | **部分** | 握手+snapshot W 7/7；subscribe/断连重放/慢包/超时 queryResult 未做 |
 | W06 边界完整覆盖 | **部分** | 网络/worker/WS/越权功能级 W 8/8；导航/下载/伪造消息系统化、loopback 白名单、Tauri 升级回归未做 |
-| W07 全部故障类别 | **部分** | 无限循环 W 8/8 + 内存压力 W 11/11 + CPU 压力 W 10/10；boot crash、桥接超时、连续启动失败、原生 Rust 恢复、I 门禁未做；自然 OOM 未触发（崩溃为 CDP 注入） |
+| W07 全部故障类别 | **部分（PASS_WITH_FINDINGS）** | 无限循环 W 8/8 + 内存 W 11/11 + CPU W 10/10 + boot **43/45** + bridge **45/46**；剩 C2-7/B1-6/B2-5 三项已知设计限制；自然 OOM 未触发（CDP 注入） |
 | W09 全量性能预算 | **部分（工坊口径 PASS）** | 工坊硬指标 W 6/6 PASS；大文档首开为产品既有性能限制，优化后需复跑 |
-| F01–F16 全功能基线逐项 guest 覆盖 | **部分** | 官方 UI 基线回归绿；guest 入口全任务覆盖未逐项验证 |
+| F14 最终导出 PDF 落 Documents | **NOT_RUN** | 对话框/A4 预览 PASS；`%USERPROFILE%` 覆盖会破坏 CDP 隔离；隔离 TEMP 的 preview_pdf 真实 PDF 为补充证据（不冒充最终导出） |
+| F16 OS 级原生菜单交互 | **NOT_RUN** | 仅 `menu.rs` 11 项结构性审计（U/静态）；原生菜单非 DOM，CDP 无法真实点击 |
+| F01–F16 guest 原生入口整体覆盖 | **部分/未达成** | 官方 UI 60 PASS/70 NOT_RUN；静态审计 0 已实现/3 部分/13 未实现（`reports/F01-F16-COVERAGE.md`） |
 | 正式发布密钥流程 | **NOT_RUN** | ADR-003 实施清单未执行 |
 
 ## 6. 事故与红线记录（必须披露）
@@ -153,30 +180,44 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 | 文档 | 用途 |
 | --- | --- |
 | `HANDOVER-FINAL.md`（本文） | 最终交付状态（基线/W 证据索引/里程碑/风险/NOT_RUN/事故） |
-| `reports/FINAL-DELIVERY-STATUS.md` | 一页式交付状态（已通过/部分/未通过 + 下一步） |
+| `reports/FINAL-DELIVERY-STATUS.md` | 一页式交付状态（已通过/部分/未通过 + 待主理人项） |
 | `reports/milestone-assessment.md` | 里程碑逐项判定（ACCEPTANCE A 节） |
 | `reports/T26-acceptance-status.md` | Windows 阶段验收状态（逐场景 + 未完成项 + 事故） |
+| `reports/F01-F16-COVERAGE.md` | F01–F16 guest 原生入口覆盖量化审计（0/3/13） |
 | `reports/T27-installer-upgrade-plan.md` | 安装/覆盖升级 I 门禁执行计划（待授权） |
-| `validation-matrix.csv` + `tools/build_validation_matrix.py` | 平台验证矩阵（自动生成 + `--check` 门禁） |
+| `reports/T27-I-GATE-RUNBOOK.md` | T27 I 门禁逐步执行手册（待授权 + 专用 VM） |
+| `reports/T27-CLOUD-EXECUTION-HANDOFF.md` | T27 云端 Codex 执行交接单（VM 由主理人安排） |
+| `reports/T27-ARTIFACTS.md` | 28 个安装包清单/sha256（候选 1.2.18） |
+| `reports/MANUAL-IME-DPI-CHECKLIST.md` | 人工真实 IME/多 DPI 验收清单与记录模板 |
+| `validation-matrix.csv` + `tools/build_validation_matrix.py` | 平台验证矩阵（59 行，自动生成 + `--check` 门禁） |
+| `feature-baseline.csv` | F01–F16 逐项台账（130 行） |
 | `progress.md` | 逐任务台账（含历史表述与修正记录） |
-| `evidence/` | 全部证据（results JSON + 证据 md） |
+| `evidence/` | 全部证据（44 个 results JSON + 证据 md） |
 | `adr/ADR-000..004` | 基线/运行域/保存接线/签名密钥/包宿主决策 |
 | `HANDOVER.md`、`reports/SESSION-FINAL-SUMMARY.md` | **阶段快照（数字过时，仅作历史）**，以本文为准 |
 
-**一致性修正记录**（交付整理时发现并修正）：
+**一致性修正记录**（交付整理/最终收敛时发现并修正）：
 1. `reports/T26-acceptance-status.md` 旧第 4 节「项目级 P0_READY、不得使用 EXPERIMENTAL_TRUSTED_PACKS」
    与里程碑评估/ACCEPTANCE A 节冲突 → 已按证据修正为 `EXPERIMENTAL_TRUSTED_PACKS`；
 2. 旧 A7 隔离核对数字 5/5 → 证据为 **6/6**（`P5-T26-A7-isolation-results.json`），已更正；
-3. 矩阵基线 cargo 38 → **50**、工坊 UI 单测 18 → **19**（最新回归证据 + 本地复跑核对）；
-4. W09 三份大文档性能结果保持 **KNOWN_FAIL（已知限制）**，未改写为通过。
+3. 矩阵基线 cargo 38 → **50 → 67**、工坊 UI 单测 18 → **63**（最新回归证据 + 本地复跑核对）；
+4. W09 三份大文档性能结果保持 **KNOWN_FAIL（已知限制）**，未改写为通过；
+5. 矩阵 51 → **59 行**：W07 boot/bridge 与 F 台账改为 `PASS_WITH_FINDINGS` 显式缺口口径（2/1/5），
+   未按 FAIL 阻断、也未写成全通过；补齐 bridge/F-ledger META（此前为 `?/U?` 行）；
+6. F03 台账由 v4「37 PASS/5 FAIL」→ 根因审计 v5（4 项自动化限制改判）→ **v6 blockquote 产品缺陷
+   修复后 42/42 全 PASS**；旧文中的 5 FAIL 已按证据更新，未删除审计历史；
+7. T26/FINAL 旧文「T27 就绪检查」保持 NOT_READY 6/8（非 I 通过），未因文档收敛改写状态。
 
 ## 8. 下一步建议（按优先级）
 
-1. **T27 I 门禁**（获得主理人授权 + 专用隔离环境后）：覆盖升级/降级/回滚/中断演练 → 更新 W08/W03/W01 I 状态；
-2. **人工真实 IME / 多 DPI** 实测；
-3. **W02/W05/W06/W07 剩余类别**：表单完整交接、协议 subscribe/断连、边界系统验证、CPU/内存/boot crash 故障类别；
-4. **SDK 正式发布**：npm/tgz 发布流程、文档站/示例集、发布密钥分发规范；
-5. **W09 产品性能优化**（大文档首开 `@tiptap/markdown` 解析）后复跑全量 W09；
+1. **T27 I 门禁（最高优先）**：主理人授权 + 云端/专用隔离 VM，按 `T27-I-GATE-RUNBOOK.md` 执行
+   U1–U6 → 产出 I 证据（`T27-I-results.json` + 证据 md）→ 更新 W08/W03/W01 I 状态与里程碑；
+2. **人工真实 IME / 多 DPI**：按 `MANUAL-IME-DPI-CHECKLIST.md` 在本机隔离环境执行并截图登记；
+3. **F01–F16 覆盖补强**：以 G7 参考包为载体，逐项登记 `packAEntry`/`packBEntry`（当前 70 行 NOT_RUN）；
+   补 F14 最终导出（隔离环境）与 F16 OS 级菜单交互（非 DOM 自动化或 Rust 集成测试）；
+4. **W02/W04/W05/W06/W09 剩余类别**：表单完整交接、SDK npm/tgz 正式发布、协议 subscribe/断连、
+   边界系统化、全量性能预算复跑；
+5. **W07 剩余 3 项已知限制**按产品决策评估是否提供「引导卸载/重装」等增强（当前不含自动修复）；
 6. **正式发布密钥流程**（ADR-003 实施清单）与 Tauri 升级回归；
 7. 全部完成并复评 T26 认证后，才可评估 `LOCAL_WORKSHOP_RELEASE_CANDIDATE`；发布/推送需主理人明确授权。
 
@@ -340,3 +381,32 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   工具栏「引用」不变、引用块内 atom 后空行 Backspace 不回归、Ctrl+B/I 与撤销重做正常。
 - **F03 台账 42/42 全 PASS（0 FAIL）**；官方 UI 累计 60 PASS / 0 FAIL / 70 NOT_RUN；原 v5 唯一
   PRODUCT_FINDING 闭环。证据 `P5-T26-F03-fail-audit.md`（修后复测段）、F 报告附录 I。
+
+## 最终收敛（2026-10-19 末段 · 交付文档收口）
+
+> 本节为最终交付状态收口记录；历史追加段保留原样（按时间顺序，各段数字为当时状态）。
+
+- **代码/回归基线（复核值）**：frontend **143 files / 1931 passed + 1 skipped**、tsc 0（本轮收敛本地复跑）；
+  backend **847 collected / exit 0**（本轮收敛本地复跑）；产品 cargo **67 passed**（引自
+  `P6-final-verification.md`，Windows 侧未复跑）；原型 W **13/13**；验证矩阵 **59 行 --check PASS**
+  （44 个 results JSON 全部纳入；bridge/F-ledger META 已补齐；W07 boot/bridge/F 台账为 PASS_WITH_FINDINGS）。
+- **W 证据最终统计**：A1 7/7、A2 9/9、A3 9/9、A4+A6 16/16、A5 11/11、A7+A5 11/11、A7 隔离 6/6、A8 9/9、
+  IME/DPI 7/7；W01 8/8、W02 8/8+12/12、W04 7/7+SDK 7/7、W05 7/7、W06 8/8、W07 无限循环 8/8 +
+  内存/CPU 21/21 + boot **43/45** + bridge **45/46**、W09 工坊口径 6/6；G1/G2 14/14、G3/G4 18/18、
+  G7 24/24；F03 **42/42 全 PASS**；原型 W 13/13。
+- **F 台账最终口径**：checks 71/76；CSV 130 行（官方 UI **60 PASS / 0 FAIL / 70 NOT_RUN**；F 台账自述
+  登记 72/130，直核含 PASS 行 61）；F16 原生菜单 11/11 **结构性审计**（W NOT_RUN）；F14 最终导出
+  Documents **NOT_RUN**（隔离限制）；guest 原生入口整体覆盖仍未达成（静态审计 0 已实现/3 部分/13 未实现）。
+- **已知限制定稿**：W07 C2-7（corrupt-no-fallback 不自动修复）、B1-6/B2-5（运行期无自愈，需重启；
+  重启可恢复）——均记录为已知设计限制，不宣称 W07 全通过。
+- **里程碑/认证口径**：`EXPERIMENTAL_TRUSTED_PACKS`；不声明 `IMPLEMENTED_WINDOWS_PENDING` 完成态 /
+  `LOCAL_WORKSHOP_RELEASE_CANDIDATE`；T26 任务级最终认证**未达成**（T27 I 门禁未执行、人工 IME/多 DPI
+  未做、F 覆盖部分、W07 3 项已知限制）。
+- **待主理人**：T27 云端 Codex 执行（`reports/T27-CLOUD-EXECUTION-HANDOFF.md` + `T27-I-GATE-RUNBOOK.md`
+  + `T27-ARTIFACTS.md`；需授权 + 隔离 VM）与人工 IME/多 DPI（`reports/MANUAL-IME-DPI-CHECKLIST.md`）。
+- **约束**：分支本地未推送/未 Release；未改产品语义（blockquote 修复为审计确认的真实缺陷）；未触碰
+  用户 App；全部测试在隔离构建/隔离数据目录执行；事故（两次误杀用户 App、早期只读显示用户工作区）
+  已披露并写入红线。
+- **本文与** `reports/FINAL-DELIVERY-STATUS.md`、`reports/milestone-assessment.md`、
+  `reports/T26-acceptance-status.md`、`validation-matrix.csv` **数字口径一致**；矛盾处以证据/
+  `P6-final-verification.md` 与矩阵为准。

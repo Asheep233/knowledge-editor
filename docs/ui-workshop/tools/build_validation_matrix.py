@@ -16,11 +16,11 @@ EVID = ROOT / "docs" / "ui-workshop" / "evidence"
 OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 
 # 已知失败（已记录的风险，不是回归）：矩阵中标注 KNOWN_FAIL，不参与 --check 门禁
-# 部分通过但缺口已逐条记录（PASS_WITH_FINDINGS，不等同 FAIL、也不等同全通过）
-PARTIAL_EVIDENCE = {
-    "T26-W07-boot-results.json": 2,
-    "T26-W07-bridge-results.json": 1,
-    "T26-F-ledger-results.json": 5,  # 历史 v4 checks 的 5 项失败已经 v5 审计改判(PASS)/v6 修复(blockquote)，保留原始 checks 历史
+# 部分通过（PASS_WITH_FINDINGS）：不是 FAIL，但也不等同全通过；结果列显式写明剩余缺口/口径
+STATUS_OVERRIDES = {
+    "T26-W07-boot-results.json": "PASS_WITH_FINDINGS(2 缺口：B1-6/B2-5 已知设计限制，重启可恢复)",
+    "T26-W07-bridge-results.json": "PASS_WITH_FINDINGS(1 缺口：C2-7 no-fallback 不自动修复，已知设计限制)",
+    "T26-F-ledger-results.json": "PASS_WITH_FINDINGS(checks 71/76；F03 42/42 全 PASS/F16 结构性审计/F14 导出 Documents 见台账)",
 }
 
 KNOWN_FAILURES = {
@@ -76,9 +76,11 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T26-W04-sdk-dist-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，发布形态 SDK 握手/snapshot）", "python tools/run_t26_w04_sdk_probe.py"),
     "T26-W02-form-results.json": ("T26/W02", "W", "Windows 产品壳（隔离构建，表单交接 title/tags）", "python tools/run_t26_form_probe.py"),
     "T26-G7-reference-packs-results.json": ("T26/G7", "W", "Windows 产品壳（隔离构建，pack A/B 参考 UI + SDK）", "python tools/run_reference_packs_probe.py"),
+    "T26-F-ledger-results.json": ("T26/F01-F16", "W+U（官方 UI CDP + pack A/B 参考包 + 台账）", "Windows 产品壳（隔离构建，F01–F16 逐项台账）", "python tools/run_feature_entry_probe.py"),
     "T26-G3G4-results.json": ("T26/G3G4", "W", "Windows 产品壳（隔离构建，真实打印 + 宿主事件）", "python tools/run_t26_guest_g3g4_probe.py"),
     "T26-G1G2-results.json": ("T26/G1G2", "W", "Windows 产品壳（隔离构建，guest 内容读/真实写）", "python tools/run_t26_guest_io_probe.py"),
-    "T26-W07-boot-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，boot crash/连续启动失败；含 4 缺口）", "python tools/run_t26_boot_crash_probe.py"),
+    "T26-W07-boot-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，boot crash/连续启动失败；剩 B1-6/B2-5 缺口）", "python tools/run_t26_boot_crash_probe.py"),
+    "T26-W07-bridge-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，桥接超时/sidecar 故障/原生恢复；剩 C2-7 缺口）", "python tools/run_t26_w07_bridge_probe.py"),
     "T26-W05-protocol-results.json": ("T26/W05", "W", "Windows 产品壳（隔离构建，协议线握手/snapshot）", "python tools/run_t26_protocol_probe.py"),
     "T26-W06-boundary-results.json": ("T26/W06", "W", "Windows 产品壳（隔离构建，网络/worker/能力边界）", "python tools/run_t26_boundary_probe.py"),
     "T26-W07-fault-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，无限循环故障）", "python tools/run_t26_fault_probe.py"),
@@ -94,13 +96,12 @@ META: dict[str, tuple[str, str, str, str]] = {
 # 代码回归基线（由工具链产出，人工记录；更新时同步改这里）
 BASELINE_ROWS = [
     ("frontend: Core session 单测", "P1/P2", "U", "Linux WSL（happy-dom）", "PASS", "48", "48", "cd frontend && npx vitest run src/core/session"),
-    ("frontend: Core protocol 单测", "P1", "U", "Linux WSL", "PASS", "18", "18", "cd frontend && npx vitest run src/core/protocol"),
+    ("frontend: Core protocol 单测", "P1", "U", "Linux WSL", "PASS", "19", "19", "cd frontend && npx vitest run src/core/protocol"),
     ("frontend: Core broker 单测", "P1", "U", "Linux WSL", "PASS", "20", "20", "cd frontend && npx vitest run src/core/broker"),
     ("frontend: Core packs 单测", "P2/P4", "U", "Linux WSL", "PASS", "119", "119", "cd frontend && npx vitest run src/core/packs"),
     ("frontend: 运行时健康 banner 单测", "P3/T26", "U", "Linux WSL（happy-dom）", "PASS", "5", "5", "cd frontend && npx vitest run src/components/runtime"),
-    ("frontend: Core print 单测", "P2", "U", "Linux WSL", "PASS", "14", "14", "cd frontend && npx vitest run src/core/print"),
     ("frontend: 工坊 UI 单测", "P3/P4", "U", "Linux WSL（happy-dom）", "PASS", "63", "63", "cd frontend && npx vitest run src/components/workshop"),
-    ("frontend: Core print 单测", "P4/T16", "U", "Linux WSL", "PASS", "36", "36", "cd frontend && npx vitest run src/core/print"),
+    ("frontend: Core print 单测（P2–P4/T16 产品打印）", "P2/P4", "U", "Linux WSL", "PASS", "36", "36", "cd frontend && npx vitest run src/core/print"),
     ("frontend: tsc + vitest 全量", "P1–P4", "U", "Linux WSL（happy-dom 组件测试）", "PASS", "1931", "1932", "cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2"),
     ("backend: pytest 全量", "P1", "A", "Linux WSL + Windows Py3.10", "PASS", "847", "847", "python3 -m pytest backend/tests -q（Windows: CI venv）"),
     ("cargo: 产品壳单测", "P2–P4", "U", "Windows（Rust 单元测试）", "PASS", "67", "67", "cd desktop/src-tauri && cargo test --release"),
@@ -142,14 +143,16 @@ def main() -> int:
             # 已知 2 项失败是 S1 的「发现约束」（iframe 继承 Tauri globals / 同源可调用 cmd），
             # 不是回归；对应结论已写入 ADR-001 与 S1 证据文档。
             status = "PASS_WITH_FINDINGS(2)" 
-        if name in PARTIAL_EVIDENCE and status == "FAIL":
-            status = f"PASS_WITH_FINDINGS({PARTIAL_EVIDENCE[name]} 缺口已记录)"
+        if name in STATUS_OVERRIDES:
+            status = STATUS_OVERRIDES[name]
         if name in KNOWN_FAILURES and status == "FAIL":
             status = "KNOWN_FAIL(记录)"
         rows.append([name, meta[0], meta[1], meta[2], status, passed, total, meta[3] or ""])
     # S3/S5 双平台 pytest（evidence md 记录）
     rows.append(["P0-S3-prototype.md（pytest 10/10 双平台）", "T04", "A/U", "Linux WSL + Windows", "PASS", "10", "10", "pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py"])
     rows.append(["P0-S5-prototype.md（pytest 10/10 双平台）", "T06", "A/U", "Linux WSL + Windows", "PASS", "10", "10", "pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py"])
+    # md 证据行（无 results JSON）：F16 原生菜单为只读结构审计（U/静态），W/DOM 未覆盖 → 显式 NOT_RUN
+    rows.append(["P5-T26-F16-native-menu-audit.md（11/11 结构性审计；W/DOM 未覆盖）", "T26/F16", "U/静态（非 W）", "Windows 源码只读审计", "NOT_RUN(结构性审计 11/11；W 未覆盖)", "11", "11", "只读审计 desktop/src-tauri/src/menu.rs（见 evidence/P5-T26-F16-native-menu-audit.md）"])
     # 非验收就绪检查（显式 READINESS；不算验收通过，不计入验收 PASS 数）
     for name, (task, kind, platform, reproduce, result) in sorted(READINESS_EVIDENCE.items()):
         path = EVID / name

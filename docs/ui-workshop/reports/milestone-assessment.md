@@ -1,8 +1,13 @@
 # UI 工坊里程碑评估（按 ACCEPTANCE.md A 节口径）
 
-- 日期：2026-10-19 · 代码基线：分支 `feat/ui-workshop`（本地，未推送/未 Release）
+- 日期：2026-10-19（末段收敛） · 代码基线：分支 `feat/ui-workshop`（本地，未推送/未 Release；收敛前 HEAD `0737e7f`）
 - 结论：**`EXPERIMENTAL_TRUSTED_PACKS`**（受信实验包可用；隔离/离线/恢复仍有未通过项与残余风险）
-- 明确**不**声明：`IMPLEMENTED_WINDOWS_PENDING` 已完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`
+- 明确**不**声明：`IMPLEMENTED_WINDOWS_PENDING` 已完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`。
+  理由：① T27 安装/覆盖升级/回滚 I 门禁未执行（就绪检查 NOT_READY 6/8）；② 人工真实 IME/多 DPI 未做；
+  ③ F01–F16 覆盖部分（官方 UI 60 PASS/70 NOT_RUN；guest 原生入口未达成）；④ W07 3 项已知设计限制
+  （C2-7、B1-6、B2-5）。
+- 回归基线（收敛复核）：frontend **143 files/1931 passed+1 skipped**（tsc 0）、backend **847**、
+  产品 cargo **67**、原型 W **13/13**、验证矩阵 **59 行 --check PASS**。
 
 ## 1. 判定依据
 
@@ -32,7 +37,7 @@ ACCEPTANCE A 节：
 | 打印（隐藏 renderer） | ✅ 产品 W 9/9 | `P5-T26-A2-print` |
 | 启动 recover/safeMode | ✅ 产品 W 9/9 | `P5-T26-A3-recover` |
 | IME/DPI（自动化路径） | ✅ 产品 W 7/7（人工真实 IME 未做） | `P5-T26-ime-dpi` |
-| 回归基线 | ✅ 前端 134 files/1819 passed+1 skipped（tsc 0）/后端 847/cargo 50/W 13/13 | `P6-final-verification`、`validation-matrix.csv` |
+| 回归基线 | ✅ 前端 143 files/1931 passed+1 skipped（tsc 0）/后端 847/cargo 67/W 13/13/矩阵 59 行 PASS | `P6-final-verification`、`validation-matrix.csv` |
 
 ## 2b. T26 真实产品壳 W 场景证据（汇总；逐项见 `reports/T26-acceptance-status.md`、`validation-matrix.csv`）
 
@@ -44,6 +49,13 @@ ACCEPTANCE A 节：
 | W02 表单交接（切片） | Core U 6/6 + 产品 title/tags W 8/8 | `P5-T26-W02-formhandoff`、`-W02-form` |
 | W04 外部开发者路径 + SDK 发布形态 | 外部路径 W 7/7 + SDK 发布形态 W 7/7（另脚手架自检 5/5、SDK 自检 4/4） | `P5-T26-W04-sdk`、`-W04-sdk-dist` |
 | W07 故障类别（部分） | 无限循环 W 8/8 + 内存压力 W 11/11 + CPU 压力 W 10/10 | `P5-T26-W07-fault`、`P5-T26-W07-fault-mem` |
+| W07 boot crash/连续启动失败（PASS_WITH_FINDINGS） | **W 43/45**（A2-10/B1-4/B3-4 已修复；剩 B1-6/B2-5 运行期无自愈=已知设计限制） | `P5-T26-W07-fault-boot` |
+| W07 桥接超时/sidecar 故障/原生恢复（PASS_WITH_FINDINGS） | **W 45/46**（9 缺口已闭环；剩 C2-7 no-fallback 不可自动修复=已知设计限制） | `P5-T26-W07-fault-bridge` |
+| G1/G2 guest 内容读 + 真实写通道 | W 14/14（context.write trusted/builtin，假桩删除，CAS 冲突） | `P5-T26-G1G2-content-io` |
+| G3/G4 print.snapshot 真实打印 + 宿主事件 | U+W 18/18（打印主线程阻塞→心跳放宽 8s 等限制见 §3d） | `P5-T26-G3G4-print-events` |
+| G7 pack A/B 参考 UI（SDK 读/写/打印/事件） | W 24/24（参考包≠F 逐项覆盖） | `P5-T26-G7-reference-packs` |
+| F03 官方 UI 快捷键/工具栏域 | **42/42 全 PASS**（blockquote 产品缺陷 `f4759a2` 修复后 W 复测 6/6） | `P5-T26-F-ledger`（v6）、`P5-T26-F03-fail-audit` |
+| F 台账 F01–F16 三路径逐项登记 | checks 71/76；CSV 130 行：官方 UI 60 PASS/0 FAIL/70 NOT_RUN；F16 结构性审计 W NOT_RUN；F14 导出 Documents NOT_RUN | `P5-T26-F-ledger`、`feature-baseline.csv` |
 | W09 性能（工坊口径） | W 6/6；大文档首开为产品既有解析限制（非工坊回归） | `P5-T26-W09-workshop`、`-W09-perf*` |
 | 原型壳 W 探针门禁 | 13/13 PASS | `P5-T26-windows-witnesses` |
 | T27/W08 I 门禁就绪检查 | **NOT_READY 6/8（非验收通过）**：产物齐备，阻塞=未授权 + 隔离环境未声明 | `P5-T26-W08-gate-prep`、`T27-gate-readiness.json` |
@@ -53,23 +65,25 @@ ACCEPTANCE A 节：
 | 门禁 | 状态 | 说明 |
 | --- | --- | --- |
 | 真实人工系统 IME / 多 DPI | NOT_RUN | 需人工中文输入法与多显示器实测 |
-| W08 覆盖升级/降级/兼容（I 证据） | NOT_RUN（就绪检查 NOT_READY 6/8） | 计划与产物已备：`T27-installer-upgrade-plan.md`；只读 dry-run 6/8（候选 1.2.18 安装包 + 28 个历史安装包 + NSIS 齐备；阻塞=未授权 `KE_T27_AUTHORIZED` + 未声明 `KE_T27_ISOLATED_ENV`），见 `P5-T26-W08-gate-prep.md`/`T27-gate-readiness.json`，**非 I 通过** |
+| W08 覆盖升级/降级/兼容（I 证据） | NOT_RUN（就绪检查 NOT_READY 6/8） | 计划/执行材料已备：`T27-installer-upgrade-plan.md`、`T27-I-GATE-RUNBOOK.md`、`T27-CLOUD-EXECUTION-HANDOFF.md`、`T27-ARTIFACTS.md`（28 个安装包 sha256）；只读 dry-run 6/8（候选 1.2.18 安装包 + NSIS 齐备；阻塞=未授权 `KE_T27_AUTHORIZED` + 未声明 `KE_T27_ISOLATED_ENV`），**非 I 通过** |
 | W01 ZIP 离线包/ZIP bomb/多资源完整性 | 部分（U+W 8/8） | zip staging/安装/zip-slip/条目数/总量防护已实现并 W 验证；**I 门禁未执行**、更深炸弹/嵌套 zip 未覆盖 |
-| W02 表单交接（IME/title/tags/公式草稿跨 UI） | 部分（Core U 6/6 + 产品 title/tags W 8/8） | guest→Broker→宿主后端原子写 title+tags 已 W 验证；未知命令拒绝；**公式/重命名草稿、迟到命令、候选启动失败、提交后 UI 同步、IME 交接未做** |
+| W02 表单交接（IME/title/tags/公式草稿跨 UI） | 部分（Core U 6/6 + 产品 title/tags W 8/8 + 迟到请求/旧连接 W 12/12） | guest→Broker→宿主后端原子写 title+tags、停用后迟到请求/旧连接失效（重放验证不落盘）已 W 验证；**公式/重命名草稿、候选启动失败、提交后 UI 同步、IME 交接未做** |
 | W03 包与私有状态回滚 | NOT_RUN | Core 有 store/recover，U 级；I 门禁未做 |
 | W04 SDK 外部独立开发模板/CLI | 部分（外部路径 W 7/7 + SDK 发布形态 W 7/7 + 自检） | 已可外部生成/签名/安装/启用包（无需改宿主源码）；SDK 以仓库内 dist（iife+ESM）分发并提供 autoConnect 握手/snapshot；**npm/tgz 正式发布流程、文档站/示例集/调试工具、发布密钥分发、第二套 UI 全任务覆盖未做** |
 | W05 协议 snapshot/subscribe/断连重放 | 部分（握手+snapshot W 7/7） | 产品 host 真实 Broker/Dispatcher + SDK GuestClient 握手/snapshot 已验证；subscribe/断连/慢包/超时 queryResult 未做 |
 | W06 执行/网络边界（IPC/loopback/fetch/worker） | 部分（网络/worker/WS 功能级 W 8/8） | fetch 相对/loopback/外部、worker、WebSocket 均被阻断；越权方法 E_CAPABILITY；guest internals 自检上报；剩余：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归 |
-| W07 原生故障恢复（无限循环/CPU/内存/boot crash） | 部分（无限循环 W 8/8 + 内存压力 W 11/11 + CPU 压力 W 10/10） | 独立 renderer 故障均未阻塞宿主。内存：guest 分配 2048MB（0 失败），宿主 IPC max 3.6ms、renderer 工作集 +2057MB、心跳持续；renderer 崩溃（CDP Page.crash 注入，非自然 OOM）后 ≈1.0s 检出 suspended → failed + safeMode → 停用 stopped 持久化。CPU：40ms 分片满载 ≈0.80 core 未误判（心跳 +14、active）；2500ms 长任务饥饿 ≈1.6s 检出 suspended → failed + safeMode → stopped。证据 `P5-T26-W07-fault-mem.md`/`T26-W07-mem-results.json`；**boot crash/桥接超时/连续启动失败/原生 Rust 恢复/I 门禁未验证；自然 OOM 未触发（崩溃路径为注入），2GB 压力上限受同机安全约束** |
+| W07 原生故障恢复（无限循环/CPU/内存/boot crash/桥接） | 部分（PASS_WITH_FINDINGS：无限循环 8/8 + 内存 11/11 + CPU 10/10 + boot 43/45 + bridge 45/46） | 独立 renderer 故障均未阻塞宿主。无限循环/内存/CPU：心跳检测→suspended→failed+safeMode→停用持久化；内存渲染器崩溃为 CDP `Page.crash` 注入（非自然 OOM，2GB 上限受同机安全约束）。boot：A2-10 孤儿自愈/B1-4 失败日志/B3-4 备份重置已修复复测，剩 **B1-6/B2-5 运行期无自愈（需重启，已知设计限制）**。bridge：B-6/A-10/B-4/B-5/B-8/C1-4/C2-2/C3-5/C2-3 共 9 缺口闭环，剩 **C2-7 no-fallback 不可自动修复（已知设计限制）**。**I 门禁仍未做；不宣称 W07 全通过** |
 | W09 性能/资源预算 | 工坊口径 **PASS（W 6/6）**；产品大文档首开限制另记 | 无双编辑器/无逐字符广播（34 字符→1 次写）/8 次切换堆增 4.7MB；大文档首开慢为产品既有 @tiptap/markdown 解析限制（非工坊回归，见 `P5-T26-W09-workshop.md`/`-plain`） |
-| F01–F16 全功能基线逐项 guest 覆盖 | 部分 | 官方 UI 基线回归绿；**guest 入口全任务覆盖**未逐项验证 |
+| F01–F16 全功能基线逐项 guest 覆盖 | 部分/未达成 | 官方 UI 逐项台账 **60 PASS / 0 FAIL / 70 NOT_RUN**（F 台账 checks 71/76，CSV 130 行，72/130 登记口径见 F 台账）；F03 **42/42 全 PASS**；F16 仅结构性审计（W NOT_RUN）、F14 最终导出 Documents NOT_RUN；静态审计：guest 原生入口 **0 已实现/3 部分/13 未实现**（`reports/F01-F16-COVERAGE.md`） |
 | 正式发布密钥流程 | NOT_RUN | ADR-003 实施清单未执行（无正式密钥） |
 
 ## 4. 结论与建议
 
 - 当前如实状态：**`EXPERIMENTAL_TRUSTED_PACKS`**（受信实验包，范围受限；上述 NOT_RUN 明确列出）。
-- 进阶到 `LOCAL_WORKSHOP_RELEASE_CANDIDATE` 必须：完成 T27 I 门禁、W01/W02/W03/W04/W05/W06/W07/W09、
-  guest 原生入口全任务覆盖、正式密钥流程；且人工 IME/DPI 通过。
+- 明确**不**声明 `IMPLEMENTED_WINDOWS_PENDING` 完成态与 `LOCAL_WORKSHOP_RELEASE_CANDIDATE`：T27 I 门禁
+  未执行、人工 IME/多 DPI 未做、F 覆盖部分、W07 3 项已知限制。
+- 进阶到 `LOCAL_WORKSHOP_RELEASE_CANDIDATE` 必须：完成 T27 I 门禁、W01/W02/W03/W04/W05/W06/W07/W09
+  剩余类别、F01–F16 guest 原生入口覆盖、正式密钥流程；且人工 IME/DPI 通过。
 - 本评估不改变分支本地/不发布约束；后续每项补完须附证据并更新本文件。
 
 ## 3c. G1/G2 结构性缺口闭环（2026-10-19）
@@ -118,7 +132,8 @@ ACCEPTANCE A 节：
 - 探针 `run_feature_entry_probe.py`（官方 CDP + guest OOPIF 真实 DOM）；**v4 checks 71/76 PASS**（5 FAIL 如实）
   （v1 37/40 的 3 个失败根因 = 探针 `dismiss_overlays()` 误关工坊面板，修复后全绿；document-saved
   使用产品真实 window 事件入口并如实标注 eventMethod）。
-- 未覆盖（如实）：F14 官方导出落盘（仅验证到对话框入口）、F16 原生菜单（非 DOM）、F03 其余 35 行、
+- 未覆盖（如实）：F14 官方导出落盘（仅验证到对话框入口）、F16 原生菜单（非 DOM）、F03 其余 35 行
+  （后续 v6 已补齐并全 PASS，见 §3h）、
   F01/F03/F04/F05/F09/F11/F13/F16 的 pack 路径（协议无对应方法，能力面 NOT_RUN）。
 - 参考包≠逐项通过：登记口径为「真实执行过的行」，未执行不伪造；F01–F16 整体仍未达成。
 
@@ -131,3 +146,19 @@ ACCEPTANCE A 节：
   只返回 Backspace，丢弃上游 `Mod-Shift-b`（且 `editor/index.ts:158 blockquote:false` 关内置）→ Ctrl+Shift+B
   引用快捷键失效（工具栏按钮正常）。建议修复：合并 `this.parent?.()` 或显式绑定 `Mod-Shift-b`。
 - 证据：`evidence/P5-T26-F03-fail-audit.md`、`P5-T26-F-ledger.md` v5、F 报告附录 H。
+
+## 3h. 最终收敛：F03 修复闭环 + W07 缺口定稿 + 统计一致化（2026-10-19 末段）
+
+- **F03 PRODUCT_FINDING 闭环**：`f4759a2` 修复 `KeBlockJoin` 覆盖上游 `Mod-Shift-b` 的问题后，产品 W
+  复测 **6/6 PASS** → **F03 台账 42/42 全 PASS（0 FAIL）**；官方 UI 累计 60 PASS/0 FAIL/70 NOT_RUN。
+  证据：`P5-T26-F03-fail-audit.md`（修复后复测段）、`P5-T26-F-ledger.md` v6。
+- **W07 缺口定稿**：bridge 45/46（C2-7）、boot 43/45（B1-6/B2-5）——三项均定稿为**已知设计限制**
+  （卸载/重装安全路径、重启可恢复、失败可观测），不计划修复；不宣称 W07 全通过。
+- **T27 I 门禁**：就绪检查 NOT_READY 6/8；云端执行交接单/手册/产物 sha256 清单已备
+  （`T27-CLOUD-EXECUTION-HANDOFF.md`、`T27-I-GATE-RUNBOOK.md`、`T27-ARTIFACTS.md`），仍 **NOT_RUN**。
+- **矩阵/基线一致化**：`validation-matrix.csv` **59 行 --check PASS**（44 个 results JSON 全覆盖；
+  另含 F16 结构性审计 NOT_RUN 行；W07 boot/bridge/F 台账为 PASS_WITH_FINDINGS 显式缺口口径）；
+  frontend 143 files/1931 passed+1 skipped、backend 847、cargo 67。与 `HANDOVER-FINAL.md`、
+  `reports/FINAL-DELIVERY-STATUS.md`、`reports/T26-acceptance-status.md` 口径一致。
+- **最终待主理人**：T27 I 门禁（授权 + 隔离 VM）与人工 IME/多 DPI 验收（清单已给）；完成前不改变
+  `EXPERIMENTAL_TRUSTED_PACKS` 结论。

@@ -23,7 +23,7 @@ T26-A5-ui-results.json,T26/A5,W,Windows 产品壳（隔离构建，工坊信任 
 T26-A7-A5-guest-results.json,T26/A7+A5,W,Windows 产品壳（隔离构建，guest 宿主/能力上限/心跳崩溃/safeMode）,PASS,11,11,python tools/run_t26_guest_probe.py
 T26-A7-isolation-results.json,T26/A7,W,Windows 产品壳（隔离构建，guest origin/internals 自检/IPC 可达性）,PASS,6,6,python tools/run_t26_guest_isolation_probe.py
 T26-A8-save-results.json,T26/A8,W,Windows 产品壳（隔离构建，Core 保存 flag 产品 UI）,PASS,9,9,python tools/run_t26_save_probe.py
-T26-F-ledger-results.json,?,U?,?,PASS_WITH_FINDINGS(5 缺口已记录),71,76,
+T26-F-ledger-results.json,T26/F01-F16,W+U（官方 UI CDP + pack A/B 参考包 + 台账）,Windows 产品壳（隔离构建，F01–F16 逐项台账）,PASS_WITH_FINDINGS(checks 71/76；F03 42/42 全 PASS/F16 结构性审计/F14 导出 Documents 见台账),71,76,python tools/run_feature_entry_probe.py
 T26-G1G2-results.json,T26/G1G2,W,Windows 产品壳（隔离构建，guest 内容读/真实写）,PASS,14,14,python tools/run_t26_guest_io_probe.py
 T26-G3G4-results.json,T26/G3G4,W,Windows 产品壳（隔离构建，真实打印 + 宿主事件）,PASS,18,18,python tools/run_t26_guest_g3g4_probe.py
 T26-G7-reference-packs-results.json,T26/G7,W,Windows 产品壳（隔离构建，pack A/B 参考 UI + SDK）,PASS,24,24,python tools/run_reference_packs_probe.py
@@ -34,8 +34,8 @@ T26-W04-sdk-dist-results.json,T26/W04,W,Windows 产品壳（隔离构建，发�
 T26-W04-sdk-results.json,T26/W04,W,Windows 产品壳（隔离构建，外部脚手架→签名→安装→启用）,PASS,7,7,python tools/run_t26_w04_probe.py
 T26-W05-protocol-results.json,T26/W05,W,Windows 产品壳（隔离构建，协议线握手/snapshot）,PASS,7,7,python tools/run_t26_protocol_probe.py
 T26-W06-boundary-results.json,T26/W06,W,Windows 产品壳（隔离构建，网络/worker/能力边界）,PASS,8,8,python tools/run_t26_boundary_probe.py
-T26-W07-boot-results.json,T26/W07,W,Windows 产品壳（隔离构建，boot crash/连续启动失败；含 4 缺口）,PASS_WITH_FINDINGS(2 缺口已记录),43,45,python tools/run_t26_boot_crash_probe.py
-T26-W07-bridge-results.json,?,U?,?,PASS_WITH_FINDINGS(1 缺口已记录),45,46,
+T26-W07-boot-results.json,T26/W07,W,Windows 产品壳（隔离构建，boot crash/连续启动失败；剩 B1-6/B2-5 缺口）,PASS_WITH_FINDINGS(2 缺口：B1-6/B2-5 已知设计限制，重启可恢复),43,45,python tools/run_t26_boot_crash_probe.py
+T26-W07-bridge-results.json,T26/W07,W,Windows 产品壳（隔离构建，桥接超时/sidecar 故障/原生恢复；剩 C2-7 缺口）,PASS_WITH_FINDINGS(1 缺口：C2-7 no-fallback 不自动修复，已知设计限制),45,46,python tools/run_t26_w07_bridge_probe.py
 T26-W07-fault-results.json,T26/W07,W,Windows 产品壳（隔离构建，无限循环故障）,PASS,8,8,python tools/run_t26_fault_probe.py
 T26-W07-mem-results.json,T26/W07,W,Windows 产品壳（隔离构建，guest CPU/内存压力故障）,PASS,21,21,python tools/run_t26_fault_mem_probe.py
 T26-W09-perf-diag-results.json,T26/W09,W,Windows 产品壳（性能诊断，已知大文档限制）,KNOWN_FAIL(记录),4,5,python tools/run_t26_perf_diag_probe.py
@@ -45,15 +45,15 @@ T26-W09-workshop-results.json,T26/W09,W,Windows 产品壳（工坊口径：无�
 T26-isolated-smoke-results.json,T26/A1,W,Windows 产品壳（隔离构建，冒烟/独立 appData/单实例）,PASS,7,7,手工隔离构建流程（见 evidence/P5-T26-isolated-smoke.md）
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py
+P5-T26-F16-native-menu-audit.md（11/11 结构性审计；W/DOM 未覆盖）,T26/F16,U/静态（非 W）,Windows 源码只读审计,NOT_RUN(结构性审计 11/11；W 未覆盖),11,11,只读审计 desktop/src-tauri/src/menu.rs（见 evidence/P5-T26-F16-native-menu-audit.md）
 T27-gate-readiness.json,T27/W08-prep,W-prep（I 门禁就绪检查，非验收证据）,Windows（安装包/NSIS dry-run，只读）,NOT_READY(6/8)：阻塞=未授权 KE_T27_AUTHORIZED + 未声明 KE_T27_ISOLATED_ENV；W03/W08 I 仍 NOT_RUN,6,8,python tools/run_t27_gate_check.py
 frontend: Core session 单测,P1/P2,U,Linux WSL（happy-dom）,PASS,48,48,cd frontend && npx vitest run src/core/session
-frontend: Core protocol 单测,P1,U,Linux WSL,PASS,18,18,cd frontend && npx vitest run src/core/protocol
+frontend: Core protocol 单测,P1,U,Linux WSL,PASS,19,19,cd frontend && npx vitest run src/core/protocol
 frontend: Core broker 单测,P1,U,Linux WSL,PASS,20,20,cd frontend && npx vitest run src/core/broker
 frontend: Core packs 单测,P2/P4,U,Linux WSL,PASS,119,119,cd frontend && npx vitest run src/core/packs
 frontend: 运行时健康 banner 单测,P3/T26,U,Linux WSL（happy-dom）,PASS,5,5,cd frontend && npx vitest run src/components/runtime
-frontend: Core print 单测,P2,U,Linux WSL,PASS,14,14,cd frontend && npx vitest run src/core/print
 frontend: 工坊 UI 单测,P3/P4,U,Linux WSL（happy-dom）,PASS,63,63,cd frontend && npx vitest run src/components/workshop
-frontend: Core print 单测,P4/T16,U,Linux WSL,PASS,36,36,cd frontend && npx vitest run src/core/print
+frontend: Core print 单测（P2–P4/T16 产品打印）,P2/P4,U,Linux WSL,PASS,36,36,cd frontend && npx vitest run src/core/print
 frontend: tsc + vitest 全量,P1–P4,U,Linux WSL（happy-dom 组件测试）,PASS,1931,1932,cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2
 backend: pytest 全量,P1,A,Linux WSL + Windows Py3.10,PASS,847,847,python3 -m pytest backend/tests -q（Windows: CI venv）
 cargo: 产品壳单测,P2–P4,U,Windows（Rust 单元测试）,PASS,67,67,cd desktop/src-tauri && cargo test --release

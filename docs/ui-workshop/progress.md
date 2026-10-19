@@ -1015,3 +1015,21 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - f4759a2：修复 Ctrl+Shift+B 引用快捷键（KeBlockJoin 继承上游快捷键表，保留自定义 Backspace）；单测 4 例。
 - 5289d6e：修复后产品 W 6/6 PASS；F03 台账 42/42 全 PASS（官方 UI 60 PASS/0 FAIL）；产品 FINDING 闭环。
+
+## 最终交付文档收敛（2026-10-19 末段）
+
+- **代码/回归基线复核**：frontend **143 files / 1931 passed + 1 skipped**（tsc 0，本轮收敛本地复跑）；
+  backend **847 collected / exit 0**（本地复跑）；产品 cargo **67 passed**（引自 `P6-final-verification.md`，
+  Windows 侧未复跑）；原型 W **13/13**；验证矩阵 **59 行 --check PASS**（44 个 results JSON 全覆盖，
+  另含 F16 结构性审计 NOT_RUN 行；W07 boot/bridge 与 F 台账为 PASS_WITH_FINDINGS 显式缺口口径；
+  补齐 bridge/F-ledger META；基线复核修正 protocol 19、print 36 并去除 stale 重复行）。
+- **文档收敛**：重写 `reports/FINAL-DELIVERY-STATUS.md` 为一页式最终状态（已通过/部分/已定稿已知限制/
+  NOT_RUN + 待主理人操作项 + 复现命令 + 事故红线）；`HANDOVER-FINAL.md` 顶部更新最终状态并追加
+  「最终收敛」小节；`reports/milestone-assessment.md` 更新统计/结论并追加 §3h（F03 闭环、W07 缺口定稿、
+  矩阵 59 行一致化）；`reports/T26-acceptance-status.md` 补 W07 boot/bridge、G1–G7、F03/F 台账与
+  已定稿已知限制表；本文追加本小节。
+- **最终口径**：里程碑 `EXPERIMENTAL_TRUSTED_PACKS`；**不声明** `IMPLEMENTED_WINDOWS_PENDING` /
+  `LOCAL_WORKSHOP_RELEASE_CANDIDATE`（T27 I 门禁未执行、人工 IME/多 DPI 未做、F 覆盖部分、W07 3 项
+  已知设计限制）；T26 任务级最终认证未达成。
+- **待主理人**：T27 I 门禁（云端 Codex 执行材料 + 隔离 VM/授权）、人工 IME/多 DPI 验收清单。
+- 约束：分支本地未推送/未 Release；未改产品语义（blockquote 修复为审计确认的真实缺陷）；未触碰用户 App。

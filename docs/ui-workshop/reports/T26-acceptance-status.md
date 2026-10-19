@@ -1,17 +1,17 @@
 # T26 Windows 验收状态（阶段验收记录，非最终认证）
 
-- 日期：2026-10-19 · 平台：Windows 11 + WebView2 155 · 环境：隔离测试构建
+- 日期：2026-10-19（末段收敛） · 平台：Windows 11 + WebView2 155 · 环境：隔离测试构建
   （独立 identifier `com.astranota.uiws.e2e`，测试数据在 `C:\ke-tmp`，不触碰用户实例/真实笔记）
-- 结论口径（2026-10-19 交付整理后）：**A1–A8 及 W01/W02/W04/W05/W06/W07（无限循环 + 内存/CPU 压力
-  类别）/W09（工坊口径）/IME-DPI 均已有真实产品壳 W 证据；但 T26 任务级最终认证仍未达成**——仍缺
-  人工真实系统 IME/多 DPI、安装包覆盖升级/回滚 I 门禁（T27，当前就绪检查 NOT_READY 待授权）、
-  W01/W03/W07 等 I 门禁，以及 W02/W05/W06/W07 的部分类别。
+- 结论口径（2026-10-19 末段收敛后）：**A1–A8 及 W01/W02/W04/W05/W06/W07（无限循环 + 内存/CPU 压力 +
+  boot crash 43/45 + 桥接/原生恢复 45/46）/W09（工坊口径）/IME-DPI/G1–G7/F 台账均已有真实产品壳
+  W 证据（含 PASS_WITH_FINDINGS）；但 T26 任务级最终认证仍未达成**——仍缺人工真实系统 IME/多 DPI、
+  安装包覆盖升级/回滚 I 门禁（T27，就绪检查 NOT_READY 6/8，云端执行材料已备、未执行）、
+  W01/W03/W07 等 I 门禁，以及 W02/W05/W06 部分类别与 F01–F16 guest 原生入口覆盖。
 - 项目里程碑口径：按 `reports/milestone-assessment.md`（ACCEPTANCE A 节）=
   **`EXPERIMENTAL_TRUSTED_PACKS`**，不声明更高状态。
 - **修正说明**：本文 2026-10-19 08:36 版第 4 节曾写「项目级仍 `P0_READY`，不得使用
   `EXPERIMENTAL_TRUSTED_PACKS`」——该表述早于里程碑评估，与 ACCEPTANCE A 节口径及
-  `reports/milestone-assessment.md` 冲突；现以里程碑评估为准修正（变更依据：里程碑评估 + 本文件
-  §1 的 A1–A8 W 证据）。历史表述保留在 `progress.md` 台账中，不删除。
+  `reports/milestone-assessment.md` 冲突；现以里程碑评估为准修正。历史表述保留在 `progress.md` 台账中。
 
 ## 1. 已完成场景（真实产品壳 W / 原型 W 汇总）
 
@@ -36,12 +36,19 @@
 | W06 guest 执行/网络边界（fetch/worker/WS/能力越权，功能级） | **8/8** | `P5-T26-W06-boundary.md` |
 | W07 guest 无限循环故障（宿主独立/心跳检测/failed+safeMode/停用） | **8/8（无限循环类别，部分）** | `P5-T26-W07-fault.md` |
 | W07 guest 内存/CPU 压力故障（独立 renderer；内存 11/11 + CPU 10/10） | **W 21/21（扩展类别，部分）** | `P5-T26-W07-fault-mem.md` |
+| W07 boot crash/连续启动失败（v2 修复后复测；A2-10 孤儿自愈/B1-4 失败日志/B3-4 备份重置闭环） | **W 43/45 PASS_WITH_FINDINGS**（剩 B1-6/B2-5 已知设计限制） | `P5-T26-W07-fault-boot.md` |
+| W07 桥接超时/sidecar 故障/原生 Rust 恢复（v6 修复后复测；9 缺口闭环） | **W 45/46 PASS_WITH_FINDINGS**（剩 C2-7 已知设计限制） | `P5-T26-W07-fault-bridge.md` |
 | W09 性能（工坊口径：无复制/无逐字符广播/无泄漏） | **6/6 PASS（W）** | `P5-T26-W09-workshop.md` |
 | 产品大文档首次打开性能（pre-existing 限制，非工坊回归） | 记录（FAIL，已知限制） | `P5-T26-W09-perf.md`、`-diag`、`-plain` |
 | T27/W08 I 门禁就绪检查（dry-run，只读；**非 I 通过**） | **NOT_READY 6/8**（产物齐备；阻塞=未授权 `KE_T27_AUTHORIZED` + 未声明 `KE_T27_ISOLATED_ENV`） | `P5-T26-W08-gate-prep.md`、`T27-gate-readiness.json` |
+| G1/G2 guest 内容读 + 真实写通道（删除假桩） | **W 14/14** | `P5-T26-G1G2-content-io.md` |
+| G3/G4 print.snapshot 真实打印 + 宿主事件 | **U+W 18/18**（已知限制见 §3c） | `P5-T26-G3G4-print-events.md` |
+| G7 pack A/B 参考 UI（SDK 读/写/打印/事件） | **W 24/24** | `P5-T26-G7-reference-packs.md` |
+| F03 官方 UI 快捷键/工具栏域（blockquote 产品缺陷修复闭环） | **42/42 全 PASS** | `P5-T26-F-ledger.md`、`P5-T26-F03-fail-audit.md` |
+| F01–F16 逐项台账（官方 UI + pack A/B） | checks 71/76；官方 UI **60 PASS/0 FAIL/70 NOT_RUN**；F16 结构性审计 W NOT_RUN | `P5-T26-F-ledger.md`、`feature-baseline.csv` |
 
 > 说明：A1–A8 全部已有真实产品壳 W 证据（≠ T26 最终认证完成）；T26 认证仍需补人工真实 IME/
-> 多 DPI、安装包升级/回滚演练（T27 I 门禁），并完成 W02/W05/W06/W07 剩余类别。
+> 多 DPI、安装包升级/回滚演练（T27 I 门禁）、F01–F16 guest 覆盖补强，并完成 W02/W05/W06 剩余类别。
 
 ## 2. 本轮发现并修复的真实缺陷（W 价值）
 
@@ -50,28 +57,48 @@
 3. 隔离构建 `frontendDist` 绝对路径导致 file:// origin → IPC 失败（需相对路径嵌入资源）；
 4. 测试构建与主构建共享 target 互相覆盖 exe（单实例静默接管）→ 固定测试 exe 目录；
 5. SDK 发布形态初版握手消息误用 `handshake.request`（宿主 HostDispatcher 契约是
-   `type:'handshake'`）→ `E_TIMEOUT`；修正后产品 W 7/7（`P5-T26-W04-sdk-dist.md`）。
+   `type:'handshake'`）→ `E_TIMEOUT`；修正后产品 W 7/7（`P5-T26-W04-sdk-dist.md`）；
+6. **F03 审计发现真实产品缺陷**：`KeBlockJoin.ts` 的 `KeBlockquote.addKeyboardShortcuts()` 覆盖丢弃
+   上游 `Mod-Shift-b` → Ctrl+Shift+B 引用快捷键失效；`f4759a2` 修复后 W 复测 6/6，F03 台账 42/42
+   全 PASS（`P5-T26-F03-fail-audit.md`）；
+7. **W07 修复闭环（W 发现的真实缺口）**：A2-10 孤儿 sidecar 启动自愈、B1-4 sidecar 失败原因可观测、
+   B3-4 损坏 settings/app_config 备份+重置、C2-3 入口冷启动 safeMode/恢复角标、B-6 上下文重建重试、
+   A-10 超时 E_TIMEOUT/retryable、B-4 RuntimeHealthBanner、B-5 宿主不可用会话挂起/恢复、B-8 stale
+   runtime 清理、C1-4/C2-2/C3-5 启动恢复提示 —— 均已 FAIL→PASS 复测
+   （`P5-T26-W07-fault-boot.md`、`P5-T26-W07-fault-bridge.md`）。
 
 ## 3. 未完成项（不得省略）
 
 - **人工真实系统 IME / 多 DPI**：CDP 路径已过 W 7/7（`P5-T26-ime-dpi.md`），但不能替代人工输入法/
-  多显示器实测；
-- **安装包覆盖升级/回滚 I 门禁（T27/W08）**：计划与产物已就绪（`reports/T27-installer-upgrade-plan.md`、
-  `P5-T26-W08-gate-prep.md`），执行需主理人授权 + 专用隔离环境；当前 **NOT_RUN**，
+  多显示器实测；清单 `reports/MANUAL-IME-DPI-CHECKLIST.md` 待主理人执行；
+- **安装包覆盖升级/回滚 I 门禁（T27/W08、W03、W01 I）**：执行材料已备（`T27-CLOUD-EXECUTION-HANDOFF.md`、
+  `T27-I-GATE-RUNBOOK.md`、`T27-ARTIFACTS.md`），需主理人授权 + 专用隔离环境/云端 VM；当前 **NOT_RUN**，
   就绪检查 NOT_READY（6/8）；
-- **W01 I 门禁**（真实安装器 zip 离线包路径）未执行；更深 zip bomb/嵌套压缩未覆盖；
-- **W02 剩余**：公式/重命名草稿、迟到命令、候选启动失败、提交后编辑器 UI 同步、IME 组字交接；
+- **W01 剩余**：I 门禁未执行；更深 zip bomb/嵌套压缩未覆盖；
+- **W02 剩余**：公式/重命名草稿、候选启动失败、提交后编辑器 UI 同步、IME 组字交接（迟到请求/旧连接
+  已补 W 12/12）；
 - **W04 剩余**：SDK npm/tgz 正式发布流程与版本策略、文档站/示例集/调试工具、发布密钥分发规范、
   外部开发者第二套 UI 全任务覆盖；
 - **W05 剩余**：subscribe/断连重放/慢包/超时 queryResult/取消冲突语义；
 - **W06 剩余**：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归；
-- **W07 剩余**：boot crash、桥接超时、连续启动失败、原生 Rust 恢复、I 门禁；内存场景的 renderer
-  崩溃为 CDP `Page.crash` 注入（非自然 OOM），2GB 压力上限受同机安全约束（见
-  `P5-T26-W07-fault-mem.md` / `milestone-assessment.md` W07 行）；
+- **W07 剩余（已定稿）**：C2-7（corrupt-no-fallback 不自动修复）、B1-6/B2-5（运行期无自愈，需重启；
+  重启可恢复）——已知设计限制；I 门禁未做；内存场景 renderer 崩溃为 CDP `Page.crash` 注入（非自然
+  OOM，2GB 上限受同机安全约束）（`P5-T26-W07-fault-boot.md`、`-bridge.md`、`-mem.md`）；
 - **W09 全量**：工坊硬指标已 PASS；大文档首开慢为产品既有 `@tiptap/markdown` 解析限制
   （非工坊回归），需产品性能优化后复跑；
-- **F01–F16 全功能基线逐项 guest 覆盖**未逐项验证；
+- **F01–F16 覆盖**：官方 UI 逐项台账 60 PASS/0 FAIL/70 NOT_RUN；F14 最终导出 Documents、F16 OS 级
+  原生菜单交互 NOT_RUN；guest 原生入口整体覆盖未达成（0 已实现/3 部分/13 未实现，
+  `reports/F01-F16-COVERAGE.md`）；
 - **正式发布密钥签发/分发流程**（ADR-003 实施清单）未执行。
+
+## 3c. 已定稿已知限制（不计划修复，如实保留）
+
+| 缺口 | 说明 | 决策/证据 |
+| --- | --- | --- |
+| W07 C2-7 corrupt-no-fallback 无自动修复 | 自动「修复」等于删除用户数据或猜测内容；唯一安全路径=卸载/重装 + safe mode/notice | 已知设计限制（`P5-T26-W07-fault-bridge.md`） |
+| W07 B1-6 端口耗尽后运行期无自愈 | 故障解除后运行中实例不自动重试，需重启（重启可恢复、失败可观测） | 已知设计限制（`P5-T26-W07-fault-boot.md`） |
+| W07 B2-5 数据目录恢复后运行期无自愈 | 同上（需重启） | 已知设计限制 |
+| G3/G4 打印期间主线程阻塞 | guest 心跳超时临时放宽到 8s；PDF 测试输出用诊断覆盖（生产不变）；公式 NodeView 打印为线性 LaTeX | 已记录限制（`P5-T26-G3G4-print-events.md`），非验收失败 |
 
 ## 3b. 隔离残余风险（必须随认证结论一起说明）
 
@@ -87,11 +114,14 @@
 - **项目里程碑 = `EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节，见 `reports/milestone-assessment.md`）：
   只允许受信实验包；隔离/离线/恢复仍有未通过项与残余风险。
 - **T26 任务级最终认证 = 未达成**：完成定义（A1–A8 全绿 + W 门禁 + 人工 IME/多 DPI + T27 安装升级/
-  回滚演练）中，A1–A8 与原型 W 门禁已达成，但人工 IME/多 DPI、T27 I 门禁、W partial 类别未完成。
-- **禁止表述**：`IMPLEMENTED_WINDOWS_PENDING` 完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`；
-  也不得把「A1–A8 W 通过」表述为「T26 已认证」。
-- 建议下一阶段顺序：T27 I 门禁（获授权后）→ 人工 IME/多 DPI → W02/W05/W06/W07 剩余类别 →
-  W09 产品性能优化 → 正式密钥流程 → 重新评估 T26 认证与项目里程碑。
+  回滚演练）中，A1–A8、W 门禁（含 W07 PASS_WITH_FINDINGS）、G1–G7、F03 已达成，但人工 IME/多 DPI、
+  T27 I 门禁、W02/W05/W06 剩余类别、F01–F16 guest 覆盖未完成。
+- **明确不声明**：`IMPLEMENTED_WINDOWS_PENDING` 完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`；理由：
+  T27 I 门禁未执行、人工 IME/多 DPI 未做、F 覆盖部分、W07 3 项已知设计限制。也不得把「A1–A8 W 通过」
+  表述为「T26 已认证」。
+- 建议下一阶段顺序：T27 I 门禁（授权 + 云端/隔离 VM，材料已备）→ 人工 IME/多 DPI →
+  F01–F16 覆盖补强（G7 参考包逐项登记）→ W02/W05/W06 剩余类别 → W09 产品性能优化 →
+  正式密钥流程 → 重新评估 T26 认证与项目里程碑。
 
 ## 5. 隔离缺陷与操作事故（2026-10-19，必须披露）
 

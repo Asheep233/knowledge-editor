@@ -9,15 +9,19 @@ import { validateManifest } from '../../core/packs/manifest'
 import type { PrintRenderer, PrintTransport } from '../../core/print/printJob'
 import {
   ProductBrokerBackend,
+  WORKSHOP_COMMAND_PROTOCOL_NAMES,
+  WORKSHOP_EDITOR_ACTION_WHITELIST,
   WORKSHOP_EDITOR_COMMAND_WHITELIST,
   WORKSHOP_EDITOR_PROTOCOL_NAMES,
   getWorkshopEditorExecutor,
   isWorkshopEditorInvokeName,
   normalizeGuestPrintRelPath,
   resetGuestContextBridgeForTests,
+  isWorkshopEditorActionName,
   resolveWorkshopEditorCommand,
   type ProductBrokerBackendOptions,
 } from './productBrokerBackend'
+import { __clearActionHandlers, registerActionHandler } from '../../state/shortcuts'
 import { WORKSHOP_EDITOR_EXECUTORS, createWorkshopEditorExecutor } from '../layout/EditorArea'
 
 const REL = 'Articles/a.md'
@@ -751,5 +755,134 @@ describe('W07 task-27 editor.* 协议名（kebab）映射修复', () => {
     const undeclared = { ...editorConn(), declaredCommands: [] as string[] }
     const err = await rejection(broker.handle('command.invoke', { name: 'editor.ordered-list' }, undeclared))
     expect(err.code).toBe('E_FORBIDDEN')
+  })
+})
+
+// ---------------- W07 task-29：可无头产品动作（table/footnote/note/doc.save） ----------------
+
+describe('W07 task-29 可无头产品动作接入 command.invoke', () => {
+  const ACTIONS = [
+    'editor.table.insert',
+    'editor.footnote.insert',
+    'editor.note.insert',
+    'doc.save',
+  ] as const
+
+  afterEach(() => {
+    __clearActionHandlers()
+  })
+
+  it('4 条协议名 = 既有 action id、全部匹配 manifest 正则；不接对话框类动作', () => {
+    expect([...WORKSHOP_EDITOR_ACTION_WHITELIST]).toEqual([...ACTIONS])
+    expect(WORKSHOP_COMMAND_PROTOCOL_NAMES).toHaveLength(18)
+    for (const name of [...WORKSHOP_COMMAND_PROTOCOL_NAMES]) {
+      expect(name).toMatch(/^[a-z][a-z0-9.-]{1,80}$/)
+    }
+    for (const dialogAction of ['editor.link.insert', 'editor.image.insert', 'editor.math.inline', 'editor.math.block', 'editor.module.insert']) {
+      expect(WORKSHOP_COMMAND_PROTOCOL_NAMES).not.toContain(dialogAction)
+      expect(isWorkshopEditorActionName(dialogAction)).toBe(false)
+    }
+  })
+
+  it('manifest 可逐条声明 18 条协议命令（kebab/点分均合法）', () => {
+    expect(() =>
+      validateManifest({
+        id: 'com.probe.t29',
+        name: 'T29 Pack',
+        version: '1.0.0',
+        apiVersion: 1,
+        capabilities: ['ui.shell', 'editor.commands.readonly'],
+        entry: { html: 'index.html' },
+        commands: WORKSHOP_COMMAND_PROTOCOL_NAMES.map((name) => ({ name, handler: 'noop' })),
+        assets: [{ path: 'index.html', sha256: 'a'.repeat(64) }],
+      }),
+    ).not.toThrow()
+  })
+
+  it('4 条动作成功：runAction 调用真实 handler，返回 {ok:true,value:{name,executed:true}}', async () => {
+    const { backend } = makeBackend()
+    for (const name of ACTIONS) {
+      const handler = vi.fn()
+      const off = registerActionHandler(name, handler)
+      const result = await backend.invokeCommand({ name }, editorConn())
+      expect(result).toEqual({ ok: true, value: { name, executed: true } })
+      expect(handler).toHaveBeenCalledTimes(1)
+      off()
+      __clearActionHandlers()
+    }
+  })
+
+  it('handler 未注册（编辑器/应用未就绪）→ E_EDITOR_NOT_READY 如实失败，不假成功', async () => {
+    __clearActionHandlers()
+    const { backend } = makeBackend()
+    for (const name of ACTIONS) {
+      const err = await rejection(backend.invokeCommand({ name }, editorConn()))
+      expect(err.code).toBe('E_INTERNAL')
+      expect(String(err.message)).toContain('E_EDITOR_NOT_READY')
+    }
+  })
+
+  it('handler 抛错 → E_COMMAND_EXECUTION_FAILED 如实失败', async () => {
+    registerActionHandler('doc.save', () => {
+      throw new Error('save boom')
+    })
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'doc.save' }, editorConn()))
+    expect(err.code).toBe('E_INTERNAL')
+    expect(String(err.message)).toContain('E_COMMAND_EXECUTION_FAILED')
+    expect(String(err.message)).toContain('save boom')
+  })
+
+  it('能力缺失（无 editor.commands.readonly）→ E_CAPABILITY，handler 不执行', async () => {
+    const handler = vi.fn()
+    registerActionHandler('editor.table.insert', handler)
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'editor.table.insert' }, editorConn(['ui.shell'])))
+    expect(err.code).toBe('E_CAPABILITY')
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it('对话框类动作（link/image/math/module）明确拒绝 E_COMMAND_NOT_ALLOWED，不暴露不可无头动作', async () => {
+    const { backend } = makeBackend()
+    for (const name of ['editor.link.insert', 'editor.image.insert', 'editor.math.inline', 'editor.math.block', 'editor.module.insert']) {
+      const err = await rejection(backend.invokeCommand({ name }, editorConn()))
+      expect(err.code).toBe('E_FORBIDDEN')
+      expect(String(err.message)).toContain('E_COMMAND_NOT_ALLOWED')
+    }
+  })
+
+  it('未声明的 doc.* 命令明确拒绝（E_FORBIDDEN），不落到 article meta 处理器', async () => {
+    const { backend } = makeBackend()
+    for (const name of ['doc.delete', 'doc.next', 'doc.close']) {
+      const err = await rejection(backend.invokeCommand({ name }, editorConn()))
+      expect(err.code).toBe('E_FORBIDDEN')
+      expect(String(err.message)).toContain('E_COMMAND_NOT_ALLOWED')
+    }
+  })
+
+  it('真实 Broker 链路：manifest 声明 doc.save 后可调用成功；未声明仍 E_FORBIDDEN', async () => {
+    const handler = vi.fn()
+    registerActionHandler('doc.save', handler)
+    const { backend } = makeBackend()
+    const broker = new Broker(backend, {})
+    const declared = { ...editorConn(), declaredCommands: ['doc.save'] }
+    const result = await broker.handle('command.invoke', { name: 'doc.save' }, declared)
+    expect(result).toEqual({ ok: true, value: { name: 'doc.save', executed: true } })
+    expect(handler).toHaveBeenCalledTimes(1)
+
+    const undeclared = { ...editorConn(), declaredCommands: [] as string[] }
+    const err = await rejection(broker.handle('command.invoke', { name: 'doc.save' }, undeclared))
+    expect(err.code).toBe('E_FORBIDDEN')
+  })
+
+  it('14 条切换命令路径不受影响（仍走 EditorArea executor，不经 runAction）', async () => {
+    const executor = installExecutor()
+    const runSpy = vi.fn()
+    registerActionHandler('editor.table.insert', runSpy)
+    const { backend } = makeBackend()
+    const result = await backend.invokeCommand({ name: 'editor.bold' }, editorConn())
+    expect(result).toEqual({ ok: true, value: { name: 'editor.bold', executed: true } })
+    expect(executor.execute).toHaveBeenCalledWith('bold')
+    expect(runSpy).not.toHaveBeenCalled()
   })
 })

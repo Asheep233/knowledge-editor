@@ -16,7 +16,10 @@
  *   `window.__KE_WORKSHOP_EDITOR__` 受控执行器完成，不暴露任意命令）；
  * - W07 task-27：editor.* 协议名统一为**小写 kebab**（`editor.bullet-list` 等，可写入
  *   manifest.commands[].name 的 `^[a-z][a-z0-9.-]{1,80}$` 校验），内部映射到 camelCase
- *   执行键；旧 camelCase 协议名保留兼容接受（manifest 无法声明，legacy）。
+ *   执行键；旧 camelCase 协议名保留兼容接受（manifest 无法声明，legacy）；
+ * - W07 task-29：追加 4 条可无头产品动作（`editor.table.insert`/`editor.footnote.insert`/
+ *   `editor.note.insert`/`doc.save`，复用 state/shortcuts 的 `runAction` 真实 action handler）；
+ *   对话框类动作（link/image/math/module）**不接**。
  */
 import { connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
 import { createProductPrintRenderer } from '../../core/print/productPrintRenderer'
@@ -33,6 +36,7 @@ import {
   type ContextSnapshotWithContent,
 } from '../../core/packs/productHostAdapter'
 import { protocolError, type ProtocolMethods } from '../../core/protocol/types'
+import { runAction, type RunResult } from '../../state/shortcuts'
 import { CoreSaveBridge } from '../../core/session/coreSaveBridge'
 
 export const DEFAULT_CONTEXT_ID = 'ke-default'
@@ -150,6 +154,34 @@ export function getWorkshopEditorExecutor(): WorkshopEditorExecutor | null {
 /** `editor.*` 且能解析到白名单内部键（规范 kebab 或旧 camelCase；大小写敏感）。 */
 export function isWorkshopEditorInvokeName(name: unknown): name is WorkshopEditorInvokeName {
   return resolveWorkshopEditorCommand(name) !== null
+}
+
+// ---------------- W07 task-29：可无头执行的产品 action（复用 action 注册表） ----------------
+
+/**
+ * 追加接入的 4 条**可无头执行**产品动作（协议名 = 既有 action id，全部匹配 manifest
+ * `commands[].name` 正则；逐条声明、最小化）。
+ *
+ * 只接「不需要对话框/文件选择」的动作：表格插入（产品默认 3×3 带表头，与快捷键路径一致）、
+ * 脚注/信息块插入、文档保存。**不接** link/image/math/module（对话框中继，不可无头执行）。
+ */
+export const WORKSHOP_EDITOR_ACTION_WHITELIST = [
+  'editor.table.insert',
+  'editor.footnote.insert',
+  'editor.note.insert',
+  'doc.save',
+] as const
+
+export type WorkshopEditorActionName = (typeof WORKSHOP_EDITOR_ACTION_WHITELIST)[number]
+
+/** guest 命令桥接受的全部协议名（14 条切换命令 + 4 条产品动作；供诊断/单测）。 */
+export const WORKSHOP_COMMAND_PROTOCOL_NAMES: readonly string[] = [
+  ...WORKSHOP_EDITOR_PROTOCOL_NAMES,
+  ...WORKSHOP_EDITOR_ACTION_WHITELIST,
+]
+
+export function isWorkshopEditorActionName(name: unknown): name is WorkshopEditorActionName {
+  return typeof name === 'string' && (WORKSHOP_EDITOR_ACTION_WHITELIST as readonly string[]).includes(name)
 }
 
 let sharedBridge: CoreSaveBridge | null = null
@@ -403,7 +435,7 @@ export class ProductBrokerBackend implements BrokerBackend {
     if (!resolved) {
       throw protocolError('E_FORBIDDEN', `E_COMMAND_NOT_ALLOWED: 未授权编辑命令 ${String(name)}`, {
         name,
-        protocolNames: [...WORKSHOP_EDITOR_PROTOCOL_NAMES],
+        protocolNames: [...WORKSHOP_COMMAND_PROTOCOL_NAMES],
       })
     }
     if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
@@ -433,11 +465,55 @@ export class ProductBrokerBackend implements BrokerBackend {
     return { ok: true, value: { name, executed: true } }
   }
 
+  /**
+   * W07 task-29：执行 4 条可无头产品动作（复用 product action 注册表 `runAction`）。
+   * - action handler 未注册（编辑器/应用未就绪）→ runAction 返回 `{ran:false}` → 如实
+   *   `E_EDITOR_NOT_READY`（不假成功）；
+   * - handler 抛错 → `E_COMMAND_EXECUTION_FAILED`；
+   * - 成功 → `{ok:true,value:{name,executed:true}}`。
+   */
+  private async invokeEditorAction(
+    name: WorkshopEditorActionName,
+    conn: BrokerConnection,
+  ): Promise<ProtocolMethods['command.invoke']['result']> {
+    if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
+      throw protocolError('E_CAPABILITY', '缺少能力: editor.commands.readonly', {
+        required: 'editor.commands.readonly',
+        granted: conn.capabilities,
+      })
+    }
+    let result: RunResult
+    try {
+      // 协议名即既有 action id（EditorArea 注册真实 handler：表格 3×3 带表头/脚注/信息块/保存）
+      result = runAction(name)
+    } catch (e) {
+      throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${String((e as Error)?.message ?? e)}`, { name })
+    }
+    if (!result || result.ran !== true) {
+      throw protocolError('E_INTERNAL', 'E_EDITOR_NOT_READY: 命令未执行（action handler 未注册/编辑器未就绪）', {
+        name,
+        via: result?.via ?? 'none',
+      })
+    }
+    return { ok: true, value: { name, executed: true } }
+  }
+
   async invokeCommand(params: ProtocolMethods['command.invoke']['params'], conn: BrokerConnection) {
     const name = params.name
-    // T26 F03：editor.* 走受控编辑器命令桥；其它名称仍走既有 W02 article meta 白名单
+    // W07 task-29：4 条可无头产品动作（协议名 = 既有 action id；doc.save 也走此通道）
+    if (isWorkshopEditorActionName(name)) {
+      return await this.invokeEditorAction(name, conn)
+    }
+    // T26 F03：editor.* 走受控编辑器切换命令桥；其它名称仍走既有 W02 article meta 白名单
     if (typeof name === 'string' && name.startsWith('editor.')) {
       return await this.invokeEditorCommand(name as WorkshopEditorInvokeName, conn)
+    }
+    // 未白名单的 doc.* / 其它未知前缀：明确拒绝（不落到 article meta 处理器，错误语义更清晰）
+    if (typeof name === 'string' && name.startsWith('doc.')) {
+      throw protocolError('E_FORBIDDEN', `E_COMMAND_NOT_ALLOWED: 未授权文档命令 ${name}`, {
+        name,
+        protocolNames: [...WORKSHOP_COMMAND_PROTOCOL_NAMES],
+      })
     }
     // W02：白名单命令（article.set-title/set-tags）→ 宿主原子写后端 meta；其余命令拒绝
     if (!this.commandHandler) {

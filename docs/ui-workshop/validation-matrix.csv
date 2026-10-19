@@ -42,6 +42,7 @@ T26-W09-perf-diag-results.json,T26/W09,W,Windows 产品壳（性能诊断，已�
 T26-W09-perf-plain-results.json,T26/W09,W,Windows 产品壳（性能复测，已知大文档限制）,KNOWN_FAIL(记录),4,8,python tools/run_t26_perf_plain_probe.py
 T26-W09-perf-results.json,T26/W09,W,Windows 产品壳（性能基线，已知大文档限制）,KNOWN_FAIL(记录),3,7,python tools/run_t26_perf_probe.py
 T26-W09-workshop-results.json,T26/W09,W,Windows 产品壳（工坊口径：无复制/无广播/无泄漏）,PASS,6,6,python tools/run_t26_w09_workshop_probe.py
+T26-cloud-handoff-results.json,T26/cloud,B（本地模拟自验）,本地模拟（云端交接包）,PASS,8,8,见 evidence/P5-T26-cloud-handoff-verification.md
 T26-isolated-smoke-results.json,T26/A1,W,Windows 产品壳（隔离构建，冒烟/独立 appData/单实例）,PASS,7,7,手工隔离构建流程（见 evidence/P5-T26-isolated-smoke.md）
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py

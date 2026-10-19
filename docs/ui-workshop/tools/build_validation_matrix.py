@@ -44,6 +44,7 @@ READINESS_EVIDENCE: dict[str, tuple[str, str, str, str, str]] = {
 
 # evidence 文件 → (task, kind, platform, 复现命令/说明)
 META: dict[str, tuple[str, str, str, str]] = {
+    "T26-cloud-handoff-results.json": ("T26/cloud", "B（本地模拟自验）", "本地模拟（云端交接包）", "见 evidence/P5-T26-cloud-handoff-verification.md"),
     "P0-S1-probe-results.json": ("T02", "U/W?（Linux 侧 U + Windows 混合，见文档）", "Linux WSL + Windows", "python run_s1_probe.py"),
     "P0-S1-windows-probe-results.json": ("T02", "W", "Windows/WebView2", "python run_s1_windows_probe.py"),
     "P0-S2-probe-results.json": ("T03", "W", "Windows/WebView2", "python run_s2_probe.py"),

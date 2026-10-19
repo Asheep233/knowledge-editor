@@ -34,9 +34,9 @@
 | W07 guest 内存/CPU 压力（内存 11/11 + CPU 10/10，独立 renderer） | 21/21（扩展类别） | W | `P5-T26-W07-fault-mem.md` |
 | W09 工坊口径（无复制/无逐字符广播/无泄漏） | 6/6 | W | `P5-T26-W09-workshop.md` |
 | 原型壳 W 探针一键门禁 | 13/13 | W | `P5-T26-windows-witnesses.md` |
-| 回归基线：frontend tsc 0 + vitest 134 files/1819 passed+1 skipped | PASS | U | `P6-final-verification.md`（W02 后追加） |
+| 回归基线：frontend tsc 0 + vitest 134 files/1834 passed+1 skipped | PASS | U | `P6-final-verification.md`（W02 后追加） |
 | 回归基线：backend 847 collected/exit 0 | PASS | A | `P6-final-verification.md` |
-| 回归基线：产品 cargo 50 passed | PASS | U | `P6-final-verification.md`（W01 后追加） |
+| 回归基线：产品 cargo 51 passed | PASS | U | `P6-final-verification.md`（W01 后追加） |
 | 平台验证矩阵 `--check` | PASS | 静态汇总 | `validation-matrix.csv`、`tools/build_validation_matrix.py` |
 
 ## 2. 部分通过（不得写成通过）

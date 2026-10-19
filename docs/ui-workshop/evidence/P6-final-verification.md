@@ -55,3 +55,10 @@
 - backend：847 collected / exit 0；
 - 产品 cargo：50 passed；
 - 验证矩阵基线更新（session 48/packs 85/全量 1819），--check 通过。
+
+## G1/G2 + Agent Team 后最终回归（2026-10-19 末段）
+
+- frontend：134 files / **1834 passed** + 1 skipped、tsc 0；
+- backend：847 collected / exit 0；
+- 产品 cargo：**51 passed**（含 context.write 能力门禁单测）；
+- 验证矩阵：**53 行**，--check PASS（G1/G2、W07 boot 行纳入；W07 boot = PASS_WITH_FINDINGS(4 缺口)）。

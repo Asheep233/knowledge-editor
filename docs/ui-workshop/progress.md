@@ -933,3 +933,12 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 报告 `reports/F01-F16-COVERAGE.md`（fdac4ea）：F01–F16 guest 入口 0 已实现/3 部分/13 未实现；
   G1 内容读通道、G2 写通道假桩、G3 print 桩、G4 事件 0 发射、G7 台账空白列为 P0 缺口。
 - 后续：G1/G2 修复（内容读 + 真实写）与逐项台账补齐为下一阶段优先项。
+
+## P6 进度（Agent Team 并行：G1/G2、W02 迟到、W07 boot，2026-10-19）
+
+- G1/G2 闭环（1ea4c62，W 14/14）：guest 可读正文 + 真实写回（context.write trusted/builtin，假桩删除）；
+- W02 迟到请求/旧连接失效（d502d9d，W 12/12，重放验证、不落盘）；
+- W07 boot crash/连续启动失败（5921ec4，44 checks 40 PASS/4 真实缺口，PASS_WITH_FINDINGS）；
+- F01–F16 审计（fdac4ea，0 已实现/3 部分/13 未实现，G1/G2 结构阻塞已闭环）；
+- T27 I 门禁：云端执行交接单（582f386），待主理人 VM 执行后登记 I 证据。
+- 矩阵 53 行 --check PASS。

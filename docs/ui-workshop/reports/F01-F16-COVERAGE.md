@@ -329,3 +329,15 @@
 | **合计** | **130** | **0** | **0** | **NOT_RUN ×130** |
 
 > 统计方法：`python3` 读取 CSV 逐列计数（`packAEntry`/`packBEntry` 去空白后非空计数；`officialBaselineResult` 唯一值）。F 域合计 121 行，与 `build_feature_baseline.py` 的 `domains` 定义 + 源码扫描行一致。
+
+
+---
+
+## 附：审计后状态更新（2026-10-19，Lead 追加，未改动上文审计结论）
+
+- **G1/G2 已闭环**（commit `1ea4c62`，产品 W 14/14）：`context.snapshot` additive `content?/contentBytes?`
+  （`context.read` 才返回）；`context.write` 进 manifest/trusted/builtin + Rust `ALLOWED_CAPS`，
+  产品桥接真实 `/api/context/write`（completed/conflict/stale/failed，假桩删除）。
+- 因此 G1「无内容读通道」、G2「写通道不可达+假桩」两项 P0 结构缺口**已消除**；
+  但 F01–F16 **逐项登记仍为 0/121**，0 已实现/3 部分/13 未实现的统计**不因此改变**。
+- 其余 P0 缺口 G3（print.snapshot 桩）、G4（事件 0 发射）、G7（参考 UI/台账）仍未处理。

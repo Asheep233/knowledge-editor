@@ -101,3 +101,13 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check   # Windows + 原型�
 | T27 安装/覆盖升级/回滚 I 门禁 | 授权 + 专用隔离环境（VM/实验机） | `reports/T27-I-GATE-RUNBOOK.md`；就绪检查 `evidence/T27-gate-readiness.json` |
 | 人工真实 IME/多 DPI | 本机逐步操作 + 截图 | `reports/MANUAL-IME-DPI-CHECKLIST.md` |
 | 正式发布/推送 | 主理人明确授权 | 当前分支本地，未推送/未 Release |
+
+## 6b. 本轮追加证据（2026-10-19 后段）
+
+| 项 | 结果 | 证据 |
+| --- | --- | --- |
+| G1/G2 guest 内容读 + 真实写通道 | **W 14/14 PASS**（context.write 能力 trusted/builtin，假桩删除） | `P5-T26-G1G2-content-io.md` |
+| W02 停用后迟到请求/旧连接失效 | **W 12/12 PASS**（重放验证，不落盘；如实标注注入方式） | `P5-T26-W02-form.md` |
+| W07 boot crash/连续启动失败 | **PASS_WITH_FINDINGS 40/44**（4 真实缺口已记录） | `P5-T26-W07-fault-boot.md` |
+| T27 I 门禁 | 就绪检查 NOT_READY(6/8)；**云端执行交接单已给**（VM 由主理人安排） | `T27-CLOUD-EXECUTION-HANDOFF.md` |
+| F01–F16 覆盖审计 | 已实现 0 / 部分 3 / 未实现 13；G1/G2 已闭环结构阻塞 | `F01-F16-COVERAGE.md` |

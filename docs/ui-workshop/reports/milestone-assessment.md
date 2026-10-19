@@ -71,3 +71,13 @@ ACCEPTANCE A 节：
 - 进阶到 `LOCAL_WORKSHOP_RELEASE_CANDIDATE` 必须：完成 T27 I 门禁、W01/W02/W03/W04/W05/W06/W07/W09、
   guest 原生入口全任务覆盖、正式密钥流程；且人工 IME/DPI 通过。
 - 本评估不改变分支本地/不发布约束；后续每项补完须附证据并更新本文件。
+
+## 3c. G1/G2 结构性缺口闭环（2026-10-19）
+
+- G1 内容读通道：`context.snapshot` additive `content?/contentBytes?`（context.read 才返回；真实
+  `GET /api/articles/{rel}` 原文，BOM/frontmatter/CRLF 逐字节）；G2 写通道：`context.write` 进
+  manifest/trusted/builtin + Rust `ALLOWED_CAPS`，产品桥接真实 `/api/context/write`
+  （completed/conflict/stale/failed 如实，删除假桩）。
+- 验证：前端 1834 passed（+15 单测）、cargo 51 passed、产品 W **14/14**（snapshot 正文=磁盘、
+  write 落盘 revision 递增、旧 revision conflict 且不覆盖）。
+- **F01–F16 整体仍未逐项登记**（0/121），G1/G2 只消除 F07/F12 的结构性阻塞；不改变 0 项已实现口径。

@@ -16,6 +16,11 @@ EVID = ROOT / "docs" / "ui-workshop" / "evidence"
 OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 
 # 已知失败（已记录的风险，不是回归）：矩阵中标注 KNOWN_FAIL，不参与 --check 门禁
+# 部分通过但缺口已逐条记录（PASS_WITH_FINDINGS，不等同 FAIL、也不等同全通过）
+PARTIAL_EVIDENCE = {
+    "T26-W07-boot-results.json": 4,
+}
+
 KNOWN_FAILURES = {
     "T26-W09-perf-results.json",
     "T26-W09-perf-diag-results.json",
@@ -68,6 +73,8 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T26-W04-sdk-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，外部脚手架→签名→安装→启用）", "python tools/run_t26_w04_probe.py"),
     "T26-W04-sdk-dist-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，发布形态 SDK 握手/snapshot）", "python tools/run_t26_w04_sdk_probe.py"),
     "T26-W02-form-results.json": ("T26/W02", "W", "Windows 产品壳（隔离构建，表单交接 title/tags）", "python tools/run_t26_form_probe.py"),
+    "T26-G1G2-results.json": ("T26/G1G2", "W", "Windows 产品壳（隔离构建，guest 内容读/真实写）", "python tools/run_t26_guest_io_probe.py"),
+    "T26-W07-boot-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，boot crash/连续启动失败；含 4 缺口）", "python tools/run_t26_boot_crash_probe.py"),
     "T26-W05-protocol-results.json": ("T26/W05", "W", "Windows 产品壳（隔离构建，协议线握手/snapshot）", "python tools/run_t26_protocol_probe.py"),
     "T26-W06-boundary-results.json": ("T26/W06", "W", "Windows 产品壳（隔离构建，网络/worker/能力边界）", "python tools/run_t26_boundary_probe.py"),
     "T26-W07-fault-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，无限循环故障）", "python tools/run_t26_fault_probe.py"),
@@ -129,6 +136,8 @@ def main() -> int:
             # 已知 2 项失败是 S1 的「发现约束」（iframe 继承 Tauri globals / 同源可调用 cmd），
             # 不是回归；对应结论已写入 ADR-001 与 S1 证据文档。
             status = "PASS_WITH_FINDINGS(2)" 
+        if name in PARTIAL_EVIDENCE and status == "FAIL":
+            status = f"PASS_WITH_FINDINGS({PARTIAL_EVIDENCE[name]} 缺口已记录)"
         if name in KNOWN_FAILURES and status == "FAIL":
             status = "KNOWN_FAIL(记录)"
         rows.append([name, meta[0], meta[1], meta[2], status, passed, total, meta[3] or ""])

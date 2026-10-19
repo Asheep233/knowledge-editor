@@ -202,3 +202,17 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - 前 5 缺口（P0）：G1 无内容读通道（snapshot 无正文）、G2 写通道不可达+假桩伪造完成、G3 print.snapshot
   为桩、G4 宿主事件 0 发射、G7 无 pack A/B 参考 UI/逐项台账空白。
 - 正在推进：G1/G2 修复（内容读通道 + 真实写通道，见后续提交）。
+
+## 追加（2026-10-19 后段 · Agent Team 并行产出）
+
+- `1ea4c62` **G1/G2**：guest 内容读通道（snapshot additive content）+ 真实写通道（context.write
+  能力 trusted/builtin、Rust 门禁、真实 /api/context/write，删除假桩）→ 产品 W **14/14**；
+  前端 1834 passed、cargo 51 passed。
+- `d502d9d` **W02 迟到请求/旧连接失效**：停用 guest 卸载 iframe；宿主重放预捕获迟到请求验证
+  旧连接失效（丢弃/不落盘），W **12/12**（证据明确标注注入方式与限定结论）。
+- `5921ec4` **W07 boot crash/连续启动失败**：44 checks **40 PASS / 4 真实缺口**（孤儿 sidecar、
+  端口耗尽静默/不重试、数据目录占用不重试、损坏 settings 静默回退），PASS_WITH_FINDINGS；
+  不宣称 W07 整体通过。
+- `fdac4ea` **F01–F16 审计**：0 已实现/3 部分/13 未实现（G1/G2 已闭环其中结构阻塞，仍不改变统计）。
+- `582f386` **T27 云端执行交接单**（VM 由主理人让云端 Codex 执行；证据按 U1–U6 回传登记）。
+- 矩阵：**53 行** --check PASS（新增 G1/G2、W07 boot 行；W07 boot 标 PASS_WITH_FINDINGS(4 缺口)）。

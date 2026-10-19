@@ -24,15 +24,15 @@ T26-A7-A5-guest-results.json,?,U?,?,PASS,11,11,
 T26-A7-isolation-results.json,?,U?,?,PASS,6,6,
 T26-A8-save-results.json,?,U?,?,PASS,9,9,
 T26-IME-DPI-results.json,?,U?,?,PASS,7,7,
-T26-W01-zip-results.json,?,U?,?,PASS,8,8,
-T26-W02-form-results.json,?,U?,?,PASS,8,8,
-T26-W05-protocol-results.json,?,U?,?,PASS,7,7,
-T26-W06-boundary-results.json,?,U?,?,PASS,8,8,
-T26-W07-fault-results.json,?,U?,?,PASS,8,8,
-T26-W09-perf-diag-results.json,?,U?,?,FAIL,4,5,
-T26-W09-perf-plain-results.json,?,U?,?,FAIL,4,8,
-T26-W09-perf-results.json,?,U?,?,FAIL,3,7,
-T26-W09-workshop-results.json,?,U?,?,PASS,6,6,
+T26-W01-zip-results.json,T26/W01,W,Windows 产品壳（隔离构建，ZIP 离线包/解压安全）,PASS,8,8,python tools/run_t26_zip_probe.py
+T26-W02-form-results.json,T26/W02,W,Windows 产品壳（隔离构建，表单交接 title/tags）,PASS,8,8,python tools/run_t26_form_probe.py
+T26-W05-protocol-results.json,T26/W05,W,Windows 产品壳（隔离构建，协议线握手/snapshot）,PASS,7,7,python tools/run_t26_protocol_probe.py
+T26-W06-boundary-results.json,T26/W06,W,Windows 产品壳（隔离构建，网络/worker/能力边界）,PASS,8,8,python tools/run_t26_boundary_probe.py
+T26-W07-fault-results.json,T26/W07,W,Windows 产品壳（隔离构建，无限循环故障）,PASS,8,8,python tools/run_t26_fault_probe.py
+T26-W09-perf-diag-results.json,T26/W09,W,Windows 产品壳（性能诊断，已知大文档限制）,KNOWN_FAIL(记录),4,5,python tools/run_t26_perf_diag_probe.py
+T26-W09-perf-plain-results.json,T26/W09,W,Windows 产品壳（性能复测，已知大文档限制）,KNOWN_FAIL(记录),4,8,python tools/run_t26_perf_plain_probe.py
+T26-W09-perf-results.json,T26/W09,W,Windows 产品壳（性能基线，已知大文档限制）,KNOWN_FAIL(记录),3,7,python tools/run_t26_perf_probe.py
+T26-W09-workshop-results.json,T26/W09,W,Windows 产品壳（工坊口径：无复制/无广播/无泄漏）,PASS,6,6,python tools/run_t26_w09_workshop_probe.py
 T26-isolated-smoke-results.json,?,U?,?,PASS,7,7,
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py

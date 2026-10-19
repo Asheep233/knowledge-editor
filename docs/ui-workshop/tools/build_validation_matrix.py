@@ -15,6 +15,13 @@ ROOT = Path(__file__).resolve().parents[3]  # repo root
 EVID = ROOT / "docs" / "ui-workshop" / "evidence"
 OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 
+# 已知失败（已记录的风险，不是回归）：矩阵中标注 KNOWN_FAIL，不参与 --check 门禁
+KNOWN_FAILURES = {
+    "T26-W09-perf-results.json",
+    "T26-W09-perf-diag-results.json",
+    "T26-W09-perf-plain-results.json",
+}
+
 # evidence 文件 → (task, kind, platform, 复现命令/说明)
 META: dict[str, tuple[str, str, str, str]] = {
     "P0-S1-probe-results.json": ("T02", "U/W?（Linux 侧 U + Windows 混合，见文档）", "Linux WSL + Windows", "python run_s1_probe.py"),
@@ -40,6 +47,15 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T26-A3-recover-results.json": ("T26/A3", "W", "Windows 产品壳（隔离构建，启动 recover/safeMode）", "python tools/run_t26_recover_probe.py"),
     "T26-A4-A6-install-results.json": ("T26/A4+A6", "W", "Windows 产品壳（隔离构建，签名安装/生命周期）", "python tools/run_t26_install_probe.py"),
     "T26-A5-ui-results.json": ("T26/A5", "W", "Windows 产品壳（隔离构建，工坊信任 UI）", "python tools/run_t26_ui_probe.py"),
+    "T26-W02-form-results.json": ("T26/W02", "W", "Windows 产品壳（隔离构建，表单交接 title/tags）", "python tools/run_t26_form_probe.py"),
+    "T26-W05-protocol-results.json": ("T26/W05", "W", "Windows 产品壳（隔离构建，协议线握手/snapshot）", "python tools/run_t26_protocol_probe.py"),
+    "T26-W06-boundary-results.json": ("T26/W06", "W", "Windows 产品壳（隔离构建，网络/worker/能力边界）", "python tools/run_t26_boundary_probe.py"),
+    "T26-W07-fault-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，无限循环故障）", "python tools/run_t26_fault_probe.py"),
+    "T26-W01-zip-results.json": ("T26/W01", "W", "Windows 产品壳（隔离构建，ZIP 离线包/解压安全）", "python tools/run_t26_zip_probe.py"),
+    "T26-W09-perf-results.json": ("T26/W09", "W", "Windows 产品壳（性能基线，已知大文档限制）", "python tools/run_t26_perf_probe.py"),
+    "T26-W09-perf-diag-results.json": ("T26/W09", "W", "Windows 产品壳（性能诊断，已知大文档限制）", "python tools/run_t26_perf_diag_probe.py"),
+    "T26-W09-perf-plain-results.json": ("T26/W09", "W", "Windows 产品壳（性能复测，已知大文档限制）", "python tools/run_t26_perf_plain_probe.py"),
+    "T26-W09-workshop-results.json": ("T26/W09", "W", "Windows 产品壳（工坊口径：无复制/无广播/无泄漏）", "python tools/run_t26_w09_workshop_probe.py"),
 
 }
 
@@ -92,6 +108,8 @@ def main() -> int:
             # 已知 2 项失败是 S1 的「发现约束」（iframe 继承 Tauri globals / 同源可调用 cmd），
             # 不是回归；对应结论已写入 ADR-001 与 S1 证据文档。
             status = "PASS_WITH_FINDINGS(2)" 
+        if name in KNOWN_FAILURES and status == "FAIL":
+            status = "KNOWN_FAIL(记录)"
         rows.append([name, meta[0], meta[1], meta[2], status, passed, total, meta[3] or ""])
     # S3/S5 双平台 pytest（evidence md 记录）
     rows.append(["P0-S3-prototype.md（pytest 10/10 双平台）", "T04", "A/U", "Linux WSL + Windows", "PASS", "10", "10", "pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py"])

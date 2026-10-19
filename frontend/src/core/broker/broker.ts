@@ -55,6 +55,15 @@ export const METHOD_CAPABILITIES: Readonly<Record<Exclude<MethodName, 'protocol.
   'command.invoke': 'ui.shell',
 }
 
+/**
+ * 连接是否拥有某能力（official 角色在 fullAccess 下视为全能力）。
+ * G1：产品 Broker 后端用它决定 `context.snapshot` 是否返回正文（`context.read`）——
+ * 与 `authorize` 用同一判定，避免「协议层与返回内容」两套能力口径。
+ */
+export function connectionHasCapability(conn: BrokerConnection, capability: string, officialFullAccess = true): boolean {
+  return (officialFullAccess && conn.role === 'official') || conn.capabilities.includes(capability)
+}
+
 export interface BrokerAuthResult {
   ok: boolean
   error?: ProtocolError

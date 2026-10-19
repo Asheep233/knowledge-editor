@@ -30,13 +30,14 @@ export interface TrustPolicy {
   capabilitiesByTier?: Record<TrustTier, PackCapability[] | 'all'>
 }
 
-const ALL_CAPS: PackCapability[] = ['ui.shell', 'panel.sidebar', 'panel.dock', 'editor.commands.readonly', 'context.read', 'print.request']
+const ALL_CAPS: PackCapability[] = ['ui.shell', 'panel.sidebar', 'panel.dock', 'editor.commands.readonly', 'context.read', 'context.write', 'print.request']
 
 const DEFAULT_POLICY: Required<TrustPolicy> = {
   blockUnsignedDownloads: true,
   capabilitiesByTier: {
     builtin: 'all',
-    trusted: ['ui.shell', 'panel.sidebar', 'panel.dock', 'editor.commands.readonly', 'context.read', 'print.request'],
+    // T26 G2：文档写能力只授予 trusted/builtin（community 无真实写权限）。
+    trusted: ['ui.shell', 'panel.sidebar', 'panel.dock', 'editor.commands.readonly', 'context.read', 'context.write', 'print.request'],
     community: ['panel.sidebar', 'panel.dock', 'print.request'],
   },
 }

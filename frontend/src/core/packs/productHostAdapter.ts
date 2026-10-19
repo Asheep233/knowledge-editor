@@ -12,6 +12,8 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 
+import type { ProtocolMethods } from '../protocol/types'
+import { HttpTransport } from '../session/httpTransport'
 import { validateManifest, type PackManifest } from './manifest'
 import type { PackageHostBackend } from './packageHost'
 import { evaluateTrust, type TrustTier } from './trustPolicy'
@@ -170,5 +172,174 @@ export function createArticleMetaCommandHandler(options: ArticleMetaCommandOptio
       }
       throw new Error(`E_COMMAND_NOT_ALLOWED: 未授权命令 ${name}`)
     },
+  }
+}
+
+// ---------------- T26 G1/G2：产品 guest 上下文读写（真实后端；不伪造 durability） ----------------
+
+export interface GuestContextBinding {
+  contextId: string
+  epoch: number
+}
+
+export interface ContextIOOptions {
+  /** 后端 base（默认同源相对路径，浏览器/Tauri 内直接可用） */
+  baseUrl?: string
+  fetchImpl?: typeof fetch
+  /** 单次请求超时（ms，默认 15000；与 HttpTransport 一致） */
+  timeoutMs?: number
+}
+
+export interface ContextSnapshotWithContent {
+  relPath: string
+  revision: number
+  diskHash: string
+  content?: string
+  contentBytes?: number
+}
+
+interface SnapshotResponseBody {
+  rel_path: string
+  revision: number
+  disk_hash: string
+  context_id?: string
+}
+
+interface ArticleReadResponseBody {
+  content?: string
+}
+
+function encodeRelPathForUrl(relPath: string): string {
+  return relPath
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((seg) => encodeURIComponent(seg))
+    .join('/')
+}
+
+/** content 的 UTF-8 字节数（与磁盘文件字节大小对应；JSON 反序列化不改变码点）。 */
+export function utf8ByteLength(text: string): number {
+  return new TextEncoder().encode(text).length
+}
+
+async function requestJson<T>(
+  fetchImpl: typeof fetch,
+  baseUrl: string,
+  path: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<{ status: number; body: T | null }> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const resp = await fetchImpl(`${baseUrl}${path}`, { ...init, signal: controller.signal })
+    let body: T | null = null
+    try {
+      body = (await resp.json()) as T
+    } catch {
+      body = null
+    }
+    return { status: resp.status, body }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * G1（内容读通道）：读取上下文快照；`includeContent`（= 连接具备 `context.read`）时附带正文。
+ *
+ * 正文复用**既有**只读文档 API（`GET /api/articles/{rel}`，返回完整原文含 BOM/frontmatter/CRLF），
+ * 不新增/不改后端接口。读不到正文（文件不存在/非文档路径/读失败）时退化为旧形状
+ * （仅 `relPath/revision/diskHash`）——`content` 是可选增量字段，旧客户端忽略即可。
+ */
+export async function fetchContextSnapshotWithContent(
+  binding: GuestContextBinding,
+  relPath: string,
+  includeContent: boolean,
+  options: ContextIOOptions = {},
+): Promise<ContextSnapshotWithContent> {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
+  const baseUrl = (options.baseUrl ?? '').replace(/\/$/, '')
+  const timeoutMs = options.timeoutMs ?? 15000
+  const snap = await requestJson<SnapshotResponseBody>(
+    fetchImpl,
+    baseUrl,
+    '/api/context/snapshot',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context_id: binding.contextId, epoch: binding.epoch, rel_path: relPath }),
+    },
+    timeoutMs,
+  )
+  if (snap.status !== 200 || !snap.body) throw new Error(`E_SNAPSHOT: HTTP ${snap.status}`)
+  const result: ContextSnapshotWithContent = {
+    relPath: snap.body.rel_path,
+    revision: snap.body.revision,
+    diskHash: snap.body.disk_hash,
+  }
+  if (!includeContent) return result
+  try {
+    const doc = await requestJson<ArticleReadResponseBody>(
+      fetchImpl,
+      baseUrl,
+      `/api/articles/${encodeRelPathForUrl(relPath)}`,
+      { method: 'GET' },
+      timeoutMs,
+    )
+    if (doc.status === 200 && typeof doc.body?.content === 'string') {
+      result.content = doc.body.content
+      result.contentBytes = utf8ByteLength(doc.body.content)
+    }
+  } catch {
+    /* 正文读取失败 → 保留旧形状（content 可选，不改变 snapshot 其余语义） */
+  }
+  return result
+}
+
+/**
+ * G2（真实写通道）：把 guest 的 `context.write` 接到真实 `POST /api/context/write`。
+ *
+ * 语义复用 `HttpTransport`（T10/T14 已验证的保存链传输层）：
+ * - 200 `completed` → 原样透传真实 `revision/accepted/recoveryDurable/fileDurable`（**不伪造**）；
+ * - 409 epoch 过期 → `stale`；revision/外部改盘冲突 → `conflict`（`kind/currentRevision` 透传）；
+ * - 传输/其它 HTTP 失败 → `failed`（不携带 revision/fileDurable；`requestId` 幂等可经后端查询复核）。
+ */
+export async function writeContextDocument(
+  binding: GuestContextBinding,
+  params: ProtocolMethods['context.write']['params'],
+  options: ContextIOOptions = {},
+): Promise<ProtocolMethods['context.write']['result']> {
+  const requestId = params.requestId ?? `guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  const transport = new HttpTransport({
+    baseUrl: options.baseUrl,
+    fetchImpl: options.fetchImpl,
+    timeoutMs: options.timeoutMs,
+  })
+  try {
+    const result = await transport.write({
+      contextId: binding.contextId,
+      epoch: binding.epoch,
+      relPath: params.relPath,
+      content: params.content,
+      expectedRevision: params.expectedRevision,
+      requestId,
+    })
+    const mapped: ProtocolMethods['context.write']['result'] = {
+      requestId: result.requestId || requestId,
+      status: result.status,
+    }
+    if (result.status === 'completed') {
+      mapped.revision = result.revision
+      mapped.accepted = result.accepted
+      mapped.recoveryDurable = result.recoveryDurable
+      mapped.fileDurable = result.fileDurable
+    } else if (result.status === 'conflict' || result.status === 'stale') {
+      if (result.kind) mapped.kind = result.kind
+      if (result.currentRevision !== undefined) mapped.currentRevision = result.currentRevision
+    }
+    return mapped
+  } catch {
+    return { requestId, status: 'failed' }
   }
 }

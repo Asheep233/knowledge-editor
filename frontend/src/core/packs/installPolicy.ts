@@ -43,6 +43,7 @@ const CAPABILITY_RISK: Record<string, CapabilityRisk> = {
   'panel.dock': { capability: 'panel.dock', risk: 'low', summary: '在停靠区添加面板' },
   'editor.commands.readonly': { capability: 'editor.commands.readonly', risk: 'medium', summary: '发起只读编辑命令（选择/滚动/复制，不写正文）' },
   'context.read': { capability: 'context.read', risk: 'low', summary: '读取当前工作区文档树/搜索（经受控协议）' },
+  'context.write': { capability: 'context.write', risk: 'high', summary: '写入当前文档正文（真实落盘，受 revision/CAS 保护；可能被宿主/用户察觉）' },
   'print.request': { capability: 'print.request', risk: 'low', summary: '请求打印当前文档的可信快照' },
 }
 

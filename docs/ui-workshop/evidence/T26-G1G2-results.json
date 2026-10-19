@@ -1,0 +1,296 @@
+{
+  "generated_at": "2026-10-19T09:28:45+0800",
+  "scenario": "T26 G1/G2 产品 W：guest context.snapshot.content 内容读 + context.write 真实写/CAS",
+  "build": {
+    "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+    "exe_sha256": "be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a",
+    "exe_mtime": "2026-10-19T09:27:26"
+  },
+  "pack": {
+    "id": "com.probe.t26io",
+    "capabilities": [
+      "ui.shell",
+      "context.read",
+      "context.write"
+    ],
+    "signature": "ed25519 k1 (signed)"
+  },
+  "checks": [
+    {
+      "name": "W-T26-G1G2-1 安装声明 context.write 的签名包（Rust ALLOWED_CAPS 放行）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368469243127729 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-G1G2-2 会话 active（guest 经真实协议线启用）",
+      "pass": true,
+      "detail": {
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "context.write"
+        ],
+        "lastError": null,
+        "packId": "com.probe.t26io",
+        "state": "active",
+        "updatedAt": "SystemTime { intervals: 134368469248413694 }"
+      }
+    },
+    {
+      "name": "W-T26-G1G2-3 握手能力协商含 context.read + context.write（G2 能力可授予）",
+      "pass": true,
+      "detail": {
+        "acceptedFeatures": [
+          "context.read",
+          "context.write"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-G1G2-4 context.snapshot 返回正文（G1），且等于磁盘原文",
+      "pass": true,
+      "detail": {
+        "phase": "guest-io-done",
+        "error": null,
+        "contentLen": 37,
+        "revision": 0
+      }
+    },
+    {
+      "name": "W-T26-G1G2-5 contentBytes/diskHash 与磁盘原文一致（revision 绑定可信）",
+      "pass": true,
+      "detail": {
+        "contentBytes": 37,
+        "expectBytes": 37,
+        "diskHash": "f1a6be4d47a7e9e904d166f35329dba87b806fd17cebc93a10ea749a711898d0"
+      }
+    },
+    {
+      "name": "W-T26-G1G2-6 context.write 真实完成：status=completed、revision=快照+1、fileDurable=true（不伪造）",
+      "pass": true,
+      "detail": {
+        "write1": {
+          "requestId": "guest-io-w1",
+          "status": "completed",
+          "revision": 1,
+          "accepted": true,
+          "recoveryDurable": true,
+          "fileDurable": true
+        },
+        "snapshot1Revision": 0
+      }
+    },
+    {
+      "name": "W-T26-G1G2-7 write#1 requestId 原样回传（幂等键）",
+      "pass": true,
+      "detail": {
+        "requestId": "guest-io-w1"
+      }
+    },
+    {
+      "name": "W-T26-G1G2-8 磁盘真实落盘 = guest 写入正文（假桩不可能通过）",
+      "pass": true,
+      "detail": {
+        "diskLen": 45,
+        "head": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n"
+      }
+    },
+    {
+      "name": "W-T26-G1G2-9 再次 snapshot 读到新正文且 revision 递增（G1 回读）",
+      "pass": true,
+      "detail": {
+        "snapshot2": {
+          "revision": 1,
+          "contentLen": 45,
+          "hasContent": true,
+          "diskHash": "54c56efc8a085a2e8a67c2806e1cab579166cebe52be0dc58097e22ac1e005c9"
+        }
+      }
+    },
+    {
+      "name": "W-T26-G1G2-10 旧 revision 再写 → conflict/kind=revision + currentRevision（CAS 生效）",
+      "pass": true,
+      "detail": {
+        "write2": {
+          "requestId": "guest-io-w2",
+          "status": "conflict",
+          "kind": "revision",
+          "currentRevision": 1
+        },
+        "snapshot2Revision": 1
+      }
+    },
+    {
+      "name": "W-T26-G1G2-11 冲突写未覆盖磁盘（无 CONFLICT 标记，仍为 write#1 正文）",
+      "pass": true,
+      "detail": {
+        "head": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n"
+      }
+    },
+    {
+      "name": "W-T26-G1G2-12 会话能力含 context.write（能力矩阵变化已生效）",
+      "pass": true,
+      "detail": {
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "context.write"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-G1G2-13 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-G1G2-14 用户实例未运行 → N/A（隔离测试未触碰用户数据）",
+      "pass": true,
+      "detail": {
+        "user_pid": "N/A (not running)"
+      }
+    }
+  ],
+  "pass_count": 14,
+  "total": 14,
+  "results_file": "T26-G1G2-results.json",
+  "observed": {
+    "isolation_residual_banner": true,
+    "initial_content": "---\ntitle: io\n---\n\nT26 G1G2 original\n",
+    "write_content": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n",
+    "snapshot1": {
+      "relPath": "Articles/io.md",
+      "revision": 0,
+      "diskHash": "f1a6be4d47a7e9e904d166f35329dba87b806fd17cebc93a10ea749a711898d0",
+      "content": "---\ntitle: io\n---\n\nT26 G1G2 original\n",
+      "contentBytes": 37,
+      "hasContent": true,
+      "contentLen": 37
+    },
+    "write1": {
+      "requestId": "guest-io-w1",
+      "status": "completed",
+      "revision": 1,
+      "accepted": true,
+      "recoveryDurable": true,
+      "fileDurable": true
+    },
+    "snapshot2": {
+      "relPath": "Articles/io.md",
+      "revision": 1,
+      "diskHash": "54c56efc8a085a2e8a67c2806e1cab579166cebe52be0dc58097e22ac1e005c9",
+      "content": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n",
+      "contentBytes": 45,
+      "hasContent": true,
+      "contentLen": 45
+    },
+    "write2": {
+      "requestId": "guest-io-w2",
+      "status": "conflict",
+      "kind": "revision",
+      "currentRevision": 1
+    },
+    "disk_after_write": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n",
+    "disk_after_conflict": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n",
+    "session_capabilities": [
+      "ui.shell",
+      "context.read",
+      "context.write"
+    ],
+    "accepted_features": [
+      "context.read",
+      "context.write"
+    ]
+  },
+  "raw": {
+    "guest_results": {
+      "phase": "guest-io-done",
+      "handshakeAccepted": [
+        "context.read",
+        "context.write"
+      ],
+      "snapshot1": {
+        "relPath": "Articles/io.md",
+        "revision": 0,
+        "diskHash": "f1a6be4d47a7e9e904d166f35329dba87b806fd17cebc93a10ea749a711898d0",
+        "content": "---\ntitle: io\n---\n\nT26 G1G2 original\n",
+        "contentBytes": 37,
+        "hasContent": true,
+        "contentLen": 37
+      },
+      "write1": {
+        "requestId": "guest-io-w1",
+        "status": "completed",
+        "revision": 1,
+        "accepted": true,
+        "recoveryDurable": true,
+        "fileDurable": true
+      },
+      "snapshot2": {
+        "relPath": "Articles/io.md",
+        "revision": 1,
+        "diskHash": "54c56efc8a085a2e8a67c2806e1cab579166cebe52be0dc58097e22ac1e005c9",
+        "content": "---\ntitle: io\n---\n\nT26 G1G2 written by guest\n",
+        "contentBytes": 45,
+        "hasContent": true,
+        "contentLen": 45
+      },
+      "write2": {
+        "requestId": "guest-io-w2",
+        "status": "conflict",
+        "kind": "revision",
+        "currentRevision": 1
+      }
+    },
+    "diag": {
+      "start": {
+        "blocked": false,
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "context.write"
+        ],
+        "hasEntry": true,
+        "hasSession": true
+      },
+      "log": [
+        "starting",
+        "active",
+        "active"
+      ],
+      "buttons": [
+        "全部文档",
+        "最近更新",
+        "标签",
+        "回收站",
+        "新建",
+        "新建",
+        "新建文件夹",
+        "附件 0",
+        "设置",
+        "+ 新建文档",
+        "大纲",
+        "创意工坊",
+        "关闭",
+        "检查/修复全部包",
+        "选择包并预览…",
+        "选择 ZIP 离线包…",
+        "回滚",
+        "修复/恢复",
+        "授予信任",
+        "撤销信任",
+        "启用 guest",
+        "停用 guest",
+        "卸载"
+      ],
+      "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nio.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-guest-io\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26io 设为 trusted\n已安装包\nT26 G1G2 IO Pack com.probe.t26io\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell, context.read, context.write\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+    }
+  }
+}

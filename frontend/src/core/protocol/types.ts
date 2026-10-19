@@ -118,7 +118,23 @@ export type ProtocolMessage =
 /** 可表达的 guest→host 方法（SDK 与 host 共用；新增方法必须升版本或加能力）。 */
 export interface ProtocolMethods {
   'protocol.capabilities': { params: Record<string, never>; result: { protocolVersion: number; features: string[]; contextId: string | null; epoch: number | null } }
-  'context.snapshot': { params: { relPath: string }; result: { relPath: string; revision: number; diskHash: string } }
+  /**
+   * G1（T26 G1G2）：`content`/`contentBytes` 为**可选增量字段**（additive）——
+   * 仅当连接拥有 `context.read` 能力时宿主返回正文；旧 guest/SDK 忽略未知字段即可，
+   * 因此不构成破坏性契约变更，无需升 `PROTOCOL_VERSION`。
+   */
+  'context.snapshot': {
+    params: { relPath: string }
+    result: {
+      relPath: string
+      revision: number
+      diskHash: string
+      /** 当前 revision 对应的文档完整原文（含 BOM/frontmatter/CRLF，逐字节语义） */
+      content?: string
+      /** `content` 的 UTF-8 字节数（与磁盘文件大小一致；无 content 时不返回） */
+      contentBytes?: number
+    }
+  }
   'context.write': {
     params: { relPath: string; content: string; expectedRevision: number; requestId?: string }
     result: {

@@ -16,6 +16,8 @@ export const ALLOWED_CAPABILITIES = [
   'panel.dock',
   'editor.commands.readonly',
   'context.read',
+  /** T26 G2：文档写通道（真实 /api/context/write，CAS/幂等；trusted/builtin 才授予） */
+  'context.write',
   'print.request',
 ] as const
 

@@ -1,7 +1,7 @@
 /** UI 工坊 T18：Broker 能力/上下文/命令白名单/有界代理（Core 单测）。 */
 import { describe, expect, it } from 'vitest'
 
-import { Broker, type BrokerBackend, type BrokerConnection } from './broker'
+import { Broker, connectionHasCapability, type BrokerBackend, type BrokerConnection } from './broker'
 import type { ProtocolMethods } from '../protocol/types'
 
 const CONN: BrokerConnection = {
@@ -62,6 +62,19 @@ describe('T18 Broker — 能力/上下文/命令/有界代理', () => {
     await expect(broker.handle('context.snapshot', { relPath: 'x' }, conn())).resolves.toMatchObject({ revision: 1 })
     await expect(broker.handle('context.write', WRITE_PARAMS, conn())).rejects.toMatchObject({ code: 'E_CAPABILITY' })
     await expect(broker.handle('print.snapshot', { relPath: 'x' }, conn())).resolves.toMatchObject({ pages: 1 })
+  })
+
+  it('guest 声明 context.write 能力后放行（T26 G2 能力过滤）', async () => {
+    const broker = new Broker(new FakeBackend())
+    const result = await broker.handle('context.write', WRITE_PARAMS, conn({ capabilities: ['context.read', 'context.write'] }))
+    expect(result.status).toBe('completed')
+  })
+
+  it('connectionHasCapability：guest 按声明、official 在 fullAccess 下全能力', () => {
+    expect(connectionHasCapability(conn(), 'context.read')).toBe(true)
+    expect(connectionHasCapability(conn(), 'context.write')).toBe(false)
+    expect(connectionHasCapability(conn({ role: 'official', capabilities: [] }), 'context.write')).toBe(true)
+    expect(connectionHasCapability(conn({ role: 'official', capabilities: [] }), 'context.write', false)).toBe(false)
   })
 
   it('official 角色拥有全能力（含 context.write）', async () => {

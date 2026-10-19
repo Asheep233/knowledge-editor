@@ -1,7 +1,7 @@
 /** UI 工坊 T17：包清单校验 + 安装事务/回滚/损坏恢复（内存 FS，逐字节可复现）。 */
 import { describe, expect, it } from 'vitest'
 
-import { PACK_API_VERSION, PackValidationError, validateManifest, type PackManifest } from './manifest'
+import { ALLOWED_CAPABILITIES, PACK_API_VERSION, PackValidationError, validateManifest, type PackManifest } from './manifest'
 import { MemoryPackFs, PackStore, type PackHasher } from './store'
 
 /** 测试用确定性 hasher（64 hex）；与 fakeHash 一一对应。 */
@@ -54,6 +54,20 @@ describe('T17 manifest 校验（候选扫描与无损拒绝）', () => {
     const { manifest } = await buildManifest({ capabilities: ['ui.shell', 'system.exec' as never] })
     try {
       validateManifest(manifest)
+      throw new Error('应当拒绝')
+    } catch (e) {
+      expect((e as PackValidationError).code).toBe('E_CAPABILITY')
+    }
+  })
+
+  it('context.write 可声明（T26 G2）；未知能力仍被无损拒绝', async () => {
+    // G2：新增文档写能力进入允许集合（trusted/builtin 才实际授予，见 trustPolicy 测试）
+    expect(ALLOWED_CAPABILITIES).toContain('context.write')
+    const { manifest } = await buildManifest({ capabilities: ['ui.shell', 'context.read', 'context.write'] })
+    expect(validateManifest(JSON.parse(JSON.stringify(manifest))).capabilities).toEqual(['ui.shell', 'context.read', 'context.write'])
+    const { manifest: bad } = await buildManifest({ capabilities: ['context.write', 'system.exec' as never] })
+    try {
+      validateManifest(bad)
       throw new Error('应当拒绝')
     } catch (e) {
       expect((e as PackValidationError).code).toBe('E_CAPABILITY')

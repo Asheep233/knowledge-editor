@@ -49,6 +49,23 @@ describe('T24 信任策略（安装期）', () => {
     expect(d.violations[0]).toContain('ui.shell')
   })
 
+  it('context.write（T26 G2）只授予 trusted/builtin，community 拒绝（不是静默裁剪）', () => {
+    const writeManifest: PackManifest = { ...MANIFEST, capabilities: ['context.write'] }
+    const community = evaluateTrust({ manifest: writeManifest, source: 'local-file', signature: 'valid', tier: 'community' })
+    expect(community.allowed).toBe(false)
+    expect(community.violations.join(' ')).toMatch(/E_CAPABILITY_TIER/)
+    expect(community.violations.join(' ')).toMatch(/context\.write/)
+    expect(community.effectiveCapabilities).toEqual([])
+
+    const trusted = evaluateTrust({ manifest: writeManifest, source: 'local-file', signature: 'valid', tier: 'trusted' })
+    expect(trusted.allowed).toBe(true)
+    expect(trusted.effectiveCapabilities).toEqual(['context.write'])
+
+    const builtin = evaluateTrust({ manifest: writeManifest, source: 'builtin', signature: 'missing', tier: 'builtin' })
+    expect(builtin.allowed).toBe(true)
+    expect(builtin.effectiveCapabilities).toEqual(['context.write'])
+  })
+
   it('显式确认策略：builtin+有效签名不需要；其它需要', () => {
     expect(evaluateTrust({ manifest: MANIFEST, source: 'builtin', signature: 'valid', tier: 'builtin' }).requiresExplicitConfirm).toBe(false)
     expect(evaluateTrust({ manifest: MANIFEST, source: 'local-file', signature: 'valid', tier: 'trusted' }).requiresExplicitConfirm).toBe(true)

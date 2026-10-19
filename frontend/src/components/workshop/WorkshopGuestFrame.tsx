@@ -9,13 +9,18 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Broker, type BrokerBackend } from '../../core/broker/broker'
+import { Broker, connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
 import { brokeredHandlers } from '../../core/broker/binding'
 import { HostDispatcher } from '../../core/protocol/channel'
 import type { ProtocolMethods } from '../../core/protocol/types'
 import { CoreSaveBridge } from '../../core/session/coreSaveBridge'
 import { createGuestSessionHost, type GuestSessionHost, type GuestHostBackend } from '../../core/packs/guestHost'
-import { createArticleMetaCommandHandler, isolationGuard } from '../../core/packs/productHostAdapter'
+import {
+  createArticleMetaCommandHandler,
+  fetchContextSnapshotWithContent,
+  isolationGuard,
+  writeContextDocument,
+} from '../../core/packs/productHostAdapter'
 import type { TrustTier } from '../../core/packs/trustPolicy'
 
 interface GuestStartResultSession { connection: NonNullable<import('../../core/packs/packageHost').PackageSession['connection']> }
@@ -41,26 +46,31 @@ async function contextInfo(): Promise<{ contextId: string; epoch: number }> {
   return await bridge().ensureContext()
 }
 
-/** W05：产品 guest Broker 后端（真实后端 HTTP；只读 snapshot 为主，写/打印返回明确状态）。 */
+/** W05：产品 guest Broker 后端（真实后端 HTTP；G1 内容读 / G2 真实写；打印仍为 G3 遗留桩）。 */
 class ProductBrokerBackend implements BrokerBackend {
   currentEpoch() {
     return 1
   }
-  async snapshot(params: ProtocolMethods['context.snapshot']['params']) {
+  async snapshot(params: ProtocolMethods['context.snapshot']['params'], conn: BrokerConnection) {
     const ctx = await contextInfo()
-    const resp = await fetch(`${(globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? ''}/api/context/snapshot`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context_id: ctx.contextId, epoch: ctx.epoch, rel_path: params.relPath }),
-    })
-    if (!resp.ok) throw new Error(`E_SNAPSHOT: HTTP ${resp.status}`)
-    const data = (await resp.json()) as { rel_path: string; revision: number; disk_hash: string }
-    return { relPath: data.rel_path, revision: data.revision, diskHash: data.disk_hash }
+    // G1：仅具备 context.read 的连接返回正文（Broker 已按能力拒绝无权限请求；此处第二道防线）。
+    // 正文复用既有只读文档 API；读不到时退化为旧形状 {relPath,revision,diskHash}。
+    return await fetchContextSnapshotWithContent(
+      ctx,
+      params.relPath,
+      connectionHasCapability(conn, 'context.read'),
+      { baseUrl: (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '' },
+    )
   }
-  async write(params: ProtocolMethods['context.write']['params']) {
-    return { requestId: params.requestId ?? 'product-guest', status: 'completed' as const, revision: 1, fileDurable: true }
+  async write(params: ProtocolMethods['context.write']['params'], _conn: BrokerConnection) {
+    // G2：真实 /api/context/write；completed/conflict/stale/failed 如实返回，不伪造 revision/fileDurable。
+    const ctx = await contextInfo()
+    return await writeContextDocument(ctx, params, {
+      baseUrl: (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '',
+    })
   }
   async print(params: ProtocolMethods['print.snapshot']['params']) {
+    // G3（打印真实管线）仍是遗留缺口：保持既有桩行为，不在本任务范围内冒充真实 PDF。
     return { pdfToken: params.relPath, pages: 1 }
   }
   private readonly commandHandler = createArticleMetaCommandHandler({

@@ -81,6 +81,24 @@ describe('T11 协议契约（host↔guest）', () => {
     host.close()
   })
 
+  it('context.snapshot：content/contentBytes 为可选增量字段（旧形状仍合法，不升协议版本）', async () => {
+    const { guest, host } = setup({
+      'context.snapshot': () => ({ relPath: 'Articles/a.md', revision: 2, diskHash: 'h-2', content: '正文🙂', contentBytes: 9 }),
+    })
+    await guest.handshake()
+    const snap = await guest.request('context.snapshot', { relPath: 'Articles/a.md' })
+    expect(snap).toMatchObject({ relPath: 'Articles/a.md', revision: 2, diskHash: 'h-2', content: '正文🙂', contentBytes: 9 })
+    host.close()
+    // 向后兼容：不返回 content 的旧形状仍可被同一协议/客户端消费
+    const { guest: oldGuest, host: oldHost } = setup()
+    await oldGuest.handshake()
+    const oldSnap = await oldGuest.request('context.snapshot', { relPath: 'Articles/a.md' })
+    expect(oldSnap.content).toBeUndefined()
+    expect(oldSnap.contentBytes).toBeUndefined()
+    expect(PROTOCOL_VERSION).toBe(1)
+    oldHost.close()
+  })
+
   it('未知方法 → E_UNKNOWN_METHOD（不是字符串错误）', async () => {
     const { guest, host } = setup()
     await guest.handshake()

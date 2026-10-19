@@ -151,12 +151,14 @@ fn parse_hex_64(hex: &str) -> Option<[u8; 64]> {
     Some(out)
 }
 
-const ALLOWED_CAPS: [&str; 6] = [
+// T26 G2：新增 "context.write"（真实写通道；前端 manifest/trustPolicy 同步允许，trusted/builtin 才授予）。
+const ALLOWED_CAPS: [&str; 7] = [
     "ui.shell",
     "panel.sidebar",
     "panel.dock",
     "editor.commands.readonly",
     "context.read",
+    "context.write",
     "print.request",
 ];
 
@@ -1088,6 +1090,31 @@ mod tests {
         let bad = root.join("src-bad");
         make_pack(&bad, "com.demo.bad", "1.0.0", true);
         assert!(scan_dir(&root, bad.to_str().unwrap()).unwrap_err().contains("E_HASH"));
+    }
+
+    #[test]
+    fn scan_accepts_context_write_capability_and_rejects_unknown() {
+        // T26 G2：`context.write` 进入 ALLOWED_CAPS（前端 manifest/trustPolicy 同步允许）；
+        // 未识别能力仍在安装/扫描期无损拒绝。
+        let root = tmp_root("scan-caps");
+        let src = root.join("src-write");
+        make_pack(&src, "com.demo.write", "1.0.0", false);
+        let mut manifest: Value =
+            serde_json::from_str(&fs::read_to_string(src.join("manifest.json")).unwrap()).unwrap();
+        manifest["capabilities"] = json!(["context.read", "context.write"]);
+        fs::write(src.join("manifest.json"), serde_json::to_string(&manifest).unwrap()).unwrap();
+        let s = scan_dir(&root, src.to_str().unwrap()).unwrap();
+        assert_eq!(s["capabilities"], json!(["context.read", "context.write"]));
+
+        let bad_dir = root.join("src-bad-cap");
+        make_pack(&bad_dir, "com.demo.badcap", "1.0.0", false);
+        let mut bad: Value =
+            serde_json::from_str(&fs::read_to_string(bad_dir.join("manifest.json")).unwrap()).unwrap();
+        bad["capabilities"] = json!(["system.exec"]);
+        fs::write(bad_dir.join("manifest.json"), serde_json::to_string(&bad).unwrap()).unwrap();
+        assert!(scan_dir(&root, bad_dir.to_str().unwrap())
+            .unwrap_err()
+            .contains("E_CAPABILITY"));
     }
 
     #[test]

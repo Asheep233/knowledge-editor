@@ -3,7 +3,15 @@ import type { invoke as tauriInvoke } from '@tauri-apps/api/core'
 import { describe, expect, it, vi } from 'vitest'
 
 import { PACK_API_VERSION, type PackManifest } from './manifest'
-import { capabilityCeilingFor, createArticleMetaCommandHandler, createProductHostBackend, isolationGuard } from './productHostAdapter'
+import {
+  capabilityCeilingFor,
+  createArticleMetaCommandHandler,
+  createProductHostBackend,
+  fetchContextSnapshotWithContent,
+  isolationGuard,
+  utf8ByteLength,
+  writeContextDocument,
+} from './productHostAdapter'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 
@@ -121,5 +129,160 @@ describe('W02 article meta command handler', () => {
     await expect(handler.invoke('article.set-title', { relPath: '../evil.md', title: 'x' })).rejects.toThrow(/E_PATH/)
     await expect(handler.invoke('article.set-title', { relPath: 'Articles/a.md', title: '  ' })).rejects.toThrow(/E_TITLE/)
     await expect(handler.invoke('article.delete', { relPath: 'Articles/a.md' })).rejects.toThrow(/E_COMMAND_NOT_ALLOWED/)
+  })
+})
+
+
+// ---------------- T26 G1/G2：产品 guest 上下文读写（真实 HTTP 语义） ----------------
+
+type RouteResult = { status: number; body: unknown } | 'throw'
+
+function routeFetch(route: (url: string, init?: RequestInit) => RouteResult) {
+  const calls: Array<{ url: string; init?: RequestInit }> = []
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+    calls.push({ url, init })
+    const r = route(url, init)
+    if (r === 'throw') throw new Error('network down')
+    return { status: r.status, ok: r.status >= 200 && r.status < 300, json: async () => r.body } as unknown as Response
+  }) as unknown as typeof fetch
+  return { fetchImpl, calls }
+}
+
+const BASE = 'http://127.0.0.1:8000'
+const CTX = { contextId: 'ke-default', epoch: 1 }
+const DOC = '---\ntitle: A\n---\n\n正文🙂\n'
+
+function snapshotRoute(contentStatus = 200): (url: string) => RouteResult {
+  return (url) => {
+    if (url.endsWith('/api/context/snapshot')) {
+      return { status: 200, body: { rel_path: 'Articles/a.md', revision: 2, disk_hash: 'hash-2', context_id: 'ke-default' } }
+    }
+    if (url.includes('/api/articles/')) {
+      return contentStatus === 200 ? { status: 200, body: { content: DOC } } : { status: contentStatus, body: { detail: '文章不存在' } }
+    }
+    return { status: 404, body: { detail: 'not found' } }
+  }
+}
+
+function writeRoute(result: RouteResult): (url: string) => RouteResult {
+  return (url) => (url.endsWith('/api/context/write') ? result : { status: 404, body: {} })
+}
+
+describe('T26 G1 内容读通道：context.snapshot 可选正文', () => {
+  it('具备 context.read → 快照携带完整正文 + UTF-8 字节数（复用既有只读文档 API）', async () => {
+    const { fetchImpl, calls } = routeFetch(snapshotRoute())
+    const snap = await fetchContextSnapshotWithContent(CTX, 'Articles/a.md', true, { fetchImpl, baseUrl: BASE })
+    expect(snap.relPath).toBe('Articles/a.md')
+    expect(snap.revision).toBe(2)
+    expect(snap.diskHash).toBe('hash-2')
+    expect(snap.content).toBe(DOC)
+    expect(snap.contentBytes).toBe(utf8ByteLength(DOC))
+    expect(snap.contentBytes).toBe(new TextEncoder().encode(DOC).length)
+    // 第一次是 context/snapshot POST（带 context/epoch/rel_path），第二次是只读文档 GET
+    expect(calls).toHaveLength(2)
+    expect(calls[0].url).toBe(`${BASE}/api/context/snapshot`)
+    expect(calls[0].init?.method).toBe('POST')
+    expect(JSON.parse(String(calls[0].init?.body))).toMatchObject({ context_id: 'ke-default', epoch: 1, rel_path: 'Articles/a.md' })
+    expect(calls[1].url).toBe(`${BASE}/api/articles/Articles/a.md`)
+    expect(calls[1].init?.method).toBe('GET')
+  })
+
+  it('无 context.read 能力（includeContent=false）→ 只回旧形状，不读正文', async () => {
+    const { fetchImpl, calls } = routeFetch(snapshotRoute())
+    const snap = await fetchContextSnapshotWithContent(CTX, 'Articles/a.md', false, { fetchImpl, baseUrl: BASE })
+    expect(snap).toEqual({ relPath: 'Articles/a.md', revision: 2, diskHash: 'hash-2' })
+    expect(snap.content).toBeUndefined()
+    expect(snap.contentBytes).toBeUndefined()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('正文读取失败（404/非文档路径）→ 退化为旧形状（向后兼容，不报错）', async () => {
+    const { fetchImpl } = routeFetch(snapshotRoute(404))
+    const snap = await fetchContextSnapshotWithContent(CTX, 'Attachments/x.bin', true, { fetchImpl, baseUrl: BASE })
+    expect(snap).toEqual({ relPath: 'Articles/a.md', revision: 2, diskHash: 'hash-2' })
+  })
+
+  it('context/snapshot 非 200 → E_SNAPSHOT（不伪装成功）', async () => {
+    const { fetchImpl } = routeFetch(() => ({ status: 503, body: { detail: 'busy' } }))
+    await expect(fetchContextSnapshotWithContent(CTX, 'Articles/a.md', true, { fetchImpl, baseUrl: BASE })).rejects.toThrow(/E_SNAPSHOT/)
+  })
+})
+
+describe('T26 G2 真实写通道：context.write → /api/context/write', () => {
+  it('completed → 真实 revision/accepted/recoveryDurable/fileDurable 透传（不伪造）', async () => {
+    const { fetchImpl, calls } = routeFetch(
+      writeRoute({
+        status: 200,
+        body: {
+          request_id: 'rid-1',
+          context_id: 'ke-default',
+          rel_path: 'Articles/a.md',
+          status: 'completed',
+          revision: 3,
+          accepted: true,
+          recovery_durable: true,
+          file_durable: true,
+        },
+      }),
+    )
+    const result = await writeContextDocument(CTX, { relPath: 'Articles/a.md', content: '新正文', expectedRevision: 2 }, { fetchImpl, baseUrl: BASE })
+    expect(result).toEqual({
+      requestId: 'rid-1',
+      status: 'completed',
+      revision: 3,
+      accepted: true,
+      recoveryDurable: true,
+      fileDurable: true,
+    })
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe(`${BASE}/api/context/write`)
+    expect(JSON.parse(String(calls[0].init?.body))).toMatchObject({
+      context_id: 'ke-default',
+      epoch: 1,
+      rel_path: 'Articles/a.md',
+      content: '新正文',
+      expected_revision: 2,
+    })
+  })
+
+  it('revision 冲突 → conflict/kind=revision + currentRevision（无伪造 revision）', async () => {
+    const { fetchImpl } = routeFetch(
+      writeRoute({
+        status: 200,
+        body: { request_id: 'rid-2', context_id: 'ke-default', rel_path: 'Articles/a.md', status: 'conflict', kind: 'revision', current_revision: 5 },
+      }),
+    )
+    const result = await writeContextDocument(CTX, { relPath: 'Articles/a.md', content: 'x', expectedRevision: 1 }, { fetchImpl, baseUrl: BASE })
+    expect(result).toMatchObject({ requestId: 'rid-2', status: 'conflict', kind: 'revision', currentRevision: 5 })
+    expect(result.revision).toBeUndefined()
+    expect(result.fileDurable).toBeUndefined()
+  })
+
+  it('epoch 过期（409）→ stale', async () => {
+    const { fetchImpl } = routeFetch(writeRoute({ status: 409, body: { detail: '上下文 epoch 已过期: 期望 2, 收到 1' } }))
+    const result = await writeContextDocument(CTX, { relPath: 'Articles/a.md', content: 'x', expectedRevision: 1 }, { fetchImpl, baseUrl: BASE })
+    expect(result).toMatchObject({ status: 'stale' })
+  })
+
+  it('HTTP 500 / 网络失败 → failed（不伪造成功、不伪造 durability）', async () => {
+    const http500 = routeFetch(writeRoute({ status: 500, body: { detail: 'boom' } }))
+    const r1 = await writeContextDocument(CTX, { relPath: 'Articles/a.md', content: 'x', expectedRevision: 1 }, { fetchImpl: http500.fetchImpl, baseUrl: BASE })
+    expect(r1.status).toBe('failed')
+    expect(r1.revision).toBeUndefined()
+    expect(r1.fileDurable).toBeUndefined()
+    const network = routeFetch(() => 'throw')
+    const r2 = await writeContextDocument(CTX, { relPath: 'Articles/a.md', content: 'x', expectedRevision: 1 }, { fetchImpl: network.fetchImpl, baseUrl: BASE })
+    expect(r2.status).toBe('failed')
+  })
+
+  it('requestId 透传（幂等）：params.requestId 作为 request_id 发送', async () => {
+    const { fetchImpl, calls } = routeFetch(
+      writeRoute({ status: 200, body: { request_id: 'rid-9', context_id: 'ke-default', rel_path: 'Articles/a.md', status: 'completed', revision: 1, file_durable: true } }),
+    )
+    const result = await writeContextDocument(CTX, { relPath: 'Articles/a.md', content: 'x', expectedRevision: 0, requestId: 'guest-req-42' }, { fetchImpl, baseUrl: BASE })
+    expect(JSON.parse(String(calls[0].init?.body)).request_id).toBe('guest-req-42')
+    expect(result.requestId).toBe('rid-9')
+    expect(result.revision).toBe(1)
   })
 })

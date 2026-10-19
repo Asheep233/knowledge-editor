@@ -42,6 +42,15 @@ describe('T22 安装预览与能力风险说明', () => {
     expect(preview.warnings.join(' ')).toMatch(/demo\.hello/)
   })
 
+  it('context.write（T26 G2）风险为 high，并触发高影响能力警告', async () => {
+    const { manifest } = await fixture({ capabilities: ['context.write'] })
+    const preview = buildInstallPreview({ manifest, source: 'local-file', signature: 'valid' })
+    expect(preview.capabilities).toEqual([
+      expect.objectContaining({ capability: 'context.write', risk: 'high' }),
+    ])
+    expect(preview.warnings.join(' ')).toMatch(/高影响能力/)
+  })
+
   it('签名无效 → 阻止安装（不是警告后继续）', async () => {
     const { manifest } = await fixture()
     const preview = buildInstallPreview({ manifest, source: 'downloaded', signature: 'invalid' })

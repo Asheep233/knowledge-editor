@@ -2000,13 +2000,346 @@ def append_coverage(result: dict, rows: list[dict], stats: dict) -> None:
     COVERAGE.write_text(original.rstrip("\n") + "\n" + "\n".join(lines), encoding="utf-8")
 
 
+# ---------------- F03 FAIL 根因审计（task-21，--audit-f03） ----------------
+
+
+def _js_select_editor(cdp, mode: str = "para-end", chars: int = 4) -> bool:
+    """在编辑器内设置选区：mode=para-end（段落末尾光标）/ text（选中前 N 字符）/ all。"""
+    if mode == "all":
+        return select_all_editor(cdp)
+    expr = """(() => {
+      const el = document.querySelector('.ProseMirror'); if (!el) return false; el.focus();
+      const pm = el.pmViewDesc ? el.pmViewDesc : null;
+      const sel = window.getSelection(); const r = document.createRange();
+      let target = null; let count = 0;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let first = null; let last = null;
+      while (walker.nextNode()) { const t = walker.currentNode; if (!t.textContent || !t.textContent.trim()) continue; if (!first) first = t; last = t; count++; }
+      if (!first) return false;
+      if (%MODE% === 'text') {
+        target = first; const n = Math.min(%CHARS%, target.textContent.length);
+        r.setStart(target, 0); r.setEnd(target, n);
+      } else {
+        target = last; r.setStart(target, Math.max(0, target.textContent.length - 1)); r.setEnd(target, target.textContent.length);
+      }
+      sel.removeAllRanges(); sel.addRange(r);
+      return {count, text: sel.toString().slice(0, 40)};
+    })()""".replace("%MODE%", json.dumps(mode)).replace("%CHARS%", str(chars))
+    return bool(cdp.eval(expr))
+
+
+def _js_key(cdp, key: str, code: str, key_code: int, ctrl: bool, shift: bool, alt: bool = False) -> bool:
+    """JS 合成 KeyboardEvent 直接派发到编辑器 DOM（绕过 WebView2 浏览器级加速键）。"""
+    expr = """(() => { const el = document.querySelector('.ProseMirror'); if (!el) return false;
+      el.focus();
+      const ev = new KeyboardEvent('keydown', {key: %s, code: %s, keyCode: %d, which: %d,
+        ctrlKey: %s, shiftKey: %s, altKey: %s, bubbles: true, cancelable: true});
+      el.dispatchEvent(ev); return true; })()""" % (
+        json.dumps(key), json.dumps(code), key_code, key_code,
+        "true" if ctrl else "false", "true" if shift else "false", "true" if alt else "false")
+    return bool(cdp.eval(expr))
+
+
+def _counts(cdp) -> dict:
+    return cdp.eval("({ul: document.querySelectorAll('.ProseMirror ul').length, ol: document.querySelectorAll('.ProseMirror ol').length, li: document.querySelectorAll('.ProseMirror li').length, bq: document.querySelectorAll('.ProseMirror blockquote').length, a: document.querySelectorAll('.ProseMirror a[href]').length, text: (document.querySelector('.ProseMirror')||{}).innerText ? document.querySelector('.ProseMirror').innerText.length : 0})") or {}
+
+
+def _line_of(path_str: str, needle: str, occurrence: int = 1) -> int | None:
+    try:
+        lines = (REPO / path_str).read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return None
+    n = 0
+    for i, ln in enumerate(lines, 1):
+        if needle in ln:
+            n += 1
+            if n == occurrence:
+                return i
+    return None
+
+
+def code_audit_f03() -> dict:
+    """代码审计：5 个 FAIL 的静态证据（文件/行/绑定缺失）。只读，不改代码。"""
+    kbj = "frontend/src/editor/extensions/KeBlockJoin.ts"
+    idx = "frontend/src/editor/index.ts"
+    ext_bq = "frontend/node_modules/@tiptap/extension-blockquote/dist/index.js"
+    ext_list = "frontend/node_modules/@tiptap/extension-list/dist/index.js"
+    toolbar = "frontend/src/components/editor/EditorToolbar.tsx"
+    sc = "frontend/src/state/shortcuts.ts"
+    return {
+        "blockquote": {
+            "productExtensionDisabled": {"file": idx, "line": _line_of(idx, "blockquote: false")},
+            "customExtension": {"file": kbj, "line": _line_of(kbj, "export const KeBlockquote")},
+            "customShortcutOverride": {"file": kbj, "line": _line_of(kbj, "addKeyboardShortcuts()")},
+            "customShortcutBodyReturns": {"file": kbj, "line": _line_of(kbj, "return { Backspace: deleteEmptyAfterAtom }")},
+            "upstreamBinding": {"file": ext_bq, "line": _line_of(ext_bq, '"Mod-Shift-b"'), "value": "Mod-Shift-b"},
+            "conclusion": "KeBlockquote.extend({ addKeyboardShortcuts() { return { Backspace } } }) 覆盖了上游快捷键表，"
+                          "未 spread parent 的 { 'Mod-Shift-b': toggleBlockquote } → Ctrl+Shift+B 无绑定（PRODUCT_FINDING）。",
+        },
+        "list.bullet": {
+            "upstreamBinding": {"file": ext_list, "line": _line_of(ext_list, '"Mod-Shift-8"'), "value": "Mod-Shift-8"},
+            "probeAssertionFlaw": "台账探针断言只数 <ul> 数量；选中段落后快捷键会把段末块并入已有列表 → ul 仍为 1、li 2→3，原断言 before=1→after=1 误判 FAIL。",
+            "runtimeAuditProvesWorks": "复核 4 通道（CDP key '8'/'*'、JS 合成、工具栏）均 li 2→3 → 快捷键真实生效（AUTOMATION_LIMITATION/probe assertion）。",
+        },
+        "save": {
+            "toolbarOnSave": {"file": toolbar, "line": _line_of(toolbar, 'title="保存（Ctrl+S）"')},
+            "probeFailureMode": "全量台账中保存按钮在连续自动化（大量 toggle/undo、源码模式、元数据保存）后处于保存失败/外部修改提示状态，25s 内未见 marker；干净态与 4×bold/undo 连续编辑复核均落盘成功。",
+            "runtimeAuditProvesWorks": "干净态与 after-churn 复核均 diskSaved=true（状态栏「已保存」）。",
+        },
+        "link.insert": {
+            "toolbarHandler": {"file": toolbar, "line": _line_of(toolbar, "extendMarkRange('link').setLink")},
+            "probeFailureMode": "台账探针在全量序列后执行（选择状态/上一步撤销影响）；定向复核 with-selection 与 collapsed 均产生 <a href>。",
+            "runtimeAuditProvesWorks": "复核两种前置均 beforeA=0→afterA=1，href=examples/f03audit。",
+        },
+        "module.insert": {
+            "toolbarInsertModule": {"file": toolbar, "line": _line_of(toolbar, "const insertModule")},
+            "pickerTrigger": {"file": toolbar, "line": _line_of(toolbar, '插入模块（复制 Modules/ 内容')},
+            "dropdownLazyLoad": {"file": toolbar, "line": _line_of(toolbar, "const toggleModulePicker")},
+            "probeFailureMode": "Dropdown 为 portal + 懒加载：打开时先渲染「暂无模块」，items 异步到达；台账探针在模块按钮出现前用全页文本匹配（命中左侧 Modules 树）导致未点中面板项，随后重复点击 trigger 把面板关掉。",
+            "backendApi": "backend /api/modules 200（app.log 4 次；fixture Modules/示例模块.md 存在）；待定向复核（poll 面板项）。",
+        },
+        "shortcutsRegistry": {
+            "file": sc,
+            "listBulletDisplayKeyLine": _line_of(sc, "id: 'editor.list.bullet'"),
+            "blockquoteDisplayKeyLine": _line_of(sc, "id: 'editor.blockquote'"),
+            "note": "shortcuts.ts 的 defaultKey 仅用于展示/告警，不参与默认分派；实际绑定来自 Tiptap 扩展键盘快捷键。",
+        },
+    }
+
+
+def execute_audit() -> dict:
+    """F03 5 个 FAIL 的定向复核：干净实例、逐项正确前置条件 + 多输入通道变体。"""
+    if not EXE.exists():
+        raise RuntimeError("缺少隔离测试构建")
+    build_sha = R.sha_file(EXE)
+    packs_info = prepare_packs([])
+    env_paths = prepare_env()
+    appdata, ws = env_paths["appdata"], env_paths["workspace"]
+    article_ledger = ws / "Articles" / "fe-ledger.md"
+    R.cleanup()
+    R.cleanup_test_identifier()
+    if not wait_no_other_instance(120):
+        raise RuntimeError("检测到其它隔离产品实例，已放弃")
+    env = {
+        **os.environ, "APPDATA": str(appdata), "KE_WORKSPACE": str(ws),
+        "KE_WORKSHOP_PUBKEYS": json.dumps({"k1": {"key": packs_info["publicKeyHex"]}}),
+        "KE_WS_PRINT_RENDER": "1",
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": f"--remote-debugging-port={CDP_PORT}",
+        "TEMP": str(env_paths["tmp"]), "TMP": str(env_paths["tmp"]),
+    }
+    log_path = BASE / "app.log"
+    log = log_path.open("w", encoding="utf-8")
+    proc = subprocess.Popen([str(EXE)], env=env, cwd=str(BASE), stdout=log, stderr=subprocess.STDOUT)
+    cdp = None
+    audit = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "build": {"exe": str(EXE), "sha256": build_sha,
+             "mtime": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(EXE.stat().st_mtime))}, "cases": []}
+    try:
+        if not R.wait_until(lambda: bool(R.main_targets()), 150, 0.3):
+            raise RuntimeError("CDP 主窗口未就绪")
+        cdp = R.main_cdp()
+        cdp.call("Runtime.enable")
+        cdp.call("Page.enable")
+        R.browser_connect()
+        R.wait_until(lambda: bool(cdp.eval("typeof window.__TAURI_INTERNALS__?.invoke === 'function'")), 30, 0.25)
+        R.wait_until(lambda: bool(cdp.eval("!!document.querySelector('button[aria-label=\"打开创意工坊\"]')")), 90, 0.25)
+        R.host_eval(cdp, HOST_COLLECTOR)
+        # 打开台账文档
+        R.wait_until(lambda: R.has_text(cdp, "fe-ledger.md"), 60, 0.25)
+        R.click_text(cdp, "fe-ledger.md")
+        R.wait_until(lambda: DOC_BODY in R.editor_text(cdp), 45, 0.3)
+        time.sleep(0.8)
+
+        def record_case(case_id: str, name: str):
+            def wrap(fn):
+                case = {"id": case_id, "name": name, "variants": []}
+                try:
+                    fn(case)
+                except Exception as e:  # noqa: BLE001
+                    case["error"] = str(e)[:500]
+                audit["cases"].append(case)
+                print("CASE", case_id, "|", name, "|", json.dumps(case, ensure_ascii=False)[:600], flush=True)
+                return case
+            return wrap
+
+        # ---- 1) 保存（工具栏保存按钮；干净态 + 连续编辑后两种前置） ----
+        def case_save(case):
+            def attempt(label: str, pre_churn: bool):
+                mark = "F03AUDIT-SAVE-" + ("CLEAN" if not pre_churn else "AFTERCHURN")
+                if pre_churn:
+                    for _ in range(4):
+                        _js_select_editor(cdp, "para-end")
+                        _js_key(cdp, "b", "KeyB", 66, True, False)
+                        time.sleep(0.15)
+                        click_toolbar(cdp, "撤销")
+                        time.sleep(0.15)
+                R.focus_editor_end(cdp)
+                cdp.eval("document.execCommand('insertText', false, " + json.dumps(mark) + ")")
+                present = R.wait_until(lambda: mark in R.editor_text(cdp), 6, 0.2)
+                before_disk = mark in article_ledger.read_text(encoding="utf-8", errors="replace")
+                clicked = click_toolbar(cdp, "保存")
+                saved = R.wait_until(lambda: mark in article_ledger.read_text(encoding="utf-8", errors="replace"), 25, 0.3)
+                status = R.body_text(cdp)[-80:]
+                case["variants"].append({"name": label, "editorHasMark": present, "diskBefore": before_disk,
+                                         "saveClicked": clicked, "diskSaved": saved, "statusTail": status})
+            attempt("clean-state: type marker → click toolbar save", False)
+            attempt("after-churn: 4×bold/undo → type marker → click toolbar save", True)
+
+        record_case("save", "UI.toolbar.保存-Ctrl-S：工具栏保存按钮落盘")(case_save)
+
+        # ---- 2) 无序列表快捷键 Ctrl+Shift+8 多通道 ----
+        def case_bullet(case):
+            def variant(label, act):
+                _js_select_editor(cdp, "para-end")
+                time.sleep(0.2)
+                before = _counts(cdp)
+                act()
+                time.sleep(0.5)
+                after = _counts(cdp)
+                case["variants"].append({"name": label, "before": before, "after": after,
+                                         "changed": (before.get("ul"), before.get("li")) != (after.get("ul"), after.get("li"))})
+                click_toolbar(cdp, "撤销")
+                time.sleep(0.25)
+            variant("cdp-key: Ctrl+Shift+8 key='8' vk=56", lambda: press_key_combo(cdp, "8", "Digit8", 56, 10))
+            variant("cdp-key: Ctrl+Shift+8 key='*' vk=56", lambda: press_key_combo(cdp, "*", "Digit8", 56, 10))
+            variant("js-synthetic KeyboardEvent key='8' ctrl+shift", lambda: _js_key(cdp, "8", "Digit8", 56, True, True))
+            variant("control: toolbar list dropdown → 无序列表", lambda: (
+                click_selector(cdp, 'button[title="列表类型"]'), time.sleep(0.3), click_contains_text(cdp, "无序列表")))
+
+        record_case("list.bullet", "CMD.editor.list.bullet：Ctrl+Shift+8 无序列表")(case_bullet)
+
+        # ---- 3) 引用快捷键 Ctrl+Shift+B 多通道 ----
+        def case_blockquote(case):
+            def variant(label, act):
+                _js_select_editor(cdp, "para-end")
+                time.sleep(0.2)
+                before = _counts(cdp)
+                act()
+                time.sleep(0.5)
+                after = _counts(cdp)
+                case["variants"].append({"name": label, "before": {"bq": before.get("bq")}, "after": {"bq": after.get("bq")},
+                                         "changed": before.get("bq") != after.get("bq")})
+                click_toolbar(cdp, "撤销")
+                time.sleep(0.25)
+            variant("cdp-key: Ctrl+Shift+B key='B' vk=66", lambda: press_key_combo(cdp, "B", "KeyB", 66, 10))
+            variant("cdp-key: Ctrl+Shift+B key='b' vk=66", lambda: press_key_combo(cdp, "b", "KeyB", 66, 10))
+            variant("js-synthetic KeyboardEvent key='b' ctrl+shift keyCode=66", lambda: _js_key(cdp, "b", "KeyB", 66, True, True))
+            variant("control: toolbar 引用 button", lambda: click_toolbar(cdp, "引用"))
+
+        record_case("blockquote", "CMD.editor.blockquote：Ctrl+Shift+B 引用")(case_blockquote)
+
+        # ---- 4) 插入链接（先选中文本；无选区对照） ----
+        def case_link(case):
+            def attempt(label: str, with_selection: bool):
+                if with_selection:
+                    _js_select_editor(cdp, "text", 4)
+                else:
+                    _js_select_editor(cdp, "para-end")
+                before = _counts(cdp)
+                click_toolbar(cdp, "插入链接")
+                opened = R.wait_until(lambda: bool(cdp.eval("!!document.querySelector('[role=dialog] input')")), 10, 0.2)
+                if opened:
+                    set_input_value(cdp, "[role=dialog] input", "https://example.com/f03audit")
+                    click_exact_text(cdp, "确定")
+                time.sleep(0.5)
+                after = _counts(cdp)
+                case["variants"].append({"name": label, "dialogOpened": opened, "beforeA": before.get("a"),
+                                         "afterA": after.get("a"), "hrefs": cdp.eval("[...document.querySelectorAll('.ProseMirror a[href]')].map(a=>a.getAttribute('href')).slice(-3)")})
+                click_toolbar(cdp, "撤销")
+                time.sleep(0.2)
+            attempt("with text selection (4 chars) → toolbar 插入链接 → URL → 确定", True)
+            attempt("no selection (collapsed caret) → toolbar 插入链接 → URL → 确定", False)
+
+        record_case("link.insert", "CMD.editor.link.insert：插入链接是否需选区")(case_link)
+
+        # ---- 5) 插入模块（选择器点击流程/告警/双击） ----
+        def case_module(case):
+            mod_path = ws / "Modules" / "示例模块.md"
+            case["variants"].append({"name": "fixture module file", "path": str(mod_path), "exists": mod_path.exists(),
+                                     "contentHead": mod_path.read_text(encoding="utf-8")[:80] if mod_path.exists() else None})
+            before_text = R.editor_text(cdp)
+            # 只点一次 trigger（避免重复点击把面板关掉），轮询等待 panel 内出现模块项
+            click_selector(cdp, 'button[title^="插入模块"]')
+            panel_sel = "div.fixed.z-50 button"
+            found = False
+            end = time.time() + 20
+            snapshots = []
+            while time.time() < end:
+                state = cdp.eval("(() => { const p=[...document.querySelectorAll('div.fixed.z-50')].find(d=>d.querySelector('button'));"
+                                 " if(!p) return {panel:false}; const btns=[...p.querySelectorAll('button')].map(b=>(b.textContent||'').trim());"
+                                 " return {panel:true, buttons:btns, text:(p.innerText||'').slice(0,120)}; })()") or {}
+                if state.get("buttons") and any("示例模块" in b for b in state.get("buttons") or []):
+                    snapshots.append({"at_ms": int((time.time() - (end - 20)) * 1000), "state": state})
+                    found = True
+                    break
+                if len(snapshots) < 3:
+                    snapshots.append({"at_ms": int((time.time() - (end - 20)) * 1000), "state": state})
+                time.sleep(0.4)
+            case["variants"].append({"name": "picker panel probe (poll 20s)", "foundItem": found, "snapshots": snapshots[:4]})
+            clicked = False
+            inserted = False
+            if found:
+                clicked = bool(cdp.eval("(() => { const ps=[...document.querySelectorAll('div.fixed.z-50')];"
+                                        " for (const p of ps) { const b=[...p.querySelectorAll('button')].find(b=>(b.textContent||'').trim().includes('示例模块'));"
+                                        " if (b) { b.click(); return true; } } return false; })()"))
+                inserted = R.wait_until(lambda: "MODULE-FIXTURE-MARK" in R.editor_text(cdp), 20, 0.3)
+            alerts = R.host_eval(cdp, "window.__keAlerts || []")
+            case["variants"].append({"name": "click panel item → 插入正文", "clicked": clicked, "inserted": inserted,
+                                     "alerts": alerts, "editorTail": R.editor_text(cdp)[-140:]})
+            if not inserted:
+                # 复核后端 API 可用性（用产品 API base；page 相对 fetch 会落前端 index.html，不能作为证据）
+                api_base = cdp.eval("window.__KE_API_BASE__ || ''")
+                fetchres = cdp.eval("(async () => { try { const base = window.__KE_API_BASE__ || '';"
+                                    " const r = await fetch(base + '/api/modules'); const j = await r.json(); return {status:r.status, count:j.count, modules:j.modules}; }"
+                                    " catch(e) { return {error:String(e)}; } })()")
+                case["variants"].append({"name": "backend /api/modules via product API base", "apiBase": api_base, "result": fetchres})
+                click_selector(cdp, 'button[title^="插入模块"]')  # 关闭面板
+            press_esc(cdp)
+            if "MODULE-FIXTURE-MARK" in R.editor_text(cdp):
+                click_toolbar(cdp, "撤销")
+            case["preText"] = before_text[-80:]
+
+        record_case("module.insert", "CMD.editor.module.insert：模块选择器点击后正文未插入")(case_module)
+
+        audit["codeAudit"] = code_audit_f03()
+        audit["appLogRoutes"] = {k: log_routes(read_log(log_path), k) for k in ("/api/modules", "/api/attachments", "/api/documents")}
+        audit["alerts"] = R.host_eval(cdp, "window.__keAlerts || []")
+    finally:
+        if cdp is not None:
+            try:
+                cdp.close()
+            except Exception:
+                pass
+        try:
+            proc.terminate(); proc.wait(timeout=8)
+        except Exception:
+            try: proc.kill()
+            except Exception: pass
+        R.cleanup()
+        try: log.close()
+        except Exception: pass
+        R.cleanup_test_identifier()
+    out = BASE / "f03-audit.json"
+    out.write_text(json.dumps(audit, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("AUDIT ->", out, flush=True)
+    return audit
+
+
 # ---------------- main ----------------
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true", help="只运行不写 evidence/CSV/覆盖报告（冒烟验证）")
+    ap.add_argument("--audit-f03", action="store_true", help="F03 FAIL 根因定向复核（task-21）")
     args = ap.parse_args()
+    if args.audit_f03:
+        try:
+            execute_audit()
+            return 0
+        except Exception:
+            print(traceback.format_exc(), flush=True)
+            R.cleanup()
+            return 1
 
     checks: list[dict] = []
     result: dict = {}

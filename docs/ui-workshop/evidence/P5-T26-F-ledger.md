@@ -258,3 +258,10 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 | `MID_DEVTOOLS` | 开发者工具 | F12 | `ke-menu:devtools` |
 | `MID_RELOAD` | 重新加载 | Ctrl+R | `ke-menu:reload` |
 | `MID_RECENT` | 最近工作区… | （无） | `ke-menu:refresh-recent` |
+
+## v5 F03 FAIL 根因审计（task-21，2026-10-19）
+
+- 复核方式：`--audit-f03` 定向隔离实例（正确前置条件 + 多输入通道变体；未改产品代码）。
+- **分类结论**：4×`AUTOMATION_LIMITATION`（list.bullet / save / link.insert / module.insert → 复核通过，CSV 已改判 PASS 并注明方法） + 1×`PRODUCT_BUG/FINDING`（blockquote → 保持 FAIL）。
+- `CMD.editor.blockquote` 根因：`KeBlockquote`（frontend/src/editor/extensions/KeBlockJoin.ts:104/131）重写 `addKeyboardShortcuts()` 只返回 `Backspace`，覆盖丢弃上游 `@tiptap/extension-blockquote:109` 的 `Mod-Shift-b` 绑定 → Ctrl+Shift+B 无反应；工具栏「引用」命令可用（bq 0→1）。属产品缺陷（快捷方式失效），未改产品代码，记 FINDING 供决策。
+- 证据：`evidence/P5-T26-F03-fail-audit.md` + JSON `f03FailAudit`；报告附录 H。

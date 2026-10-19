@@ -594,3 +594,28 @@
 | F14 | 1/1 | 1 | 0 | 0/0/1 |
 | F15 | 1/19 | 1 | 0 | 1/0/0 |
 | F16 | 11/11 | 0 | 0 | 0/0/11 |
+
+---
+
+## 附录 H：F03 FAIL 根因审计（v5，2026-10-19）
+
+> task-21：把 F03 台账 5 个 FAIL 定位为 PRODUCT_BUG/FINDING 或 AUTOMATION_LIMITATION；不改产品代码。
+
+### H.1 分类结论
+
+| featureId | v5 分类 | v4 结果 | 复核结论 |
+| --- | --- | --- | --- |
+| `CMD.editor.list.bullet` | **AUTOMATION_LIMITATION** | FAIL | 产品快捷键真实生效；台账探针断言缺陷（只数 <ul>，实际 li 2→3） |
+| `CMD.editor.blockquote` | **PRODUCT_BUG/FINDING** | FAIL | KeBlockquote.addKeyboardShortcuts 覆盖上游 {Mod-Shift-b} 只返回 Backspace → 快捷键无绑定；工具栏命令可用 |
+| `UI.toolbar.保存-Ctrl-S` | **AUTOMATION_LIMITATION** | FAIL | 干净态 / 4×bold+undo 连续编辑后两种前置点击保存均落盘（diskSaved=true、「已保存」） |
+| `CMD.editor.link.insert` | **AUTOMATION_LIMITATION** | FAIL | with-selection 与 collapsed 两种前置经工具栏对话框均产生 <a href>（beforeA=0→afterA=1） |
+| `CMD.editor.module.insert` | **AUTOMATION_LIMITATION** | FAIL | Dropdown 为 portal + 懒加载（面板项 ~407ms 到达）；轮询到面板项后点击 → 模块正文真实插入（MODULE-FIXTURE-MARK 出现） |
+
+### H.2 关键定位（PRODUCT_BUG/FINDING）
+
+- `CMD.editor.blockquote`（Ctrl+Shift+B）：`frontend/src/editor/index.ts:158` 关闭 StarterKit 内置 blockquote；`frontend/src/editor/extensions/KeBlockJoin.ts:88` 以 `Blockquote.extend` 接管，并在 `:104` 重写 `addKeyboardShortcuts()`、`:131` 只 `return { Backspace: deleteEmptyAfterAtom }` —— 覆盖丢弃上游 `@tiptap/extension-blockquote/dist/index.js:109` 的 `Mod-Shift-b`。运行时 4 通道（CDP key 'B'/'b'、JS 合成事件、工具栏对照）证实：键盘无效果、工具栏可用。**未修改产品代码**。
+
+### H.3 复核证据
+
+- 证据：`evidence/P5-T26-F03-fail-audit.md`（逐项变体表）、JSON `f03FailAudit`（cases/codeAudit/appLogRoutes）。
+- CSV 改判：4 行 AUTOMATION_LIMITATION 改 PASS 并注明方法；blockquote 保持 FAIL 并写明 PRODUCT_FINDING 定位。

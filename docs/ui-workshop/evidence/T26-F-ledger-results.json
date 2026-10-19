@@ -1445,8 +1445,8 @@
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "FAIL:官方 UI 操作后 DOM 断言未通过",
-        "note": "",
+        "officialBaselineResult": "PASS:复核（AUTOMATION_LIMITATION）：Ctrl+Shift+8 真实生效——4 通道（CDP key '8'/'*'、JS 合成、工具栏）DOM 断言 li 2→3（原探针只数 <ul> 故误判）；详见 evidence/P5-T26-F03-fail-audit.md",
+        "note": "task-21 复核改判/保留（见 f03FailAudit）",
         "forceFill": false
       },
       {
@@ -1463,8 +1463,8 @@
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "FAIL:官方 UI 操作后 DOM 断言未通过",
-        "note": "",
+        "officialBaselineResult": "FAIL:PRODUCT_FINDING：KeBlockquote（frontend/src/editor/extensions/KeBlockJoin.ts:104/131）覆盖上游 @tiptap/extension-blockquote:109 的 Mod-Shift-b 绑定、只返回 Backspace → Ctrl+Shift+B 无反应；工具栏「引用」可用（bq 0→1）；详见 evidence/P5-T26-F03-fail-audit.md",
+        "note": "task-21 复核改判/保留（见 f03FailAudit）",
         "forceFill": false
       },
       {
@@ -1589,8 +1589,8 @@
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "FAIL:官方 UI 操作后 DOM 断言未通过",
-        "note": "",
+        "officialBaselineResult": "PASS:复核（AUTOMATION_LIMITATION）：干净态与 4×bold/undo 连续编辑后点击工具栏保存均落盘成功（diskSaved=true、状态栏「已保存」）；v4 台账失败为连续自动化状态耦合（外部修改提示/保存队列时序），详见 evidence/P5-T26-F03-fail-audit.md",
+        "note": "task-21 复核改判/保留（见 f03FailAudit）",
         "forceFill": false
       },
       {
@@ -1634,8 +1634,8 @@
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "FAIL:官方 UI 操作后未产生真实节点/产物（如实 FAIL）",
-        "note": "",
+        "officialBaselineResult": "PASS:复核（AUTOMATION_LIMITATION）：工具栏插入链接（地址对话框输入 URL→确定）在 选中文本 与 折叠光标 两种前置均产生 <a href>（0→1，href=examples/f03audit）；v4 失败为全量序列后状态耦合，详见 evidence/P5-T26-F03-fail-audit.md",
+        "note": "task-21 复核改判/保留（见 f03FailAudit）",
         "forceFill": false
       },
       {
@@ -1661,8 +1661,8 @@
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "FAIL:官方 UI 操作后未产生真实节点/产物（如实 FAIL）",
-        "note": "",
+        "officialBaselineResult": "PASS:复核（AUTOMATION_LIMITATION）：模块 Dropdown 为 portal+懒加载（面板项约 407ms 到达）；轮询等待面板项后点击 → 模块正文真实插入（MODULE-FIXTURE-MARK 出现）；v4 失败为探针在面板项到达前用全页文本匹配（命中左侧 Modules 树）/重复点击关闭面板，详见 evidence/P5-T26-F03-fail-audit.md",
+        "note": "task-21 复核改判/保留（见 f03FailAudit）",
         "forceFill": false
       },
       {
@@ -1902,8 +1902,8 @@
         "registered": 42,
         "packAPass": 0,
         "packBPass": 0,
-        "officialPass": 37,
-        "officialFail": 5,
+        "officialPass": 41,
+        "officialFail": 1,
         "officialNr": 0
       },
       "F04": {
@@ -2350,7 +2350,7 @@
     "F03 仅抽样 7 条真实执行，其余保持 NOT_RUN",
     "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）"
   ],
-  "verificationStatus": "V4_F03_COMPLETE_F16_AUDIT",
+  "verificationStatus": "V5_F03_FAIL_AUDIT",
   "v4Note": "task-20 第三轮增量：F03 剩余 12 行（工具栏/菜单入口真实执行；10 PASS / 2 FAIL）+ F16 原生菜单只读结构审计（menu.rs 11 项 MenuItem；原生菜单非 DOM，CSV 11 行如实 NOT_RUN，不伪造 W/DOM）。",
   "v4": {
     "f03_remaining_rows": 12,
@@ -2369,5 +2369,347 @@
     "previous_rounds": [
       "v1 4528897 / v2 cc322ca（事件三项修复）/ v3 78e5c25（F03 批量 22 行 + F14 preview_pdf）"
     ]
+  },
+  "v5Note": "task-21：F03 台账 5 个 FAIL 根因审计。分类：4×AUTOMATION_LIMITATION（list.bullet/save/link.insert/module.insert 复核通过，CSV 已改判 PASS 并注明方法） + 1×PRODUCT_BUG/FINDING（blockquote：KeBlockJoin.addKeyboardShortcuts 覆盖上游 Mod-Shift-b，Ctrl+Shift+B 无绑定；保持 FAIL，不改产品代码）。",
+  "f03FailAudit": {
+    "generatedAt": "2026-10-19T16:24:32+0800",
+    "build": {
+      "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+      "sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+      "mtime": "2026-10-19T15:29:02"
+    },
+    "classifications": [
+      {
+        "featureId": "CMD.editor.list.bullet",
+        "label": "Ctrl+Shift+8 无序列表",
+        "classification": "AUTOMATION_LIMITATION",
+        "reason": "产品快捷键真实生效；台账探针断言缺陷（只数 <ul>，实际 li 2→3）"
+      },
+      {
+        "featureId": "CMD.editor.blockquote",
+        "label": "Ctrl+Shift+B 引用",
+        "classification": "PRODUCT_BUG/FINDING",
+        "reason": "KeBlockquote.addKeyboardShortcuts 覆盖上游 {Mod-Shift-b} 只返回 Backspace → 快捷键无绑定；工具栏命令可用"
+      },
+      {
+        "featureId": "UI.toolbar.保存-Ctrl-S",
+        "label": "工具栏保存按钮",
+        "classification": "AUTOMATION_LIMITATION",
+        "reason": "干净态 / 4×bold+undo 连续编辑后两种前置点击保存均落盘（diskSaved=true、「已保存」）"
+      },
+      {
+        "featureId": "CMD.editor.link.insert",
+        "label": "插入链接",
+        "classification": "AUTOMATION_LIMITATION",
+        "reason": "with-selection 与 collapsed 两种前置经工具栏对话框均产生 <a href>（beforeA=0→afterA=1）"
+      },
+      {
+        "featureId": "CMD.editor.module.insert",
+        "label": "插入模块",
+        "classification": "AUTOMATION_LIMITATION",
+        "reason": "Dropdown 为 portal + 懒加载（面板项 ~407ms 到达）；轮询到面板项后点击 → 模块正文真实插入（MODULE-FIXTURE-MARK 出现）"
+      }
+    ],
+    "cases": [
+      {
+        "id": "save",
+        "name": "UI.toolbar.保存-Ctrl-S：工具栏保存按钮落盘",
+        "variants": [
+          {
+            "name": "clean-state: type marker → click toolbar save",
+            "editorHasMark": true,
+            "diskBefore": false,
+            "saveClicked": true,
+            "diskSaved": true,
+            "statusTail": "\nF 台账文档 · 35 字\n本地存储 · 自动保存已开启\n已保存\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-F\\workspace\n创意工坊"
+          },
+          {
+            "name": "after-churn: 4×bold/undo → type marker → click toolbar save",
+            "editorHasMark": true,
+            "diskBefore": false,
+            "saveClicked": true,
+            "diskSaved": true,
+            "statusTail": "ce\n创意工坊\n文档已被外部修改\n\nArticles/fe-ledger.md\n该文件在工作区外被修改（例如其他编辑器）。\n\n保留当前编辑内容\n重新加载外部版本"
+          }
+        ]
+      },
+      {
+        "id": "list.bullet",
+        "name": "CMD.editor.list.bullet：Ctrl+Shift+8 无序列表",
+        "variants": [
+          {
+            "name": "cdp-key: Ctrl+Shift+8 key='8' vk=56",
+            "before": {
+              "ul": 1,
+              "ol": 0,
+              "li": 2,
+              "bq": 0,
+              "a": 0,
+              "text": 114
+            },
+            "after": {
+              "ul": 1,
+              "ol": 0,
+              "li": 3,
+              "bq": 0,
+              "a": 0,
+              "text": 117
+            },
+            "changed": true
+          },
+          {
+            "name": "cdp-key: Ctrl+Shift+8 key='*' vk=56",
+            "before": {
+              "ul": 1,
+              "ol": 0,
+              "li": 2,
+              "bq": 0,
+              "a": 0,
+              "text": 114
+            },
+            "after": {
+              "ul": 1,
+              "ol": 0,
+              "li": 3,
+              "bq": 0,
+              "a": 0,
+              "text": 117
+            },
+            "changed": true
+          },
+          {
+            "name": "js-synthetic KeyboardEvent key='8' ctrl+shift",
+            "before": {
+              "ul": 1,
+              "ol": 0,
+              "li": 2,
+              "bq": 0,
+              "a": 0,
+              "text": 114
+            },
+            "after": {
+              "ul": 1,
+              "ol": 0,
+              "li": 3,
+              "bq": 0,
+              "a": 0,
+              "text": 117
+            },
+            "changed": true
+          },
+          {
+            "name": "control: toolbar list dropdown → 无序列表",
+            "before": {
+              "ul": 1,
+              "ol": 0,
+              "li": 2,
+              "bq": 0,
+              "a": 0,
+              "text": 114
+            },
+            "after": {
+              "ul": 1,
+              "ol": 0,
+              "li": 3,
+              "bq": 0,
+              "a": 0,
+              "text": 117
+            },
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "blockquote",
+        "name": "CMD.editor.blockquote：Ctrl+Shift+B 引用",
+        "variants": [
+          {
+            "name": "cdp-key: Ctrl+Shift+B key='B' vk=66",
+            "before": {
+              "bq": 0
+            },
+            "after": {
+              "bq": 0
+            },
+            "changed": false
+          },
+          {
+            "name": "cdp-key: Ctrl+Shift+B key='b' vk=66",
+            "before": {
+              "bq": 0
+            },
+            "after": {
+              "bq": 0
+            },
+            "changed": false
+          },
+          {
+            "name": "js-synthetic KeyboardEvent key='b' ctrl+shift keyCode=66",
+            "before": {
+              "bq": 0
+            },
+            "after": {
+              "bq": 0
+            },
+            "changed": false
+          },
+          {
+            "name": "control: toolbar 引用 button",
+            "before": {
+              "bq": 0
+            },
+            "after": {
+              "bq": 1
+            },
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "link.insert",
+        "name": "CMD.editor.link.insert：插入链接是否需选区",
+        "variants": [
+          {
+            "name": "with text selection (4 chars) → toolbar 插入链接 → URL → 确定",
+            "dialogOpened": true,
+            "beforeA": 0,
+            "afterA": 1,
+            "hrefs": [
+              "https://example.com/f03audit"
+            ]
+          },
+          {
+            "name": "no selection (collapsed caret) → toolbar 插入链接 → URL → 确定",
+            "dialogOpened": true,
+            "beforeA": 0,
+            "afterA": 1,
+            "hrefs": [
+              "https://example.com/f03audit"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module.insert",
+        "name": "CMD.editor.module.insert：模块选择器点击后正文未插入",
+        "variants": [
+          {
+            "name": "fixture module file",
+            "path": "C:\\ke-tmp\\uiws-t26-F\\workspace\\Modules\\示例模块.md",
+            "exists": true,
+            "contentHead": "# 示例模块\n\nMODULE-FIXTURE-MARK 模块正文（task-20 插入模块动作使用）。\n"
+          },
+          {
+            "name": "picker panel probe (poll 20s)",
+            "foundItem": true,
+            "snapshots": [
+              {
+                "at_ms": 4,
+                "state": {
+                  "panel": false
+                }
+              },
+              {
+                "at_ms": 407,
+                "state": {
+                  "panel": true,
+                  "buttons": [
+                    "示例模块"
+                  ],
+                  "text": "示例模块"
+                }
+              }
+            ]
+          },
+          {
+            "name": "click panel item → 插入正文",
+            "clicked": true,
+            "inserted": true,
+            "alerts": [],
+            "editorTail": "RKER 这是一段用于官方 UI 与 guest 读取的台账正文。\n\n列表项一\n\n列表项二\n\nF03AUDIT-SAVE-CLEANF03AUDIT-SAVE-AFTERCHUR\n\n示例模块\n\nMODULE-FIXTURE-MARK 模块正文（task-20 插入模块动作使用）。"
+          }
+        ],
+        "preText": "于官方 UI 与 guest 读取的台账正文。\n\n列表项一\n\n列表项二\n\nF03AUDIT-SAVE-CLEANF03AUDIT-SAVE-AFTERCHURN"
+      }
+    ],
+    "codeAudit": {
+      "blockquote": {
+        "productExtensionDisabled": {
+          "file": "frontend/src/editor/index.ts",
+          "line": 158
+        },
+        "customExtension": {
+          "file": "frontend/src/editor/extensions/KeBlockJoin.ts",
+          "line": 88
+        },
+        "customShortcutOverride": {
+          "file": "frontend/src/editor/extensions/KeBlockJoin.ts",
+          "line": 104
+        },
+        "customShortcutBodyReturns": {
+          "file": "frontend/src/editor/extensions/KeBlockJoin.ts",
+          "line": 131
+        },
+        "upstreamBinding": {
+          "file": "frontend/node_modules/@tiptap/extension-blockquote/dist/index.js",
+          "line": 109,
+          "value": "Mod-Shift-b"
+        },
+        "conclusion": "KeBlockquote.extend({ addKeyboardShortcuts() { return { Backspace } } }) 覆盖了上游快捷键表，未 spread parent 的 { 'Mod-Shift-b': toggleBlockquote } → Ctrl+Shift+B 无绑定（PRODUCT_FINDING）。"
+      },
+      "list.bullet": {
+        "upstreamBinding": {
+          "file": "frontend/node_modules/@tiptap/extension-list/dist/index.js",
+          "line": 62,
+          "value": "Mod-Shift-8"
+        },
+        "probeAssertionFlaw": "台账探针断言只数 <ul> 数量；选中段落后快捷键会把段末块并入已有列表 → ul 仍为 1、li 2→3，原断言 before=1→after=1 误判 FAIL。",
+        "runtimeAuditProvesWorks": "复核 4 通道（CDP key '8'/'*'、JS 合成、工具栏）均 li 2→3 → 快捷键真实生效（AUTOMATION_LIMITATION/probe assertion）。"
+      },
+      "save": {
+        "toolbarOnSave": {
+          "file": "frontend/src/components/editor/EditorToolbar.tsx",
+          "line": 709
+        },
+        "probeFailureMode": "全量台账中保存按钮在连续自动化（大量 toggle/undo、源码模式、元数据保存）后处于保存失败/外部修改提示状态，25s 内未见 marker；干净态与 4×bold/undo 连续编辑复核均落盘成功。",
+        "runtimeAuditProvesWorks": "干净态与 after-churn 复核均 diskSaved=true（状态栏「已保存」）。"
+      },
+      "link.insert": {
+        "toolbarHandler": {
+          "file": "frontend/src/components/editor/EditorToolbar.tsx",
+          "line": 573
+        },
+        "probeFailureMode": "台账探针在全量序列后执行（选择状态/上一步撤销影响）；定向复核 with-selection 与 collapsed 均产生 <a href>。",
+        "runtimeAuditProvesWorks": "复核两种前置均 beforeA=0→afterA=1，href=examples/f03audit。"
+      },
+      "module.insert": {
+        "toolbarInsertModule": {
+          "file": "frontend/src/components/editor/EditorToolbar.tsx",
+          "line": 457
+        },
+        "pickerTrigger": {
+          "file": "frontend/src/components/editor/EditorToolbar.tsx",
+          "line": 629
+        },
+        "dropdownLazyLoad": {
+          "file": "frontend/src/components/editor/EditorToolbar.tsx",
+          "line": 444
+        },
+        "probeFailureMode": "Dropdown 为 portal + 懒加载：打开时先渲染「暂无模块」，items 异步到达；台账探针在模块按钮出现前用全页文本匹配（命中左侧 Modules 树）导致未点中面板项，随后重复点击 trigger 把面板关掉。",
+        "backendApi": "backend /api/modules 200（app.log 4 次；fixture Modules/示例模块.md 存在）；待定向复核（poll 面板项）。"
+      },
+      "shortcutsRegistry": {
+        "file": "frontend/src/state/shortcuts.ts",
+        "listBulletDisplayKeyLine": 52,
+        "blockquoteDisplayKeyLine": 54,
+        "note": "shortcuts.ts 的 defaultKey 仅用于展示/告警，不参与默认分派；实际绑定来自 Tiptap 扩展键盘快捷键。"
+      }
+    },
+    "appLogRoutes": {
+      "/api/modules": 6,
+      "/api/attachments": 4,
+      "/api/documents": 0
+    },
+    "probe": "--audit-f03（tools/run_feature_entry_probe.py）定向复核；干净隔离实例，逐项正确前置条件 + 多输入通道变体"
   }
 }

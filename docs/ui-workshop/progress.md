@@ -948,3 +948,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - print.snapshot 真实打印（PDF 真实/不覆盖/错误如实）+ 3 类宿主事件到达 guest；U+W 18/18 PASS。
   已知限制：打印阻塞主线程→心跳超时放宽 8s；PDF 测试输出诊断覆盖；公式 NodeView 打印为 LaTeX。
   证据：`evidence/P5-T26-G3G4-print-events.md`。
+
+## P6 进度（G7 参考包 A/B，2026-10-19）
+
+- pack A（读）/ pack B（写）参考 UI + 构建签名工具 + 产品 W **24/24**；私钥不入仓/dist gitignore。
+  证据：`evidence/P5-T26-G7-reference-packs.md`。
+- F01–F16 逐项台账仍 0/130（参考包只是载体）；SDK 事件订阅/当前文档发现通道仍缺。

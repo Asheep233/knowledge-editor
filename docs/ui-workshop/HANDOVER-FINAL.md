@@ -230,3 +230,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   单测 + 产品 W **18/18 PASS**（首轮 14/18 的 4 个失败与修复如实记录）。
 - 已知限制：打印期间主线程阻塞 → guest 心跳超时放宽到 8s（彻底方案需打印移出主线程）；
   PDF 测试输出用诊断覆盖定向隔离目录（生产路径不变）；公式 NodeView 打印为线性 LaTeX（A2 同源）。
+
+## 追加（2026-10-19 后段 · G7 参考包）
+
+- `bf11462` **G7**：新增 pack A（侧栏读）/pack B（Dock 写）参考 UI（vendored 发布 SDK、能力最小化、
+  构建+签名+zip 工具、测试私钥不入仓、dist gitignore）；产品 W **24/24 PASS**（真实快照/打印/
+  事件/命令落盘/错误/停用，guest 真实 DOM 操作）。
+- **仍剩**：F01–F16 逐项台账 0/130 未登记（参考包≠逐项通过）；SDK 无事件订阅 API、协议无当前文档
+  relPath 发现通道；打印 renderer env 门控、页数 null 等既有缺口未变。

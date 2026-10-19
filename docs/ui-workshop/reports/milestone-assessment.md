@@ -92,3 +92,14 @@ ACCEPTANCE A 节：
   （更彻底需移出主线程）；PDF 输出目录测试用诊断覆盖（生产仍 appDataDir）；公式 React NodeView 在
   打印 HTML 为线性 LaTeX（与 A2 既有来源一致）。
 - F01–F16 逐项台账仍未登记（G3/G4 关闭不等于覆盖达成）。
+
+## 3e. G7 pack A/B 参考 UI（2026-10-19）
+
+- 新增 `docs/ui-workshop/packs/pack-a`（侧栏读场景）与 `pack-b`（Dock 写场景），入口 vendored SDK
+  `dist/guest-sdk.js`，能力最小化（A: ui.shell/panel.sidebar/context.read/print.request；
+  B: ui.shell/panel.dock/context.read + 命令 set-title/set-tags）；构建/签名/zip 工具
+  `tools/build_reference_packs.mjs`（测试私钥不入仓，dist gitignore）。
+- 产品 W **24/24 PASS**：构建/签名幂等 3 + pack A 8（真实快照/打印/事件/错误/停用）+ pack B 6
+  （能力/握手/命令落盘/错误）+ 安全进程等；guest 真实 DOM 输入点击（Target.attachToTarget OOPIF）。
+- **仍剩**：F01–F16 逐项台账 `packAEntry`/`packBEntry` 0/130、`officialBaselineResult` 仍 NOT_RUN
+  （参考包只是载体，不等于逐项通过）；发布 SDK 无事件订阅 API、协议无当前文档 relPath 发现通道。

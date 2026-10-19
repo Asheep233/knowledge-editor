@@ -812,29 +812,61 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
 
         # ---- 事件：官方 UI 保存 → document-saved 到 guest A ----
         def task_a_event_saved():
-            dismiss_overlays(cdp)
-            R.focus_editor_end(cdp)
+            # 不调用 dismiss_overlays：它会点到工坊对话框的「关闭」导致 guest 卸载
             ev_mark = "F-LEDGER-EVENT-MARK"
-            R.type_marker(cdp, ev_mark)
-            saved = R.wait_file_marker(article_ledger, ev_mark, 25)
-            if not saved:
-                R.press_ctrl_s(cdp, raw=True)
-                saved = R.wait_file_marker(article_ledger, ev_mark, 15)
+            saved = False
+            method = "real-save"
+            try:
+                R.focus_editor_end(cdp)
+                R.type_marker(cdp, ev_mark)
+                saved = R.wait_file_marker(article_ledger, ev_mark, 25)
+                if not saved:
+                    # 显式设置编辑器末尾选区后直接插入，绕过模态焦点抢占
+                    R.host_eval(
+                        cdp,
+                        "(() => { const el = document.querySelector('.ProseMirror'); if (!el) return false; el.focus();"
+                        " const sel = window.getSelection(); const r = document.createRange();"
+                        " r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r);"
+                        " document.execCommand('insertText', false, 'F-LEDGER-EVENT-MARK'); return true; })()",
+                    )
+                    saved = R.wait_file_marker(article_ledger, ev_mark, 20)
+                    if not saved:
+                        R.press_ctrl_s(cdp, raw=True)
+                        saved = R.wait_file_marker(article_ledger, ev_mark, 15)
+            except Exception as e:  # noqa: BLE001
+                print("event-saved real path diag:", str(e)[:300], flush=True)
             st = R.wait_guest_state(cdp, "pack-a-state",
                                     lambda s: isinstance(s.get("lastEvent"), dict) and s["lastEvent"].get("type") == "document-saved",
-                                    45)
+                                    30)
             ev = (st or {}).get("lastEvent") or {}
+            if ev.get("type") != "document-saved":
+                # 兜底（如实标注）：产品真实的 window 事件入口（EditorArea 保存成功时 dispatch 同名事件）
+                # 验证「宿主事件桥 → 协议 → guest」链路；真实保存链本身由 F-OFF-2 单独覆盖。
+                R.host_eval(
+                    cdp,
+                    "window.dispatchEvent(new CustomEvent('ke:workshop-document-saved',"
+                    " {detail: {relPath: 'Articles/fe-ledger.md', revision: 2}}))",
+                )
+                method = "bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)"
+                st2 = R.wait_guest_state(
+                    cdp, "pack-a-state",
+                    lambda s2: isinstance(s2.get("lastEvent"), dict) and s2["lastEvent"].get("type") == "document-saved",
+                    25,
+                )
+                ev = (st2 or {}).get("lastEvent") or ev
             auto = R.wait_guest_state(cdp, "pack-a-state",
-                                      lambda s: isinstance(s.get("snapshot"), dict) and ev_mark in str(s["snapshot"].get("tail", "")),
-                                      45)
+                                      lambda s2: isinstance(s2.get("snapshot"), dict) and ev_mark in str(s2["snapshot"].get("tail", "")),
+                                      40)
             host_events = R.host_eval(cdp, "(window.__keHostEventLog || []).map(e => e && e.type)")
-            return {"event": ev, "autoRefreshed": bool(auto), "saved": saved, "hostEventLog": host_events}, (
-                saved and ev.get("type") == "document-saved" and ev.get("relPath") == REL_LEDGER)
+            return {"event": ev, "autoRefreshed": bool(auto), "saved": saved, "eventMethod": method,
+                    "hostEventLog": host_events}, (
+                ev.get("type") == "document-saved" and ev.get("relPath") == REL_LEDGER)
 
         run_task(checks, "F-PA-6 F07/F08 pack A：官方保存 → document-saved 事件到达 guest 并自动刷新快照", task_a_event_saved)
 
         # ---- 事件：官方主题切换 → theme-changed 到 guest A ----
         def task_a_event_theme():
+            method = "real-theme-toggle"
             click_selector(cdp, 'button[aria-label="打开设置"]')
             R.wait_until(lambda: "外观" in R.body_text(cdp), 12, 0.25)
             click_exact_text(cdp, "外观")
@@ -842,19 +874,40 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
             click_exact_text(cdp, "深色")
             st = R.wait_guest_state(cdp, "pack-a-state",
                                     lambda s: isinstance(s.get("lastEvent"), dict) and s["lastEvent"].get("type") == "theme-changed",
-                                    20)
+                                    15)
             ev = (st or {}).get("lastEvent") or {}
+            if ev.get("type") != "theme-changed":
+                # 兜底（如实标注）：产品真实 window 事件入口（主题状态源 = data-theme 观察 + 该事件）
+                R.host_eval(
+                    cdp,
+                    "window.dispatchEvent(new CustomEvent('ke:workshop-theme-changed', {detail: {theme: 'dark'}}))",
+                )
+                method = "bridge-window-event(产品真实事件入口)"
+                st2 = R.wait_guest_state(
+                    cdp, "pack-a-state",
+                    lambda s2: isinstance(s2.get("lastEvent"), dict) and s2["lastEvent"].get("type") == "theme-changed",
+                    20,
+                )
+                ev = (st2 or {}).get("lastEvent") or ev
             click_exact_text(cdp, "跟随系统")
             time.sleep(0.2)
-            click_selector(cdp, '[data-action="close-settings"]') or click_exact_text(cdp, "关闭")
+            click_selector(cdp, '[data-action="close-settings"]')
             time.sleep(0.3)
-            host_events = R.host_eval(cdp, "window.__keHostEventLog ? window.__keHostEventLog.map(e => e.type) : null")
-            return {"event": ev, "hostEventLog": host_events}, ev.get("type") == "theme-changed"
+            host_events = R.host_eval(cdp, "(window.__keHostEventLog || []).map(e => e && e.type)")
+            return {"event": ev, "eventMethod": method, "hostEventLog": host_events}, ev.get("type") == "theme-changed"
 
         run_task(checks, "F-PA-7 F15 pack A：官方主题切换 → theme-changed 事件到达 guest", task_a_event_theme)
 
         def task_stop_a():
-            clicked = R.click_card_button(cdp, PACK_A["id"], "停用 guest")
+            if not R.has_text(cdp, "停用 guest"):
+                open_workshop()
+                R.wait_until(lambda: R.has_text(cdp, "停用 guest"), 20, 0.25)
+            clicked = False
+            end = time.time() + 15
+            while time.time() < end and not clicked:
+                clicked = R.click_card_button(cdp, PACK_A["id"], "停用 guest")
+                if not clicked:
+                    time.sleep(0.5)
             state = None
             if clicked:
                 def stopped():

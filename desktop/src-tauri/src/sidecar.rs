@@ -75,6 +75,172 @@ fn runtime_file() -> PathBuf {
     runtime_dir().join("runtime.json")
 }
 
+// ---------------- W07 A2-10：spawn registry（早期强杀 → 孤儿 sidecar 启动自愈） ----------------
+
+/// spawn 成功**立即**登记的文件（此时 runtime.json 尚未写；早期强杀后下次启动靠它发现孤儿）。
+fn spawn_registry_file() -> PathBuf {
+    runtime_dir().join("sidecar-spawn.json")
+}
+
+fn now_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
+}
+
+/// spawn registry 载荷（可单测：时间戳由调用方注入，避免测试时钟依赖）。
+fn spawn_registry_payload(pid: u32, port: u16, app_pid: u32, spawned_at_ms: u128) -> serde_json::Value {
+    serde_json::json!({
+        "pid": pid,
+        "port": port,
+        "appPid": app_pid,
+        "spawnedAtMs": spawned_at_ms as u64,
+    })
+}
+
+fn write_spawn_registry_at(path: &Path, value: &serde_json::Value) -> bool {
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    match serde_json::to_string_pretty(value) {
+        Ok(text) => std::fs::write(path, text).is_ok(),
+        Err(_) => false,
+    }
+}
+
+fn read_spawn_registry_at(path: &Path) -> Option<serde_json::Value> {
+    let text = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str::<serde_json::Value>(&text).ok()
+}
+
+fn remove_spawn_registry_at(path: &Path) -> bool {
+    std::fs::remove_file(path).is_ok()
+}
+
+/// 生产：spawn 成功即刻写 registry（供下次启动发现「runtime.json 未写出的孤儿」）。
+/// 若 registry 属于**另一个仍存活的实例**（多实例共享 data_dir 的极端情况）→ 不覆盖。
+fn write_spawn_registry(pid: u32, port: u16) {
+    let path = spawn_registry_file();
+    if let Some(existing) = read_spawn_registry_at(&path) {
+        if let Some(other_app) = existing.get("appPid").and_then(|v| v.as_u64()).map(|p| p as u32) {
+            if other_app != std::process::id() && is_alive(other_app) {
+                eprintln!("[sidecar] W07 A2-10: 另一实例仍存活，跳过 spawn registry 覆盖（避免破坏其孤儿自愈线索）");
+                return;
+            }
+        }
+    }
+    let payload = spawn_registry_payload(pid, port, std::process::id(), now_ms());
+    let _ = write_spawn_registry_at(&path, &payload);
+}
+
+fn remove_spawn_registry() {
+    let _ = remove_spawn_registry_at(&spawn_registry_file());
+}
+
+/// 孤儿判定结果（可单测的纯决策）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum OrphanDecision {
+    /// 确认是本项目上次启动遗留的孤儿 → 整树停止
+    Kill { pid: u32 },
+    /// 有记录但校验不通过 → **保守跳过**（不误杀用户实例/无关进程）；
+    /// keep_registry=true 表示 registry 属于另一个仍存活的实例，**不得删除/覆盖**。
+    Skip { pid: u32, reason: String, keep_registry: bool },
+    /// 记录对不上/进程已死 → 仅清理 registry
+    None,
+}
+
+/// 保守孤儿判定：只有同时满足
+/// ① registry 记录的 pid 仍存活；② 命令行确为本项目 sidecar（is_backend）；
+/// ③ 其父进程 == registry 的 appPid（即由**上次那个应用实例**直接 spawn）；
+/// ④ 该 appPid 已死（上次实例确实异常退出，不是另一个仍在运行的实例）
+/// 才判定为可整树停止的孤儿。任一不满足 → Skip/None（宁可留孤儿也不误杀）。
+fn decide_orphan<A, B, P>(registry: &serde_json::Value, alive: A, is_backend: B, parent_of: P) -> OrphanDecision
+where
+    A: Fn(u32) -> bool,
+    B: Fn(u32) -> bool,
+    P: Fn(u32) -> Option<u32>,
+{
+    let pid = registry
+        .get("pid")
+        .and_then(|v| v.as_u64())
+        .filter(|p| *p > 0 && *p <= u32::MAX as u64)
+        .map(|p| p as u32);
+    let Some(pid) = pid else {
+        return OrphanDecision::None;
+    };
+    if !alive(pid) {
+        return OrphanDecision::None;
+    }
+    if !is_backend(pid) {
+        return OrphanDecision::Skip { pid, reason: "命令行不是本项目 sidecar".into(), keep_registry: false };
+    }
+    let Some(app_pid) = registry.get("appPid").and_then(|v| v.as_u64()).map(|p| p as u32) else {
+        return OrphanDecision::Skip { pid, reason: "registry 缺少 appPid（旧格式）".into(), keep_registry: false };
+    };
+    if alive(app_pid) {
+        return OrphanDecision::Skip {
+            pid,
+            reason: "上次应用进程仍存活（可能是另一实例），不误杀".into(),
+            keep_registry: true,
+        };
+    }
+    match parent_of(pid) {
+        Some(parent) if parent == app_pid => OrphanDecision::Kill { pid },
+        Some(parent) => OrphanDecision::Skip {
+            pid,
+            reason: format!("父进程 {parent} 与 registry appPid {app_pid} 不符"),
+            keep_registry: false,
+        },
+        None => OrphanDecision::Skip { pid, reason: "无法读取父进程，保守跳过".into(), keep_registry: false },
+    }
+}
+
+/// 读取 spawn registry 并处理上次遗留的孤儿（启动清理阶段调用）。
+fn clean_orphan_from_registry() {
+    let path = spawn_registry_file();
+    let Some(registry) = read_spawn_registry_at(&path) else {
+        return;
+    };
+    // 防御：registry 里 pid 不能是当前进程/当前进程刚 spawn 的新 sidecar（正常路径下 registry 在 spawn 时
+    // 刚被覆盖，这里读到的是上次遗留；若 pid == 当前 sidecar 则说明是新格式写入后同一进程重启场景）。
+    match decide_orphan(&registry, is_alive, is_backend_process, process_parent_pid) {
+        OrphanDecision::Kill { pid } => {
+            eprintln!("[sidecar] W07 A2-10: 发现上次启动遗留的孤儿 sidecar（pid={pid}），整树停止以释放端口");
+            kill_tree(pid);
+        }
+        OrphanDecision::Skip { pid, reason, keep_registry } => {
+            eprintln!("[sidecar] W07 A2-10: spawn registry pid={pid} 校验未通过（{reason}），保守跳过（不误杀）");
+            if keep_registry {
+                // registry 属于另一个仍存活的实例 → 既不能杀也不能删/覆盖
+                return;
+            }
+        }
+        OrphanDecision::None => {}
+    }
+    let _ = remove_spawn_registry_at(&path);
+}
+
+/// 读取指定 PID 的父进程 PID（Windows PowerShell/WMI；失败 → None = 保守跳过）。
+#[cfg(windows)]
+fn process_parent_pid(pid: u32) -> Option<u32> {
+    let script = format!("(Get-CimInstance Win32_Process -Filter \"ProcessId={pid}\").ParentProcessId");
+    let out = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout).trim().parse::<u32>().ok()
+}
+
+#[cfg(not(windows))]
+fn process_parent_pid(_pid: u32) -> Option<u32> {
+    // 非 Windows 没有 taskkill /T 语义；读不到父进程 → 保守跳过（不误杀）。
+    None
+}
+
 fn default_workspace() -> PathBuf {
     data_dir().join("workspace")
 }
@@ -255,6 +421,9 @@ fn is_backend_process(_pid: u32) -> bool {
 /// 命令行不匹配（PID 复用/已被替换）则只删记录、不杀进程。随后删除记录文件。
 /// 端口兜底由 find_free_port 隐式完成（被占则换端口，不误杀无关服务）。
 fn cleanup_stale() {
+    // W07 A2-10：先处理 spawn registry（覆盖「早期强杀时 runtime.json 尚未写出」的孤儿窗口）；
+    // 再做原有 runtime.json 清理（两者互相独立、均保守校验命令行/父进程）。
+    clean_orphan_from_registry();
     if let Some(runtime) = read_runtime() {
         if let Some(pid) = runtime
             .get("backend")
@@ -422,12 +591,15 @@ fn spawn_sidecar(
     // M5：进程已诞生 → 立刻登记 PID，使退出清理在 health 握手完成前也能找到它。
     let spawned_pid = child.pid();
     SPAWNED_PID.store(spawned_pid, Ordering::SeqCst);
+    // W07 A2-10：同步写 spawn registry（runtime.json 要等 health 成功，早期强杀窗口靠它留痕）。
+    write_spawn_registry(spawned_pid, port);
     // M5：启动与退出赛跑 —— 若本进程已在退出流程中，立即清掉刚拉起的子进程，不留孤儿。
     if SHUTTING_DOWN.load(Ordering::SeqCst) {
         if is_our_backend_process(spawned_pid) {
             kill_tree(spawned_pid);
         }
         SPAWNED_PID.store(0, Ordering::SeqCst);
+        remove_spawn_registry();
         return Err("应用正在退出，已取消 sidecar 启动".into());
     }
 
@@ -461,6 +633,8 @@ fn spawn_sidecar(
             // R-3 补：健康握手失败已整树杀掉 → 清零登记 PID（与 :336/:435 对齐，
             // 避免三次启动全失败后残留一个已死 PID）。
             SPAWNED_PID.store(0, Ordering::SeqCst);
+            // W07 A2-10：健康握手失败已整树杀掉 → 清理 spawn registry（无存活 sidecar）。
+            remove_spawn_registry();
             // 读取 stderr 后 30 行用于诊断（事件循环刚启动，直接从 rx 短暂读取）
             let mut stderr_lines = Vec::new();
             while let Ok(event) = rx.try_recv() {
@@ -533,6 +707,8 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                     // W07 B-8：进程已死 → 立刻清空 SidecarState.info 并删除 stale runtime.json
                     //（get_runtime_info 不再返回已死 pid；自动重启成功后重新写入新记录）。
                     clear_runtime_state(&app_clone);
+                    // W07 A2-10：进程已死 → 删除 spawn registry；若自动拉起，新 spawn 会重新写。
+                    remove_spawn_registry();
                     let shutting_down = SHUTTING_DOWN.load(Ordering::SeqCst);
                     let will_restart = !shutting_down && should_restart(restarts);
                     // W07 B-4：载荷区分「自动恢复中」与「显式停机」，供前端 banner 分级。
@@ -597,6 +773,9 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
 /// 前台入口：由 setup 调用，在后台线程执行完整启动流程。
 pub fn start(app: AppHandle) {
     std::thread::spawn(move || {
+        // W07 B3-4：后端读取 app_config 之前先修复损坏 JSON（备份 + 写回默认），
+        // 避免后端「静默回退默认」而用户旧配置既没备份也没提示。
+        let _ = crate::settings::repair_corrupt_state_files();
         cleanup_stale();
 
         // 动态端口：默认 8000，被占则换端口，最多 3 次
@@ -630,6 +809,8 @@ pub fn start(app: AppHandle) {
         );
         // W07 B-8：全部启动尝试失败 = 终态 → 确保没有 stale 运行时状态对外暴露。
         clear_runtime_state(&app);
+        // W07 A2-10：启动失败无存活 sidecar → 清理 spawn registry。
+        remove_spawn_registry();
         let _ = app.emit(
             "ke:runtime-error",
             runtime_error_payload(&last_err, true, None),
@@ -662,6 +843,7 @@ pub fn cleanup_on_exit(app: &AppHandle) {
         if !is_alive(pid) {
             eprintln!("[sidecar] 退出清理：PID {pid} 已不存在，无需强杀");
             let _ = std::fs::remove_file(runtime_file());
+            remove_spawn_registry();
             return;
         }
         // 1) 通知后端优雅退出（uvicorn 自行收尾）。PyInstaller bootloader 不响应
@@ -688,6 +870,7 @@ pub fn cleanup_on_exit(app: &AppHandle) {
         }
     }
     let _ = std::fs::remove_file(runtime_file());
+    remove_spawn_registry();
 }
 
 /// 供前端获取运行时信息（M2 接入前端基址注入）。
@@ -704,9 +887,10 @@ pub fn get_runtime_info(state: State<'_, SidecarState>) -> Result<RuntimeInfo, S
 #[cfg(test)]
 mod tests {
     use super::{
-        build_cors_origins, clear_runtime_info, clear_stale_runtime, remove_runtime_file_at,
-        runtime_error_payload, should_restart, sidecar_exited_payload, RuntimeInfo,
-        MAX_CRASH_RESTARTS,
+        build_cors_origins, clear_runtime_info, clear_stale_runtime, decide_orphan,
+        read_spawn_registry_at, remove_runtime_file_at, remove_spawn_registry_at,
+        runtime_error_payload, should_restart, sidecar_exited_payload, spawn_registry_payload,
+        write_spawn_registry_at, OrphanDecision, RuntimeInfo, MAX_CRASH_RESTARTS,
     };
     use std::path::PathBuf;
     use std::sync::Mutex;
@@ -855,5 +1039,82 @@ mod tests {
         assert_eq!(with_attempt["maxRestarts"], serde_json::json!(MAX_CRASH_RESTARTS));
         let without_attempt = runtime_error_payload("启动失败", true, None);
         assert!(without_attempt.get("attempt").is_none());
+    }
+
+    // ---------------- W07 A2-10：spawn registry / 孤儿保守判定 ----------------
+
+    fn temp_registry_path(tag: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "ke-spawn-registry-test-{}-{tag}.json",
+            std::process::id()
+        ))
+    }
+
+    /// A2-10：registry 载荷含 pid/port/appPid/spawnedAtMs（供下次启动保守校验）。
+    #[test]
+    fn a2_10_spawn_registry_payload_fields() {
+        let payload = spawn_registry_payload(4321, 8001, 999, 1_700_000_000_123);
+        assert_eq!(payload["pid"], serde_json::json!(4321));
+        assert_eq!(payload["port"], serde_json::json!(8001));
+        assert_eq!(payload["appPid"], serde_json::json!(999));
+        assert_eq!(payload["spawnedAtMs"], serde_json::json!(1_700_000_000_123u64));
+    }
+
+    /// A2-10：registry 原子写/读/删（幂等删除）。
+    #[test]
+    fn a2_10_spawn_registry_roundtrip_and_remove() {
+        let path = temp_registry_path("roundtrip");
+        let _ = std::fs::remove_file(&path);
+        let payload = spawn_registry_payload(4321, 8001, 999, 1);
+        assert!(write_spawn_registry_at(&path, &payload));
+        let read = read_spawn_registry_at(&path).expect("registry 应可读回");
+        assert_eq!(read["pid"], serde_json::json!(4321));
+        assert!(remove_spawn_registry_at(&path));
+        assert!(!path.exists());
+        assert!(!remove_spawn_registry_at(&path), "重复删除返回 false（幂等、不 panic）");
+        assert!(read_spawn_registry_at(&path).is_none());
+    }
+
+    /// A2-10：孤儿判定必须**保守**——只有「存活 + 命令行是本项目 sidecar + 父进程=已死的上次 appPid」
+    /// 才整树停止；其它情况一律 Skip/None（避免误杀用户实例/其它实例）。
+    #[test]
+    fn a2_10_orphan_decision_is_conservative() {
+        let registry = spawn_registry_payload(500, 8000, 400, 1);
+
+        // 上次应用实例仍存活（可能是另一实例）→ 不杀
+        assert!(matches!(
+            decide_orphan(&registry, |pid| pid == 500 || pid == 400, |_| true, |_| Some(400)),
+            OrphanDecision::Skip { .. }
+        ));
+        // 应用已死 + 父进程匹配 + 命令行匹配 → 唯一可杀情形
+        assert_eq!(
+            decide_orphan(&registry, |pid| pid == 500, |_| true, |_| Some(400)),
+            OrphanDecision::Kill { pid: 500 }
+        );
+        // 父进程与 appPid 不符（PID 复用/别的实例）→ Skip
+        assert!(matches!(
+            decide_orphan(&registry, |pid| pid == 500, |_| true, |_| Some(777)),
+            OrphanDecision::Skip { .. }
+        ));
+        // 命令行不是本项目 sidecar → Skip
+        assert!(matches!(
+            decide_orphan(&registry, |pid| pid == 500, |_| false, |_| Some(400)),
+            OrphanDecision::Skip { .. }
+        ));
+        // 进程已死 → 仅清 registry（None）
+        assert_eq!(
+            decide_orphan(&registry, |_| false, |_| true, |_| Some(400)),
+            OrphanDecision::None
+        );
+        // 旧格式缺 appPid → Skip（不误杀）
+        assert!(matches!(
+            decide_orphan(&serde_json::json!({"pid": 500, "port": 8000}), |_| true, |_| true, |_| Some(400)),
+            OrphanDecision::Skip { .. }
+        ));
+        // pid 缺失/非法 → None
+        assert_eq!(
+            decide_orphan(&serde_json::json!({}), |_| true, |_| true, |_| None),
+            OrphanDecision::None
+        );
     }
 }

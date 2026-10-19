@@ -15,9 +15,12 @@
 // }
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
+
+use tauri::{AppHandle, Emitter, Manager};
 
 /// P2-12：临时文件名计数器，配合 pid + 纳秒时间戳保证同一进程内并发写不撞名。
 static TMP_SEQ: AtomicU64 = AtomicU64::new(0);
@@ -258,6 +261,105 @@ fn save(settings: &AppSettings) -> Result<(), String> {
     save_to(&settings_file(), settings)
 }
 
+// ---------------- W07 B3-4：损坏状态文件修复（备份 + 写回默认 + 可观测） ----------------
+
+/// 一次损坏修复记录（备份路径/文件标签/面向用户的说明）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StateRepair {
+    pub file: String,
+    pub backup: PathBuf,
+    pub message: String,
+}
+
+/// 修复记录暂存：`repair_corrupt_state_files` 写入，`get_settings` 取出后记录日志/emit 可恢复提示。
+static PENDING_REPAIRS: Mutex<Vec<StateRepair>> = Mutex::new(Vec::new());
+/// 修复串行化（sidecar 启动线程与 get_settings 命令可能并发首读）。
+static REPAIR_LOCK: Mutex<()> = Mutex::new(());
+
+fn corrupt_backup_path(path: &Path, now_ms: u128) -> Option<PathBuf> {
+    let parent = path.parent()?;
+    let name = path.file_name()?.to_string_lossy().to_string();
+    Some(parent.join(format!("{name}.corrupt-{now_ms}.bak")))
+}
+
+/// 损坏 JSON 修复（可单测，路径/时钟注入）：
+/// - 文件缺失或已是合法 JSON → `None`（**绝不改动**合法文件）；
+/// - 解析失败 → 原文件 rename 备份为 `<name>.corrupt-<ts>.bak`（保留原始字节可恢复），
+///   再写回 `default_value`（尽力；失败也保留备份，不静默丢设置）。
+pub fn repair_corrupt_json_file(
+    path: &Path,
+    default_value: &serde_json::Value,
+    now_ms: u128,
+    file_label: &str,
+) -> Option<StateRepair> {
+    let raw = std::fs::read_to_string(path).ok()?;
+    // 与 load_from 一致：容忍 UTF-8 BOM（合法文件不算损坏）
+    if serde_json::from_str::<serde_json::Value>(raw.trim_start_matches('\u{feff}')).is_ok() {
+        return None;
+    }
+    let backup = corrupt_backup_path(path, now_ms)?;
+    std::fs::rename(path, &backup).ok()?;
+    let body = serde_json::to_string_pretty(default_value).unwrap_or_else(|_| "{}".to_string());
+    let _ = std::fs::write(path, body);
+    Some(StateRepair {
+        file: file_label.to_string(),
+        backup: backup.clone(),
+        message: format!(
+            "{file_label} 损坏（JSON 解析失败），已备份到 {} 并重置为默认配置",
+            backup.display()
+        ),
+    })
+}
+
+fn app_config_default() -> serde_json::Value {
+    // 与 backend/app/services/app_config.py::_defaults() 同 schema。
+    serde_json::json!({"recent_workspaces": [], "recent_documents": []})
+}
+
+/// W07 B3-4：启动/读取设置时修复损坏的 `settings.json` 与 `app_config.json`
+/// （备份 `.corrupt-<ts>.bak` + 写回默认）。幂等：合法/缺失文件不动。
+/// 修复记录暂存，供 `get_settings` 记录日志并 emit 可恢复提示。
+pub fn repair_corrupt_state_files() -> Vec<StateRepair> {
+    let _guard = REPAIR_LOCK.lock();
+    let data_dir = crate::sidecar::data_dir();
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    let settings_default = serde_json::to_value(AppSettings::default())
+        .unwrap_or_else(|_| serde_json::json!({"schemaVersion": SCHEMA_VERSION}));
+    let mut repairs: Vec<StateRepair> = Vec::new();
+    if let Some(repair) =
+        repair_corrupt_json_file(&data_dir.join("settings.json"), &settings_default, now, "settings.json")
+    {
+        repairs.push(repair);
+    }
+    if let Some(repair) = repair_corrupt_json_file(
+        &data_dir.join("app_config.json"),
+        &app_config_default(),
+        now,
+        "app_config.json",
+    ) {
+        repairs.push(repair);
+    }
+    if !repairs.is_empty() {
+        for repair in &repairs {
+            eprintln!("[settings] W07 B3-4: {}", repair.message);
+        }
+        if let Ok(mut pending) = PENDING_REPAIRS.lock() {
+            pending.extend(repairs.iter().cloned());
+        }
+    }
+    repairs
+}
+
+fn take_pending_repairs() -> Vec<StateRepair> {
+    PENDING_REPAIRS
+        .lock()
+        .map(|mut pending| std::mem::take(&mut *pending))
+        .unwrap_or_default()
+}
+
 /// 深合并：patch 为对象时逐键递归合并（仅覆盖存在的键）；非对象整体覆盖。
 fn merge_value(base: &mut serde_json::Value, patch: &serde_json::Value) {
     if let (Some(base_obj), Some(patch_obj)) = (base.as_object_mut(), patch.as_object()) {
@@ -333,8 +435,35 @@ fn sanitize_hex(value: &str) -> Option<String> {
 }
 
 /// 前端读取设置（挂载后调用一次；也供设置面板初始化）。
+///
+/// W07 B3-4：读取前幂等修复损坏的 settings/app_config（备份+重置默认），并把修复以
+/// **可恢复**提示 `ke:runtime-error {recoverable:true}` 告知前端（不是静默丢设置）；
+/// 若运行时信息已就绪，随后 emit `ke:runtime-ready` 避免 UI 停留在降级态。
 #[tauri::command]
-pub fn get_settings() -> AppSettings {
+pub fn get_settings(app: AppHandle) -> AppSettings {
+    let _ = repair_corrupt_state_files();
+    let repairs = take_pending_repairs();
+    for repair in &repairs {
+        eprintln!("[settings] W07 B3-4: {}", repair.message);
+        let _ = app.emit(
+            "ke:runtime-error",
+            serde_json::json!({
+                "message": format!("设置文件损坏已备份并重置默认：{}", repair.file),
+                "terminal": false,
+                "recoverable": true,
+                "category": "state-corrupt",
+                "backup": repair.backup.to_string_lossy(),
+            }),
+        );
+    }
+    if !repairs.is_empty() {
+        if let Some(info) = app
+            .try_state::<crate::sidecar::SidecarState>()
+            .and_then(|state| state.info.lock().ok().and_then(|guard| guard.clone()))
+        {
+            let _ = app.emit("ke:runtime-ready", &info);
+        }
+    }
     sanitize(load())
 }
 
@@ -721,5 +850,73 @@ mod tests {
         let out: AppSettings = serde_json::from_value(merged).unwrap();
         assert_eq!(out.editor.shortcuts["editor.bold"], "Ctrl+Shift+B"); // 未被第二次补丁清掉
         assert_eq!(out.editor.shortcuts["editor.italic"], "none"); // 墓碑落盘
+    }
+
+    // ---------------- W07 B3-4：损坏状态文件备份 + 重置 ----------------
+
+    /// B3-4：损坏 settings.json → 原文件备份为 `.corrupt-<ts>.bak`（保留原始字节）+ 写回默认 JSON。
+    #[test]
+    fn b3_4_corrupt_settings_backed_up_and_reset_to_default() {
+        let path = tmp_settings_file();
+        let original = b"{ this is not valid json !!!";
+        std::fs::write(&path, original).unwrap();
+        let default = serde_json::to_value(AppSettings::default()).unwrap();
+        let repair = repair_corrupt_json_file(&path, &default, 1_700_000_000_000, "settings.json")
+            .expect("损坏文件应被修复");
+        assert_eq!(repair.file, "settings.json");
+        assert!(repair.backup.exists(), "必须生成备份文件");
+        assert_eq!(
+            std::fs::read(&repair.backup).unwrap(),
+            original,
+            "备份必须是原始损坏字节（可恢复）"
+        );
+        let backup_name = repair.backup.file_name().unwrap().to_string_lossy().to_string();
+        assert!(backup_name.contains(".corrupt-1700000000000.bak"), "备份名应含 .corrupt-<ts>.bak：{backup_name}");
+        // 原路径被写回合法默认配置（字段级校验）
+        let after: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).expect("写回默认必须是合法 JSON");
+        assert_eq!(after["schemaVersion"], serde_json::json!(1));
+        assert_eq!(after["ui"]["theme"], serde_json::json!("system"));
+        assert_eq!(after["editor"]["autosaveIntervalMs"], serde_json::json!(3000));
+        assert_eq!(load_from(&path).ui.theme, "system", "修复后 load_from 读到默认");
+        // 幂等：已是合法默认 → 不再修复/不再备份
+        assert!(repair_corrupt_json_file(&path, &default, 1_700_000_001_000, "settings.json").is_none());
+        std::fs::remove_file(&path).ok();
+        std::fs::remove_file(&repair.backup).ok();
+    }
+
+    /// B3-4：合法文件（含 BOM）与缺失文件都**不得**被改动/备份（不误报、不丢配置）。
+    #[test]
+    fn b3_4_valid_or_missing_files_untouched() {
+        let path = tmp_settings_file();
+        let default = serde_json::to_value(AppSettings::default()).unwrap();
+        // 缺失 → None
+        let _ = std::fs::remove_file(&path);
+        assert!(repair_corrupt_json_file(&path, &default, 1, "settings.json").is_none());
+        assert!(!path.exists(), "缺失文件不应被「修复」创建");
+        // 合法（带 BOM）→ None 且字节不变
+        let valid = b"\xef\xbb\xbf{\"schemaVersion\":1}".to_vec();
+        std::fs::write(&path, &valid).unwrap();
+        assert!(repair_corrupt_json_file(&path, &default, 2, "settings.json").is_none());
+        assert_eq!(std::fs::read(&path).unwrap(), valid, "合法文件字节不得被改动");
+        std::fs::remove_file(&path).ok();
+    }
+
+    /// B3-4：损坏 app_config.json → 写回与后端 app_config.py 一致的默认 schema。
+    #[test]
+    fn b3_4_corrupt_app_config_reset_to_backend_default_schema() {
+        let path = tmp_settings_file().with_file_name(format!(
+            "ke-app-config-test-{}.json",
+            std::process::id()
+        ));
+        std::fs::write(&path, b"not-json").unwrap();
+        let repair = repair_corrupt_json_file(&path, &app_config_default(), 42, "app_config.json")
+            .expect("损坏 app_config 应被修复");
+        assert!(repair.backup.exists());
+        let after: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(after["recent_workspaces"], serde_json::json!([]));
+        assert_eq!(after["recent_documents"], serde_json::json!([]));
+        std::fs::remove_file(&path).ok();
+        std::fs::remove_file(&repair.backup).ok();
     }
 }

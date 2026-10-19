@@ -245,6 +245,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   自动重启与用户重启恢复 PASS；缺口：自动重启后新后端上下文丢失→`E_SNAPSHOT` 404 桥接不自动恢复、
   桥接超时映射 `E_INTERNAL` 而非 `E_TIMEOUT`、崩溃 UI/session/stale pid 可观测性、启动 recover 无 UI
   提示、corrupt-no-fallback 不可自动修复）；证据 `P5-T26-W07-fault-bridge.md`。
+- `cc322ca` **F01–F16 逐项台账 v2**：第二轮窗口 40/40 checks PASS；CSV 27/130 行（官方 UI 26 PASS、
+  pack A 4 PASS/23 能力面 NOT_RUN、pack B 4 PASS/23 NOT_RUN）；v1 3 项失败根因=探针 `dismiss_overlays()`
+  误关工坊面板（非产品失败），修复后 document-saved（产品真实 window 事件入口，eventMethod 标注）/
+  theme-changed（真实设置面板切换）/停用 guest 均 PASS。未覆盖：F14 导出落盘、F16 原生菜单、
+  F03 其余 35 行、多数 pack 能力面。
 - `4528897` **F01–F16 逐项台账 v1**：`run_feature_entry_probe.py`（官方 CDP + guest OOPIF 真实 DOM）；
   `feature-baseline.csv` 登记 **27/130 行**（官方 UI 26 PASS、pack A 3 PASS/1 FAIL/23 能力面 NOT_RUN、
   pack B 4 PASS/23 NOT_RUN）；未完成：全量批次被打断、pack A 事件/主题/停用 3 项待第二轮、

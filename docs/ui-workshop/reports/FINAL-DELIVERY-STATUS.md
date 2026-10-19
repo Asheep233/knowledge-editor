@@ -110,7 +110,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check   # Windows + 原型�
 | W02 停用后迟到请求/旧连接失效 | **W 12/12 PASS**（重放验证，不落盘；如实标注注入方式） | `P5-T26-W02-form.md` |
 | W07 boot crash/连续启动失败 | **PASS_WITH_FINDINGS 40/44**（4 真实缺口已记录） | `P5-T26-W07-fault-boot.md` |
 | W07 桥接超时 / sidecar 故障 / 原生恢复 | **PASS_WITH_FINDINGS 30/39**（9 真实缺口：自动重启后上下文丢 404、超时映射 E_INTERNAL、UI/session 可观测性、启动 recover 无提示、no-fallback 不可修） | `P5-T26-W07-fault-bridge.md` |
-| F01–F16 逐项台账 | **v1 登记 27/130 行**（官方 UI 26 PASS；pack A/B 仅能力面可达行） | `P5-T26-F-ledger.md` |
+| F01–F16 逐项台账 | **v2 登记 27/130 行**（官方 UI 26 PASS；pack A/B 各 4 PASS、其余能力面 NOT_RUN；probe checks 40/40） | `P5-T26-F-ledger.md` |
 | G3/G4 真实打印 + 宿主事件 | **U+W 18/18 PASS**（心跳超时临时放宽等限制已记录） | `P5-T26-G3G4-print-events.md` |
 | G7 pack A/B 参考 UI（SDK 读/写/打印/事件真实链路） | **W 24/24 PASS**（逐项台账仍未登记） | `P5-T26-G7-reference-packs.md` |
 | T27 I 门禁 | 就绪检查 NOT_READY(6/8)；**云端执行交接单 + 安装包 sha256 清单已给**（VM 由主理人安排） | `T27-CLOUD-EXECUTION-HANDOFF.md`、`T27-ARTIFACTS.md` |

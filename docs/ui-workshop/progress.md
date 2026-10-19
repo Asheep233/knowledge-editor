@@ -961,3 +961,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   自动重启后上下文丢失 404、超时 E_INTERNAL、可观测性缺口）；证据 `P5-T26-W07-fault-bridge.md`。
 - F 台账 v1（4528897）：`run_feature_entry_probe.py` + CSV 登记 27/130 行（官方 UI 26 PASS）；
   第二轮待跑（pack A 事件/主题/停用修复）；不宣称 F01–F16 达成。
+
+## P6 进度（F 台账 v2，2026-10-19）
+
+- 第二轮窗口：probe **40/40 checks PASS**；CSV 27/130 行（官方 UI 26 PASS、pack A/B 各 4 PASS，其余
+  能力面 NOT_RUN）。v1 3 项失败根因=探针误关工坊面板（非产品失败），修复后事件三项 PASS 并标注方法。
+- 未覆盖：F14 导出落盘、F16 原生菜单、F03 其余 35 行；**不宣称 F01–F16 整体达成**。
+  证据：`evidence/P5-T26-F-ledger.md`（v2）。

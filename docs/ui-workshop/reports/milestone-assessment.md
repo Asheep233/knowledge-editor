@@ -104,10 +104,13 @@ ACCEPTANCE A 节：
 - **仍剩**：F01–F16 逐项台账 `packAEntry`/`packBEntry` 0/130、`officialBaselineResult` 仍 NOT_RUN
   （参考包只是载体，不等于逐项通过）；发布 SDK 无事件订阅 API、协议无当前文档 relPath 发现通道。
 
-## 3f. F01–F16 逐项台账登记 v1（2026-10-19）
+## 3f. F01–F16 逐项台账登记 v2（2026-10-19）
 
-- `feature-baseline.csv`：**27/130 行**已登记三路径真实结果（pack A 3 PASS/1 FAIL/23 能力面 NOT_RUN；
-  pack B 4 PASS/23 NOT_RUN；官方 UI **26 PASS/0 FAIL**）；其余保持 NOT_RUN。
-- 探针 `run_feature_entry_probe.py`（1419 行，官方 CDP + guest OOPIF 真实 DOM）；checks 37/40；
-  未完成：全量批次被并发打断、pack A 事件/主题/停用 3 项待第二轮、F16 原生菜单/导出落盘未测。
-- 参考包≠逐项通过：登记口径为「真实执行过的行」，未执行不伪造。
+- `feature-baseline.csv`：**27/130 行**已登记三路径真实结果（pack A 4 PASS/23 能力面 NOT_RUN；
+  pack B 4 PASS/23 NOT_RUN；官方 UI **26 PASS**）；其余保持 NOT_RUN。
+- 探针 `run_feature_entry_probe.py`（官方 CDP + guest OOPIF 真实 DOM）；**v2 checks 40/40 PASS**
+  （v1 37/40 的 3 个失败根因 = 探针 `dismiss_overlays()` 误关工坊面板，修复后全绿；document-saved
+  使用产品真实 window 事件入口并如实标注 eventMethod）。
+- 未覆盖（如实）：F14 官方导出落盘（仅验证到对话框入口）、F16 原生菜单（非 DOM）、F03 其余 35 行、
+  F01/F03/F04/F05/F09/F11/F13/F16 的 pack 路径（协议无对应方法，能力面 NOT_RUN）。
+- 参考包≠逐项通过：登记口径为「真实执行过的行」，未执行不伪造；F01–F16 整体仍未达成。

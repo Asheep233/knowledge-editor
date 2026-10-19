@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T17:24:34+0800",
-  "head": "a89a8ce",
+  "generatedAt": "2026-10-19T17:25:48+0800",
+  "head": "c5c82bb",
   "branch": "feat/ui-workshop",
   "checks": [
     {
@@ -34,14 +34,17 @@
       "pass": true,
       "detail": {
         "branch": "feat/ui-workshop",
-        "head": "a89a8ce",
+        "head": "c5c82bb",
         "upstream": null
       }
     },
     {
       "name": "DC-6 工作树干净",
-      "pass": true,
-      "detail": []
+      "pass": false,
+      "detail": [
+        "M docs/ui-workshop/evidence/T26-delivery-consistency.json",
+        " M docs/ui-workshop/tools/verify_delivery_consistency.py"
+      ]
     },
     {
       "name": "DC-7 台账 CSV 可解析且含行",
@@ -61,7 +64,7 @@
       "detail": null
     }
   ],
-  "passCount": 8,
+  "passCount": 7,
   "total": 8,
   "featureBaselineStats": {
     "rows": 130,

@@ -90,8 +90,11 @@ def main() -> int:
     passed = sum(1 for c in checks if c["pass"])
     summary = {"generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "head": head, "branch": branch,
                "checks": checks, "passCount": passed, "total": len(checks), "featureBaselineStats": stats}
-    (EVID / "T26-delivery-consistency.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nSUMMARY {passed}/{len(checks)} PASS -> {EVID / 'T26-delivery-consistency.json'}")
+    if "--write" in sys.argv:
+        (EVID / "T26-delivery-consistency.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\nSUMMARY {passed}/{len(checks)} PASS -> {EVID / 'T26-delivery-consistency.json'}（已写入 evidence）")
+    else:
+        print(f"\nSUMMARY {passed}/{len(checks)} PASS（只读模式；--write 可写入 evidence/T26-delivery-consistency.json）")
     return 0 if passed == len(checks) else 1
 
 

@@ -432,3 +432,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `e7dea54` + `4912292` **pack B 命令 UI + 产品 W**：packB 声明 14 条命令、UI 14 按钮；W **26/26 PASS**
   （DOM 断言 strong/em/u/s/code/h1/h2/h3/ul/ol/pre/blockquote + 撤销重做 + 负向拒绝/回显）；F03 台账
   **packBEntry 0→14 行 PASS**（official 42/42 不变）；证据 `P5-T26-pack-editor-cmd.md`、ADR-004 附录 C。
+
+## 追加（2026-10-19 后段 · 4 条可无头动作接入 packB）
+
+- `38748a2` **编辑命令桥扩展**：复用既有 action 注册表（runAction）新增 4 条协议名
+  `editor.table.insert`（产品默认 3×3 带表头）/`editor.footnote.insert`/`editor.note.insert`/`doc.save`；
+  18 条协议名全集可被 manifest 声明；**不接**对话框/文件选择类动作（link/image/math/module，调用被拒）。
+- `ec52226` **packB W 30/30 PASS**：表格 rows=3/th=3、脚注 sup、信息块 data-ke-note、**doc.save 真实落盘**
+  （marker 出现 + mtime 变化，不只查返回值）；负向 7 用例 E_FORBIDDEN 且 DOM 不变；F03 packB PASS 14→18 行。

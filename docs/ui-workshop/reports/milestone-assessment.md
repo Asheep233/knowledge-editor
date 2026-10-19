@@ -167,7 +167,17 @@ ACCEPTANCE A 节：
 
 - 新增受控编辑器命令桥（14 条白名单，`editor.commands.readonly` 能力 + manifest 逐条声明，协议名 kebab
   符合 schema）；产品 W **26/26 PASS**（9 格式命令 + bullet/ordered/codeBlock + 撤销重做 + 负向拒绝/回显）。
-- F03 台账：official 42/42 PASS 不变；**packBEntry 由 0 → 14 行 PASS**（CMD.editor.bold/italic/underline/
-  strike/code.inline/heading.1-3/blockquote/undo/redo/list.bullet/list.ordered/codeBlock）；packA 路径与
+- F03 台账：official 42/42 PASS 不变；**packBEntry 由 0 → 18 行 PASS**（14 切换命令 + table.insert/footnote.insert/note.insert/保存）；packA 路径与
   非命令行仍 NOT_RUN（如实）。
 - 证据：`P5-T26-pack-editor-cmd.md`、`T26-pack-editor-cmd-results.json`、F 报告附录 J/K、ADR-004 附录 C。
+
+## 3j. 编辑命令桥扩展：4 条可无头动作（2026-10-19，v9）
+
+- 复用既有 action 注册表（`runAction`）新增 4 条协议名：`editor.table.insert`（3×3 带表头）、
+  `editor.footnote.insert`、`editor.note.insert`、`doc.save`；18 条协议名全集全部符合 manifest 正则。
+- **不接**对话框/文件选择类（link/image/math/module）——无头环境会弹窗阻塞，调用被如实拒绝。
+- 产品 W **30/30 PASS**（新增：表格 rows=3/th=3、脚注 sup、信息块 data-ke-note、doc.save **真实落盘**
+  marker 出现 + mtime 变化；负向 7 用例 E_FORBIDDEN 且 DOM 不变）。
+- F03 台账：packB PASS **14 → 18 行**（新增 CMD.editor.table.insert / footnote.insert / note.insert /
+  UI.toolbar.保存-Ctrl-S（以 doc.save 真实落盘为 packB 证据））；official 42/42 不变。
+- 证据：`P5-T26-pack-editor-cmd.md` v9、`T26-pack-editor-cmd-results.json`、F 报告附录 L。

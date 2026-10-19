@@ -1039,3 +1039,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - d68be07/8a57a3f：14 条受控编辑器命令（白名单+能力+manifest 声明；多词 kebab 修复 schema 缺口）。
 - e7dea54/4912292：packB UI 14 按钮 + 产品 W 26/26；F03 packBEntry 0→14 行 PASS（official 42/42）。
   证据：`P5-T26-pack-editor-cmd.md`、F 报告附录 J/K、ADR-004 附录 C。
+
+## P6 进度（4 动作 packB，2026-10-19）
+
+- 38748a2/ec52226：table.insert/footnote.insert/note.insert/doc.save 接入（18 协议名全集）；产品 W 30/30
+  （doc.save 真实落盘）；F03 packB PASS 14→18。证据 P5-T26-pack-editor-cmd.md v9、F 报告附录 L。

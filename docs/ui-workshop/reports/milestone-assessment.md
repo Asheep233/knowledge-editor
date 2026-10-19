@@ -224,3 +224,13 @@ ACCEPTANCE A 节：
   仅表示门禁未通过，非产品故障）→ **里程碑不前进**，仍需专用 Windows VM 执行并回传证据。
 - 交接包 v2：`reports/cloud-handoff/`（完整 `sources.bundle` 当前 HEAD、修正版 scripts/tests/test-pack/preflight）+
   `reports/cloud-vm-taskpack.zip`（生成器 `tools/build_cloud_handoff.py`）。证据 `P5-T26-T27-I-gate-preflight.md`。
+
+## 3o. 结项与 T27 环境阻塞决策（2026-10-19 夜）
+
+- 主理人确认**无 Windows VM 可用**；T27 I 门禁无法在其环境执行 → 按
+  `reports/DECISION-T27-I-gate-blocked.md` 决策：**以 `EXPERIMENTAL_TRUSTED_PACKS` 结项**，
+  不声明 `IMPLEMENTED_WINDOWS_PENDING`/`LOCAL_WORKSHOP_RELEASE_CANDIDATE`；`verdict=FAIL` 仅表示门禁
+  未通过（未执行），非产品故障。
+- 替代验证（不等于 I 门禁）：Linux 预检 PASS（脚本 39/39、完整性 64/64、双前端构建等）；本机 Windows
+  真实 W 证据 A1–A8/W01–W09/G1–G7/F 部分；验证矩阵 63 行 PASS。
+- 未完成（环境/能力面）：T27 I 类证据、F01–F16 guest 全量覆盖（部分域无受控协议）、W07 3 项已定稿限制。

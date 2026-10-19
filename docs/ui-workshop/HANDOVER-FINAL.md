@@ -478,3 +478,13 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   过宽/构建未固定候选 HEAD）；修正版 `scripts/` + `tests/`（39）+ 已签名 `test-pack/` + 完整 `sources.bundle`
   已纳入 `reports/cloud-handoff/`（v2），生成器 `tools/build_cloud_handoff.py`，一键包 `cloud-vm-taskpack.zip`。
 - 下一步：专用 Windows VM 按 `cloud-handoff/README.md` 执行 U1–U6 + B 段 → 回传 windows-evidence。
+
+## 结项（2026-10-19 夜）
+
+- **最终交付状态：`EXPERIMENTAL_TRUSTED_PACKS`**（不声明更高）。
+- **T27 I 门禁：NOT_RUN/BLOCKED**——主理人确认无 Windows VM；Linux 预检 PASS 不能替代 I 证据；
+  按 `reports/DECISION-T27-I-gate-blocked.md` 结项，不在真实机器安装/升级/回滚。
+- 已完成：实现 + 本机 Windows/WebView2 W 证据 + 矩阵 63 行 PASS + 一致性 8/8 + 全部台账/ADR/交接；
+  未完成：I 门禁（环境）、F 全量 guest 覆盖（能力面）、W07 三项已定稿设计限制。
+- 恢复路径：`reports/cloud-handoff/`（v2，完整 bundle + 修正版脚本 + 39 tests + 签名 test-pack + README）
+  在有 Windows 环境时执行回传即可复评。

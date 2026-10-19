@@ -1067,3 +1067,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 修正版脚本（Codex 审计发现 6 类真实缺陷）+ tests + 签名 test-pack + 完整 sources.bundle 纳入
   `reports/cloud-handoff/`（v2）；`cloud-vm-taskpack.zip` 由 `tools/build_cloud_handoff.py` 生成。
   证据 `P5-T26-T27-I-gate-preflight.md`。
+
+## P6 结项（2026-10-19 夜）
+
+- 主理人确认无 Windows VM → T27 I 门禁 NOT_RUN/BLOCKED（决策 `DECISION-T27-I-gate-blocked.md`）；
+  **最终交付状态 `EXPERIMENTAL_TRUSTED_PACKS`**（不声明更高）；矩阵 63 行 PASS、一致性 8/8。
+- 恢复路径：`reports/cloud-handoff/` v2 在 Windows 环境执行并回传后复评。

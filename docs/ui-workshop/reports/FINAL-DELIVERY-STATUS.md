@@ -204,3 +204,16 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
   清理范围过宽/构建未固定候选 HEAD），修正版脚本 + 39 项测试纳入 **交接包 v2**。
 - **I 门禁仍未通过 → 里程碑保持 `EXPERIMENTAL_TRUSTED_PACKS`**；需专用 Windows VM 执行
   `reports/cloud-handoff/README.md` 流程后回传 `windows-evidence`。证据 `P5-T26-T27-I-gate-preflight.md`。
+
+## 14. 最终结项状态（2026-10-19 夜）
+
+**交付状态 = `EXPERIMENTAL_TRUSTED_PACKS`（TASK PACK 允许状态之一）。**
+**T27 I 门禁未执行（NOT_RUN/BLOCKED）**：主理人确认无 Windows VM 环境；Linux 预检 PASS 不能替代 I 证据；
+按 `reports/DECISION-T27-I-gate-blocked.md` 决策，**不声明** `IMPLEMENTED_WINDOWS_PENDING` 完成态 /
+`LOCAL_WORKSHOP_RELEASE_CANDIDATE`，也不在主理人真实机器上安装/升级/回滚。
+
+- 已完成：UI 工坊实现 + 本机 Windows/WebView2 真实 W 证据（A1–A8、W01–W09、G1–G7、F01–F16 部分）、
+  验证矩阵 63 行 PASS、交付一致性 8/8、全部证据/台账/ADR/交接文档；
+- 未完成（环境阻塞）：T27 **I 类**安装/升级/回滚证据；F01–F16 guest 原生入口整体覆盖（部分域无受控协议）；
+  W07 三项已定稿设计限制（重启/卸载可恢复）；
+- 恢复路径：获得 Windows 环境后使用 `reports/cloud-handoff/`（v2）执行并回传 → 复评里程碑。

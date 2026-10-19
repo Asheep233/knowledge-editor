@@ -29,7 +29,9 @@
     'editor.bullet-list', 'editor.ordered-list', 'editor.blockquote', 'editor.code-block',
     'editor.undo', 'editor.redo',
     // W07 task-29：4 条可无头产品动作（复用产品 action 注册表；doc.save 为保存动作）
-    'editor.table.insert', 'editor.footnote.insert', 'editor.note.insert', 'doc.save'
+    'editor.table.insert', 'editor.footnote.insert', 'editor.note.insert', 'doc.save',
+    // W07 task-33/34：参数化无头命令（link/math；table.insert 已在上方，按 args 传尺寸）
+    'editor.link.insert', 'editor.math.inline', 'editor.math.block'
   ];
   var COMMANDS = ['article.set-title', 'article.set-tags'].concat(EDITOR_COMMANDS);
   var HEARTBEAT_MS = 200;
@@ -275,8 +277,8 @@
     setText('editor-command-result', last.name + ' → ' + (last.ok ? 'ok' : '失败（' + last.error + '）'));
   }
 
-  function invokeEditorCommand(name) {
-    void invokeCommand(name, {}).then(function (r) {
+  function invokeEditorCommand(name, args) {
+    void invokeCommand(name, args || {}).then(function (r) {
       renderEditorCommand(name);
       return r;
     });
@@ -298,7 +300,6 @@
     'btn-cmd-undo': 'editor.undo',
     'btn-cmd-redo': 'editor.redo',
     // W07 task-29：动作按钮（无头执行；doc.save 触发产品真实保存）
-    'btn-cmd-table-insert': 'editor.table.insert',
     'btn-cmd-footnote-insert': 'editor.footnote.insert',
     'btn-cmd-note-insert': 'editor.note.insert',
     'btn-cmd-doc-save': 'doc.save'
@@ -400,6 +401,31 @@
   $('btn-load').addEventListener('click', function () {
     void loadSnapshot('manual');
   });
+  // W07 task-33/34：参数化命令 UI（输入控件 → command.invoke args；产品侧严格校验）
+  function bindParam(id, command, argsFn) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('click', function () {
+      void invokeEditorCommand(command, argsFn());
+    });
+  }
+  bindParam('btn-cmd-link-insert', 'editor.link.insert', function () {
+    return { href: $('link-href').value, text: $('link-text').value };
+  });
+  bindParam('btn-cmd-math-inline', 'editor.math.inline', function () {
+    return { latex: $('math-latex').value };
+  });
+  bindParam('btn-cmd-math-block', 'editor.math.block', function () {
+    return { latex: $('math-latex').value };
+  });
+  bindParam('btn-cmd-table-insert', 'editor.table.insert', function () {
+    return {
+      rows: Number($('table-rows').value || 3),
+      cols: Number($('table-cols').value || 3),
+      withHeaderRow: true
+    };
+  });
+
   Object.keys(EDITOR_BUTTONS).forEach(function (id) {
     var el = $(id);
     if (!el) return;

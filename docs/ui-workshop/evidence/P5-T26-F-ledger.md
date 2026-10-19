@@ -312,3 +312,11 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - 不可达行（fs/modules/drafts/index/tags 后端 API，原空白）10 行 → 如实 `NOT_RUN` + W06 网络边界原因；F07 域行 `NOT_RUN→PARTIAL`（doc.save 真实落盘 + document-saved 事件；自动保存/恢复无通道）；F02/F10 域行原因更新。
 - 统计：packA PASS **24/130 行**、packB PASS **25/130 行**；PARTIAL：packA 3、packB 2；详见 `evidence/P5-T26-F-pack-mapping.md`。
 - 证据：`evidence/P5-T26-F-pack-mapping.md`（逐行映射/不可达原因/域统计）；报告附录 N。
+
+## v12 参数化命令 packA/B W + F 台账（task-34，2026-10-19）
+
+- 构建 `53dfacc35f53cafc14efd42ec5ec33cb252a1ff41a5248e149bc912d509393dd`（含 1d33dd6：21 条协议名 = 14 切换 + 4 参数化 link/math/table + 3 无参动作）；pack A/B manifest 声明 21 条，签名包重建。
+- 产品 W：**pack B 36/36 PASS、pack A 36/36 PASS**（新增 6 checks/包）：link（无选区插入文本+link mark / 有选区 setLink）、math.inline/block（`.ke-math--inline`/`--block` 真实插入，**无 MathLive 弹窗**）、table {rows:2,cols:4}（真实尺寸）、撤销还原全部 PASS；负向 6 例（javascript: scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args）全部 `E_BAD_PAYLOAD` 且 DOM 不变。
+- F 台账：`CMD.editor.link.insert`、`CMD.editor.math.block` 的 packA/packBEntry 新增 **PASS（2 行）**；`CMD.editor.table.insert` 备注更新为参数化尺寸证据；F04/F05 域行 packA/packB=PARTIAL（插入动作面，非全部深层操作）。
+- 统计：packA PASS **26/130 行**、packB PASS **27/130 行**；PARTIAL A=4 B=4；详见报告附录 O。
+- 证据：`evidence/T26-pack-editor-cmd-results.json`（36 checks）、`T26-packA-editor-cmd-results.json`（36 checks）、`P5-T26-pack-editor-cmd.md` v12 段。

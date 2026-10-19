@@ -120,3 +120,47 @@
 ### 负向（含未接的对话框类动作）
 
 - 未声明/大写/未知 + `editor.link.insert`/`image.insert`/`math.block`/`module.insert` 全部 `E_FORBIDDEN`，主窗口 DOM 不变（W-T31-17，共 7 用例）。
+
+---
+
+## v12 增量：参数化无头命令 link/math/table（task-34，2026-10-19）
+
+- 测试构建：`53dfacc35f53cafc14efd42ec5ec33cb252a1ff41a5248e149bc912d509393dd`（sha256=`53dfacc35f53cafc14efd42ec5ec33cb252a1ff41a5248e149bc912d509393dd`，mtime=`2026-10-19T19:09:35`；含 1d33dd6 参数化命令，21 条协议名）。
+- pack A/B：manifest 新增 `editor.link.insert`/`editor.math.inline`/`editor.math.block`（`editor.table.insert` 确认参数化语义），UI 增加 URL/文本、LaTeX、rows/cols 输入控件；README 补参数 schema/校验/负向；签名包已重建。
+- 产品 W：**pack B 36/36 PASS；pack A 36/36 PASS**（每包新增 6 checks：成功 5 + 负向 1）。
+
+### 4 条参数化命令（pack B / pack A 同一套断言）
+
+| 命令 | 实测 | 结果 |
+| --- | --- | --- |
+| `editor.link.insert`（无选区） | `a[href=https://example.com/w]` 文本=W-LINK（真实 `<a>` DOM） | PASS（W-T26-28 / W-T31-28） |
+| `editor.link.insert`（有选区） | 对选区 setLink（href=w2） | PASS（W-T26-29 / W-T31-29） |
+| `editor.math.inline` | `.ke-math--inline` 节点插入、无 MathLive 弹窗 | PASS（W-T26-30 / W-T31-30） |
+| `editor.math.block` | `.ke-math--block` 节点插入、无 MathLive 弹窗 | PASS（W-T26-31 / W-T31-31） |
+| `editor.table.insert {rows:2,cols:4}` | 主窗口 table rows=2 / cols=4 | PASS（W-T26-32 / W-T31-32） |
+
+### 参数校验负向（E_BAD_PAYLOAD 且 DOM 不变）
+
+- pack B（W-T26-33）/ pack A（W-T31-33）各 6 例：javascript: scheme、超长 href、缺 latex、超长 latex、rows=99、无参命令带 args → 全部 `E_BAD_PAYLOAD` 且主窗口 DOM 不变；未声明命令仍 `E_FORBIDDEN`（原 W-T26-17 保持）。
+
+### 逐项 checks（pack B）
+
+| check | 结果 | detail |
+| --- | --- | --- |
+| W-T26-28 | PASS | `{"inputSet": true, "guestClick": true, "link": {"href": "https://example.com/w", "text": "W-LINK", "html": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://example.com/w\">W-LINK</a>"}, "undoRestored": tr` |
+| W-T26-29 | PASS | `{"guestClick": true, "linkCount": 4, "undoRestored": true}` |
+| W-T26-30 | PASS | `{"inputSet": true, "guestClick": true, "inlineMath": 1, "hostModal": 0, "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--inline\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class` |
+| W-T26-31 | PASS | `{"inputSet": true, "guestClick": true, "blockMath": 1, "hostModal": 0, "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--block\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\` |
+| W-T26-32 | PASS | `{"inputSet": true, "guestClick": true, "size": {"rows": 2, "cols": 4, "html": "<table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\">` |
+| W-T26-33 | PASS | `{"cases": [{"label": "link 危险 scheme", "name": "editor.link.insert", "args": {"href": "javascript:alert(1)", "text": "x"}, "ok": false, "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、htt` |
+
+### 逐项 checks（pack A）
+
+| check | 结果 | detail |
+| --- | --- | --- |
+| W-T31-28 | PASS | `{"inputSet": true, "guestClick": true, "link": {"href": "https://example.com/w", "text": "W-LINK", "html": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://example.com/w\">W-LINK</a>"}, "undoRestored": tr` |
+| W-T31-29 | PASS | `{"guestClick": true, "linkCount": 4, "undoRestored": true}` |
+| W-T31-30 | PASS | `{"inputSet": true, "guestClick": true, "inlineMath": 1, "hostModal": 0, "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--inline\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class` |
+| W-T31-31 | PASS | `{"inputSet": true, "guestClick": true, "blockMath": 1, "hostModal": 0, "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--block\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\` |
+| W-T31-32 | PASS | `{"inputSet": true, "guestClick": true, "size": {"rows": 2, "cols": 4, "html": "<table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\">` |
+| W-T31-33 | PASS | `{"cases": [{"label": "link 危险 scheme", "name": "editor.link.insert", "args": {"href": "javascript:alert(1)", "text": "x"}, "ok": false, "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、htt` |

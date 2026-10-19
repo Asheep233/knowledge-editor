@@ -815,3 +815,46 @@
 - 网络边界/无受控协议（10 行后端 API）；语义只部分覆盖（F07 → PARTIAL）；
 - 不在 pack 能力面（F01 工作区/F08 历史/F09 附件/F11 回收站/F13 导出/F15 设置 UI 等）保持 NOT_RUN；
 - **不得把官方 UI 通过映射成 pack 通过**；证据均为 guest 协议实测。详见 `evidence/P5-T26-F-pack-mapping.md`。
+
+---
+
+## 附录 O：参数化无头命令（link/math/table）W 与 F 台账（v12，2026-10-19）
+
+> task-34：W07 task-33 参数化命令（4 条）经 pack A/B 产品 W 验证；不改产品代码。
+
+### O.1 结果（pack B 36/36；pack A 36/36；构建 `53dfacc35f53cafc…`）
+
+| 命令 | 断言 | pack B | pack A |
+| --- | --- | --- | --- |
+| `editor.link.insert`（无选区） | `a[href=https://example.com/w]` 文本=W-LINK；撤销还原 | PASS W-T26-28 | PASS W-T31-28 |
+| `editor.link.insert`（有选区） | 对选区 setLink（href=w2）；撤销还原 | PASS W-T26-29 | PASS W-T31-29 |
+| `editor.math.inline` | `.ke-math--inline` 节点、无 MathLive 弹窗；撤销还原 | PASS W-T26-30 | PASS W-T31-30 |
+| `editor.math.block` | `.ke-math--block` 节点、无 MathLive 弹窗；撤销还原 | PASS W-T26-31 | PASS W-T31-31 |
+| `editor.table.insert {rows:2,cols:4}` | 主窗口 table rows=2/cols=4；撤销还原 | PASS W-T26-32 | PASS W-T31-32 |
+| 参数校验负向（6 例） | javascript: scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args → E_BAD_PAYLOAD 且 DOM 不变 | PASS W-T26-33 | PASS W-T31-33 |
+
+### O.2 F 台账变更
+
+- `CMD.editor.link.insert`：packA/packBEntry → **PASS**（link 插入/选区 mark + 负向拒绝，W 证据如上）；
+- `CMD.editor.math.block`：packA/packBEntry → **PASS**（mathBlock 节点 + 无弹窗，W 证据如上）；
+- `CMD.editor.table.insert`：保持 PASS，备注更新为参数化 rows/cols 真实尺寸证据；
+- `F04` 域行：packA/packB=**PARTIAL**（行内/块公式节点可插入；MathLive 输入/转换/长公式等 UI 面不覆盖）；
+- `F05` 域行：packA/packB=**PARTIAL**（可插入指定尺寸表格；深层操作/编辑能力不覆盖）。
+
+### O.3 统计（CSV 130 行）
+
+| 项 | packA | packB |
+| --- | ---: | ---: |
+| PASS 行 | 26 | 27 |
+| PARTIAL 行 | 4 | 4 |
+| NOT_RUN 行 | 100 | 89 |
+
+### O.4 剩余缺口
+
+- F04/F05 仅插入动作面（PARTIAL）；MathLive 可视化输入/公式转换/长公式、表格深层操作未覆盖；
+- 其余非 pack 能力面行保持 NOT_RUN；参数化命令的 `E_CAPABILITY` 路径仍无法从 pack 路径触发（manifest 前置先拒绝）。
+
+### O.5 证据
+
+- `evidence/T26-pack-editor-cmd-results.json` / `T26-packA-editor-cmd-results.json`（各 36 checks）；
+- `evidence/P5-T26-pack-editor-cmd.md` v12 段。

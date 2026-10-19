@@ -29,12 +29,12 @@ UI 工坊（UI Workshop）的**参考 guest 包 A**：最小可用的「读场�
 - **状态镜像**：状态变化时向宿主 `postMessage({type:'t19-guest-results', payload})`，
   便于宿主工坊/自动化探针观察 UI 状态（产品宿主组件本身即收集该消息）。
 
-## W07 task-31 受控编辑命令桥（18 条协议名）
+## W07 task-31 受控编辑命令桥（21 条协议名）
 
-- 宿主白名单共 18 条协议名：14 条切换命令（`editor.bold/italic/underline/strike/code/heading1/heading2/heading3/`
+- 宿主白名单共 21 条协议名：14 条切换命令（`editor.bold/italic/underline/strike/code/heading1/heading2/heading3/`
   `editor.bullet-list/ordered-list/blockquote/code-block/undo/redo`）+ 4 条可无头产品动作
   （`editor.table.insert`【产品默认 3×3 带表头】/`editor.footnote.insert`/`editor.note.insert`/`doc.save`）。
-- 本包在 `manifest.commands` **逐条声明 18 条**（声明是 broker `declaredCommands` 前置；未声明 → `E_FORBIDDEN`），
+- 本包在 `manifest.commands` **逐条声明 21 条**（声明是 broker `declaredCommands` 前置；未声明 → `E_FORBIDDEN`），
   并声明能力 `editor.commands.readonly`（trusted 才授予；未授予 → `E_CAPABILITY`）。
 - UI：「编辑器命令」面板 18 个按钮 → 真实 `command.invoke`；结果/错误显示在「最近命令」与错误框（不静默）。
 - 负向：`window.__packAInvokeCommand(name, args)`（参考包自动化用 hook）可请求任意命令名；未声明/未知/大写名
@@ -46,6 +46,16 @@ UI 工坊（UI Workshop）的**参考 guest 包 A**：最小可用的「读场�
 - 多词命令协议名使用 kebab-case（`editor.bullet-list` 等）；旧 camelCase（`editor.bulletList`）仅宿主后端
   legacy 兼容直调，manifest 命令名 schema 不允许大写 → 无法声明。
 - `doc.save` 的真实落盘由产品保存链保证（W 验证：编辑 marker 后磁盘出现 marker + mtime 变化，不只查返回值）。
+### W07 task-33/34 参数化无头命令（link / math / table）
+
+| 协议名 | args schema | 校验/语义 |
+| --- | --- | --- |
+| `editor.link.insert` | `{href, text?}` | href 仅 `http(s)://` / `mailto:`、≤2048、无空白/控制字符；text ≤500；**有选区** → 对选区 setLink，**无选区** → 插入文本（text||href）并带 link mark |
+| `editor.math.inline` | `{latex}` | 非空、≤2000、拒绝控制字符；直接插入 `math` 节点，**不打开 MathLive 对话框** |
+| `editor.math.block` | `{latex}` | 同上 → 插入 `mathBlock` 节点（无弹窗） |
+| `editor.table.insert` | `{rows, cols, withHeaderRow?}` | rows/cols 整数 1–8（缺省 3），withHeaderRow 布尔（缺省 true）→ `insertTable` 真实尺寸 |
+
+**负向（宿主严格校验，`E_BAD_PAYLOAD` 且不执行）**：`javascript:alert(1)` 等非白名单 scheme、超长 href/latex、rows=99、缺 latex、无参命令带 args（14 切换命令/3 无参动作）→ 全部拒绝；未声明命令仍 `E_FORBIDDEN`。
 ## 构建与签名
 
 ```bash

@@ -57,6 +57,36 @@
       <ul id="command-list" class="events"></ul>
     </section>
 
+    <section class="panel" id="editor-param-panel">
+      <h2>参数化命令（link / math / table；产品侧严格校验 args）</h2>
+      <div class="row">
+        <label for="link-href">链接 URL</label>
+        <input id="link-href" type="text" value="https://example.com/w" />
+        <label for="link-text">文本</label>
+        <input id="link-text" type="text" value="W-LINK" />
+        <button id="btn-cmd-link-insert" type="button">插入链接</button>
+      </div>
+      <div class="row">
+        <label for="math-latex">LaTeX</label>
+        <input id="math-latex" type="text" value="x^2+y^2" />
+        <button id="btn-cmd-math-inline" type="button">插入行内公式</button>
+        <button id="btn-cmd-math-block" type="button">插入块公式</button>
+      </div>
+      <div class="row">
+        <label for="table-rows">rows</label>
+        <input id="table-rows" type="number" min="1" max="8" value="3" />
+        <label for="table-cols">cols</label>
+        <input id="table-cols" type="number" min="1" max="8" value="3" />
+        <button id="btn-cmd-table-insert" type="button">插入表格（rows×cols）</button>
+      </div>
+      <div class="row"><span class="k">最近参数命令</span><span id="editor-param-result">（未执行）</span></div>
+      <p class="hint">
+        参数 schema：link `{href, text?}`（href 仅 http(s):// / mailto:，≤2048；text ≤500）；
+        math `{latex}`（非空，≤2000）；table `{rows, cols, withHeaderRow?}`（1–8，缺省 3×3/带表头）。
+        非法参数 → 宿主 `E_BAD_PAYLOAD` 且不执行（负向行为由 W 探针验证）。
+      </p>
+    </section>
+
     <section class="panel" id="editor-cmd-panel">
       <h2>编辑器命令（command.invoke editor.*，真实宿主编辑器）</h2>
       <div class="row" id="editor-cmd-buttons">
@@ -74,8 +104,7 @@
         <button id="btn-cmd-code-block" type="button">代码块</button>
         <button id="btn-cmd-undo" type="button">撤销</button>
         <button id="btn-cmd-redo" type="button">重做</button>
-        <button id="btn-cmd-table-insert" type="button">插入表格 3×3</button>
-        <button id="btn-cmd-footnote-insert" type="button">插入脚注</button>
+                <button id="btn-cmd-footnote-insert" type="button">插入脚注</button>
         <button id="btn-cmd-note-insert" type="button">插入信息块</button>
         <button id="btn-cmd-doc-save" type="button">保存文档</button>
       </div>

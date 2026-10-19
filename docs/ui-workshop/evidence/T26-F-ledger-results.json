@@ -1191,8 +1191,8 @@
       {
         "featureId": "F04",
         "domain": "F04",
-        "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
+        "packAEntry": "PARTIAL:pack A/B 经参数化命令可插入行内/块公式节点（editor.math.inline/block，latex 非空校验，无 MathLive 弹窗；W-T26-30/31、W-T31-30/31）；MathLive 可视化输入/公式转换/长公式等 UI 面不在 pack 能力面 → 仅部分覆盖",
+        "packBEntry": "PARTIAL:pack A/B 经参数化命令可插入行内/块公式节点（editor.math.inline/block，latex 非空校验，无 MathLive 弹窗；W-T26-30/31、W-T31-30/31）；MathLive 可视化输入/公式转换/长公式等 UI 面不在 pack 能力面 → 仅部分覆盖",
         "officialBaselineResult": "PASS:官方 UI 插入公式→全屏公式编辑器打开（入口级）",
         "note": "",
         "forceFill": false
@@ -1200,8 +1200,8 @@
       {
         "featureId": "F05",
         "domain": "F05",
-        "packAEntry": "PARTIAL:pack A guest command.invoke(editor.table.insert) → 主窗口 table DOM 3行/3表头真实插入（W-T31-24）；仅覆盖「表格插入」动作面，F05 其余语义（渲染/样式等）未由 packA 覆盖 → 保持 NOT_RUN，不伪造 PASS",
-        "packBEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
+        "packAEntry": "PARTIAL:pack A/B 可经 editor.table.insert 插入指定尺寸表格（rows/cols 1–8、withHeaderRow；W-T26-32、W-T31-32）并撤销还原；「表格全部深层操作」（编辑/合并/样式等）不在 pack 能力面 → 仅部分覆盖",
+        "packBEntry": "PARTIAL:pack A/B 可经 editor.table.insert 插入指定尺寸表格（rows/cols 1–8、withHeaderRow；W-T26-32、W-T31-32）并撤销还原；「表格全部深层操作」（编辑/合并/样式等）不在 pack 能力面 → 仅部分覆盖",
         "officialBaselineResult": "PASS:官方 UI 表格尺寸选择器→插入表格→撤销",
         "note": "task-31 pack A 仅覆盖表格插入动作面（PARTIAL，不伪造）",
         "forceFill": false
@@ -1632,8 +1632,8 @@
       {
         "featureId": "CMD.editor.link.insert",
         "domain": "F03",
-        "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:同左",
+        "packAEntry": "PASS:pack A/B guest 真实 UI 输入 URL/文本 → command.invoke(editor.link.insert,{href,text}) → 主窗口 `a[href=https://example.com/w]` 文本=W-LINK（无选区插入）、有选区路径 setLink（w2）均验证；撤销还原；负向 javascript: scheme/超长 href → E_BAD_PAYLOAD 且 DOM 不变（W-T26-28/29/33、W-T31-28/33）",
+        "packBEntry": "PASS:pack A/B guest 真实 UI 输入 URL/文本 → command.invoke(editor.link.insert,{href,text}) → 主窗口 `a[href=https://example.com/w]` 文本=W-LINK（无选区插入）、有选区路径 setLink（w2）均验证；撤销还原；负向 javascript: scheme/超长 href → E_BAD_PAYLOAD 且 DOM 不变（W-T26-28/29/33、W-T31-28/33）",
         "officialBaselineResult": "PASS:复核（AUTOMATION_LIMITATION）：工具栏插入链接（地址对话框输入 URL→确定）在 选中文本 与 折叠光标 两种前置均产生 <a href>（0→1，href=examples/f03audit）；v4 失败为全量序列后状态耦合，详见 evidence/P5-T26-F03-fail-audit.md",
         "note": "task-21 复核改判/保留（见 f03FailAudit）",
         "forceFill": false
@@ -1650,8 +1650,8 @@
       {
         "featureId": "CMD.editor.math.block",
         "domain": "F03",
-        "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:同左",
+        "packAEntry": "PASS:pack A/B guest 输入 LaTeX → command.invoke(editor.math.block,{latex:'x^2+y^2'}) → 主窗口 `.ke-math--block` 节点真实插入且**无 MathLive 弹窗**；撤销还原；负向缺 latex/超长 latex → E_BAD_PAYLOAD 且 DOM 不变（W-T26-30/31/33、W-T31-30/31/33）",
+        "packBEntry": "PASS:pack A/B guest 输入 LaTeX → command.invoke(editor.math.block,{latex:'x^2+y^2'}) → 主窗口 `.ke-math--block` 节点真实插入且**无 MathLive 弹窗**；撤销还原；负向缺 latex/超长 latex → E_BAD_PAYLOAD 且 DOM 不变（W-T26-30/31/33、W-T31-30/31/33）",
         "officialBaselineResult": "PASS:官方 UI 工具栏插入块级公式 → mathBlock 节点（CDP 真实操作 + DOM 断言 before=0→after=1）",
         "note": "",
         "forceFill": false
@@ -1686,8 +1686,8 @@
       {
         "featureId": "CMD.editor.table.insert",
         "domain": "F03",
-        "packAEntry": "PASS:pack A guest 真实 DOM 点击「插入表格 3×3」→ command.invoke(editor.table.insert)（trusted + editor.commands.readonly）→ 主窗口 .ProseMirror DOM table rows=3/表头 th=3/cols=3 且撤销还原（W-T31-24）",
-        "packBEntry": "PASS:pack B guest 真实 DOM 点击「插入表格 3×3」→ command.invoke(editor.table.insert)（可无头产品动作，与快捷键/工具栏同一 handler）→ 主窗口 .ProseMirror table DOM rows=3/表头 th=3/cols=3 且撤销还原（W-T26-24）",
+        "packAEntry": "PASS:pack A/B guest 输入 rows=2/cols=4 → command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4（另有默认 3×3 按钮路径）；撤销还原；负向 rows=99 → E_BAD_PAYLOAD（W-T26-32/33、W-T31-32/33）",
+        "packBEntry": "PASS:pack A/B guest 输入 rows=2/cols=4 → command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4（另有默认 3×3 按钮路径）；撤销还原；负向 rows=99 → E_BAD_PAYLOAD（W-T26-32/33、W-T31-32/33）",
         "officialBaselineResult": "PASS:官方 UI 工具栏表格 → 2×2 表格节点（CDP 真实操作 + DOM 断言 before=0→after=1）",
         "note": "task-31 pack A 编辑命令桥 W 验证 PASS（见 packCmdA）",
         "forceFill": false
@@ -1900,8 +1900,8 @@
       },
       "F03": {
         "registered": 42,
-        "packAPass": 18,
-        "packBPass": 18,
+        "packAPass": 20,
+        "packBPass": 20,
         "officialPass": 42,
         "officialFail": 0,
         "officialNr": 0
@@ -2350,7 +2350,7 @@
     "F03 仅抽样 7 条真实执行，其余保持 NOT_RUN",
     "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）"
   ],
-  "verificationStatus": "V11_PACK_EVIDENCE_MAPPING",
+  "verificationStatus": "V12_PARAM_CMD",
   "v4Note": "task-20 第三轮增量：F03 剩余 12 行（工具栏/菜单入口真实执行；10 PASS / 2 FAIL）+ F16 原生菜单只读结构审计（menu.rs 11 项 MenuItem；原生菜单非 DOM，CSV 11 行如实 NOT_RUN，不伪造 W/DOM）。",
   "v4": {
     "f03_remaining_rows": 12,
@@ -2990,11 +2990,11 @@
               "assets": [
                 {
                   "path": "index.html",
-                  "declaredSha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
-                  "actualSha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
+                  "declaredSha256": "cacf1a3870e020e60b11b7c0f175fa275f87802efb2205d7e80e4ea31f6448ee",
+                  "actualSha256": "cacf1a3870e020e60b11b7c0f175fa275f87802efb2205d7e80e4ea31f6448ee",
                   "match": true,
-                  "size": 2863,
-                  "declaredSize": 2863
+                  "size": 6409,
+                  "declaredSize": 6409
                 },
                 {
                   "path": "pack.css",
@@ -3006,11 +3006,11 @@
                 },
                 {
                   "path": "pack.js",
-                  "declaredSha256": "8ef26d3d0a4562023008faa231914884383a87db2223ab8ad80a4112a45c7a6c",
-                  "actualSha256": "8ef26d3d0a4562023008faa231914884383a87db2223ab8ad80a4112a45c7a6c",
+                  "declaredSha256": "7c0a1ce4bd0eae8dd43234153ce730118b337cc10a11feaad43b1939fb45541c",
+                  "actualSha256": "7c0a1ce4bd0eae8dd43234153ce730118b337cc10a11feaad43b1939fb45541c",
                   "match": true,
-                  "size": 12577,
-                  "declaredSize": 12577
+                  "size": 16917,
+                  "declaredSize": 16917
                 },
                 {
                   "path": "vendor/guest-sdk.js",
@@ -3032,11 +3032,11 @@
               "assets": [
                 {
                   "path": "index.html",
-                  "declaredSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
-                  "actualSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
+                  "declaredSha256": "a5924e0dc7aaeab3ea6a968f36c03c81c5a4389b8a696946bed2456e7c938bc8",
+                  "actualSha256": "a5924e0dc7aaeab3ea6a968f36c03c81c5a4389b8a696946bed2456e7c938bc8",
                   "match": true,
-                  "size": 5320,
-                  "declaredSize": 5320
+                  "size": 6906,
+                  "declaredSize": 6906
                 },
                 {
                   "path": "pack.css",
@@ -3048,11 +3048,11 @@
                 },
                 {
                   "path": "pack.js",
-                  "declaredSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
-                  "actualSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
+                  "declaredSha256": "7626873f2830054d67e32b398dd8a2659563bbd4d809d6228fc53449bf5ecff8",
+                  "actualSha256": "7626873f2830054d67e32b398dd8a2659563bbd4d809d6228fc53449bf5ecff8",
                   "match": true,
-                  "size": 16347,
-                  "declaredSize": 16347
+                  "size": 17403,
+                  "declaredSize": 17403
                 },
                 {
                   "path": "vendor/guest-sdk.js",
@@ -3068,7 +3068,7 @@
           "zips": {
             "com.astranota.examples.pack-a": {
               "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
-              "sha256": "25e07d7cfc7a6a6ea370eea9e2018cb3766675f929e2877f92701156841c1b93",
+              "sha256": "91963c998eec20a4ff6d6cba584ceea28f588656af2118521cfe741db37d0104",
               "names": [
                 "index.html",
                 "manifest.json",
@@ -3078,11 +3078,11 @@
               ],
               "rootOk": true,
               "assetsMatch": true,
-              "size": 9473
+              "size": 12153
             },
             "com.astranota.examples.pack-b": {
               "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
-              "sha256": "c6fb6f96307a0e7e2d5ca9e48a611ae95505698d3b6b4861f62ed8f3a8897858",
+              "sha256": "60817cf9bdfc8545ac3b6af5faf342f82b6201fb122798f2cb99bcec9d1ff79f",
               "names": [
                 "index.html",
                 "manifest.json",
@@ -3092,10 +3092,10 @@
               ],
               "rootOk": true,
               "assetsMatch": true,
-              "size": 11364
+              "size": 12215
             }
           },
-          "publicKeyHex": "d401fef5120989f15c6a48d86973e193f27ac31c6bae4f39d2acccfc4a1755e4",
+          "publicKeyHex": "53e8bd9c6c972ddb906414956df671c175384c92371e8e8446ad436df5f075ac",
           "buildKeySource": "provided"
         }
       },
@@ -3104,7 +3104,7 @@
         "pass": true,
         "detail": {
           "exit": 0,
-          "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=d401fef5120989f1…（provided）\n"
+          "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=53e8bd9c6c972ddb…（provided）\n"
         }
       },
       {
@@ -3124,7 +3124,7 @@
         }
       },
       {
-        "name": "W-T26-1 pack B 构建/签名：manifest 声明 18 条协议名（14 切换命令含 3 kebab + 4 动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+        "name": "W-T26-1 pack B 构建/签名：manifest 声明 21 条协议名（14 切换 + 4 参数化 link/math/table + 3 无参动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
         "pass": true,
         "detail": {
           "editorCommands": [
@@ -3144,7 +3144,10 @@
             "editor.code-block",
             "editor.table.insert",
             "editor.footnote.insert",
-            "editor.note.insert"
+            "editor.note.insert",
+            "editor.link.insert",
+            "editor.math.inline",
+            "editor.math.block"
           ],
           "capabilities": [
             "ui.shell",
@@ -3163,9 +3166,9 @@
         "name": "W-T26-2 隔离产品实例启动 + CDP 就绪（工坊入口渲染）",
         "pass": true,
         "detail": {
-          "port": 9850,
-          "exeSha256": "e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce",
-          "exeMtime": "2026-10-19T18:37:46"
+          "port": 9806,
+          "exeSha256": "53dfacc35f53cafc14efd42ec5ec33cb252a1ff41a5248e149bc912d509393dd",
+          "exeMtime": "2026-10-19T19:09:35"
         }
       },
       {
@@ -3177,7 +3180,7 @@
             "value": {
               "active": "1.0.0",
               "previous": null,
-              "updatedAt": "SystemTime { intervals: 134368799564547626 }"
+              "updatedAt": "SystemTime { intervals: 134368822602933833 }"
             }
           },
           "verify": {
@@ -3210,12 +3213,12 @@
             "lastError": null,
             "packId": "com.astranota.examples.pack-b",
             "state": "active",
-            "updatedAt": "SystemTime { intervals: 134368799567522813 }"
+            "updatedAt": "SystemTime { intervals: 134368822605967662 }"
           }
         }
       },
       {
-        "name": "W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 18 条协议名可见（14 切换 + 4 动作）",
+        "name": "W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 21 条协议名可见（14 切换 + 4 参数化 + 3 无参动作）",
         "pass": true,
         "detail": {
           "acceptedFeatures": [
@@ -3242,7 +3245,10 @@
             "editor.table.insert",
             "editor.footnote.insert",
             "editor.note.insert",
-            "doc.save"
+            "doc.save",
+            "editor.link.insert",
+            "editor.math.inline",
+            "editor.math.block"
           ],
           "handshake": null
         }
@@ -3488,7 +3494,7 @@
           "guestClick": true,
           "before": 0,
           "after": 1,
-          "html": "<div as=\"div\" data-ke-note=\"\" data-id=\"d1f18a56-5176-43e0-bc0a-092c19ae2656\" data-label=\"\" data-title=\"信息块 18:39\" data-color=\"blue\" data-author=\"\" data-created=\"2026-10-19T10:39:26.002Z\" data-updated=",
+          "html": "<div as=\"div\" data-ke-note=\"\" data-id=\"3b4359aa-a144-4d50-b68a-5c1191cfcb0c\" data-label=\"\" data-title=\"信息块 19:17\" data-color=\"blue\" data-author=\"\" data-created=\"2026-10-19T11:17:49.849Z\" data-updated=",
           "undoRestored": true
         }
       },
@@ -3500,11 +3506,141 @@
           "markerInEditor": true,
           "markerOnDiskBefore": false,
           "savedToDisk": true,
-          "mtimeBefore": 1792406353.5096283,
-          "mtimeAfter": 1792406367.172301,
+          "mtimeBefore": 1792408657.5492146,
+          "mtimeAfter": 1792408671.0353413,
           "statusBefore": ".commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
           "statusAfter": "context.read, editor.commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
-          "saveEcho": "{\"name\":\"doc.save\",\"ok\":true,\"value\":{\"ok\":true,\"value\":{\"name\":\"doc.save\",\"executed\":true}},\"at\":1792406367130}"
+          "saveEcho": "{\"name\":\"doc.save\",\"ok\":true,\"value\":{\"ok\":true,\"value\":{\"name\":\"doc.save\",\"executed\":true}},\"at\":1792408670981}"
+        }
+      },
+      {
+        "name": "W-T26-28 guest 真实 UI 输入 URL/文本 → 点击「插入链接」→ command.invoke(editor.link.insert,{href,text}) → 主窗口 a[href=https://example.com/w] 且文本=W-LINK；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "link": {
+            "href": "https://example.com/w",
+            "text": "W-LINK",
+            "html": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://example.com/w\">W-LINK</a>"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-29 guest「插入链接」有选区路径 → 对选区 setLink → 主窗口 a[href=https://example.com/w2] 出现；撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "linkCount": 4,
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-30 guest 输入 LaTeX → 点击「插入行内公式」→ command.invoke(editor.math.inline,{latex}) → 主窗口 .ke-math--inline 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "inlineMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--inline\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex\"><span class=\"katex-html\" aria-hidden=\"tr",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-31 guest 输入 LaTeX → 点击「插入块公式」→ command.invoke(editor.math.block,{latex}) → 主窗口 .ke-math--block 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "blockMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--block\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex-display\"><span class=\"katex\"><span class=\"",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-32 guest 输入 rows=2/cols=4 → 点击「插入表格」→ command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "size": {
+            "rows": 2,
+            "cols": 4,
+            "html": "<table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-33 参数化负向：javascript scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args → 全部 E_BAD_PAYLOAD 且主窗口 DOM 不变（不执行）",
+        "pass": true,
+        "detail": {
+          "cases": [
+            {
+              "label": "link 危险 scheme",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "javascript:alert(1)",
+                "text": "x"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、https://、mailto:）",
+              "added": 1
+            },
+            {
+              "label": "link 超长 href",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 超长（>2048））",
+              "added": 1
+            },
+            {
+              "label": "math 缺 latex",
+              "name": "editor.math.inline",
+              "args": {},
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 必须是字符串）",
+              "added": 1
+            },
+            {
+              "label": "math 超长 latex",
+              "name": "editor.math.inline",
+              "args": {
+                "latex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 超长（>2000））",
+              "added": 1
+            },
+            {
+              "label": "table rows=99",
+              "name": "editor.table.insert",
+              "args": {
+                "rows": 99,
+                "cols": 3
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.table.insert 参数非法（rows 必须是 1-8 的整数）",
+              "added": 1
+            },
+            {
+              "label": "无参命令带 args（editor.bold）",
+              "name": "editor.bold",
+              "args": {
+                "x": 1
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.bold 不接受参数",
+              "added": 1
+            }
+          ],
+          "domUnchanged": true
         }
       },
       {
@@ -3552,15 +3688,7 @@
               "added": 1
             },
             {
-              "label": "对话框类动作未接（link.insert）",
-              "name": "editor.link.insert",
-              "ok": false,
-              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
-              "lastErrorCode": "E_FORBIDDEN",
-              "added": 1
-            },
-            {
-              "label": "对话框类动作未接（image.insert）",
+              "label": "未接对话框类（image.insert，未声明）",
               "name": "editor.image.insert",
               "ok": false,
               "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
@@ -3568,15 +3696,7 @@
               "added": 1
             },
             {
-              "label": "对话框类动作未接（math.block）",
-              "name": "editor.math.block",
-              "ok": false,
-              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
-              "lastErrorCode": "E_FORBIDDEN",
-              "added": 1
-            },
-            {
-              "label": "对话框类动作未接（module.insert）",
+              "label": "未接对话框类（module.insert，未声明）",
               "name": "editor.module.insert",
               "ok": false,
               "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert",
@@ -3589,15 +3709,13 @@
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.explode",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
-            "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
-            "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert"
           ]
         }
       },
       {
-        "name": "W-T26-18 协议名修复：18 条规范协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 动作）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
+        "name": "W-T26-18 协议名修复：21 条协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 参数化 + 3 无参动作）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
         "pass": true,
         "detail": {
           "declaredProtocol": [
@@ -3618,7 +3736,10 @@
             "editor.table.insert",
             "editor.footnote.insert",
             "editor.note.insert",
-            "doc.save"
+            "doc.save",
+            "editor.link.insert",
+            "editor.math.inline",
+            "editor.math.block"
           ],
           "legacyCamel": [
             "editor.bulletList",
@@ -3642,14 +3763,14 @@
             "lastError": null,
             "packId": "com.astranota.examples.pack-b",
             "state": "active",
-            "updatedAt": "SystemTime { intervals: 134368799567522813 }"
+            "updatedAt": "SystemTime { intervals: 134368822605967662 }"
           }
         }
       }
     ],
     "summary": {
-      "total": 30,
-      "pass": 30
+      "total": 36,
+      "pass": 36
     },
     "negatives": [
       {
@@ -3715,7 +3836,204 @@
       "editor.footnote.insert",
       "editor.note.insert",
       "doc.save"
-    ]
+    ],
+    "paramChecks": [
+      {
+        "name": "W-T26-28 guest 真实 UI 输入 URL/文本 → 点击「插入链接」→ command.invoke(editor.link.insert,{href,text}) → 主窗口 a[href=https://example.com/w] 且文本=W-LINK；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "link": {
+            "href": "https://example.com/w",
+            "text": "W-LINK",
+            "html": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://example.com/w\">W-LINK</a>"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-29 guest「插入链接」有选区路径 → 对选区 setLink → 主窗口 a[href=https://example.com/w2] 出现；撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "linkCount": 4,
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-30 guest 输入 LaTeX → 点击「插入行内公式」→ command.invoke(editor.math.inline,{latex}) → 主窗口 .ke-math--inline 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "inlineMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--inline\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex\"><span class=\"katex-html\" aria-hidden=\"tr",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-31 guest 输入 LaTeX → 点击「插入块公式」→ command.invoke(editor.math.block,{latex}) → 主窗口 .ke-math--block 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "blockMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--block\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex-display\"><span class=\"katex\"><span class=\"",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-32 guest 输入 rows=2/cols=4 → 点击「插入表格」→ command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "size": {
+            "rows": 2,
+            "cols": 4,
+            "html": "<table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-33 参数化负向：javascript scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args → 全部 E_BAD_PAYLOAD 且主窗口 DOM 不变（不执行）",
+        "pass": true,
+        "detail": {
+          "cases": [
+            {
+              "label": "link 危险 scheme",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "javascript:alert(1)",
+                "text": "x"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、https://、mailto:）",
+              "added": 1
+            },
+            {
+              "label": "link 超长 href",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 超长（>2048））",
+              "added": 1
+            },
+            {
+              "label": "math 缺 latex",
+              "name": "editor.math.inline",
+              "args": {},
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 必须是字符串）",
+              "added": 1
+            },
+            {
+              "label": "math 超长 latex",
+              "name": "editor.math.inline",
+              "args": {
+                "latex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 超长（>2000））",
+              "added": 1
+            },
+            {
+              "label": "table rows=99",
+              "name": "editor.table.insert",
+              "args": {
+                "rows": 99,
+                "cols": 3
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.table.insert 参数非法（rows 必须是 1-8 的整数）",
+              "added": 1
+            },
+            {
+              "label": "无参命令带 args（editor.bold）",
+              "name": "editor.bold",
+              "args": {
+                "x": 1
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.bold 不接受参数",
+              "added": 1
+            }
+          ],
+          "domUnchanged": true
+        }
+      }
+    ],
+    "negativesParam": {
+      "cases": [
+        {
+          "label": "link 危险 scheme",
+          "name": "editor.link.insert",
+          "args": {
+            "href": "javascript:alert(1)",
+            "text": "x"
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、https://、mailto:）",
+          "added": 1
+        },
+        {
+          "label": "link 超长 href",
+          "name": "editor.link.insert",
+          "args": {
+            "href": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 超长（>2048））",
+          "added": 1
+        },
+        {
+          "label": "math 缺 latex",
+          "name": "editor.math.inline",
+          "args": {},
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 必须是字符串）",
+          "added": 1
+        },
+        {
+          "label": "math 超长 latex",
+          "name": "editor.math.inline",
+          "args": {
+            "latex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 超长（>2000））",
+          "added": 1
+        },
+        {
+          "label": "table rows=99",
+          "name": "editor.table.insert",
+          "args": {
+            "rows": 99,
+            "cols": 3
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.table.insert 参数非法（rows 必须是 1-8 的整数）",
+          "added": 1
+        },
+        {
+          "label": "无参命令带 args（editor.bold）",
+          "name": "editor.bold",
+          "args": {
+            "x": 1
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.bold 不接受参数",
+          "added": 1
+        }
+      ],
+      "domUnchanged": true
+    }
   },
   "v8Note": "task-28：pack B 增加 3 条 kebab 多词命令（editor.bullet-list/ordered-list/code-block，manifest 可声明）；产品 W 探针 26/26 PASS——guest 真实 DOM 点击 → command.invoke(kebab) → 主窗口 DOM ul 0→1 / ol 0→1 / pre 0→4 且撤销还原；结果回显 {ok:true,value:{name:<kebab>,executed:true}}；旧 camelCase 仍不可在 manifest 声明（legacy 直调被 E_FORBIDDEN，schema 限制非缺陷）。F03 packB PASS 11→14 行。",
   "v9Note": "task-30：pack B 追加 4 条可无头产品动作（editor.table.insert / editor.footnote.insert / editor.note.insert / doc.save，复用产品 action 注册表 runAction）；产品 W 探针 30/30 PASS——guest 真实 DOM 点击 → command.invoke → 主窗口 DOM table(3行/3表头)/脚注(ke-footnote-ref+sup)/ke-note 断言 + 撤销还原；doc.save 编辑 marker 后真实落盘（磁盘 marker 出现+mtime 变化，不只查返回值）；负向（含 link/image/math/module 不在白名单）全部 E_FORBIDDEN 且 DOM 不变。F03 packB PASS 14→18 行。",
@@ -3826,11 +4144,11 @@
               "assets": [
                 {
                   "path": "index.html",
-                  "declaredSha256": "e00c157112e06aed782bacc3f94f30cc6a81be8ed7a502fc954efbf53a3946e8",
-                  "actualSha256": "e00c157112e06aed782bacc3f94f30cc6a81be8ed7a502fc954efbf53a3946e8",
+                  "declaredSha256": "cacf1a3870e020e60b11b7c0f175fa275f87802efb2205d7e80e4ea31f6448ee",
+                  "actualSha256": "cacf1a3870e020e60b11b7c0f175fa275f87802efb2205d7e80e4ea31f6448ee",
                   "match": true,
-                  "size": 4823,
-                  "declaredSize": 4823
+                  "size": 6409,
+                  "declaredSize": 6409
                 },
                 {
                   "path": "pack.css",
@@ -3842,11 +4160,11 @@
                 },
                 {
                   "path": "pack.js",
-                  "declaredSha256": "dbc645ad6101710b4c8832be7d6c2a7386a9c89055f3b9ec1b529b01f234c1fb",
-                  "actualSha256": "dbc645ad6101710b4c8832be7d6c2a7386a9c89055f3b9ec1b529b01f234c1fb",
+                  "declaredSha256": "7c0a1ce4bd0eae8dd43234153ce730118b337cc10a11feaad43b1939fb45541c",
+                  "actualSha256": "7c0a1ce4bd0eae8dd43234153ce730118b337cc10a11feaad43b1939fb45541c",
                   "match": true,
-                  "size": 15743,
-                  "declaredSize": 15743
+                  "size": 16917,
+                  "declaredSize": 16917
                 },
                 {
                   "path": "vendor/guest-sdk.js",
@@ -3868,11 +4186,11 @@
               "assets": [
                 {
                   "path": "index.html",
-                  "declaredSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
-                  "actualSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
+                  "declaredSha256": "a5924e0dc7aaeab3ea6a968f36c03c81c5a4389b8a696946bed2456e7c938bc8",
+                  "actualSha256": "a5924e0dc7aaeab3ea6a968f36c03c81c5a4389b8a696946bed2456e7c938bc8",
                   "match": true,
-                  "size": 5320,
-                  "declaredSize": 5320
+                  "size": 6906,
+                  "declaredSize": 6906
                 },
                 {
                   "path": "pack.css",
@@ -3884,11 +4202,11 @@
                 },
                 {
                   "path": "pack.js",
-                  "declaredSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
-                  "actualSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
+                  "declaredSha256": "7626873f2830054d67e32b398dd8a2659563bbd4d809d6228fc53449bf5ecff8",
+                  "actualSha256": "7626873f2830054d67e32b398dd8a2659563bbd4d809d6228fc53449bf5ecff8",
                   "match": true,
-                  "size": 16347,
-                  "declaredSize": 16347
+                  "size": 17403,
+                  "declaredSize": 17403
                 },
                 {
                   "path": "vendor/guest-sdk.js",
@@ -3904,7 +4222,7 @@
           "zips": {
             "com.astranota.examples.pack-a": {
               "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
-              "sha256": "4488cff7a90a1aa73a2da028c728454d601ed5bdabb8979029c6ba909d234910",
+              "sha256": "25bca22ef974871d3b3016fe491827423541876c61d8f76747b95eb49e52889c",
               "names": [
                 "index.html",
                 "manifest.json",
@@ -3914,11 +4232,11 @@
               ],
               "rootOk": true,
               "assetsMatch": true,
-              "size": 11249
+              "size": 12153
             },
             "com.astranota.examples.pack-b": {
               "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
-              "sha256": "3b6dd0e669b6a26048b3f132f40f17f475fcb755157bcc6342c972155222dde4",
+              "sha256": "1fc15585dc95316a3c91209f737f73af9386eb9c47f1bd0cc55c763d080c6997",
               "names": [
                 "index.html",
                 "manifest.json",
@@ -3928,10 +4246,10 @@
               ],
               "rootOk": true,
               "assetsMatch": true,
-              "size": 11365
+              "size": 12214
             }
           },
-          "publicKeyHex": "496282d934d49ecf7ed942e22cf63c55be2e8d33291d52234cba2a8c3f64feac",
+          "publicKeyHex": "df1c10b4f20d31fb177df9ccd3bda10a7ec7633e7846f72fb50cf22bdb291ddf",
           "buildKeySource": "provided"
         }
       },
@@ -3940,7 +4258,7 @@
         "pass": true,
         "detail": {
           "exit": 0,
-          "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=496282d934d49ecf…（provided）\n"
+          "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=df1c10b4f20d31fb…（provided）\n"
         }
       },
       {
@@ -3960,7 +4278,7 @@
         }
       },
       {
-        "name": "W-T31-1 pack A 构建/签名：manifest 声明 18 条协议名（14 切换命令含 3 kebab + 4 动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+        "name": "W-T31-1 pack A 构建/签名：manifest 声明 21 条协议名（14 切换 + 4 参数化 link/math/table + 3 无参动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
         "pass": true,
         "detail": {
           "editorCommands": [
@@ -3980,7 +4298,10 @@
             "editor.redo",
             "editor.table.insert",
             "editor.footnote.insert",
-            "editor.note.insert"
+            "editor.note.insert",
+            "editor.link.insert",
+            "editor.math.inline",
+            "editor.math.block"
           ],
           "capabilities": [
             "ui.shell",
@@ -4000,9 +4321,9 @@
         "name": "W-T31-2 隔离产品实例启动 + CDP 就绪（工坊入口渲染）",
         "pass": true,
         "detail": {
-          "port": 9802,
-          "exeSha256": "e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce",
-          "exeMtime": "2026-10-19T18:37:46"
+          "port": 9794,
+          "exeSha256": "53dfacc35f53cafc14efd42ec5ec33cb252a1ff41a5248e149bc912d509393dd",
+          "exeMtime": "2026-10-19T19:09:35"
         }
       },
       {
@@ -4014,7 +4335,7 @@
             "value": {
               "active": "1.0.0",
               "previous": null,
-              "updatedAt": "SystemTime { intervals: 134368805869295261 }"
+              "updatedAt": "SystemTime { intervals: 134368823291481854 }"
             }
           },
           "verify": {
@@ -4048,12 +4369,12 @@
             "lastError": null,
             "packId": "com.astranota.examples.pack-a",
             "state": "active",
-            "updatedAt": "SystemTime { intervals: 134368805872369664 }"
+            "updatedAt": "SystemTime { intervals: 134368823294427471 }"
           }
         }
       },
       {
-        "name": "W-T31-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack A 声明 18 条协议名可见（14 切换 + 4 动作）",
+        "name": "W-T31-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack A 声明 21 条协议名可见（14 切换 + 4 参数化 + 3 无参动作）",
         "pass": true,
         "detail": {
           "acceptedFeatures": [
@@ -4081,7 +4402,10 @@
             "editor.table.insert",
             "editor.footnote.insert",
             "editor.note.insert",
-            "doc.save"
+            "doc.save",
+            "editor.link.insert",
+            "editor.math.inline",
+            "editor.math.block"
           ],
           "handshake": null
         }
@@ -4327,7 +4651,7 @@
           "guestClick": true,
           "before": 0,
           "after": 1,
-          "html": "<div as=\"div\" data-ke-note=\"\" data-id=\"15149d33-85cd-4dc0-a18a-51f99de2460f\" data-label=\"\" data-title=\"信息块 18:49\" data-color=\"blue\" data-author=\"\" data-created=\"2026-10-19T10:49:56.518Z\" data-updated=",
+          "html": "<div as=\"div\" data-ke-note=\"\" data-id=\"f14c6af3-b399-46f9-9c7f-a331813c63ed\" data-label=\"\" data-title=\"信息块 19:18\" data-color=\"blue\" data-author=\"\" data-created=\"2026-10-19T11:18:58.693Z\" data-updated=",
           "undoRestored": true
         }
       },
@@ -4339,11 +4663,141 @@
           "markerInEditor": true,
           "markerOnDiskBefore": false,
           "savedToDisk": true,
-          "mtimeBefore": 1792406983.5765371,
-          "mtimeAfter": 1792406997.697289,
+          "mtimeBefore": 1792408726.435401,
+          "mtimeAfter": 1792408739.8677566,
           "statusBefore": ".commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
           "statusAfter": "rint.request, editor.commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
-          "saveEcho": "{\"name\":\"doc.save\",\"ok\":true,\"value\":{\"ok\":true,\"value\":{\"name\":\"doc.save\",\"executed\":true}},\"at\":1792406997646}"
+          "saveEcho": "{\"name\":\"doc.save\",\"ok\":true,\"value\":{\"ok\":true,\"value\":{\"name\":\"doc.save\",\"executed\":true}},\"at\":1792408739822}"
+        }
+      },
+      {
+        "name": "W-T31-28 guest 真实 UI 输入 URL/文本 → 点击「插入链接」→ command.invoke(editor.link.insert,{href,text}) → 主窗口 a[href=https://example.com/w] 且文本=W-LINK；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "link": {
+            "href": "https://example.com/w",
+            "text": "W-LINK",
+            "html": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://example.com/w\">W-LINK</a>"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-29 guest「插入链接」有选区路径 → 对选区 setLink → 主窗口 a[href=https://example.com/w2] 出现；撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "linkCount": 4,
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-30 guest 输入 LaTeX → 点击「插入行内公式」→ command.invoke(editor.math.inline,{latex}) → 主窗口 .ke-math--inline 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "inlineMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--inline\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex\"><span class=\"katex-html\" aria-hidden=\"tr",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-31 guest 输入 LaTeX → 点击「插入块公式」→ command.invoke(editor.math.block,{latex}) → 主窗口 .ke-math--block 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "blockMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--block\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex-display\"><span class=\"katex\"><span class=\"",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-32 guest 输入 rows=2/cols=4 → 点击「插入表格」→ command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "size": {
+            "rows": 2,
+            "cols": 4,
+            "html": "<table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-33 参数化负向：javascript scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args → 全部 E_BAD_PAYLOAD 且主窗口 DOM 不变（不执行）",
+        "pass": true,
+        "detail": {
+          "cases": [
+            {
+              "label": "link 危险 scheme",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "javascript:alert(1)",
+                "text": "x"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、https://、mailto:）",
+              "added": 1
+            },
+            {
+              "label": "link 超长 href",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 超长（>2048））",
+              "added": 1
+            },
+            {
+              "label": "math 缺 latex",
+              "name": "editor.math.inline",
+              "args": {},
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 必须是字符串）",
+              "added": 1
+            },
+            {
+              "label": "math 超长 latex",
+              "name": "editor.math.inline",
+              "args": {
+                "latex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 超长（>2000））",
+              "added": 1
+            },
+            {
+              "label": "table rows=99",
+              "name": "editor.table.insert",
+              "args": {
+                "rows": 99,
+                "cols": 3
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.table.insert 参数非法（rows 必须是 1-8 的整数）",
+              "added": 1
+            },
+            {
+              "label": "无参命令带 args（editor.bold）",
+              "name": "editor.bold",
+              "args": {
+                "x": 1
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.bold 不接受参数",
+              "added": 1
+            }
+          ],
+          "domUnchanged": true
         }
       },
       {
@@ -4391,15 +4845,7 @@
               "added": 1
             },
             {
-              "label": "对话框类动作未接（link.insert）",
-              "name": "editor.link.insert",
-              "ok": false,
-              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
-              "lastErrorCode": "E_FORBIDDEN",
-              "added": 1
-            },
-            {
-              "label": "对话框类动作未接（image.insert）",
+              "label": "未接对话框类（image.insert，未声明）",
               "name": "editor.image.insert",
               "ok": false,
               "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
@@ -4407,15 +4853,7 @@
               "added": 1
             },
             {
-              "label": "对话框类动作未接（math.block）",
-              "name": "editor.math.block",
-              "ok": false,
-              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
-              "lastErrorCode": "E_FORBIDDEN",
-              "added": 1
-            },
-            {
-              "label": "对话框类动作未接（module.insert）",
+              "label": "未接对话框类（module.insert，未声明）",
               "name": "editor.module.insert",
               "ok": false,
               "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert",
@@ -4428,15 +4866,13 @@
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.explode",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
-            "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
-            "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert"
           ]
         }
       },
       {
-        "name": "W-T31-18 协议名修复：18 条规范协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 动作）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
+        "name": "W-T31-18 协议名修复：21 条协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 参数化 + 3 无参动作）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
         "pass": true,
         "detail": {
           "declaredProtocol": [
@@ -4457,7 +4893,10 @@
             "editor.table.insert",
             "editor.footnote.insert",
             "editor.note.insert",
-            "doc.save"
+            "doc.save",
+            "editor.link.insert",
+            "editor.math.inline",
+            "editor.math.block"
           ],
           "legacyCamel": [
             "editor.bulletList",
@@ -4482,14 +4921,14 @@
             "lastError": null,
             "packId": "com.astranota.examples.pack-a",
             "state": "active",
-            "updatedAt": "SystemTime { intervals: 134368805872369664 }"
+            "updatedAt": "SystemTime { intervals: 134368823294427471 }"
           }
         }
       }
     ],
     "summary": {
-      "total": 30,
-      "pass": 30
+      "total": 36,
+      "pass": 36
     },
     "negatives": [
       {
@@ -4549,7 +4988,204 @@
         "added": 1
       }
     ],
-    "evidence": "docs/ui-workshop/evidence/T26-packA-editor-cmd-results.json + P5-T26-pack-editor-cmd.md（v10 段）"
+    "evidence": "docs/ui-workshop/evidence/T26-packA-editor-cmd-results.json + P5-T26-pack-editor-cmd.md（v10 段）",
+    "paramChecks": [
+      {
+        "name": "W-T31-28 guest 真实 UI 输入 URL/文本 → 点击「插入链接」→ command.invoke(editor.link.insert,{href,text}) → 主窗口 a[href=https://example.com/w] 且文本=W-LINK；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "link": {
+            "href": "https://example.com/w",
+            "text": "W-LINK",
+            "html": "<a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://example.com/w\">W-LINK</a>"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-29 guest「插入链接」有选区路径 → 对选区 setLink → 主窗口 a[href=https://example.com/w2] 出现；撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "linkCount": 4,
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-30 guest 输入 LaTeX → 点击「插入行内公式」→ command.invoke(editor.math.inline,{latex}) → 主窗口 .ke-math--inline 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "inlineMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--inline\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex\"><span class=\"katex-html\" aria-hidden=\"tr",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-31 guest 输入 LaTeX → 点击「插入块公式」→ command.invoke(editor.math.block,{latex}) → 主窗口 .ke-math--block 出现且无 MathLive 弹窗；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "blockMath": 1,
+          "hostModal": 0,
+          "nodeHtml": "<div contenteditable=\"false\" class=\"ke-math ke-math--block\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\"ke-math-render\" title=\"双击编辑公式\"><span class=\"katex-display\"><span class=\"katex\"><span class=\"",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-32 guest 输入 rows=2/cols=4 → 点击「插入表格」→ command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4；撤销还原",
+        "pass": true,
+        "detail": {
+          "inputSet": true,
+          "guestClick": true,
+          "size": {
+            "rows": 2,
+            "cols": 4,
+            "html": "<table style=\"min-width: 100px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T31-33 参数化负向：javascript scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args → 全部 E_BAD_PAYLOAD 且主窗口 DOM 不变（不执行）",
+        "pass": true,
+        "detail": {
+          "cases": [
+            {
+              "label": "link 危险 scheme",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "javascript:alert(1)",
+                "text": "x"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、https://、mailto:）",
+              "added": 1
+            },
+            {
+              "label": "link 超长 href",
+              "name": "editor.link.insert",
+              "args": {
+                "href": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 超长（>2048））",
+              "added": 1
+            },
+            {
+              "label": "math 缺 latex",
+              "name": "editor.math.inline",
+              "args": {},
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 必须是字符串）",
+              "added": 1
+            },
+            {
+              "label": "math 超长 latex",
+              "name": "editor.math.inline",
+              "args": {
+                "latex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 超长（>2000））",
+              "added": 1
+            },
+            {
+              "label": "table rows=99",
+              "name": "editor.table.insert",
+              "args": {
+                "rows": 99,
+                "cols": 3
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.table.insert 参数非法（rows 必须是 1-8 的整数）",
+              "added": 1
+            },
+            {
+              "label": "无参命令带 args（editor.bold）",
+              "name": "editor.bold",
+              "args": {
+                "x": 1
+              },
+              "ok": false,
+              "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.bold 不接受参数",
+              "added": 1
+            }
+          ],
+          "domUnchanged": true
+        }
+      }
+    ],
+    "negativesParam": {
+      "cases": [
+        {
+          "label": "link 危险 scheme",
+          "name": "editor.link.insert",
+          "args": {
+            "href": "javascript:alert(1)",
+            "text": "x"
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 仅允许 http://、https://、mailto:）",
+          "added": 1
+        },
+        {
+          "label": "link 超长 href",
+          "name": "editor.link.insert",
+          "args": {
+            "href": "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.link.insert 参数非法（href 超长（>2048））",
+          "added": 1
+        },
+        {
+          "label": "math 缺 latex",
+          "name": "editor.math.inline",
+          "args": {},
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 必须是字符串）",
+          "added": 1
+        },
+        {
+          "label": "math 超长 latex",
+          "name": "editor.math.inline",
+          "args": {
+            "latex": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.math.inline 参数非法（latex 超长（>2000））",
+          "added": 1
+        },
+        {
+          "label": "table rows=99",
+          "name": "editor.table.insert",
+          "args": {
+            "rows": 99,
+            "cols": 3
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.table.insert 参数非法（rows 必须是 1-8 的整数）",
+          "added": 1
+        },
+        {
+          "label": "无参命令带 args（editor.bold）",
+          "name": "editor.bold",
+          "args": {
+            "x": 1
+          },
+          "ok": false,
+          "error": "E_BAD_PAYLOAD: E_BAD_PAYLOAD: editor.bold 不接受参数",
+          "added": 1
+        }
+      ],
+      "domUnchanged": true
+    }
   },
   "v11Note": "task-32：用既有产品 W 证据补全 pack 路径行（无新 W）。可达映射：CMD.doc.save（packA/B PASS，doc.save 真实落盘）、W05 协议快照/订阅/命令结果（packA/B PASS）、W02 表单交接（packB PASS）；F07 域行 NOT_RUN→PARTIAL（doc.save+document-saved）。不可达 10 行（fs/modules/drafts/index/tags API）如实 NOT_RUN+W06 网络边界原因；F02/F10 域行原因更新。统计：packA PASS 24 行 / packB PASS 25 行。",
   "packEvidenceMapping": {
@@ -4888,5 +5524,145 @@
       ],
       "reason": "guest 网络边界（CSP connect-src 'none' + 受控协议白名单）→ 无 /api/* 等价方法，不能直调后端 API"
     }
+  },
+  "v12Note": "task-34：pack A/B 接入 4 条参数化无头命令（editor.link.insert/math.inline/math.block/table.insert，严格 args 校验）。产品 W：pack B 36/36 PASS、pack A 36/36 PASS——link(a[href]/文本/有选区路径)、math(.ke-math--inline/--block 无弹窗)、table 2×4 真实尺寸 + 撤销还原；负向 6 例全部 E_BAD_PAYLOAD 且 DOM 不变。F03 link/math.block 行 packA/B 新增 PASS；F04/F05 域行 packA/B=PARTIAL（插入动作面，非全部深层操作）。",
+  "packEvidenceStats": {
+    "totals": {
+      "rows": 130,
+      "packAPass": 26,
+      "packBPass": 27,
+      "packAPartial": 4,
+      "packBPartial": 4,
+      "packANr": 100,
+      "packBNr": 89
+    },
+    "perDomain": {
+      "F03": {
+        "rows": 42,
+        "packAPass": 20,
+        "packBPass": 20,
+        "packAPartial": 1,
+        "packBPartial": 1
+      },
+      "F15": {
+        "rows": 19,
+        "packAPass": 2,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F09": {
+        "rows": 5,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F02": {
+        "rows": 6,
+        "packAPass": 0,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F07": {
+        "rows": 3,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 1,
+        "packBPartial": 1
+      },
+      "F01": {
+        "rows": 10,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F08": {
+        "rows": 4,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F10": {
+        "rows": 5,
+        "packAPass": 0,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F06": {
+        "rows": 3,
+        "packAPass": 1,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F11": {
+        "rows": 3,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F16": {
+        "rows": 11,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F13": {
+        "rows": 6,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F04": {
+        "rows": 1,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 1,
+        "packBPartial": 1
+      },
+      "F05": {
+        "rows": 1,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 1,
+        "packBPartial": 1
+      },
+      "F12": {
+        "rows": 1,
+        "packAPass": 1,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "F14": {
+        "rows": 1,
+        "packAPass": 1,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0
+      },
+      "P3/P4": {
+        "rows": 9,
+        "packAPass": 1,
+        "packBPass": 2,
+        "packAPartial": 0,
+        "packBPartial": 0
+      }
+    },
+    "changedRows": [
+      "CMD.editor.link.insert",
+      "CMD.editor.math.block",
+      "CMD.editor.table.insert",
+      "F04",
+      "F05"
+    ]
   }
 }

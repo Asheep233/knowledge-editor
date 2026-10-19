@@ -40,6 +40,16 @@ UI 工坊（UI Workshop）的**参考 guest 包 B**：最小可用的「写场�
 - **状态镜像**：`postMessage({type:'t19-guest-results', payload})`，便于宿主工坊/自动化探针观察。
 - **错误展示**：所有失败在红色错误框显示 `code: message`，不静默。
 
+### W07 task-33/34 参数化无头命令（link / math / table）
+
+| 协议名 | args schema | 校验/语义 |
+| --- | --- | --- |
+| `editor.link.insert` | `{href, text?}` | href 仅 `http(s)://` / `mailto:`、≤2048、无空白/控制字符；text ≤500；**有选区** → 对选区 setLink，**无选区** → 插入文本（text||href）并带 link mark |
+| `editor.math.inline` | `{latex}` | 非空、≤2000、拒绝控制字符；直接插入 `math` 节点，**不打开 MathLive 对话框** |
+| `editor.math.block` | `{latex}` | 同上 → 插入 `mathBlock` 节点（无弹窗） |
+| `editor.table.insert` | `{rows, cols, withHeaderRow?}` | rows/cols 整数 1–8（缺省 3），withHeaderRow 布尔（缺省 true）→ `insertTable` 真实尺寸 |
+
+**负向（宿主严格校验，`E_BAD_PAYLOAD` 且不执行）**：`javascript:alert(1)` 等非白名单 scheme、超长 href/latex、rows=99、缺 latex、无参命令带 args（14 切换命令/3 无参动作）→ 全部拒绝；未声明命令仍 `E_FORBIDDEN`。
 ## 构建与签名
 
 ```bash
@@ -56,7 +66,7 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 - 宿主白名单 14 条：`bold/italic/underline/strike/code/heading1/heading2/heading3/bulletList/orderedList/blockquote/codeBlock/undo/redo`
   （协议名 `editor.<command>`，**大小写敏感**；实现见 `frontend/src/components/workshop/productBrokerBackend.ts`
   的 `WORKSHOP_EDITOR_COMMAND_WHITELIST`）。
-- 本包在 `manifest.commands` **逐条声明 18 条**：14 条切换命令（11 单词 + 3 kebab 多词：`editor.bullet-list/ordered-list/code-block`）+ 4 条**可无头产品动作**（W07 task-29）：
+- 本包在 `manifest.commands` **逐条声明 21 条**：14 条切换命令（11 单词 + 3 kebab 多词：`editor.bullet-list/ordered-list/code-block`）+ 4 条**可无头产品动作**（W07 task-29）：
   `editor.table.insert`（产品默认 3×3 带表头）、`editor.footnote.insert`（脚注节点）、`editor.note.insert`（ke-note 信息块）、`doc.save`（产品真实保存动作）
   （声明是 broker 的 `declaredCommands` 白名单前置；未声明的命令会被 `E_FORBIDDEN` 拒绝）。
 - 能力：新增声明 `editor.commands.readonly`（trusted 才授予；未授予 → `E_CAPABILITY`）。

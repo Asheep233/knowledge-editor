@@ -72,9 +72,11 @@ PROTOCOL_NAMES = list(PROTOCOL_TO_COMMAND.keys())
 DECLARED = PROTOCOL_NAMES
 # 旧 camelCase 协议名（仅后端 legacy 兼容直调；manifest schema 不允许大写 → 无法声明）
 LEGACY_CAMEL = ["editor." + c for c in WHITELIST if "editor." + c not in PROTOCOL_TO_COMMAND]
-# W07 task-29：4 条可无头产品动作（复用产品 action 注册表 runAction；协议名即 action id）
-ACTION_NAMES = ["editor.table.insert", "editor.footnote.insert", "editor.note.insert", "doc.save"]
-ALL_DECLARED = PROTOCOL_NAMES + ACTION_NAMES
+# W07 task-33：4 条参数化无头命令（link/math/table；严格 args 校验）
+PARAM_NAMES = ["editor.link.insert", "editor.math.inline", "editor.math.block", "editor.table.insert"]
+# W07 task-29/33：3 条无参产品动作（table.insert 已升级为参数化命令，不在此列）
+ACTION_NAMES = ["editor.footnote.insert", "editor.note.insert", "doc.save"]
+ALL_DECLARED = PROTOCOL_NAMES + PARAM_NAMES + ACTION_NAMES  # 21 条 = 14 切换 + 4 参数化 + 3 无参动作
 
 
 def sha_file(p: Path) -> str:
@@ -133,7 +135,7 @@ def main() -> int:
         "signatureKeyId": (manifest.get("signature") or {}).get("keyId"),
     }
     check(
-        "W-T26-1 pack B 构建/签名：manifest 声明 18 条协议名（14 切换命令含 3 kebab + 4 动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+        "W-T26-1 pack B 构建/签名：manifest 声明 21 条协议名（14 切换 + 4 参数化 link/math/table + 3 无参动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
         sorted(n for n in declared_names if n.startswith(("editor.", "doc."))) == sorted(ALL_DECLARED)
         and "editor.commands.readonly" in (manifest.get("capabilities") or [])
         and (manifest.get("signature") or {}).get("keyId") == "k1",
@@ -221,8 +223,8 @@ def main() -> int:
         except Exception:
             gs = {}
         accepted = gs.get("accepted") or []
-        check("W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 18 条协议名可见（14 切换 + 4 动作）",
-              "editor.commands.readonly" in accepted and len(gs.get("cmds") or []) == 18,
+        check("W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 21 条协议名可见（14 切换 + 4 参数化 + 3 无参动作）",
+              "editor.commands.readonly" in accepted and len(gs.get("cmds") or []) == 21,
               {"acceptedFeatures": accepted, "editorCommands": gs.get("cmds"), "handshake": session.get("handshake")})
 
         # ---- host 编辑器 DOM 断言工具 ----
@@ -436,6 +438,161 @@ def main() -> int:
         guest_click("#btn-cmd-doc-save")
         R.wait_until(lambda: marker not in doc_path.read_text(encoding="utf-8", errors="replace"), 20, 0.4)
 
+        # ---- W07 task-33：参数化命令（link / math / table）W 验证（真实 UI 输入 → guest 点击 → 主窗口 DOM） ----
+        def guest_set(elem_id: str, value: str) -> bool:
+            try:
+                R.guest_set_input(cdp, PACK["slug"], "#" + elem_id, str(value))
+                return True
+            except Exception:
+                return False
+
+        def host_math_counts() -> dict:
+            """ES5 实现（避免正则/箭头/展开等潜在 CDP eval 差异）：数学节点/链接/表格/宿主模态计数。"""
+            q = ("(function(){var pm=document.querySelector('.ProseMirror'); if(!pm) return {err:'no-pm'};"
+                 "function c(s){return pm.querySelectorAll(s).length;}"
+                 "var links=pm.getElementsByTagName('a'); var w=0,w2=0;"
+                 "for (var i=0;i<links.length;i++){var h=links[i].getAttribute('href')||'';"
+                 " if(h==='https://example.com/w') w++; if(h==='https://example.com/w2') w2++;}"
+                 "var modals=0; var ovs=document.querySelectorAll('.fixed.inset-0');"
+                 "for (var j=0;j<ovs.length;j++){var t=ovs[j].innerText||'';"
+                 " if(t.indexOf('行内公式')>=0||t.indexOf('块级公式')>=0) modals++;}"
+                 "return {inlineMath:c('.ke-math--inline'), blockMath:c('.ke-math--block'), anyMath:c('.ke-math'),"
+                 " hostModal:modals, linkW:w, linkW2:w2, tables:c('table')};})()")
+            try:
+                return R.host_eval(cdp, q) or {}
+            except Exception as e:  # noqa: BLE001
+                return {"err": str(e)[:200]}
+
+        def find_link(href: str):
+            q = ("(function(){var as=document.querySelectorAll('.ProseMirror a');"
+                 "for (var i=0;i<as.length;i++){var a=as[i]; if((a.getAttribute('href')||'')===" + json.dumps(href) + "){"
+                 "return {href:a.getAttribute('href'), text:(a.textContent||'').slice(0,40), html:a.outerHTML.slice(0,160)};}}"
+                 "return null;})()")
+            try:
+                return R.host_eval(cdp, q)
+            except Exception:
+                return None
+
+        # 28) link.insert（无选区，args via UI：href + text）
+        place_host_caret()
+        time.sleep(0.2)
+        m_before = host_math_counts()
+        set_ok = guest_set("link-href", "https://example.com/w") and guest_set("link-text", "W-LINK")
+        clicked = guest_click("#btn-cmd-link-insert")
+        link_ok = R.wait_until(lambda: int(host_math_counts().get("linkW") or 0) > 0, 20, 0.25)
+        link_html = find_link("https://example.com/w") or {}
+        host_undo()
+        link_restored = R.wait_until(lambda: int(host_math_counts().get("linkW") or 0) == int(m_before.get("linkW") or 0), 20, 0.25)
+        check("W-T26-28 guest 真实 UI 输入 URL/文本 → 点击「插入链接」→ command.invoke(editor.link.insert,{href,text}) → 主窗口 a[href=https://example.com/w] 且文本=W-LINK；撤销还原",
+              bool(set_ok and clicked and link_ok and link_html.get("text") == "W-LINK" and link_restored),
+              {"inputSet": set_ok, "guestClick": clicked, "link": link_html, "undoRestored": link_restored})
+        time.sleep(0.2)
+
+        # 29) link.insert（有选区路径：对选区 setLink）
+        select_all_host()
+        time.sleep(0.2)
+        guest_set("link-href", "https://example.com/w2")
+        clicked = guest_click("#btn-cmd-link-insert")
+        link2_ok = R.wait_until(lambda: int(host_math_counts().get("linkW2") or 0) > 0, 20, 0.25)
+        link2_cnt = int(host_math_counts().get("linkW2") or 0)
+        host_undo()
+        link2_restored = R.wait_until(lambda: int(host_math_counts().get("linkW2") or 0) == 0, 20, 0.25)
+        check("W-T26-29 guest「插入链接」有选区路径 → 对选区 setLink → 主窗口 a[href=https://example.com/w2] 出现；撤销还原",
+              bool(clicked and link2_ok and link2_cnt >= 1 and link2_restored),
+              {"guestClick": clicked, "linkCount": link2_cnt, "undoRestored": link2_restored})
+        time.sleep(0.2)
+
+        # 30) math.inline（args via UI：latex）
+        place_host_caret()
+        time.sleep(0.2)
+        m_before = host_math_counts()
+        set_ok = guest_set("math-latex", "x^2+y^2")
+        clicked = guest_click("#btn-cmd-math-inline")
+        inline_ok = R.wait_until(lambda: int(host_math_counts().get("inlineMath") or 0) > int(m_before.get("inlineMath") or 0), 20, 0.25)
+        m_after = host_math_counts()
+        math_html = R.host_eval(cdp, "(() => { const n=document.querySelector('.ProseMirror .ke-math--inline'); return n?n.outerHTML.slice(0,220):null; })()")
+        host_undo()
+        inline_restored = R.wait_until(lambda: int(host_math_counts().get("inlineMath") or 0) == int(m_before.get("inlineMath") or 0), 20, 0.25)
+        check("W-T26-30 guest 输入 LaTeX → 点击「插入行内公式」→ command.invoke(editor.math.inline,{latex}) → 主窗口 .ke-math--inline 出现且无 MathLive 弹窗；撤销还原",
+              bool(set_ok and clicked and inline_ok and m_after.get("hostModal") == 0 and inline_restored),
+              {"inputSet": set_ok, "guestClick": clicked, "inlineMath": m_after.get("inlineMath"), "hostModal": m_after.get("hostModal"),
+               "nodeHtml": math_html, "undoRestored": inline_restored})
+        time.sleep(0.2)
+
+        # 31) math.block
+        place_host_caret()
+        time.sleep(0.2)
+        m_before = host_math_counts()
+        set_ok = guest_set("math-latex", "x^2+y^2")
+        clicked = guest_click("#btn-cmd-math-block")
+        block_ok = R.wait_until(lambda: int(host_math_counts().get("blockMath") or 0) > int(m_before.get("blockMath") or 0), 20, 0.25)
+        m_after = host_math_counts()
+        block_html = R.host_eval(cdp, "(() => { const n=document.querySelector('.ProseMirror .ke-math--block'); return n?n.outerHTML.slice(0,220):null; })()")
+        host_undo()
+        block_restored = R.wait_until(lambda: int(host_math_counts().get("blockMath") or 0) == int(m_before.get("blockMath") or 0), 20, 0.25)
+        check("W-T26-31 guest 输入 LaTeX → 点击「插入块公式」→ command.invoke(editor.math.block,{latex}) → 主窗口 .ke-math--block 出现且无 MathLive 弹窗；撤销还原",
+              bool(set_ok and clicked and block_ok and m_after.get("hostModal") == 0 and block_restored),
+              {"inputSet": set_ok, "guestClick": clicked, "blockMath": m_after.get("blockMath"), "hostModal": m_after.get("hostModal"),
+               "nodeHtml": block_html, "undoRestored": block_restored})
+        time.sleep(0.2)
+
+        # 32) table.insert（args rows=2, cols=4 → 真实尺寸）
+        place_host_caret()
+        time.sleep(0.2)
+        t_before = host_math_counts()
+        set_ok = guest_set("table-rows", "2") and guest_set("table-cols", "4")
+        clicked = guest_click("#btn-cmd-table-insert")
+        table_ok = R.wait_until(lambda: int(host_math_counts().get("tables") or 0) > int(t_before.get("tables") or 0), 20, 0.25)
+        size = R.host_eval(cdp, "(() => { const ts=document.querySelectorAll('.ProseMirror table'); if(!ts.length) return null;"
+                                " const t=ts[ts.length-1]; const rows=t.querySelectorAll('tr').length;"
+                                " const cols=(t.querySelector('tr')||{children:{length:0}}).children.length;"
+                                " return {rows:rows, cols:cols, html:t.outerHTML.slice(0,180)}; })()") or {}
+        host_undo()
+        table_restored = R.wait_until(lambda: int(host_math_counts().get("tables") or 0) == int(t_before.get("tables") or 0), 20, 0.25)
+        check("W-T26-32 guest 输入 rows=2/cols=4 → 点击「插入表格」→ command.invoke(editor.table.insert,{rows,cols}) → 主窗口 table 真实尺寸 rows=2/cols=4；撤销还原",
+              bool(set_ok and clicked and table_ok and size.get("rows") == 2 and size.get("cols") == 4 and table_restored),
+              {"inputSet": set_ok, "guestClick": clicked, "size": size, "undoRestored": table_restored})
+        time.sleep(0.2)
+
+        # 33) 参数校验负向（E_BAD_PAYLOAD）+ DOM 不变
+        def guest_invoke_capture(name: str, args) -> dict:
+            expr = (
+                "(async () => { const st = window." + PACK["hook"] + "State;"
+                " const before = (st.commandResults || []).length;"
+                " await window." + PACK["hook"] + "InvokeCommand(%s, %s);"
+                " const r = (st.commandResults || [])[st.commandResults.length - 1] || {};"
+                " return JSON.stringify({name: %s, ok: r.ok === true, error: r.error || null,"
+                " added: (st.commandResults || []).length - before}); })()"
+                % (json.dumps(name), json.dumps(args), json.dumps(name))
+            )
+            raw = R.guest_eval(cdp, PACK["slug"], expr)
+            try:
+                return json.loads(raw or "{}")
+            except Exception:
+                return {"raw": raw}
+
+        dom_before_param_neg = host_math_counts()
+        param_neg_cases = [
+            ("link 危险 scheme", "editor.link.insert", {"href": "javascript:alert(1)", "text": "x"}),
+            ("link 超长 href", "editor.link.insert", {"href": "https://example.com/" + "a" * 3000}),
+            ("math 缺 latex", "editor.math.inline", {}),
+            ("math 超长 latex", "editor.math.inline", {"latex": "x" * 2500}),
+            ("table rows=99", "editor.table.insert", {"rows": 99, "cols": 3}),
+            ("无参命令带 args（editor.bold）", "editor.bold", {"x": 1}),
+        ]
+        param_neg_results = []
+        for label, name, args in param_neg_cases:
+            r = guest_invoke_capture(name, args)
+            param_neg_results.append({"label": label, "name": name, "args": args, **r})
+        dom_after_param_neg = host_math_counts()
+        param_neg_ok = all(
+            (not n.get("ok")) and ("E_BAD_PAYLOAD" in str(n.get("error") or "")) for n in param_neg_results
+        )
+        param_dom_unchanged = (json.dumps(dom_before_param_neg, sort_keys=True) == json.dumps(dom_after_param_neg, sort_keys=True))
+        check("W-T26-33 参数化负向：javascript scheme/超长 href/缺 latex/超长 latex/rows=99/无参命令带 args → 全部 E_BAD_PAYLOAD 且主窗口 DOM 不变（不执行）",
+              param_neg_ok and param_dom_unchanged,
+              {"cases": param_neg_results, "domUnchanged": param_dom_unchanged})
+
         # ---- 撤销 / 重做（往返） ----
         select_all_host()
         before_ur = host_counts()
@@ -476,10 +633,8 @@ def main() -> int:
             ("大写命令名", "editor.Bold"),
             ("未知命令", "editor.explode"),
             ("camelCase 白名单但 manifest 无法声明", "editor.bulletList"),
-            ("对话框类动作未接（link.insert）", "editor.link.insert"),
-            ("对话框类动作未接（image.insert）", "editor.image.insert"),
-            ("对话框类动作未接（math.block）", "editor.math.block"),
-            ("对话框类动作未接（module.insert）", "editor.module.insert"),
+            ("未接对话框类（image.insert，未声明）", "editor.image.insert"),
+            ("未接对话框类（module.insert，未声明）", "editor.module.insert"),
         ]
         neg_results = []
         for label, name in neg_cases:
@@ -500,9 +655,9 @@ def main() -> int:
             for legacy in ["editor.bulletList"]
         )
         check(
-            "W-T26-18 协议名修复：18 条规范协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 动作）；"
+            "W-T26-18 协议名修复：21 条协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 参数化 + 3 无参动作）；"
             "旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
-            sorted(declared_protocol) == sorted(ALL_DECLARED) and legacy_rejected and len(declared_protocol) == 18,
+            sorted(declared_protocol) == sorted(ALL_DECLARED) and legacy_rejected and len(declared_protocol) == 21,
             {"declaredProtocol": declared_protocol, "legacyCamel": LEGACY_CAMEL, "legacyRejected": legacy_rejected},
         )
 

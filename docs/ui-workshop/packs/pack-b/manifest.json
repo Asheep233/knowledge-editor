@@ -92,13 +92,25 @@
     {
       "name": "doc.save",
       "handler": "actionDocSave"
+    },
+    {
+      "name": "editor.link.insert",
+      "handler": "paramLinkInsert"
+    },
+    {
+      "name": "editor.math.inline",
+      "handler": "paramMathInline"
+    },
+    {
+      "name": "editor.math.block",
+      "handler": "paramMathBlock"
     }
   ],
   "assets": [
     {
       "path": "index.html",
-      "sha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
-      "size": 5320
+      "sha256": "a5924e0dc7aaeab3ea6a968f36c03c81c5a4389b8a696946bed2456e7c938bc8",
+      "size": 6906
     },
     {
       "path": "pack.css",
@@ -107,8 +119,8 @@
     },
     {
       "path": "pack.js",
-      "sha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
-      "size": 16347
+      "sha256": "7626873f2830054d67e32b398dd8a2659563bbd4d809d6228fc53449bf5ecff8",
+      "size": 17403
     },
     {
       "path": "vendor/guest-sdk.js",

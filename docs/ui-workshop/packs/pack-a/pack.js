@@ -30,7 +30,9 @@
     'editor.heading1', 'editor.heading2', 'editor.heading3',
     'editor.bullet-list', 'editor.ordered-list', 'editor.blockquote', 'editor.code-block',
     'editor.undo', 'editor.redo',
-    'editor.table.insert', 'editor.footnote.insert', 'editor.note.insert', 'doc.save'
+    'editor.table.insert', 'editor.footnote.insert', 'editor.note.insert', 'doc.save',
+    // W07 task-33/34：参数化无头命令（link/math；table.insert 已在上方，按 args 传尺寸）
+    'editor.link.insert', 'editor.math.inline', 'editor.math.block'
   ];
   var HEARTBEAT_MS = 200;
   var SDK = window.KeWorkshopSDK;
@@ -248,13 +250,13 @@
     setText('editor-command-result', entry.name + ' → ' + (entry.ok ? 'ok' : '失败（' + entry.error + '）'));
   }
 
-  async function invokeEditorCommand(name) {
+  async function invokeEditorCommand(name, args) {
     if (!conn) {
       showError(new Error('未连接：协议线尚未建立'));
       return null;
     }
     try {
-      var result = await conn.request('command.invoke', { name: name, args: {} });
+      var result = await conn.request('command.invoke', { name: name, args: args || {} });
       var entry = { name: name, ok: true, value: result, at: Date.now() };
       state.commandResults.push(entry);
       renderEditorCommand(entry);
@@ -278,7 +280,7 @@
   // 负向测试 hook（参考包自动化/演示用；真实调用仍受 manifest 声明 + 能力 + 白名单三重校验）
   window.__packAInvokeCommand = function (name, args) {
     if (!conn) return Promise.resolve(null);
-    return invokeEditorCommand(name);
+    return invokeEditorCommand(name, args || {});
   };
   window.__packAEditorCommands = EDITOR_COMMANDS.slice();
   window.__packAState = state;
@@ -379,11 +381,37 @@
     'btn-cmd-code-block': 'editor.code-block',
     'btn-cmd-undo': 'editor.undo',
     'btn-cmd-redo': 'editor.redo',
-    'btn-cmd-table-insert': 'editor.table.insert',
     'btn-cmd-footnote-insert': 'editor.footnote.insert',
     'btn-cmd-note-insert': 'editor.note.insert',
     'btn-cmd-doc-save': 'doc.save'
   };
+  // W07 task-33/34：参数化命令 UI（输入控件 → command.invoke args；产品侧严格校验）
+  function bindParam(id, command, argsFn) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('click', function () {
+      var args = argsFn();
+      var inv = (typeof invokeEditorCommand === 'function') ? invokeEditorCommand : null;
+      if (inv) void inv(command, args);
+    });
+  }
+  bindParam('btn-cmd-link-insert', 'editor.link.insert', function () {
+    return { href: $('link-href').value, text: $('link-text').value };
+  });
+  bindParam('btn-cmd-math-inline', 'editor.math.inline', function () {
+    return { latex: $('math-latex').value };
+  });
+  bindParam('btn-cmd-math-block', 'editor.math.block', function () {
+    return { latex: $('math-latex').value };
+  });
+  bindParam('btn-cmd-table-insert', 'editor.table.insert', function () {
+    return {
+      rows: Number($('table-rows').value || 3),
+      cols: Number($('table-cols').value || 3),
+      withHeaderRow: true
+    };
+  });
+
   Object.keys(EDITOR_BUTTONS).forEach(function (id) {
     var el = $(id);
     if (!el) return;

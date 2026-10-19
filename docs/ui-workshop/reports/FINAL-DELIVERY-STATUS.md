@@ -221,5 +221,7 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 ## 15. 推送授权（2026-10-19 夜）
 
 - 主理人明确授权推送分支：`feat/ui-workshop` → `origin`（GitHub `Asheep233/knowledge-editor`）。
+- **已推送**：远端分支 `origin/feat/ui-workshop` 已建立，推送时 HEAD = `eb3894a`（`git ls-remote` 与本地一致；
+  后续文档提交将继续增量推送该分支）。
 - **范围**：仅推送该分支；**不推送 master**、**不创建 Release/标签**、不改动其它分支。
 - 另一 Agent 进行前端 UI 接入与完整验证的 Runbook：`reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md`。

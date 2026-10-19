@@ -18,6 +18,7 @@ from pathlib import Path
 
 REPO = Path(r"F:\Work\KE Project\knowledge-editor")
 EXE = Path(r"C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe")
+BASE = Path(r"C:\ke-tmp\uiws-t26-recover")
 # 红线：产品 data_dir() = %APPDATA%\KnowledgeEditor（不随 identifier 变化）→ APPDATA 必须隔离
 APPDATA = BASE / "appdata"
 APP_DATA = APPDATA / "com.astranota.uiws.e2e"

@@ -2324,6 +2324,280 @@ def execute_audit() -> dict:
     return audit
 
 
+# ---------------- blockquote 快捷键修复后复测（task-23，--audit-blockquote-fix） ----------------
+
+
+def _press_enter(cdp) -> None:
+    for t in ("keyDown", "keyUp"):
+        try:
+            cdp.call("Input.dispatchKeyEvent", {"type": t, "key": "Enter", "code": "Enter",
+                                                "windowsVirtualKeyCode": 13, "nativeVirtualKeyCode": 13})
+        except Exception:
+            pass
+
+
+def _bq_counts(cdp) -> dict:
+    return cdp.eval(
+        "(() => { const pm=document.querySelector('.ProseMirror'); if(!pm) return null;"
+        " const bq=pm.querySelectorAll('blockquote').length;"
+        " const emptyP=[...pm.querySelectorAll('blockquote p')].filter(p=>!(p.textContent||'').trim()).length;"
+        " return {bq, bqP: pm.querySelectorAll('blockquote p').length, bqEmptyP: emptyP,"
+        " mathBlock: pm.querySelectorAll('.ke-math--block').length, math: pm.querySelectorAll('.ke-math').length,"
+        " html: pm.innerHTML.slice(0, 600)}; })()") or {}
+
+
+def execute_blockquote_fix_audit() -> dict:
+    """task-23：验证 blockquote 快捷键修复（新 exe c849241b，含 f4759a2）：
+    Ctrl+Shift+B 开/关（选区/折叠）、工具栏行为不变、atom 后空段落 Backspace 不回归、Ctrl+B/I/撤销重做抽查。"""
+    if not EXE.exists():
+        raise RuntimeError("缺少隔离测试构建")
+    build_sha = R.sha_file(EXE)
+    packs_info = prepare_packs([])
+    env_paths = prepare_env()
+    appdata, ws = env_paths["appdata"], env_paths["workspace"]
+    R.cleanup()
+    R.cleanup_test_identifier()
+    if not wait_no_other_instance(120):
+        raise RuntimeError("检测到其它隔离产品实例，已放弃")
+    env = {
+        **os.environ, "APPDATA": str(appdata), "KE_WORKSPACE": str(ws),
+        "KE_WORKSHOP_PUBKEYS": json.dumps({"k1": {"key": packs_info["publicKeyHex"]}}),
+        "KE_WS_PRINT_RENDER": "1",
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": f"--remote-debugging-port={CDP_PORT}",
+        "TEMP": str(env_paths["tmp"]), "TMP": str(env_paths["tmp"]),
+    }
+    log_path = BASE / "app.log"
+    log = log_path.open("w", encoding="utf-8")
+    proc = subprocess.Popen([str(EXE)], env=env, cwd=str(BASE), stdout=log, stderr=subprocess.STDOUT)
+    cdp = None
+    out = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+           "build": {"exe": str(EXE), "sha256": build_sha,
+                     "mtime": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(EXE.stat().st_mtime))},
+           "fix_commit": "f4759a2（KeBlockJoin.addKeyboardShortcuts 继承上游 Mod-Shift-b + Backspace 覆盖）",
+           "checks": []}
+
+    def rec(name: str, ok: bool, detail) -> bool:
+        out["checks"].append({"name": name, "pass": bool(ok), "detail": detail})
+        print(("PASS " if ok else "FAIL ") + name + " | " + json.dumps(detail, ensure_ascii=False)[:400], flush=True)
+        return bool(ok)
+
+    def reload_doc() -> None:
+        R.click_text(cdp, "fe-ledger.md")
+        R.wait_until(lambda: DOC_BODY in R.editor_text(cdp), 30, 0.3)
+        time.sleep(0.5)
+
+    try:
+        if not R.wait_until(lambda: bool(R.main_targets()), 150, 0.3):
+            raise RuntimeError("CDP 主窗口未就绪")
+        cdp = R.main_cdp()
+        cdp.call("Runtime.enable"); cdp.call("Page.enable")
+        R.browser_connect()
+        R.wait_until(lambda: bool(cdp.eval("typeof window.__TAURI_INTERNALS__?.invoke === 'function'")), 30, 0.25)
+        R.wait_until(lambda: bool(cdp.eval("!!document.querySelector('button[aria-label=\"打开创意工坊\"]')")), 90, 0.25)
+        R.host_eval(cdp, HOST_COLLECTOR)
+        R.wait_until(lambda: R.has_text(cdp, "fe-ledger.md"), 60, 0.25)
+        reload_doc()
+
+        # ---------- 聚焦 / 归零 / 精准定位 helper（不重载页面，避免 CDP 挂起） ----------
+        def editor_rect():
+            return cdp.eval("(() => { const el=document.querySelector('.ProseMirror'); if(!el) return null; const r=el.getBoundingClientRect(); return {x:r.left, y:r.top, w:r.width, h:r.height}; })()") or {}
+
+        def click_at(x: float, y: float):
+            for t in ("mousePressed", "mouseReleased"):
+                cdp.call("Input.dispatchMouseEvent", {"type": t, "x": x, "y": y, "button": "left", "clickCount": 1})
+            time.sleep(0.3)
+
+        def sel_info():
+            return cdp.eval("(() => { const s=window.getSelection(); if(!s) return null;"
+                            " const a=s.anchorNode && s.anchorNode.parentElement || s.anchorNode;"
+                            " return {text:String(s).slice(0,30), collapsed:!!s.isCollapsed, type:s.type,"
+                            " anchorTag: a && a.tagName, inEditor: !!(a && a.closest && a.closest('.ProseMirror')),"
+                            " inParagraph: !!(a && a.closest && a.closest('p'))}; })()")
+
+        def press_esc_all():
+            for _ in range(2):
+                press_esc(cdp)
+                time.sleep(0.15)
+
+        def clean_state():
+            """用撤销把编辑状态归零（引用块/公式/探针 marker 全部退回文档初始）。"""
+            for _ in range(40):
+                b = _bq_counts(cdp)
+                text = R.editor_text(cdp)
+                if (b.get("bq") or 0) == 0 and (b.get("math") or 0) == 0 and "T23-" not in text and "F03AUDIT" not in text and "FOCUS-PROBE" not in text:
+                    return True
+                click_toolbar(cdp, "撤销")
+                time.sleep(0.18)
+            return False
+
+        def place_caret_in_paragraph() -> dict:
+            press_esc_all()
+            info = cdp.eval(
+                "(() => { const ps=[...document.querySelectorAll('.ProseMirror p')].filter(p=>(p.innerText||'').trim().length>3);"
+                " return ps.map((p,i)=>{ const r=p.getBoundingClientRect(); return {i, x:r.left+Math.min(50,r.width/2), y:r.top+r.height/2, text:(p.innerText||'').slice(0,20)}; }); })()") or []
+            for item in info[:5]:
+                click_at(item["x"], item["y"])
+                si = sel_info() or {}
+                if si.get("collapsed") and si.get("inParagraph"):
+                    return {"ok": True, "paragraph": item, "selection": si}
+            return {"ok": False, "reason": "cannot-place-caret", "candidates": info[:3], "selection": sel_info()}
+
+        def bq_delta(before: dict, after: dict) -> int:
+            return int(after.get("bq") or 0) - int(before.get("bq") or 0)
+
+        BASE_INIT = {"bq": 0, "math": 0}
+
+        # ---- 1) 折叠光标：段落内精准光标 + 多输入通道 ----
+        collapsed_variants = []
+        for vname, act in (("cdp key='B' ctrl+shift", lambda: press_key_combo(cdp, "B", "KeyB", 66, 10)),
+                           ("cdp key='b' ctrl+shift", lambda: press_key_combo(cdp, "b", "KeyB", 66, 10)),
+                           ("js-synthetic key='B' ctrl+shift", lambda: _js_key(cdp, "B", "KeyB", 66, True, True))):
+            clean_state()
+            caret = place_caret_in_paragraph()
+            if not caret.get("ok"):
+                collapsed_variants.append({"name": vname, "skipped": "caret-place-failed", "caret": caret})
+                continue
+            b = _bq_counts(cdp)
+            act()
+            time.sleep(0.65)
+            a = _bq_counts(cdp)
+            collapsed_variants.append({"name": vname, "caretInParagraph": True, "before": b.get("bq"),
+                                       "afterOn": a.get("bq"), "deltaOn": bq_delta(b, a), "htmlHead": a.get("html", "")[:100]})
+        rec("T23-1 折叠光标 Ctrl+Shift+B → blockquote（段落内精准光标 + 多输入通道）",
+            any(v.get("deltaOn", 0) >= 1 for v in collapsed_variants), {"variants": collapsed_variants})
+
+        # ---- 2) 选中文本：Ctrl+A + Ctrl+Shift+B ----
+        clean_state()
+        select_all_editor(cdp)
+        time.sleep(0.35)
+        text_sel = sel_info()
+        b2 = _bq_counts(cdp)
+        press_key_combo(cdp, "B", "KeyB", 66, 10)
+        time.sleep(0.65)
+        a2 = _bq_counts(cdp)
+        rec("T23-2 选中文本 Ctrl+Shift+B → blockquote 0→1",
+            bq_delta(b2, a2) == 1 and (b2.get("bq") == 0),
+            {"selection": text_sel, "before": b2.get("bq"), "afterOn": a2.get("bq"), "htmlHead": a2.get("html", "")[:140]})
+        clean_state()
+
+        # ---- 3) 工具栏「引用」行为不变 ----
+        clean_state()
+        caret3 = place_caret_in_paragraph()
+        b3 = _bq_counts(cdp)
+        click_toolbar(cdp, "引用")
+        time.sleep(0.6)
+        a3 = _bq_counts(cdp)
+        click_toolbar(cdp, "引用")
+        time.sleep(0.6)
+        c3 = _bq_counts(cdp)
+        rec("T23-3 工具栏「引用」按钮行为不变（开 +1 / 关 -1）",
+            bq_delta(b3, a3) == 1 and (int(c3.get("bq") or 0) - int(a3.get("bq") or 0)) == -1,
+            {"caret": caret3, "before": b3.get("bq"), "afterOn": a3.get("bq"), "afterOff": c3.get("bq")})
+        clean_state()
+
+        # ---- 4) 回归：引用块内 atom 后空段落 Backspace 一次删除 ----
+        clean_state()
+        caret4 = place_caret_in_paragraph()
+        # 折叠光标路径优先；失败则用工具栏（行为已由 T23-3 验证）搭建场景
+        press_key_combo(cdp, "B", "KeyB", 66, 10)
+        time.sleep(0.6)
+        bq_ready = _bq_counts(cdp)
+        setup_method = "Ctrl+Shift+B(collapsed)"
+        if (bq_ready.get("bq") or 0) < 1:
+            click_toolbar(cdp, "引用")
+            time.sleep(0.6)
+            bq_ready = _bq_counts(cdp)
+            setup_method = "toolbar 引用（折叠光标路径未生效时兜底）"
+        setup = {"method": setup_method, "caretOk": caret4.get("ok"), "bq": bq_ready.get("bq")}
+        if (bq_ready.get("bq") or 0) >= 1:
+            # 点击引用块内段落末尾放置光标
+            r = cdp.eval("(() => { const p=document.querySelector('.ProseMirror blockquote p'); if(!p) return null; const b=p.getBoundingClientRect(); return {x:b.left+Math.min(40,b.width/2), y:b.top+b.height/2}; })()")
+            if r:
+                click_at(r["x"], r["y"])
+            click_toolbar(cdp, "插入块级公式")
+            R.wait_until(lambda: "块级公式" in R.body_text(cdp), 10, 0.25)
+            cdp.eval("(() => { const t = document.querySelector('.fixed.inset-0 textarea'); if (!t) return false;"
+                     " const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;"
+                     " setter.call(t, 'x+1'); t.dispatchEvent(new Event('input', {bubbles:true})); return true; })()")
+            time.sleep(0.25)
+            press_esc(cdp)
+            time.sleep(0.7)
+            _press_enter(cdp)
+            time.sleep(0.8)
+            pre = _bq_counts(cdp)
+            pre_ok = (pre.get("bqEmptyP") or 0) >= 1
+            if pre_ok:
+                press_key_combo(cdp, "Backspace", "Backspace", 8, 0)
+                time.sleep(0.8)
+            post = _bq_counts(cdp)
+            kept = {"emptyPRemovedOnce": (pre.get("bqEmptyP") or 0) - (post.get("bqEmptyP") or 0) == 1,
+                    "atomKept": (post.get("mathBlock") or 0) >= 1 and (post.get("mathBlock") or 0) == (pre.get("mathBlock") or 0),
+                    "bqKept": (post.get("bq") or 0) == (pre.get("bq") or 0)}
+            rec("T23-4 回归：引用块内 atom 后空段落 Backspace 一次删除、公式保留（task-59 行为不变）",
+                pre_ok and all(kept.values()),
+                {"setup": setup, "pre": {k: pre.get(k) for k in ("bq", "bqP", "bqEmptyP", "mathBlock")},
+                 "post": {k: post.get(k) for k in ("bq", "bqP", "bqEmptyP", "mathBlock")}, "criteria": kept, "emptyPPre": pre_ok})
+        else:
+            rec("T23-4 回归：引用块内 atom 后空段落 Backspace（场景搭建失败，NOT_VERIFIED）", False,
+                {"setup": setup, "note": "未能创建引用块 → 场景未搭建，不伪造 PASS"})
+        clean_state()
+
+        # ---- 5) 其它快捷键抽查 ----
+        clean_state()
+        select_all_editor(cdp)
+        time.sleep(0.3)
+        press_key_combo(cdp, "b", "KeyB", 66, 2)
+        time.sleep(0.5)
+        bold_on = bool(cdp.eval("!!document.querySelector('.ProseMirror strong')"))
+        click_toolbar(cdp, "撤销"); time.sleep(0.4)
+        bold_off = not bool(cdp.eval("!!document.querySelector('.ProseMirror strong')"))
+        select_all_editor(cdp); time.sleep(0.3)
+        press_key_combo(cdp, "i", "KeyI", 73, 2)
+        time.sleep(0.5)
+        italic_on = bool(cdp.eval("!!document.querySelector('.ProseMirror em')"))
+        click_toolbar(cdp, "撤销"); time.sleep(0.4)
+        italic_off = not bool(cdp.eval("!!document.querySelector('.ProseMirror em')"))
+        rec("T23-5 抽查 Ctrl+B / Ctrl+I 不受影响（加粗/斜体生效且可撤销）",
+            bold_on and bold_off and italic_on and italic_off,
+            {"boldOn": bold_on, "boldUndo": bold_off, "italicOn": italic_on, "italicUndo": italic_off})
+
+        # ---- 6) 撤销/重做 ----
+        clean_state()
+        caret6 = place_caret_in_paragraph()
+        cdp.call("Input.insertText", {"text": "T23-UNDO-MARK"})
+        time.sleep(0.6)
+        present = "T23-UNDO-MARK" in R.editor_text(cdp)
+        click_toolbar(cdp, "撤销")
+        gone = R.wait_until(lambda: "T23-UNDO-MARK" not in R.editor_text(cdp), 8, 0.25)
+        click_toolbar(cdp, "重做")
+        back = R.wait_until(lambda: "T23-UNDO-MARK" in R.editor_text(cdp), 8, 0.25)
+        click_toolbar(cdp, "撤销")
+        rec("T23-6 抽查 撤销/重做 不受影响（marker 插入→撤销→重做→撤销）",
+            present and gone and back, {"caret": caret6.get("ok"), "present": present, "undone": gone, "redone": back})
+
+        out["summary"] = {"total": len(out["checks"]), "pass": sum(1 for c in out["checks"] if c["pass"])}
+        out["appLogTail"] = read_log(log_path)[-1500:]
+    finally:
+        if cdp is not None:
+            try:
+                cdp.close()
+            except Exception:
+                pass
+        try:
+            proc.terminate(); proc.wait(timeout=8)
+        except Exception:
+            try: proc.kill()
+            except Exception: pass
+        R.cleanup()
+        try: log.close()
+        except Exception: pass
+        R.cleanup_test_identifier()
+    outp = BASE / "blockquote-fix-audit.json"
+    outp.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    print("BQ-FIX AUDIT ->", outp, flush=True)
+    return out
+
+
 # ---------------- main ----------------
 
 
@@ -2331,7 +2605,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry", action="store_true", help="只运行不写 evidence/CSV/覆盖报告（冒烟验证）")
     ap.add_argument("--audit-f03", action="store_true", help="F03 FAIL 根因定向复核（task-21）")
+    ap.add_argument("--audit-blockquote-fix", action="store_true", help="blockquote 快捷键修复后复测（task-23）")
     args = ap.parse_args()
+    if args.audit_blockquote_fix:
+        try:
+            out = execute_blockquote_fix_audit()
+            return 0 if (out.get("summary") or {}).get("pass") == (out.get("summary") or {}).get("total") else 1
+        except Exception:
+            print(traceback.format_exc(), flush=True)
+            R.cleanup()
+            return 1
     if args.audit_f03:
         try:
             execute_audit()

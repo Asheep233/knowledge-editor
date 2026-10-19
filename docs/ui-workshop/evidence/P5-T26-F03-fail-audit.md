@@ -94,3 +94,39 @@
 - `UI.toolbar.保存-Ctrl-S`：`EditorToolbar.tsx:709` 保存按钮绑定存在；台账失败为连续自动化后的保存/外部修改状态耦合；
 - `CMD.editor.link.insert`：`EditorToolbar.tsx:573` `extendMarkRange('link').setLink`；定向复核两种前置均可插入；
 - `CMD.editor.module.insert`：`EditorToolbar.tsx:457` `insertModule`；Dropdown portal + 懒加载（~407ms 面板项到达），台账探针未等面板项 → 未点中；后端 `/api/modules` 200。
+
+---
+
+## 修复后复测（task-23，2026-10-19）
+
+- 修复提交：`f4759a2`（`KeBlockJoin.addKeyboardShortcuts()` 继承上游 `{...this.parent?.()}` 并保留 Backspace 覆盖；缺失 parent 时显式兜底 `Mod-Shift-b`）。
+- 复测构建：`c849241bc9dd6be31cae8f3b7ac6c386b7c3431dcbec4d706f7725e86577be8f`（mtime=`2026-10-19T16:43:26`；含 f4759a2）。
+- 复测方式：`tools/run_feature_entry_probe.py --audit-blockquote-fix`（隔离产品 + CDP；撤销归零隔离每个用例；段落内精准光标；多输入通道变体）。
+- 复测结果：**6/6 PASS**。
+
+### 修复前后对照
+
+| 项 | 修复前（faa71dfb，v5） | 修复后（c849241b，task-23） |
+| --- | --- | --- |
+| 折叠光标 Ctrl+Shift+B | 4 通道全部 bq 0→0（无反应） | **PASS**：CDP key 'B'/'b'、JS 合成事件 delta=+1（bq 0→1）；DOM `<blockquote><p>F-LEDGER-BODY-MARKER…` |
+| 选中文本 Ctrl+Shift+B | 同上无反应 | **PASS**：bq 0→1，再按可取消；DOM `<blockquote><h1>…</h1>…` |
+| 工具栏「引用」 | 可用（0→1） | **PASS（行为不变）**：0→1→0 |
+| 引用块内 atom 后空段落 Backspace | 未验证（场景未搭建） | **PASS（不回归）**：pre bq=1/bqP=3/emptyP=1/mathBlock=1 → post bq=1/bqP=2/emptyP=0/mathBlock=1（空段落恰好减 1、公式与引用块保留） |
+| Ctrl+B / Ctrl+I | 未受影响 | **PASS**：加粗/斜体生效且可撤销 |
+| 撤销/重做 | 未受影响 | **PASS**：marker 插入→撤销→重做→撤销 |
+
+### 逐项 checks
+
+| 检查 | 结果 | 关键 DOM/值 |
+| --- | --- | --- |
+| T23-1 折叠光标 Ctrl+Shift+B → blockquote（段落内精准光标 + 多输入通道） | PASS | `{"variants": [{"name": "cdp key='B' ctrl+shift", "caretInParagraph": true, "before": 0, "afterOn": 1, "deltaOn": 1, "htmlHead": "<h1>F 台账标题</h1><blockquote><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></blockquote><ul>"}, {"name": "cdp key='b' ctrl+` |
+| T23-2 选中文本 Ctrl+Shift+B → blockquote 0→1 | PASS | `{"selection": {"text": "F 台账标题\nF-LEDGER-BODY-MARKER 这是", "collapsed": false, "type": "Range", "anchorTag": "DIV", "inEditor": false, "inParagraph": false}, "before": 0, "afterOn": 1, "htmlHead": "<blockquote><h1>F 台账标题</h1><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI ` |
+| T23-3 工具栏「引用」按钮行为不变（开 +1 / 关 -1） | PASS | `{"caret": {"ok": true, "paragraph": {"i": 0, "x": 397.5, "y": 315.375, "text": "F-LEDGER-BODY-MARKER"}, "selection": {"text": "", "collapsed": true, "type": "Caret", "anchorTag": "P", "inEditor": true, "inParagraph": true}}, "before": 0, "afterOn": 1, "afterOf` |
+| T23-4 回归：引用块内 atom 后空段落 Backspace 一次删除、公式保留（task-59 行为不变） | PASS | `{"setup": {"method": "Ctrl+Shift+B(collapsed)", "caretOk": true, "bq": 1}, "pre": {"bq": 1, "bqP": 3, "bqEmptyP": 1, "mathBlock": 1}, "post": {"bq": 1, "bqP": 2, "bqEmptyP": 0, "mathBlock": 1}, "criteria": {"emptyPRemovedOnce": true, "atomKept": true, "bqKept"` |
+| T23-5 抽查 Ctrl+B / Ctrl+I 不受影响（加粗/斜体生效且可撤销） | PASS | `{"boldOn": true, "boldUndo": true, "italicOn": true, "italicUndo": true}` |
+| T23-6 抽查 撤销/重做 不受影响（marker 插入→撤销→重做→撤销） | PASS | `{"caret": true, "present": true, "undone": true, "redone": true}` |
+
+### 结论
+
+- 原 **PRODUCT_BUG/FINDING**（blockquote 快捷键被扩展覆盖丢失）在 `f4759a2` 修复后，产品 W 复测 **6/6 PASS**，F03 台账 42/42 行全部 PASS。
+- 保留 v5 审计历史记录（本文件前半部分），未删除/改写结论；本段为修复后追加。

@@ -1463,8 +1463,8 @@
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "FAIL:PRODUCT_FINDING：KeBlockquote（frontend/src/editor/extensions/KeBlockJoin.ts:104/131）覆盖上游 @tiptap/extension-blockquote:109 的 Mod-Shift-b 绑定、只返回 Backspace → Ctrl+Shift+B 无反应；工具栏「引用」可用（bq 0→1）；详见 evidence/P5-T26-F03-fail-audit.md",
-        "note": "task-21 复核改判/保留（见 f03FailAudit）",
+        "officialBaselineResult": "PASS:修复后复测（task-23，exe c849241b/f4759a2）：折叠光标与选中文本按 Ctrl+Shift+B 均 blockquote 0→1（多通道：CDP key 'B'/'b'、JS 合成事件 delta=+1）；再按取消；工具栏「引用」0→1→0 行为不变；引用块内 atom 后空段落 Backspace 一次删除（emptyP 1→0、公式保留、bq 保留）——原 PRODUCT_FINDING 已修复；详见 evidence/P5-T26-F03-fail-audit.md「修复后复测」",
+        "note": "task-23 修复后复测改判 PASS",
         "forceFill": false
       },
       {
@@ -1902,8 +1902,8 @@
         "registered": 42,
         "packAPass": 0,
         "packBPass": 0,
-        "officialPass": 41,
-        "officialFail": 1,
+        "officialPass": 42,
+        "officialFail": 0,
         "officialNr": 0
       },
       "F04": {
@@ -2350,7 +2350,7 @@
     "F03 仅抽样 7 条真实执行，其余保持 NOT_RUN",
     "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）"
   ],
-  "verificationStatus": "V5_F03_FAIL_AUDIT",
+  "verificationStatus": "V6_BLOCKQUOTE_FIXED",
   "v4Note": "task-20 第三轮增量：F03 剩余 12 行（工具栏/菜单入口真实执行；10 PASS / 2 FAIL）+ F16 原生菜单只读结构审计（menu.rs 11 项 MenuItem；原生菜单非 DOM，CSV 11 行如实 NOT_RUN，不伪造 W/DOM）。",
   "v4": {
     "f03_remaining_rows": 12,
@@ -2710,6 +2710,150 @@
       "/api/attachments": 4,
       "/api/documents": 0
     },
-    "probe": "--audit-f03（tools/run_feature_entry_probe.py）定向复核；干净隔离实例，逐项正确前置条件 + 多输入通道变体"
-  }
+    "probe": "--audit-f03（tools/run_feature_entry_probe.py）定向复核；干净隔离实例，逐项正确前置条件 + 多输入通道变体",
+    "fixed": {
+      "generatedAt": "2026-10-19T16:53:37+0800",
+      "build": {
+        "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+        "sha256": "c849241bc9dd6be31cae8f3b7ac6c386b7c3431dcbec4d706f7725e86577be8f",
+        "mtime": "2026-10-19T16:43:26"
+      },
+      "fixCommit": "f4759a2（KeBlockJoin.addKeyboardShortcuts 继承上游 Mod-Shift-b + Backspace 覆盖）",
+      "checks": [
+        {
+          "name": "T23-1 折叠光标 Ctrl+Shift+B → blockquote（段落内精准光标 + 多输入通道）",
+          "pass": true,
+          "detail": {
+            "variants": [
+              {
+                "name": "cdp key='B' ctrl+shift",
+                "caretInParagraph": true,
+                "before": 0,
+                "afterOn": 1,
+                "deltaOn": 1,
+                "htmlHead": "<h1>F 台账标题</h1><blockquote><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></blockquote><ul>"
+              },
+              {
+                "name": "cdp key='b' ctrl+shift",
+                "caretInParagraph": true,
+                "before": 0,
+                "afterOn": 1,
+                "deltaOn": 1,
+                "htmlHead": "<h1>F 台账标题</h1><blockquote><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></blockquote><ul>"
+              },
+              {
+                "name": "js-synthetic key='B' ctrl+shift",
+                "caretInParagraph": true,
+                "before": 0,
+                "afterOn": 1,
+                "deltaOn": 1,
+                "htmlHead": "<h1>F 台账标题</h1><blockquote><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></blockquote><ul>"
+              }
+            ]
+          }
+        },
+        {
+          "name": "T23-2 选中文本 Ctrl+Shift+B → blockquote 0→1",
+          "pass": true,
+          "detail": {
+            "selection": {
+              "text": "F 台账标题\nF-LEDGER-BODY-MARKER 这是",
+              "collapsed": false,
+              "type": "Range",
+              "anchorTag": "DIV",
+              "inEditor": false,
+              "inParagraph": false
+            },
+            "before": 0,
+            "afterOn": 1,
+            "htmlHead": "<blockquote><h1>F 台账标题</h1><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p><ul><li><p>列表项一</p></li><li><p>列表项二</p></li></ul><p><br c"
+          }
+        },
+        {
+          "name": "T23-3 工具栏「引用」按钮行为不变（开 +1 / 关 -1）",
+          "pass": true,
+          "detail": {
+            "caret": {
+              "ok": true,
+              "paragraph": {
+                "i": 0,
+                "x": 397.5,
+                "y": 315.375,
+                "text": "F-LEDGER-BODY-MARKER"
+              },
+              "selection": {
+                "text": "",
+                "collapsed": true,
+                "type": "Caret",
+                "anchorTag": "P",
+                "inEditor": true,
+                "inParagraph": true
+              }
+            },
+            "before": 0,
+            "afterOn": 1,
+            "afterOff": 0
+          }
+        },
+        {
+          "name": "T23-4 回归：引用块内 atom 后空段落 Backspace 一次删除、公式保留（task-59 行为不变）",
+          "pass": true,
+          "detail": {
+            "setup": {
+              "method": "Ctrl+Shift+B(collapsed)",
+              "caretOk": true,
+              "bq": 1
+            },
+            "pre": {
+              "bq": 1,
+              "bqP": 3,
+              "bqEmptyP": 1,
+              "mathBlock": 1
+            },
+            "post": {
+              "bq": 1,
+              "bqP": 2,
+              "bqEmptyP": 0,
+              "mathBlock": 1
+            },
+            "criteria": {
+              "emptyPRemovedOnce": true,
+              "atomKept": true,
+              "bqKept": true
+            },
+            "emptyPPre": true
+          }
+        },
+        {
+          "name": "T23-5 抽查 Ctrl+B / Ctrl+I 不受影响（加粗/斜体生效且可撤销）",
+          "pass": true,
+          "detail": {
+            "boldOn": true,
+            "boldUndo": true,
+            "italicOn": true,
+            "italicUndo": true
+          }
+        },
+        {
+          "name": "T23-6 抽查 撤销/重做 不受影响（marker 插入→撤销→重做→撤销）",
+          "pass": true,
+          "detail": {
+            "caret": true,
+            "present": true,
+            "undone": true,
+            "redone": true
+          }
+        }
+      ],
+      "summary": {
+        "total": 6,
+        "pass": 6
+      },
+      "before_after": {
+        "before_build": "faa71dfb（v5 审计：blockquote 4 输入通道全部 0→0，工具栏可用 → PRODUCT_FINDING）",
+        "after_build": "c849241b（本复测：折叠光标/选中文本 Ctrl+Shift+B 均 0→1；工具栏不变；回归项 PASS）"
+      }
+    }
+  },
+  "v6Note": "task-23：blockquote 快捷键修复（f4759a2）后产品 W 复测 6/6 PASS。折叠光标/选中文本 Ctrl+Shift+B 均产生 blockquote（0→1）并可再按取消；工具栏行为不变；引用块内 atom 后空段落 Backspace 一次删除（不回归）；Ctrl+B/Ctrl+I/撤销/重做不受影响。v5 的唯一 PRODUCT_FINDING 已修复 → F03 台账 42/42 行全部 PASS。"
 }

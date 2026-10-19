@@ -619,3 +619,32 @@
 
 - 证据：`evidence/P5-T26-F03-fail-audit.md`（逐项变体表）、JSON `f03FailAudit`（cases/codeAudit/appLogRoutes）。
 - CSV 改判：4 行 AUTOMATION_LIMITATION 改 PASS 并注明方法；blockquote 保持 FAIL 并写明 PRODUCT_FINDING 定位。
+
+---
+
+## 附录 I：blockquote 快捷键修复后复测（v6，2026-10-19）
+
+> task-23：验证 `f4759a2` 修复（`KeBlockJoin.addKeyboardShortcuts()` 继承上游 `Mod-Shift-b`）后的产品 W 行为；不改产品代码。
+
+### I.1 结果（6/6 PASS；构建 `c849241bc9dd6be31cae8f3b7ac6c386b7c3431dcbec4d706f7725e86577be8f`）
+
+| 检查 | 结果 | 关键值 |
+| --- | --- | --- |
+| T23-1 折叠光标 Ctrl+Shift+B | PASS | 变体 CDP key 'B'/'b'、JS 合成事件 delta=+1（bq 0→1） |
+| T23-2 选中文本 Ctrl+Shift+B | PASS | bq 0→1，可再按取消 |
+| T23-3 工具栏「引用」行为不变 | PASS | 0→1→0 |
+| T23-4 atom 后空段落 Backspace 不回归 | PASS | pre emptyP=1 → post emptyP=0；mathBlock 保留；bq 保留 |
+| T23-5 Ctrl+B / Ctrl+I 抽查 | PASS | 加粗/斜体生效且可撤销 |
+| T23-6 撤销/重做抽查 | PASS | 插入→撤销→重做 均正确 |
+
+### I.2 修复前后对照
+
+- 修复前（`faa71dfb`，v5 审计）：blockquote 快捷键 4 输入通道全部 0→0（工具栏可用）→ PRODUCT_FINDING；
+- 修复后（`c849241b`，本复测）：折叠光标/选中文本 Ctrl+Shift+B 均 0→1（多通道），工具栏行为不变，回归项全部 PASS；
+- 结论：原 FINDING 已修复 → **F03 42/42 行全部 PASS**。
+
+### I.3 证据
+
+- `evidence/P5-T26-F03-fail-audit.md`（v5 审计 + 「修复后复测」段）；
+- `evidence/T26-F-ledger-results.json`（`f03FailAudit.fixed` + `verificationStatus=V6_BLOCKQUOTE_FIXED`）；
+- 复测模式：`tools/run_feature_entry_probe.py --audit-blockquote-fix`。

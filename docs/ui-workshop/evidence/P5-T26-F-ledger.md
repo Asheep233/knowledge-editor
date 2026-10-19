@@ -265,3 +265,10 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - **分类结论**：4×`AUTOMATION_LIMITATION`（list.bullet / save / link.insert / module.insert → 复核通过，CSV 已改判 PASS 并注明方法） + 1×`PRODUCT_BUG/FINDING`（blockquote → 保持 FAIL）。
 - `CMD.editor.blockquote` 根因：`KeBlockquote`（frontend/src/editor/extensions/KeBlockJoin.ts:104/131）重写 `addKeyboardShortcuts()` 只返回 `Backspace`，覆盖丢弃上游 `@tiptap/extension-blockquote:109` 的 `Mod-Shift-b` 绑定 → Ctrl+Shift+B 无反应；工具栏「引用」命令可用（bq 0→1）。属产品缺陷（快捷方式失效），未改产品代码，记 FINDING 供决策。
 - 证据：`evidence/P5-T26-F03-fail-audit.md` + JSON `f03FailAudit`；报告附录 H。
+
+## v6 blockquote 修复后复测（task-23，2026-10-19）
+
+- 修复提交 `f4759a2`；复测构建 `c849241bc9dd6be31cae8f3b7ac6c386b7c3431dcbec4d706f7725e86577be8f`（mtime `2026-10-19T16:43:26`）。
+- `--audit-blockquote-fix` 复测：**6/6 PASS**；折叠光标/选中文本 Ctrl+Shift+B 均 blockquote 0→1（可取消）；工具栏行为不变；引用块内 atom 后空段落 Backspace 一次删除（不回归）；Ctrl+B/Ctrl+I/撤销/重做不受影响。
+- 原 v5 唯一 PRODUCT_FINDING 已修复 → **F03 台账 42/42 行全部 PASS**；CSV blockquote 行改判 PASS 并注明修复后复测。
+- 证据：`evidence/P5-T26-F03-fail-audit.md`「修复后复测」段 + JSON `f03FailAudit.fixed`；报告附录 I。

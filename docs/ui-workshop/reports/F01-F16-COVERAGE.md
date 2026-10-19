@@ -465,3 +465,66 @@
 | F14 | 1/1 | 1 | 0 | 0/0/1 |
 | F15 | 1/19 | 1 | 0 | 1/0/0 |
 | F16 | 1/11 | 0 | 0 | 0/0/1 |
+
+---
+
+## 附录 F：第二轮增量（v3，2026-10-19）
+
+> 本节为 task-17 第二轮增量（**F03 批量** + **F14 官方导出落盘尝试**），追加在附录 E 之后；不改上文结论。
+
+### F.1 F03 批量抽样（官方 UI 真实快捷键/工具栏 + CDP DOM 断言）
+
+- 本轮新增真实执行 **22 行**（19 PASS / 3 FAIL）；未执行行保持 NOT_RUN（不伪造）。
+
+| featureId | 结果 | 操作 | DOM 断言（动作前→后） |
+| --- | --- | --- | --- |
+| `CMD.editor.underline` | PASS | Ctrl+U 下划线 | before=False → after=True |
+| `CMD.editor.strike` | PASS | Ctrl+Shift+S 删除线 | before=False → after=True |
+| `CMD.editor.heading.1` | PASS | Ctrl+Alt+1 标题 1 | before=1 → after=3 |
+| `CMD.editor.list.bullet` | FAIL | Ctrl+Shift+8 无序列表 | before=1 → after=1 |
+| `CMD.editor.list.ordered` | PASS | Ctrl+Shift+7 有序列表 | before=0 → after=1 |
+| `CMD.editor.blockquote` | FAIL | Ctrl+Shift+B 引用 | before=0 → after=0 |
+| `CMD.editor.code.inline` | PASS | Ctrl+E 行内代码 | before=False → after=True |
+| `CMD.editor.codeBlock` | PASS | Ctrl+Alt+C 代码块 | before=0 → after=3 |
+| `UI.toolbar.斜体` | PASS | 工具栏斜体 | before=False → after=True |
+| `UI.toolbar.下划线` | PASS | 工具栏下划线 | before=False → after=True |
+| `UI.toolbar.删除线` | PASS | 工具栏删除线 | before=False → after=True |
+| `UI.toolbar.有序列表` | PASS | 工具栏有序列表 | before=0 → after=1 |
+| `UI.toolbar.引用` | PASS | 工具栏引用 | before=0 → after=1 |
+| `UI.toolbar.行内代码` | PASS | 工具栏行内代码 | before=False → after=True |
+| `UI.toolbar.代码块` | PASS | 工具栏代码块 | before=0 → after=3 |
+| `UI.toolbar.插入链接` | PASS | 工具栏插入链接→链接地址对话框 | before=None → after=None |
+| `UI.toolbar.插入公式` | PASS | 工具栏插入公式→行内公式编辑器 | before=None → after=None |
+| `UI.toolbar.插入块级公式` | PASS | 工具栏插入块级公式→块级公式编辑器 | before=None → after=None |
+| `UI.toolbar.注释-脚注` | PASS | 工具栏注释（脚注）→插入注释对话框 | before=None → after=None |
+| `UI.toolbar.保存-Ctrl-S` | FAIL | 工具栏保存按钮→磁盘落盘 | before=None → after=None |
+| `UI.toolbar.微分-d-转正体-另存为新文件` | PASS | 工具栏微分 d 转正体→预览对话框 | before=None → after=None |
+| `UI.toolbar.历史快照` | PASS | 工具栏历史快照→历史版本面板 | before=None → after=None |
+
+### F.2 F14 官方导出落盘尝试（如实：部分 + NOT_RUN）
+
+- **官方 UI 导出对话框**：导出菜单 →「导出 PDF（打印为 PDF）」→ 对话框（含 A4 DOM 预览）真实打开 → 取消；（最终 `export_pdf` 未点击执行）。
+- **`export_pdf` 无法安全隔离**：Rust 落点 = `%USERPROFILE%\Documents\AstraNota Exports`；实测**覆盖子进程 USERPROFILE 会导致 WebView2 不开放 CDP 端口**（探针无法驱动），因此无法在不触碰真实用户 Documents 的前提下执行 → **如实 NOT_RUN**，未写真实用户目录。
+- **替代真实落盘验证（官方 print 管线 `preview_pdf`）**：同一 Rust `render_pdf_to` 管线、同一打印设置，落点 = `%TEMP%\AstraNota-preview`；本轮探针把 `TEMP/TMP` 指向隔离目录后调用官方命令真实生成 PDF：**PASS**（exists=True, size=36541, head=%PDF, isolatedTemp=True），并用官方 `discard_preview_pdf` 清理。
+- 结论：F14 官方 CSV 列保持 **NOT_RUN**（导出 Documents 未执行）；`preview_pdf` 真实 PDF 作为「官方管线可真实落盘」的补充证据，不冒充最终导出。
+
+### F.3 覆盖统计（F 域已登记行 / 该域总行；细粒度行按 CSV domain 归类）
+
+| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |
+| --- | ---: | ---: | ---: | --- |
+| F01 | 1/10 | 0 | 0 | 1/0/0 |
+| F02 | 2/6 | 0 | 1 | 2/0/0 |
+| F03 | 30/42 | 0 | 0 | 27/3/0 |
+| F04 | 1/1 | 0 | 0 | 1/0/0 |
+| F05 | 1/1 | 0 | 0 | 1/0/0 |
+| F06 | 1/3 | 1 | 1 | 1/0/0 |
+| F07 | 2/3 | 0 | 0 | 2/0/0 |
+| F08 | 1/4 | 0 | 0 | 1/0/0 |
+| F09 | 1/5 | 0 | 0 | 1/0/0 |
+| F10 | 2/5 | 0 | 1 | 2/0/0 |
+| F11 | 1/3 | 0 | 0 | 1/0/0 |
+| F12 | 1/1 | 1 | 1 | 1/0/0 |
+| F13 | 3/6 | 0 | 0 | 3/0/0 |
+| F14 | 1/1 | 1 | 0 | 0/0/1 |
+| F15 | 1/19 | 1 | 0 | 1/0/0 |
+| F16 | 1/11 | 0 | 0 | 0/0/1 |

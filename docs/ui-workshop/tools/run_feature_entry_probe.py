@@ -47,6 +47,17 @@ EXE = R.EXE
 EVID = R.EVID
 FIXTURES = REPO / "docs" / "ui-workshop" / "fixtures"
 CSV_PATH = REPO / "docs" / "ui-workshop" / "feature-baseline.csv"
+
+
+def _load_domain_map() -> dict:
+    try:
+        with CSV_PATH.open(encoding="utf-8", newline="") as fh:
+            return {row["featureId"]: row["domain"] for row in csv.DictReader(fh)}
+    except Exception:
+        return {}
+
+
+ROW_DOMAIN = _load_domain_map()
 COVERAGE = REPO / "docs" / "ui-workshop" / "reports" / "F01-F16-COVERAGE.md"
 BASE = Path(r"C:\ke-tmp\uiws-t26-F")
 DIST_A = BASE / "dist" / "com.astranota.examples.pack-a"
@@ -1281,7 +1292,8 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     rows: list[dict] = []
 
     def add(fid: str, a: str, b: str, o: str, note: str = "") -> None:
-        rows.append({"featureId": fid, "packAEntry": a, "packBEntry": b, "officialBaselineResult": o, "note": note})
+        rows.append({"featureId": fid, "domain": ROW_DOMAIN.get(fid, ""), "packAEntry": a, "packBEntry": b,
+                     "officialBaselineResult": o, "note": note})
 
     add("F01", _nr(perm), _nr(perm),
         pv(res("F-OFF-1 F01"), "官方 UI 文件树点击打开 fe-ledger.md + 页签渲染（CDP 真实 DOM）"),
@@ -1383,8 +1395,8 @@ F_DOMAIN_TOTAL = {"F01": 10, "F02": 6, "F03": 42, "F04": 1, "F05": 1, "F06": 3, 
 def summary_stats(rows: list[dict]) -> dict:
     by_domain: dict[str, dict] = {}
     for r in rows:
-        d = r["featureId"] if re.fullmatch(r"F\d\d", r["featureId"]) else next(
-            (d for d, n in F_DOMAIN_TOTAL.items() if r["featureId"].startswith(d)), "OTHER")
+        d = r.get("domain") or (r["featureId"] if re.fullmatch(r"F\d\d", r["featureId"]) else next(
+            (x for x, n in F_DOMAIN_TOTAL.items() if r["featureId"].startswith(x)), "OTHER"))
         s = by_domain.setdefault(d, {"registered": 0, "packAPass": 0, "packBPass": 0, "officialPass": 0, "officialFail": 0, "officialNr": 0})
         s["registered"] += 1
         s["packAPass"] += 1 if r["packAEntry"].startswith("PASS") else 0

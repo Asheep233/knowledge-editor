@@ -83,3 +83,20 @@ iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP�
   改为**自检上报**（guest → 宿主 postMessage），宿主展示残余风险并记录诊断；隔离依赖独立 origin +
   Tauri IPC authority 对 remote origin 的拒绝（capabilities 无 remote 声明）+ 升级回归。
   详见 `P5-T26-A7-isolation.md` 追加节。
+
+## 附录 B（2026-10-19）：协议/能力矩阵演进（G1–G4/G7 落地后）
+
+本附录记录 F01–F16 审计（`reports/F01-F16-COVERAGE.md`）后对产品 host 的变更，均为**向后兼容**：
+
+| 变更 | 内容 | 证据 |
+| --- | --- | --- |
+| G1 内容读 | `context.snapshot` result 可选 `content?/contentBytes?`（仅 `context.read`；真实 `GET /api/articles/{rel}` 原文，BOM/frontmatter/CRLF 逐字节；读不到退化旧形状） | `P5-T26-G1G2-content-io.md`（W 14/14） |
+| G2 写通道 | `context.write` 加入 `ALLOWED_CAPABILITIES` + trusted/builtin（community 不授予）+ installPolicy high 风险 + Rust `ALLOWED_CAPS`；产品桥接真实 `/api/context/write`（completed/conflict/stale/failed 如实，requestId 幂等；**删除假 completed 桩**） | 同上 |
+| G1/G2 capability 变更 | 产品 guest 运行期能力 = 信任等级 ∩ manifest 声明；`context.write` 为 trusted/builtin 专属 | 同上 |
+| G3 打印 | `print.snapshot` 接真实打印管线（真实 PDF；pages=null 不伪造；非法/不存在文档如实错误）；打印期间主线程阻塞 → guest 心跳超时临时放宽 8s（已知限制） | `P5-T26-G3G4-print-events.md`（U+W 18/18） |
+| G4 事件 | `document-saved`（revision 与后端一致）/`context-changed`/`theme-changed` 真实发射并到达 guest（HostDispatcher.emit；window 事件桥） | 同上 |
+| G7 参考包 | pack A（侧栏读/打印/事件）/pack B（Dock 写/命令）参考 UI + 构建签名工具（测试私钥不入仓） | `P5-T26-G7-reference-packs.md`（W 24/24） |
+
+**残余风险**：隐藏打印 renderer 仍 `KE_WS_PRINT_RENDER=1` env 门控；`currentEpoch()` 固定 1（epoch 失效检测未生效，
+靠后端 409 兜底）；guest 仍可见 `__TAURI_INTERNALS__`（remote IPC 被拒，见 ADR-004 正文/A7 证据）；Tauri 升级需
+复跑隔离/事件/打印探针。

@@ -415,3 +415,9 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 - `docs/ui-workshop/tools/verify_delivery_consistency.py`：只读 8 项检查（矩阵门禁/证据引用/私钥/未推送/
   工作树/台账可解析/里程碑口径），`--write` 落 evidence；最近一次 **8/8 PASS**。
+
+## 最终构建回归（2026-10-19 末段）
+
+- 构建 exe sha256 前缀 `c849241b`（mtime 16:43，含 blockquote 修复）上复跑关键产品 W：
+  A4+A6 **16/16**、G1/G2 **14/14**、A8 **9/9** 全 PASS；证据 `P5-T26-final-build-regression.md`。
+- 修正 install/save 探针「用户 App 未运行」的 N/A 判定（原先误要求 PID 存在），业务断言未变。

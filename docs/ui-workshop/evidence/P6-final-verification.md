@@ -74,3 +74,10 @@
 - frontend：**140 files / 1893 passed** + 1 skipped、tsc 0（+B-6/A-10 单测）；
 - backend：847 collected / exit 0（未改）；产品 cargo：51 passed（Rust 未改）；
 - 验证矩阵：**58 行**，--check PASS（W07 bridge 复测标 PASS_WITH_FINDINGS(7 缺口)）。
+
+## B-4/B-5/B-8 修复后最终回归（2026-10-19）
+
+- frontend：**142 files / 1915 passed** + 1 skipped、tsc 0；
+- backend：847 collected / exit 0（未改）；
+- 产品 cargo：**57 passed**（+6 sidecar 事件/清理单测）；
+- 验证矩阵：**59 行**，--check PASS（runtime banner 单测行 + W07 bridge 36/40）。

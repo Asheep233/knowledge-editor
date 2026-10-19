@@ -845,3 +845,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   仍 1 实例、堆增长 4.7MB → W09 工坊硬指标 **6/6 PASS**。
 - 大文档首次打开慢属产品既有 @tiptap/markdown 解析限制（editor/index.ts P3-2 记录，非工坊回归）。
   证据：`evidence/P5-T26-W09-workshop.md`。
+
+## P6/T26 进度（W02 表单交接 Core，2026-10-19）
+
+- `core/session/formHandoff.ts`：begin/setField/submit/原子提交/迟到或重复幂等/关闭后拒绝/
+  连接失效拒绝/失败保留可重试/drain；6 例 U 通过、tsc 0。产品 guest→host 接线与 W 未做。
+  证据：`evidence/P5-T26-W02-formhandoff.md`。

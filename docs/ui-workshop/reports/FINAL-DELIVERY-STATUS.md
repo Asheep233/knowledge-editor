@@ -225,3 +225,9 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
   后续文档提交将继续增量推送该分支）。
 - **范围**：仅推送该分支；**不推送 master**、**不创建 Release/标签**、不改动其它分支。
 - 另一 Agent 进行前端 UI 接入与完整验证的 Runbook：`reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md`。
+
+## 16. 工坊接口文档（2026-10-19 夜）
+
+- `docs/ui-workshop/WORKSHOP-INTEGRATION-GUIDE.md`：面向 host 开发者 + guest 包作者的完整接口文档
+  （manifest/能力模型/协议线/方法/事件/21 命令白名单/安装信任生命周期/宿主接入点/安全模型/验证）；
+- 目录索引 `docs/ui-workshop/README.md`。

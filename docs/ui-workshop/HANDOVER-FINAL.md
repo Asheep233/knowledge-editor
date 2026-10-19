@@ -494,3 +494,8 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - 主理人授权推送 `feat/ui-workshop` 到 origin（仅此分支；不推 master、不创建 Release）。**已推送成功**（首次推送 HEAD `eb3894a`，远端 ref 与本地一致）。
 - 交接受众扩展：另一前端 UI Agent 使用 `reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` 做完整接入验证
   （Linux 侧完整验证 + 可选 Windows 产品 W；I 门禁仍按 `DECISION-T27-I-gate-blocked.md` 口径 NOT_RUN）。
+
+## 工坊接口文档（2026-10-19 夜）
+
+- 新增 `docs/ui-workshop/WORKSHOP-INTEGRATION-GUIDE.md`：host/guest/SDK/协议/能力模型/21 条命令白名单/
+  安装信任生命周期/宿主前端接入点/安全模型/验证命令/已知限制；目录索引 `docs/ui-workshop/README.md`。

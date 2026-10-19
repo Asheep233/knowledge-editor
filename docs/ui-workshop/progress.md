@@ -1078,3 +1078,7 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - 主理人授权推送 `feat/ui-workshop`（仅分支；不推 master/不创建 Release）；新增
   `reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` 供另一前端 UI Agent 做完整接入验证。
+
+## P6 接口文档（2026-10-19 夜）
+
+- 新增 `WORKSHOP-INTEGRATION-GUIDE.md`（host/guest/SDK/协议/命令白名单/生命周期/接入点/验证）与目录索引 `README.md`。

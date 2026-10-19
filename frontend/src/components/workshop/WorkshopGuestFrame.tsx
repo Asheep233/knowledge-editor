@@ -15,7 +15,7 @@ import { HostDispatcher } from '../../core/protocol/channel'
 import type { ProtocolMethods } from '../../core/protocol/types'
 import { CoreSaveBridge } from '../../core/session/coreSaveBridge'
 import { createGuestSessionHost, type GuestSessionHost, type GuestHostBackend } from '../../core/packs/guestHost'
-import { isolationGuard } from '../../core/packs/productHostAdapter'
+import { createArticleMetaCommandHandler, isolationGuard } from '../../core/packs/productHostAdapter'
 import type { TrustTier } from '../../core/packs/trustPolicy'
 
 interface GuestStartResultSession { connection: NonNullable<import('../../core/packs/packageHost').PackageSession['connection']> }
@@ -63,8 +63,12 @@ class ProductBrokerBackend implements BrokerBackend {
   async print(params: ProtocolMethods['print.snapshot']['params']) {
     return { pdfToken: params.relPath, pages: 1 }
   }
+  private readonly commandHandler = createArticleMetaCommandHandler({
+    baseUrl: (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '',
+  })
   async invokeCommand(params: ProtocolMethods['command.invoke']['params']) {
-    return { ok: true, value: params.name }
+    // W02：白名单命令（article.setTitle/setTags）→ 宿主原子写后端 meta；其余命令拒绝
+    return await this.commandHandler.invoke(params.name, params.args)
   }
 }
 

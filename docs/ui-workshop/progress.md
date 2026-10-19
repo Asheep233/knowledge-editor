@@ -851,3 +851,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - `core/session/formHandoff.ts`：begin/setField/submit/原子提交/迟到或重复幂等/关闭后拒绝/
   连接失效拒绝/失败保留可重试/drain；6 例 U 通过、tsc 0。产品 guest→host 接线与 W 未做。
   证据：`evidence/P5-T26-W02-formhandoff.md`。
+
+## P6/T26 进度（W02 产品 title 交接 W 7/7，2026-10-19）
+
+- 产品 host 白名单命令桥（article.set-title/set-tags，小写命令名符合 manifest schema）→ 后端
+  `/api/articles/{rel}/meta` 原子写；guest SDK 经 Broker command.invoke 提交 title，未知命令
+  E_COMMAND_NOT_ALLOWED；产品 W **7/7 PASS**。证据：`evidence/P5-T26-W02-form.md`。
+- W02 剩余：tags/公式/重命名草稿、迟到命令、候选启动失败、提交后编辑器 UI 同步、IME 组字交接。

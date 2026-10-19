@@ -77,3 +77,10 @@
 4. W06 网络/worker/伪造消息边界系统验证 + Tauri 升级回归；
 5. 正式发布密钥流程（ADR-003 实施清单）；
 6. 全部通过后再评估 `LOCAL_WORKSHOP_RELEASE_CANDIDATE`。
+
+## 追加证据（2026-10-19 会话后段）
+
+- W02 产品 title 交接 **W 7/7**（`P5-T26-W02-form.md`）：guest → Broker command.invoke → 宿主
+  后端原子写 frontmatter；未知命令拒绝；命令名须符合 manifest 小写 schema（`article.set-title`）。
+- W05 协议线 W 7/7（握手/snapshot）、W06 边界 W 8/8、W07 无限循环 W 8/8、W09 工坊口径 W 6/6、
+  W01 ZIP W 8/8；回归基线见 `P6-final-verification`。

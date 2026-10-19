@@ -3,7 +3,7 @@ import type { invoke as tauriInvoke } from '@tauri-apps/api/core'
 import { describe, expect, it, vi } from 'vitest'
 
 import { PACK_API_VERSION, type PackManifest } from './manifest'
-import { capabilityCeilingFor, createProductHostBackend, isolationGuard } from './productHostAdapter'
+import { capabilityCeilingFor, createArticleMetaCommandHandler, createProductHostBackend, isolationGuard } from './productHostAdapter'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 
@@ -97,5 +97,29 @@ describe('A7 productHostAdapter', () => {
     const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
     expect(src).not.toMatch(/document\./)
     expect(src).not.toMatch(/from ['"]react['"]/)
+  })
+})
+
+describe('W02 article meta command handler', () => {
+  it('白名单 article.set-title → PUT meta（路径/参数校验）', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ path: 'Articles/a.md', title: '新标题' }) })) as unknown as typeof fetch
+    const handler = createArticleMetaCommandHandler({ fetchImpl, baseUrl: 'http://127.0.0.1:8000' })
+    const result = await handler.invoke('article.set-title', { relPath: 'Articles/a.md', title: '新标题' })
+    expect(result.ok).toBe(true)
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://127.0.0.1:8000/api/articles/Articles%2Fa.md/meta',
+      expect.objectContaining({ method: 'PUT' }),
+    )
+    const body = JSON.parse(String((vi.mocked(fetchImpl).mock.calls[0][1] as RequestInit).body))
+    expect(body).toEqual({ title: '新标题' })
+  })
+
+  it('article.set-tags → PUT tags；非法路径/空标题/未知命令拒绝', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ path: 'Articles/a.md', tags: ['x'] }) })) as unknown as typeof fetch
+    const handler = createArticleMetaCommandHandler({ fetchImpl })
+    expect((await handler.invoke('article.set-tags', { relPath: 'Articles/a.md', tags: ['x'] })).ok).toBe(true)
+    await expect(handler.invoke('article.set-title', { relPath: '../evil.md', title: 'x' })).rejects.toThrow(/E_PATH/)
+    await expect(handler.invoke('article.set-title', { relPath: 'Articles/a.md', title: '  ' })).rejects.toThrow(/E_TITLE/)
+    await expect(handler.invoke('article.delete', { relPath: 'Articles/a.md' })).rejects.toThrow(/E_COMMAND_NOT_ALLOWED/)
   })
 })

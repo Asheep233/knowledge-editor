@@ -117,3 +117,58 @@ export function capabilityCeilingFor(tier: TrustTier, manifest: PackManifest): s
   const decision = evaluateTrust({ manifest, source: 'local-file', signature: 'missing', tier })
   return decision.allowed ? decision.effectiveCapabilities : []
 }
+
+// ---------------- W02：product host 表单/元信息命令白名单 ----------------
+
+export interface ArticleMetaCommandHandler {
+  invoke(name: string, args?: Record<string, unknown>): Promise<{ ok: boolean; value?: unknown }>
+}
+
+export interface ArticleMetaCommandOptions {
+  baseUrl?: string
+  fetchImpl?: typeof fetch
+}
+
+function assertArticleRelPath(relPath: string): string {
+  const rel = relPath.trim().replace(/\\/g, '/')
+  if (!rel.startsWith('Articles/') || !rel.endsWith('.md') || rel.includes('..') || rel.includes('\0')) {
+    throw new Error(`E_PATH: 非法文章路径 ${relPath}`)
+  }
+  return rel
+}
+
+/** W02 最小交接：guest 经 Broker command.invoke 提交 title/tags → 宿主原子写后端 meta。
+ *  仅白名单命令；参数严格校验；未知命令一律拒绝。 */
+export function createArticleMetaCommandHandler(options: ArticleMetaCommandOptions = {}): ArticleMetaCommandHandler {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis)
+  const baseUrl = (options.baseUrl ?? '').replace(/\/$/, '')
+  async function putMeta(relPath: string, body: Record<string, unknown>): Promise<{ ok: boolean; value?: unknown }> {
+    const resp = await fetchImpl(`${baseUrl}/api/articles/${encodeURIComponent(relPath)}/meta`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!resp.ok) throw new Error(`E_META: HTTP ${resp.status}`)
+    const data = (await resp.json()) as { path?: string; title?: string; tags?: string[] }
+    return { ok: true, value: { relPath: data.path ?? relPath, title: data.title, tags: data.tags } }
+  }
+  return {
+    async invoke(name, args = {}) {
+      if (name === 'article.set-title') {
+        const relPath = assertArticleRelPath(String(args.relPath ?? ''))
+        const title = String(args.title ?? '').trim()
+        if (!title || title.length > 200) throw new Error('E_TITLE: 标题为空或过长')
+        return await putMeta(relPath, { title })
+      }
+      if (name === 'article.set-tags') {
+        const relPath = assertArticleRelPath(String(args.relPath ?? ''))
+        const tags = args.tags
+        if (!Array.isArray(tags) || tags.some((t) => typeof t !== 'string')) {
+          throw new Error('E_TAGS: tags 必须是字符串数组')
+        }
+        return await putMeta(relPath, { tags })
+      }
+      throw new Error(`E_COMMAND_NOT_ALLOWED: 未授权命令 ${name}`)
+    },
+  }
+}

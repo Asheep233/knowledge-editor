@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-10-19T08:22:16+0800",
+  "scenario": "T26 W02 表单交接产品 W（command.invoke title + 未知命令拒绝）",
+  "checks": [
+    {
+      "name": "W-T26-W02-1 安装签名包",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368429339395348 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W02-2 guest 握手（ui.shell/context.read）",
+      "pass": true,
+      "detail": {
+        "features": [
+          "ui.shell",
+          "context.read"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-W02-3 guest 经 Broker command.invoke 提交 title 成功",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "relPath": "Articles/a.md",
+          "title": "W02 交接标题",
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "W-T26-W02-4 宿主后端原子写生效（frontmatter title 已更新）",
+      "pass": true,
+      "detail": {
+        "head": "---\ntitle: W02 交接标题\n---\n\nW02 form\n"
+      }
+    },
+    {
+      "name": "W-T26-W02-5 未知命令被拒绝（E_COMMAND_NOT_ALLOWED）",
+      "pass": true,
+      "detail": "E_INTERNAL: E_COMMAND_NOT_ALLOWED: 未授权命令 article.delete"
+    },
+    {
+      "name": "W-T26-W02-6 会话 active",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "capabilities": [
+            "ui.shell",
+            "context.read"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26w02",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368429342325635 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W02-7 主进程存活 / 用户实例未运行（N/A）",
+      "pass": true,
+      "detail": {
+        "user_pid": "(not running)"
+      }
+    }
+  ],
+  "pass_count": 7,
+  "total": 7
+}

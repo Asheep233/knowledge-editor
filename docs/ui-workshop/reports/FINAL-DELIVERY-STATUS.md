@@ -176,3 +176,10 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 8 项检查：矩阵 --check PASS、所有 results JSON 已被矩阵收录、交付文档 evidence 引用存在、仓库无测试私钥、
 分支本地未推送（无 upstream）、工作树干净、台账 CSV 可解析、最终状态声明 `EXPERIMENTAL_TRUSTED_PACKS`
 且不声明更高。**最近一次：8/8 PASS**（evidence/T26-delivery-consistency.json）。
+
+## 10. 云端实机验收任务包
+
+- `reports/CLOUD-VM-VERIFICATION-TASKPACK.md` + `reports/cloud-handoff/`（git bundle `4c71233..feat/ui-workshop`、
+  `cloud_build.ps1`、`cloud_verify_installed.py`、`T27-I-results.schema.json`）；一键打包
+  `reports/cloud-vm-taskpack.zip`。用途：在云端 Windows VM 执行 T27 I 门禁 + 安装态工坊冒烟，
+  回传后由 Lead 登记。

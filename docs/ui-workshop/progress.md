@@ -999,3 +999,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - a80ec8b/b030b25：入口角标、启动失败可观测、孤儿 sidecar 自愈、损坏 settings 备份重置。
 - 543bb08：四项 FAIL→PASS；W07 bridge 45/46（剩 C2-7 no-fallback 自动修复）、boot 43/45
   （剩 B1-6/B2-5 运行期无自愈需重启）。仍 PASS-with-gaps。
+
+## P6 进度（F 台账 v4：F03 全量 + F16 审计，2026-10-19）
+
+- f164ce1：checks 71/76；F03 42/42 登记（37 PASS/5 FAIL）；F16 11 项原生菜单结构性审计（W 未覆盖如实
+  NOT_RUN）；CSV 72/130 行。剩余：F03 5 FAIL 复核、F16 OS 级交互、F14 导出隔离限制、guest 能力面。

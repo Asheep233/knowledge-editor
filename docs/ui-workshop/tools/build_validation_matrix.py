@@ -20,7 +20,7 @@ OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 PARTIAL_EVIDENCE = {
     "T26-W07-boot-results.json": 2,
     "T26-W07-bridge-results.json": 1,
-    "T26-F-ledger-results.json": 3,
+    "T26-F-ledger-results.json": 5,
 }
 
 KNOWN_FAILURES = {

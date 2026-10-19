@@ -312,3 +312,13 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - W07 boot **43/45**（B1-6/B2-5：资源恢复后运行中实例不自动重试，需重启；重启可恢复且有 W 证据，
   **定稿为已知设计限制**；失败原因已可观测 B1-4）。
 - 这两类不再改动产品语义；交付口径按 PASS-with-known-gaps，不宣称 W07 全通过。
+
+## 追加（2026-10-19 后段 · F 台账 v4：F03 全量 + F16 原生菜单审计）
+
+- `f164ce1` **F 台账 v4**：checks 71/76；**F03 42/42 全量登记（37 PASS / 5 FAIL）**——v4 新增 10 PASS
+  （heading2/3、插入图片真实上传、块级公式、脚注、note、表格、撤销/重做）+ 2 新 FAIL（链接插入未产生
+  `<a>`、模块插入未出现正文）+ 3 既有 FAIL（Ctrl+Shift+8、Ctrl+Shift+B、工具栏保存）如实保留；
+  **F16 原生菜单 11 项结构性审计**（menu.rs：11 MenuItem/ID/加速键/事件分发）→ W/DOM 未覆盖如实 NOT_RUN；
+  CSV 累计 **72/130 行**登记。
+- 剩余：F03 5 FAIL 待产品/探针复核；F16 原生菜单真实交互需 OS 级 UI 自动化；F14 最终导出 Documents 隔离限制
+  NOT_RUN；guest 能力面未覆盖行 NOT_RUN。

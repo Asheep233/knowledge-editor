@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T17:26:36+0800",
-  "head": "ddfba49",
+  "generatedAt": "2026-10-19T17:27:34+0800",
+  "head": "1b7aaea",
   "branch": "feat/ui-workshop",
   "checks": [
     {
@@ -34,16 +34,14 @@
       "pass": true,
       "detail": {
         "branch": "feat/ui-workshop",
-        "head": "ddfba49",
+        "head": "1b7aaea",
         "upstream": null
       }
     },
     {
       "name": "DC-6 工作树干净（忽略本工具 `--write` 的自身证据文件）",
-      "pass": false,
-      "detail": [
-        "M docs/ui-workshop/tools/verify_delivery_consistency.py"
-      ]
+      "pass": true,
+      "detail": []
     },
     {
       "name": "DC-7 台账 CSV 可解析且含行",
@@ -63,7 +61,7 @@
       "detail": null
     }
   ],
-  "passCount": 7,
+  "passCount": 8,
   "total": 8,
   "featureBaselineStats": {
     "rows": 130,

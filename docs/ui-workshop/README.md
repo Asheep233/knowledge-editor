@@ -5,6 +5,8 @@
 | **`WORKSHOP-INTEGRATION-GUIDE.md`** | **工坊接口使用文档（host/guest/SDK/协议/命令白名单/生命周期/接入点/验证）** |
 | **`WORKSHOP-INTERFACE-POLICY.md`** | **接口维护规则（接口级交付、兼容性、每次更新的 DoD 清单）** |
 | **`WORKSHOP-INTERFACE-CHANGELOG.md`** | **接口变更记录（protocol/sdk/pack apiVersion/能力/命令白名单）** |
+| **`reports/HANDOVER-SNAPSHOT.md`** | **交接快照（仓库状态/入口/快速验收/未闭环红线/恢复路径）** |
+| **`reports/TASK-STATUS-HANDOVER.md`** | **T00–T28 逐任务状态（passed/in_progress/blocked 口径）** |
 | `HANDOVER-FINAL.md` | 完整交接报告 |
 | `reports/FINAL-DELIVERY-STATUS.md` | 一页式最终交付状态 |
 | `reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` | 给另一个前端 Agent 的接入/完整验证步骤 |

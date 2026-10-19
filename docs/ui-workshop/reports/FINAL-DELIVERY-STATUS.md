@@ -240,3 +240,9 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
   接口变更记录：`WORKSHOP-INTERFACE-CHANGELOG.md`（当前 protocol v1 / sdk v0.1.0 / pack apiVersion 1）。
 - 自动守卫：`verify_delivery_consistency.py` 新增 **DC-9 接口维护检查**（策略/变更记录/SDK 版本一致/
   Guide 引用/UI 入口默认关闭）。
+
+## 18. 交接材料（2026-10-19 夜）
+
+- 交接快照：`reports/HANDOVER-SNAPSHOT.md`；逐任务状态：`reports/TASK-STATUS-HANDOVER.md`。
+- 接口维护：`WORKSHOP-INTERFACE-POLICY.md` + `WORKSHOP-INTERFACE-CHANGELOG.md`（一致性 DC-9 自动校验）。
+- 远端 `origin/feat/ui-workshop` 已同步；未推 master、未创建 Release。

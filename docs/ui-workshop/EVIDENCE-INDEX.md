@@ -1,6 +1,6 @@
 # UI 工坊证据索引（自动生成）
 
-- 生成时间：2026-10-19T21:16:27+0800
+- 生成时间：2026-10-19T21:59:49+0800
 - 证据目录：`docs/ui-workshop/evidence/`（152 个文件；48 个 results JSON、95 个说明 md）
 - 由 `tools/build_evidence_index.py` 生成；验收结论以 `validation-matrix.csv` 与各证据文件为准。
 

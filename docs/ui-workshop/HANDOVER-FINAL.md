@@ -506,3 +506,9 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - 新增 `WORKSHOP-INTERFACE-POLICY.md`（每次更新必须维护接口的 DoD 清单）与
   `WORKSHOP-INTERFACE-CHANGELOG.md`（变更记录，当前 protocol v1 / sdk v0.1.0 / pack apiVersion 1）；
 - `verify_delivery_consistency.py` 增加 DC-9 接口维护检查。
+
+## 交接快照（2026-10-19 夜）
+
+- 一页式交接：`reports/HANDOVER-SNAPSHOT.md`（仓库状态/交付入口/快速验收/未闭环红线/恢复路径）；
+- 逐任务状态：`reports/TASK-STATUS-HANDOVER.md`（T00–T28：T01/T07/T08 passed、T27 blocked、T26 认证未达成、
+  其余 in_progress；最终状态 `EXPERIMENTAL_TRUSTED_PACKS`，不把部分实现写成 passed）。

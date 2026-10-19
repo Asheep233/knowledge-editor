@@ -114,3 +114,9 @@
 - frontend：**143 files / 1962 passed** + 1 skipped、tsc 0（+4 动作单测）；
 - backend：847 collected / exit 0（未改）；产品 cargo：67 passed（未改 Rust）；
 - 验证矩阵：**61 行**，--check PASS（packB 命令桥 W 30/30）。
+
+## 参数化命令后最终回归（2026-10-19 末段）
+
+- frontend：**143 files / 1981 passed** + 1 skipped、tsc 0（+参数化命令/校验单测）；
+- backend：847 collected / exit 0（未改）；产品 cargo：67 passed（未改 Rust）；
+- 验证矩阵：**62 行**，--check PASS（packA/B 命令桥 W 各 36/36）。

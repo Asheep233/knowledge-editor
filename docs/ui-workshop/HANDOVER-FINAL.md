@@ -20,7 +20,7 @@
 | 套件 | 结果 | 说明 |
 | --- | --- | --- |
 | frontend `tsc -b --noEmit` | **0 错** | WSL |
-| frontend `vitest run --maxWorkers=2` | **143 files / 1962 passed + 1 skipped** | WSL/happy-dom（U 级）；收敛时本地复跑确认 |
+| frontend `vitest run --maxWorkers=2` | **143 files / 1981 passed + 1 skipped** | WSL/happy-dom（U 级）；收敛时本地复跑确认 |
 | backend `pytest backend/tests -q` | **847 collected / exit 0** | WSL；收敛时本地复跑确认（Windows Py3.10 曾全绿） |
 | 产品壳 `cargo test --release` | **67 passed** | Windows（Rust 单测，引自 `P6-final-verification.md`；WSL 未复跑） |
 | 原型 W 探针一键门禁 | **13/13 PASS** | `run_all_w_probes.py --check`（Windows/WebView2） |
@@ -386,7 +386,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 > 本节为最终交付状态收口记录；历史追加段保留原样（按时间顺序，各段数字为当时状态）。
 
-- **代码/回归基线（复核值）**：frontend **143 files / 1962 passed + 1 skipped**、tsc 0（本轮收敛本地复跑）；
+- **代码/回归基线（复核值）**：frontend **143 files / 1981 passed + 1 skipped**、tsc 0（本轮收敛本地复跑）；
   backend **847 collected / exit 0**（本轮收敛本地复跑）；产品 cargo **67 passed**（引自
   `P6-final-verification.md`，Windows 侧未复跑）；原型 W **13/13**；验证矩阵 **61 行 --check PASS**
   （44 个 results JSON 全部纳入；bridge/F-ledger META 已补齐；W07 boot/bridge/F 台账为 PASS_WITH_FINDINGS）。

@@ -35,7 +35,7 @@ T26-W04-sdk-results.json,T26/W04,W,Windows 产品壳（隔离构建，外部脚�
 T26-W05-protocol-results.json,T26/W05,W,Windows 产品壳（隔离构建，协议线握手/snapshot）,PASS,7,7,python tools/run_t26_protocol_probe.py
 T26-W06-boundary-results.json,T26/W06,W,Windows 产品壳（隔离构建，网络/worker/能力边界）,PASS,8,8,python tools/run_t26_boundary_probe.py
 T26-W07-boot-results.json,T26/W07,W,Windows 产品壳（隔离构建，boot crash/连续启动失败；含 4 缺口）,PASS_WITH_FINDINGS(4 缺口已记录),40,44,python tools/run_t26_boot_crash_probe.py
-T26-W07-bridge-results.json,?,U?,?,PASS_WITH_FINDINGS(7 缺口已记录),32,39,
+T26-W07-bridge-results.json,?,U?,?,PASS_WITH_FINDINGS(4 缺口已记录),36,40,
 T26-W07-fault-results.json,T26/W07,W,Windows 产品壳（隔离构建，无限循环故障）,PASS,8,8,python tools/run_t26_fault_probe.py
 T26-W07-mem-results.json,T26/W07,W,Windows 产品壳（隔离构建，guest CPU/内存压力故障）,PASS,21,21,python tools/run_t26_fault_mem_probe.py
 T26-W09-perf-diag-results.json,T26/W09,W,Windows 产品壳（性能诊断，已知大文档限制）,KNOWN_FAIL(记录),4,5,python tools/run_t26_perf_diag_probe.py

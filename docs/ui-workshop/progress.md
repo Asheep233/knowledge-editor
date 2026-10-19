@@ -975,3 +975,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 4780319 产品 W 复测：B-6、A-10 均 FAIL→PASS（snapshot 42ms 恢复；超时 E_TIMEOUT）；W07 bridge
   最终 32/39，剩 7 缺口（崩溃 UI/session/stale pid、启动 recover 无提示、no-fallback 不可修）。
   仍 PASS-with-gaps，不宣称全通过。
+
+## P6 进度（W07 B-4/B-5/B-8 修复+复测，2026-10-19）
+
+- deed2a7：RuntimeHealthBanner + host 不可用会话挂起/恢复 + stale runtime 清理；cargo 57、vitest 1915。
+- e794a06：B-4/B-5/B-8 FAIL→PASS；W07 bridge 最终 40 checks 36 PASS/4 缺口（仅 C 类 recover UI 提示 +
+  no-fallback 不可自动修复）；仍 PASS-with-gaps。

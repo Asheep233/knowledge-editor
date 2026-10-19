@@ -264,3 +264,14 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `4780319` **修复后产品 W 复测**：B-6 FAIL→**PASS**（sidecar 自动重启后 snapshot 42ms 成功、
   正文=磁盘）；A-10 FAIL→**PASS**（超时返回 E_TIMEOUT/retryable=true，print 无假 token；阻塞期间
   UI 0.4ms 响应）；W07 bridge 最终 **39 checks 32 PASS / 7 缺口**（PASS-with-gaps，未宣称全通过）。
+
+## 追加（2026-10-19 后段 · W07 B-4/B-5/B-8 修复 + 复测）
+
+- `deed2a7` **B-4/B-5/B-8**：App 级 `RuntimeHealthBanner`（restarting/degraded/recovered 三态，工坊
+  modal 之上可见，无事件不误报）；PackageHost `markHostUnavailable/markHostRestored`（宿主故障 →
+  guest session suspended + `E_HOST_UNAVAILABLE`，不计崩溃/不进 safeMode，ready 后恢复 active）；
+  Rust 侧车退出即清空 `SidecarState.info` + 删除 stale runtime.json（get_runtime_info 不再返回死 pid）。
+  cargo 57 passed、vitest 142 files/1915 passed、tsc 0。
+- `e794a06` **修复后产品 W 复测**：B-4/B-5/B-8 均 FAIL→**PASS**（banner restarting→recovered→degraded、
+  session suspended+E_HOST_UNAVAILABLE→active、runtime.json 即时删除无 stale pid）；W07 bridge 最终
+  **40 checks 36 PASS / 4 缺口**（仅剩 C 类：启动 recover 无 UI 提示 ×3、no-fallback 不可自动修复）。

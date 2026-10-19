@@ -76,13 +76,29 @@
     {
       "name": "editor.code-block",
       "handler": "editorCodeBlock"
+    },
+    {
+      "name": "editor.table.insert",
+      "handler": "actionTableInsert"
+    },
+    {
+      "name": "editor.footnote.insert",
+      "handler": "actionFootnoteInsert"
+    },
+    {
+      "name": "editor.note.insert",
+      "handler": "actionNoteInsert"
+    },
+    {
+      "name": "doc.save",
+      "handler": "actionDocSave"
     }
   ],
   "assets": [
     {
       "path": "index.html",
-      "sha256": "9b74f5abab02dfdeab54af9ea0fe2c5c4e4025704d422c47fa8d336de54dee22",
-      "size": 4977
+      "sha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
+      "size": 5320
     },
     {
       "path": "pack.css",
@@ -91,8 +107,8 @@
     },
     {
       "path": "pack.js",
-      "sha256": "817cdb40e43f4d00996c719dfc4c355ee00de8d888f75ebb02940077af660359",
-      "size": 15869
+      "sha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
+      "size": 16347
     },
     {
       "path": "vendor/guest-sdk.js",

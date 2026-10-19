@@ -64,3 +64,30 @@
 ### legacy camelCase（schema 限制，非缺陷）
 
 - `editor.bulletList` / `editor.orderedList` / `editor.codeBlock` 仅宿主后端 legacy 兼容直调；manifest 命令名 schema（`^[a-z][a-z0-9.-]{1,80}$`）不允许大写 → 无法声明；guest 直接请求被 broker `declaredCommands` 前置拒绝（`E_FORBIDDEN`，W-T26-18 验证）。
+
+---
+
+## v9 增量：4 条可无头产品动作（task-30，2026-10-19）
+
+- 测试构建：`e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`（sha256=`e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`，mtime=`2026-10-19T18:37:46`；含 38748a2 动作桥扩展，协议名共 18 条 = 14 切换 + 4 动作）。
+- pack B：manifest 追加 4 条 `editor.table.insert` / `editor.footnote.insert` / `editor.note.insert` / `doc.save`；UI 追加 4 按钮；签名包重建。
+- W 复测：**30/30 PASS**（原 26 项回归 + 4 动作新增）。
+
+### 动作 → 主窗口 DOM / 磁盘断言
+
+| 动作（协议名） | guest 操作 | 主窗口断言 | 撤销 | W check |
+| --- | --- | --- | --- | --- |
+| `editor.table.insert` | 点「插入表格 3×3」 | `table` DOM：rows=3、表头 th=3、cols=3 | PASS | W-T26-24 |
+| `editor.footnote.insert` | 点「插入脚注」 | `ke-footnote-ref` 0→1、`sup` 0→1（脚注节点真实插入） | PASS | W-T26-25 |
+| `editor.note.insert` | 点「插入信息块」 | `[data-ke-note]` 0→1（含 data-id/title/color） | PASS | W-T26-26 |
+| `doc.save` | 点「保存文档」 | **真实落盘**：编辑 marker 后磁盘内容出现 marker（保存前无）、mtime 变化 1792406353.5096283→1792406367.172301 | 不适用（保存动作） | W-T26-27 |
+
+### doc.save 真实落盘证据（不只查返回值）
+
+- 编辑 marker `T30-DOC-SAVE-MARK` → 编辑器内存在；点击前磁盘**无**该 marker；guest 点击「保存文档」后磁盘出现该 marker；
+- `mtime`：`1792406353.5096283` → `1792406367.172301`（变化）；返回值回显 `{"name":"doc.save","ok":true,"value":{"ok":true,"value":{"name":"doc.save","executed":true}},"at":1792406367130}`；
+- 结论：`doc.save` 触发产品真实保存链（与工具栏保存/Ctrl+S 同一 `saveNow`），非假成功。
+
+### 负向（含不接的对话框类动作）
+
+- 未声明/大写/未知命令、以及 **不接的对话框类动作**（`editor.link.insert`/`image.insert`/`math.block`/`module.insert`）全部被宿主拒绝（`E_FORBIDDEN`），主窗口 DOM 不变（W-T26-17，共 7 个负向用例）。

@@ -27,7 +27,9 @@
     'editor.bold', 'editor.italic', 'editor.underline', 'editor.strike', 'editor.code',
     'editor.heading1', 'editor.heading2', 'editor.heading3',
     'editor.bullet-list', 'editor.ordered-list', 'editor.blockquote', 'editor.code-block',
-    'editor.undo', 'editor.redo'
+    'editor.undo', 'editor.redo',
+    // W07 task-29：4 条可无头产品动作（复用产品 action 注册表；doc.save 为保存动作）
+    'editor.table.insert', 'editor.footnote.insert', 'editor.note.insert', 'doc.save'
   ];
   var COMMANDS = ['article.set-title', 'article.set-tags'].concat(EDITOR_COMMANDS);
   var HEARTBEAT_MS = 200;
@@ -294,7 +296,12 @@
     'btn-cmd-blockquote': 'editor.blockquote',
     'btn-cmd-code-block': 'editor.code-block',
     'btn-cmd-undo': 'editor.undo',
-    'btn-cmd-redo': 'editor.redo'
+    'btn-cmd-redo': 'editor.redo',
+    // W07 task-29：动作按钮（无头执行；doc.save 触发产品真实保存）
+    'btn-cmd-table-insert': 'editor.table.insert',
+    'btn-cmd-footnote-insert': 'editor.footnote.insert',
+    'btn-cmd-note-insert': 'editor.note.insert',
+    'btn-cmd-doc-save': 'doc.save'
   };
 
   // 负向测试 hook（仅参考包演示/自动化用；真实调用仍受宿主 manifest 声明 + 能力 + 白名单三重校验）

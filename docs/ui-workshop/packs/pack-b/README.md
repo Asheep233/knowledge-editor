@@ -56,7 +56,8 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 - 宿主白名单 14 条：`bold/italic/underline/strike/code/heading1/heading2/heading3/bulletList/orderedList/blockquote/codeBlock/undo/redo`
   （协议名 `editor.<command>`，**大小写敏感**；实现见 `frontend/src/components/workshop/productBrokerBackend.ts`
   的 `WORKSHOP_EDITOR_COMMAND_WHITELIST`）。
-- 本包在 `manifest.commands` **逐条声明 14 条**：11 条单词命令 `editor.bold/italic/underline/strike/code/heading1/heading2/heading3/blockquote/undo/redo` + 3 条 kebab 多词命令 `editor.bullet-list/ordered-list/code-block`
+- 本包在 `manifest.commands` **逐条声明 18 条**：14 条切换命令（11 单词 + 3 kebab 多词：`editor.bullet-list/ordered-list/code-block`）+ 4 条**可无头产品动作**（W07 task-29）：
+  `editor.table.insert`（产品默认 3×3 带表头）、`editor.footnote.insert`（脚注节点）、`editor.note.insert`（ke-note 信息块）、`doc.save`（产品真实保存动作）
   （声明是 broker 的 `declaredCommands` 白名单前置；未声明的命令会被 `E_FORBIDDEN` 拒绝）。
 - 能力：新增声明 `editor.commands.readonly`（trusted 才授予；未授予 → `E_CAPABILITY`）。
 - 协议名规则（W07 task-27）：**多词命令统一 kebab-case**（`editor.bullet-list` / `editor.ordered-list` /
@@ -72,7 +73,8 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 - （W07 task-27 已修复）多词命令改名为 **kebab-case 协议名**并写入 manifest；`editor.bulletList` 等旧
   camelCase 仅后端兼容直调、**不能**写进 manifest（schema `^[a-z][a-z0-9.-]{1,80}$` 不允许大写），
   guest 若直接请求 camelCase 会被 broker `declaredCommands` 前置拒绝（`E_FORBIDDEN`）。
-- `editor.*` 仅覆盖切换类/历史类命令，不含文本插入/删除/选区/任意命令（最小白名单，安全边界）。
+- `editor.*` 仅覆盖切换类/历史类命令 + 上述 4 条可无头产品动作；**不接**对话框/文件选择类动作（`editor.link.insert`/`image.insert`/`math.*`/`module.insert`，无头环境会弹窗阻塞）——guest 调用被拒绝（E_FORBIDDEN）。
+- 4 条动作的 W 语义：table→主窗口 `table`（3 行，含表头 `th`）；footnote→脚注引用/脚注区 DOM；note→`[data-ke-note]`；`doc.save`→**真实落盘**（编辑 marker 后等待磁盘内容/mtime 变化或状态栏「已保存」，不只看返回值）。
 - 其余 F03 行（packA 路径 / 非命令类 / 插入类命令）不在 pack B 能力范围，保持 NOT_RUN（不伪造）。
 ## 安装与启用（产品）
 

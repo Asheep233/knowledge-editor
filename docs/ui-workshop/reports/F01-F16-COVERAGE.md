@@ -716,3 +716,31 @@
 - packBEntry 新增 3 行 PASS：`CMD.editor.list.bullet` / `CMD.editor.list.ordered` / `CMD.editor.codeBlock`；
 - F03 packB PASS 行数：**11 → 14**；F03 域行 packBEntry 更新为 PARTIAL（覆盖 14 行 + 剩余缺口）；
 - 证据：`evidence/P5-T26-pack-editor-cmd.md`（v8 段）、`evidence/T26-pack-editor-cmd-results.json`。
+
+---
+
+## 附录 L：pack B 4 条动作（table/footnote/note/doc.save）W 与 F03 补齐（v9，2026-10-19）
+
+> task-30：W07 task-29 动作桥（18 条协议名 = 14 切换 + 4 无头动作）产品 W 复测；不改产品代码。
+
+### L.1 结果（30/30 PASS；构建 `e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`）
+
+| 协议名 | guest 操作 | 主窗口断言 | 撤销 | W check |
+| --- | --- | --- | --- | --- |
+| `editor.table.insert` | 点「插入表格 3×3」 | `table` rows=3/表头 th=3/cols=3 | PASS | W-T26-24 |
+| `editor.footnote.insert` | 点「插入脚注」 | `ke-footnote-ref` 0→1、`sup` 0→1 | PASS | W-T26-25 |
+| `editor.note.insert` | 点「插入信息块」 | `[data-ke-note]` 0→1（data-id/title/color） | PASS | W-T26-26 |
+| `doc.save` | 点「保存文档」 | **真实落盘**：marker 保存前磁盘无 → 点击后磁盘出现；mtime 变化 | 不适用 | W-T26-27 |
+
+### L.2 关键结论
+
+- 4 条动作经 guest `command.invoke` → 产品 `runAction` 真实 handler 执行，主窗口 DOM/磁盘均有真实变化；
+- `doc.save` 以**磁盘内容 + mtime** 验证（编辑 marker 后等待落盘），不只查返回值：marker 保存前不在磁盘、点击后 30s 内出现且 mtime 变化；
+- 负向：未声明/大写/未知 + 不接的对话框类动作（link/image/math/module）全部 E_FORBIDDEN 且主窗口 DOM 不变（7 用例）；
+- 原 26 项（14 切换命令/kebab/负向/会话）全部回归 PASS → 总计 30/30。
+
+### L.3 F03 packB 覆盖
+
+- packBEntry 新增 4 行 PASS：`CMD.editor.table.insert` / `CMD.editor.footnote.insert` / `CMD.editor.note.insert` / `UI.toolbar.保存-Ctrl-S`（后者以 doc.save 产品保存 action 的真实落盘为 packB 证据）；
+- F03 packB PASS 行数：**14 → 18**；F03 域行 packBEntry 更新为 PARTIAL（18 行 + 剩余缺口）；
+- 证据：`evidence/P5-T26-pack-editor-cmd.md`（v9 段）、`evidence/T26-pack-editor-cmd-results.json`。

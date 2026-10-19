@@ -1183,9 +1183,9 @@
         "featureId": "F03",
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "PARTIAL:pack B 受控编辑器命令桥（editor.* 14 条协议名）覆盖 14 行 PASS（bold/italic/underline/strike/code/heading1-3/bullet-list/ordered-list/blockquote/code-block/undo/redo；W-T26-7..16/20..22；kebab 修复 W-T26-18/23）；仍缺 packA 行与非命令类行 → 其余保持 NOT_RUN（不伪造）",
+        "packBEntry": "PARTIAL:pack B 协议名覆盖 18 行 PASS（14 切换命令 + 4 可无头动作 table/footnote/note/doc.save，W-T26-7..16/20..27）；仍缺 packA 行与对话框类动作（link/image/math/module 不在白名单，负向拒绝）等 → 其余保持 NOT_RUN（不伪造）",
         "officialBaselineResult": "PASS:官方 UI Ctrl+B/Ctrl+I/工具栏加粗+撤销+重做（真实 DOM 断言）",
-        "note": "task-28 pack B 覆盖 14 行；其余保持 NOT_RUN（见 packCmd）",
+        "note": "task-30 pack B 覆盖 18 行；其余保持 NOT_RUN（见 packCmd）",
         "forceFill": false
       },
       {
@@ -1588,9 +1588,9 @@
         "featureId": "UI.toolbar.保存-Ctrl-S",
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:同左",
+        "packBEntry": "PASS:pack B guest 真实 DOM 点击「保存文档」→ command.invoke(doc.save)（产品保存 action，与工具栏保存/Ctrl+S 同一 saveNow 链）→ 编辑 marker 后**真实落盘**：磁盘 marker 出现（保存前无）、mtime 变化，返回值 {name:'doc.save',executed:true}（W-T26-27；不只查返回值）",
         "officialBaselineResult": "PASS:复核（AUTOMATION_LIMITATION）：干净态与 4×bold/undo 连续编辑后点击工具栏保存均落盘成功（diskSaved=true、状态栏「已保存」）；v4 台账失败为连续自动化状态耦合（外部修改提示/保存队列时序），详见 evidence/P5-T26-F03-fail-audit.md",
-        "note": "task-21 复核改判/保留（见 f03FailAudit）",
+        "note": "task-30 动作 W 验证 PASS（见 packCmd）",
         "forceFill": false
       },
       {
@@ -1669,27 +1669,27 @@
         "featureId": "CMD.editor.footnote.insert",
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:同左",
+        "packBEntry": "PASS:pack B guest 真实 DOM 点击「插入脚注」→ command.invoke(editor.footnote.insert) → 主窗口脚注 DOM ke-footnote-ref 0→1 / sup 0→1 且撤销还原（W-T26-25）",
         "officialBaselineResult": "PASS:官方 UI 工具栏注释（脚注）→ 对话框输入 → 脚注节点（CDP 真实操作 + DOM 断言 before=0→after=2）",
-        "note": "",
+        "note": "task-30 动作 W 验证 PASS（见 packCmd）",
         "forceFill": false
       },
       {
         "featureId": "CMD.editor.note.insert",
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:同左",
+        "packBEntry": "PASS:pack B guest 真实 DOM 点击「插入信息块」→ command.invoke(editor.note.insert) → 主窗口 [data-ke-note] 0→1 且撤销还原（W-T26-26）",
         "officialBaselineResult": "PASS:官方 UI 工具栏信息块 → ke-note 节点（CDP 真实操作 + DOM 断言 before=0→after=1）",
-        "note": "",
+        "note": "task-30 动作 W 验证 PASS（见 packCmd）",
         "forceFill": false
       },
       {
         "featureId": "CMD.editor.table.insert",
         "domain": "F03",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
-        "packBEntry": "NOT_RUN:同左",
+        "packBEntry": "PASS:pack B guest 真实 DOM 点击「插入表格 3×3」→ command.invoke(editor.table.insert)（可无头产品动作，与快捷键/工具栏同一 handler）→ 主窗口 .ProseMirror table DOM rows=3/表头 th=3/cols=3 且撤销还原（W-T26-24）",
         "officialBaselineResult": "PASS:官方 UI 工具栏表格 → 2×2 表格节点（CDP 真实操作 + DOM 断言 before=0→after=1）",
-        "note": "",
+        "note": "task-30 动作 W 验证 PASS（见 packCmd）",
         "forceFill": false
       },
       {
@@ -1901,7 +1901,7 @@
       "F03": {
         "registered": 42,
         "packAPass": 0,
-        "packBPass": 14,
+        "packBPass": 18,
         "officialPass": 42,
         "officialFail": 0,
         "officialNr": 0
@@ -2350,7 +2350,7 @@
     "F03 仅抽样 7 条真实执行，其余保持 NOT_RUN",
     "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）"
   ],
-  "verificationStatus": "V8_PACKB_KEBAB",
+  "verificationStatus": "V9_PACKB_ACTIONS",
   "v4Note": "task-20 第三轮增量：F03 剩余 12 行（工具栏/菜单入口真实执行；10 PASS / 2 FAIL）+ F16 原生菜单只读结构审计（menu.rs 11 项 MenuItem；原生菜单非 DOM，CSV 11 行如实 NOT_RUN，不伪造 W/DOM）。",
   "v4": {
     "f03_remaining_rows": 12,
@@ -2858,11 +2858,11 @@
   "v6Note": "task-23：blockquote 快捷键修复（f4759a2）后产品 W 复测 6/6 PASS。折叠光标/选中文本 Ctrl+Shift+B 均产生 blockquote（0→1）并可再按取消；工具栏行为不变；引用块内 atom 后空段落 Backspace 一次删除（不回归）；Ctrl+B/Ctrl+I/撤销/重做不受影响。v5 的唯一 PRODUCT_FINDING 已修复 → F03 台账 42/42 行全部 PASS。",
   "v7Note": "task-26：pack B 扩展 11 条 editor.* 命令声明 + editor.commands.readonly 能力；产品 W 探针 22/22 PASS——guest 真实 DOM 点按钮 → command.invoke(editor.*) → 主窗口 .ProseMirror DOM 断言（strong/em/u/s/code/h1/h2/h3/blockquote + 撤销/重做往返）；负向（大写/未知/未声明）均 E_FORBIDDEN 且 DOM 不变；已知 schema 缺口 bulletList/orderedList/codeBlock 无法在 manifest 声明（如实记录）。F03 台账新增 packB PASS 11 行。",
   "packCmd": {
-    "generatedAt": "2026-10-19T18:14:00+0800",
+    "generatedAt": "2026-10-19T18:39:12+0800",
     "build": {
       "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-      "sha256": "ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70",
-      "mtime": "2026-10-19T18:10:34"
+      "sha256": "e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce",
+      "mtime": "2026-10-19T18:37:46"
     },
     "manifest": {
       "distDir": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b",
@@ -2888,7 +2888,11 @@
         "editor.redo",
         "editor.bullet-list",
         "editor.ordered-list",
-        "editor.code-block"
+        "editor.code-block",
+        "editor.table.insert",
+        "editor.footnote.insert",
+        "editor.note.insert",
+        "doc.save"
       ],
       "editorCommands": [
         "editor.bold",
@@ -2904,7 +2908,10 @@
         "editor.redo",
         "editor.bullet-list",
         "editor.ordered-list",
-        "editor.code-block"
+        "editor.code-block",
+        "editor.table.insert",
+        "editor.footnote.insert",
+        "editor.note.insert"
       ],
       "signatureKeyId": "k1"
     },
@@ -2955,6 +2962,12 @@
       "editor.code-block",
       "editor.undo",
       "editor.redo"
+    ],
+    "actionNames": [
+      "editor.table.insert",
+      "editor.footnote.insert",
+      "editor.note.insert",
+      "doc.save"
     ],
     "legacyCamel": [
       "editor.bulletList",
@@ -3019,11 +3032,11 @@
               "assets": [
                 {
                   "path": "index.html",
-                  "declaredSha256": "9b74f5abab02dfdeab54af9ea0fe2c5c4e4025704d422c47fa8d336de54dee22",
-                  "actualSha256": "9b74f5abab02dfdeab54af9ea0fe2c5c4e4025704d422c47fa8d336de54dee22",
+                  "declaredSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
+                  "actualSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
                   "match": true,
-                  "size": 4977,
-                  "declaredSize": 4977
+                  "size": 5320,
+                  "declaredSize": 5320
                 },
                 {
                   "path": "pack.css",
@@ -3035,11 +3048,11 @@
                 },
                 {
                   "path": "pack.js",
-                  "declaredSha256": "817cdb40e43f4d00996c719dfc4c355ee00de8d888f75ebb02940077af660359",
-                  "actualSha256": "817cdb40e43f4d00996c719dfc4c355ee00de8d888f75ebb02940077af660359",
+                  "declaredSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
+                  "actualSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
                   "match": true,
-                  "size": 15869,
-                  "declaredSize": 15869
+                  "size": 16347,
+                  "declaredSize": 16347
                 },
                 {
                   "path": "vendor/guest-sdk.js",
@@ -3055,7 +3068,7 @@
           "zips": {
             "com.astranota.examples.pack-a": {
               "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
-              "sha256": "cb9e4ebf125f03e3329d0853aa618719093d1230a5044bc02da6d13f2de5eba7",
+              "sha256": "25e07d7cfc7a6a6ea370eea9e2018cb3766675f929e2877f92701156841c1b93",
               "names": [
                 "index.html",
                 "manifest.json",
@@ -3065,11 +3078,11 @@
               ],
               "rootOk": true,
               "assetsMatch": true,
-              "size": 9472
+              "size": 9473
             },
             "com.astranota.examples.pack-b": {
               "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
-              "sha256": "c3ccb0a5e028861309500fb43cb8213dad9182e6cf1f40654267d63704d2c77e",
+              "sha256": "c6fb6f96307a0e7e2d5ca9e48a611ae95505698d3b6b4861f62ed8f3a8897858",
               "names": [
                 "index.html",
                 "manifest.json",
@@ -3079,10 +3092,10 @@
               ],
               "rootOk": true,
               "assetsMatch": true,
-              "size": 11056
+              "size": 11364
             }
           },
-          "publicKeyHex": "dc96886342fe1bdbc3cf5e67865098b3f3eaaeb53c76322aacc0c1b39400f633",
+          "publicKeyHex": "d401fef5120989f15c6a48d86973e193f27ac31c6bae4f39d2acccfc4a1755e4",
           "buildKeySource": "provided"
         }
       },
@@ -3091,7 +3104,7 @@
         "pass": true,
         "detail": {
           "exit": 0,
-          "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=dc96886342fe1bdb…（provided）\n"
+          "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=d401fef5120989f1…（provided）\n"
         }
       },
       {
@@ -3111,7 +3124,7 @@
         }
       },
       {
-        "name": "W-T26-1 pack B 构建/签名：manifest 声明 14 条 editor.* 协议名（含 3 条 kebab）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+        "name": "W-T26-1 pack B 构建/签名：manifest 声明 18 条协议名（14 切换命令含 3 kebab + 4 动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
         "pass": true,
         "detail": {
           "editorCommands": [
@@ -3128,7 +3141,10 @@
             "editor.redo",
             "editor.bullet-list",
             "editor.ordered-list",
-            "editor.code-block"
+            "editor.code-block",
+            "editor.table.insert",
+            "editor.footnote.insert",
+            "editor.note.insert"
           ],
           "capabilities": [
             "ui.shell",
@@ -3147,9 +3163,9 @@
         "name": "W-T26-2 隔离产品实例启动 + CDP 就绪（工坊入口渲染）",
         "pass": true,
         "detail": {
-          "port": 9862,
-          "exeSha256": "ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70",
-          "exeMtime": "2026-10-19T18:10:34"
+          "port": 9850,
+          "exeSha256": "e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce",
+          "exeMtime": "2026-10-19T18:37:46"
         }
       },
       {
@@ -3161,7 +3177,7 @@
             "value": {
               "active": "1.0.0",
               "previous": null,
-              "updatedAt": "SystemTime { intervals: 134368784455339986 }"
+              "updatedAt": "SystemTime { intervals: 134368799564547626 }"
             }
           },
           "verify": {
@@ -3194,12 +3210,12 @@
             "lastError": null,
             "packId": "com.astranota.examples.pack-b",
             "state": "active",
-            "updatedAt": "SystemTime { intervals: 134368784458364979 }"
+            "updatedAt": "SystemTime { intervals: 134368799567522813 }"
           }
         }
       },
       {
-        "name": "W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 14 条 editor.* 协议名可见",
+        "name": "W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 18 条协议名可见（14 切换 + 4 动作）",
         "pass": true,
         "detail": {
           "acceptedFeatures": [
@@ -3222,7 +3238,11 @@
             "editor.blockquote",
             "editor.code-block",
             "editor.undo",
-            "editor.redo"
+            "editor.redo",
+            "editor.table.insert",
+            "editor.footnote.insert",
+            "editor.note.insert",
+            "doc.save"
           ],
           "handshake": null
         }
@@ -3428,6 +3448,66 @@
         }
       },
       {
+        "name": "W-T26-24 guest 点击「插入表格 3×3」→ command.invoke(editor.table.insert) → 主窗口 DOM table 3行/3表头(th) 且撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "tableBefore": 0,
+          "tableInfo": {
+            "rows": 3,
+            "th": 3,
+            "cols": 3,
+            "html": "<table style=\"min-width: 75px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p><br class=\"ProseMirror-trailingBrea"
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-25 guest 点击「插入脚注」→ command.invoke(editor.footnote.insert) → 主窗口脚注 DOM（ke-footnote-ref/脚注区/sup）+ 撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "before": {
+            "ref": 0,
+            "section": 0,
+            "sup": 0
+          },
+          "after": {
+            "ref": 1,
+            "section": 0,
+            "sup": 1,
+            "html": "<h1>F 台账标题</h1><p><span class=\"react-renderer node-footnote\" contenteditable=\"false\"><sup as=\"sup\" contenteditable=\"false\" class=\"ke-footnote-ref\" title=\"注释引用 [n]，点击可修改编号\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\""
+          },
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-26 guest 点击「插入信息块」→ command.invoke(editor.note.insert) → 主窗口 [data-ke-note] + 撤销还原",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "before": 0,
+          "after": 1,
+          "html": "<div as=\"div\" data-ke-note=\"\" data-id=\"d1f18a56-5176-43e0-bc0a-092c19ae2656\" data-label=\"\" data-title=\"信息块 18:39\" data-color=\"blue\" data-author=\"\" data-created=\"2026-10-19T10:39:26.002Z\" data-updated=",
+          "undoRestored": true
+        }
+      },
+      {
+        "name": "W-T26-27 guest 点击「保存文档」→ command.invoke(doc.save) → 产品真实保存落盘（编辑 marker 后磁盘内容出现 marker、mtime 变化；不只看返回值）",
+        "pass": true,
+        "detail": {
+          "guestClick": true,
+          "markerInEditor": true,
+          "markerOnDiskBefore": false,
+          "savedToDisk": true,
+          "mtimeBefore": 1792406353.5096283,
+          "mtimeAfter": 1792406367.172301,
+          "statusBefore": ".commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
+          "statusAfter": "context.read, editor.commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
+          "saveEcho": "{\"name\":\"doc.save\",\"ok\":true,\"value\":{\"ok\":true,\"value\":{\"name\":\"doc.save\",\"executed\":true}},\"at\":1792406367130}"
+        }
+      },
+      {
         "name": "W-T26-16 guest 点「撤销/重做」→ 主窗口 DOM 往返（bold 生效→撤销消失→重做恢复）",
         "pass": true,
         "detail": {
@@ -3470,21 +3550,57 @@
               "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
               "lastErrorCode": "E_FORBIDDEN",
               "added": 1
+            },
+            {
+              "label": "对话框类动作未接（link.insert）",
+              "name": "editor.link.insert",
+              "ok": false,
+              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
+              "lastErrorCode": "E_FORBIDDEN",
+              "added": 1
+            },
+            {
+              "label": "对话框类动作未接（image.insert）",
+              "name": "editor.image.insert",
+              "ok": false,
+              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
+              "lastErrorCode": "E_FORBIDDEN",
+              "added": 1
+            },
+            {
+              "label": "对话框类动作未接（math.block）",
+              "name": "editor.math.block",
+              "ok": false,
+              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
+              "lastErrorCode": "E_FORBIDDEN",
+              "added": 1
+            },
+            {
+              "label": "对话框类动作未接（module.insert）",
+              "name": "editor.module.insert",
+              "ok": false,
+              "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert",
+              "lastErrorCode": "E_FORBIDDEN",
+              "added": 1
             }
           ],
           "domUnchanged": true,
           "codes": [
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold",
             "E_FORBIDDEN: 命令未在 manifest 声明: editor.explode",
-            "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList"
+            "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
+            "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
+            "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
+            "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
+            "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert"
           ]
         }
       },
       {
-        "name": "W-T26-18 kebab 修复：14 条规范协议名全部可在 manifest 声明（含 editor.bullet-list/ordered-list/code-block）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
+        "name": "W-T26-18 协议名修复：18 条规范协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 动作）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
         "pass": true,
         "detail": {
-          "declaredEditor": [
+          "declaredProtocol": [
             "editor.bold",
             "editor.italic",
             "editor.underline",
@@ -3498,7 +3614,11 @@
             "editor.redo",
             "editor.bullet-list",
             "editor.ordered-list",
-            "editor.code-block"
+            "editor.code-block",
+            "editor.table.insert",
+            "editor.footnote.insert",
+            "editor.note.insert",
+            "doc.save"
           ],
           "legacyCamel": [
             "editor.bulletList",
@@ -3522,14 +3642,14 @@
             "lastError": null,
             "packId": "com.astranota.examples.pack-b",
             "state": "active",
-            "updatedAt": "SystemTime { intervals: 134368784458364979 }"
+            "updatedAt": "SystemTime { intervals: 134368799567522813 }"
           }
         }
       }
     ],
     "summary": {
-      "total": 26,
-      "pass": 26
+      "total": 30,
+      "pass": 30
     },
     "negatives": [
       {
@@ -3555,10 +3675,48 @@
         "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
         "lastErrorCode": "E_FORBIDDEN",
         "added": 1
+      },
+      {
+        "label": "对话框类动作未接（link.insert）",
+        "name": "editor.link.insert",
+        "ok": false,
+        "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
+        "lastErrorCode": "E_FORBIDDEN",
+        "added": 1
+      },
+      {
+        "label": "对话框类动作未接（image.insert）",
+        "name": "editor.image.insert",
+        "ok": false,
+        "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
+        "lastErrorCode": "E_FORBIDDEN",
+        "added": 1
+      },
+      {
+        "label": "对话框类动作未接（math.block）",
+        "name": "editor.math.block",
+        "ok": false,
+        "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
+        "lastErrorCode": "E_FORBIDDEN",
+        "added": 1
+      },
+      {
+        "label": "对话框类动作未接（module.insert）",
+        "name": "editor.module.insert",
+        "ok": false,
+        "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert",
+        "lastErrorCode": "E_FORBIDDEN",
+        "added": 1
       }
     ],
-    "evidence": "docs/ui-workshop/evidence/T26-pack-editor-cmd-results.json + P5-T26-pack-editor-cmd.md（含 v8 kebab 增量）",
-    "kebabFix": "W07 task-27：多词命令协议名统一 kebab（editor.bullet-list/ordered-list/code-block），manifest schema 允许声明"
+    "evidence": "docs/ui-workshop/evidence/T26-pack-editor-cmd-results.json + P5-T26-pack-editor-cmd.md（含 v9 动作增量）",
+    "actions": [
+      "editor.table.insert",
+      "editor.footnote.insert",
+      "editor.note.insert",
+      "doc.save"
+    ]
   },
-  "v8Note": "task-28：pack B 增加 3 条 kebab 多词命令（editor.bullet-list/ordered-list/code-block，manifest 可声明）；产品 W 探针 26/26 PASS——guest 真实 DOM 点击 → command.invoke(kebab) → 主窗口 DOM ul 0→1 / ol 0→1 / pre 0→4 且撤销还原；结果回显 {ok:true,value:{name:<kebab>,executed:true}}；旧 camelCase 仍不可在 manifest 声明（legacy 直调被 E_FORBIDDEN，schema 限制非缺陷）。F03 packB PASS 11→14 行。"
+  "v8Note": "task-28：pack B 增加 3 条 kebab 多词命令（editor.bullet-list/ordered-list/code-block，manifest 可声明）；产品 W 探针 26/26 PASS——guest 真实 DOM 点击 → command.invoke(kebab) → 主窗口 DOM ul 0→1 / ol 0→1 / pre 0→4 且撤销还原；结果回显 {ok:true,value:{name:<kebab>,executed:true}}；旧 camelCase 仍不可在 manifest 声明（legacy 直调被 E_FORBIDDEN，schema 限制非缺陷）。F03 packB PASS 11→14 行。",
+  "v9Note": "task-30：pack B 追加 4 条可无头产品动作（editor.table.insert / editor.footnote.insert / editor.note.insert / doc.save，复用产品 action 注册表 runAction）；产品 W 探针 30/30 PASS——guest 真实 DOM 点击 → command.invoke → 主窗口 DOM table(3行/3表头)/脚注(ke-footnote-ref+sup)/ke-note 断言 + 撤销还原；doc.save 编辑 marker 后真实落盘（磁盘 marker 出现+mtime 变化，不只查返回值）；负向（含 link/image/math/module 不在白名单）全部 E_FORBIDDEN 且 DOM 不变。F03 packB PASS 14→18 行。"
 }

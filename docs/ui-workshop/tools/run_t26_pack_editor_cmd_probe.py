@@ -68,6 +68,9 @@ PROTOCOL_NAMES = list(PROTOCOL_TO_COMMAND.keys())
 DECLARED = PROTOCOL_NAMES
 # 旧 camelCase 协议名（仅后端 legacy 兼容直调；manifest schema 不允许大写 → 无法声明）
 LEGACY_CAMEL = ["editor." + c for c in WHITELIST if "editor." + c not in PROTOCOL_TO_COMMAND]
+# W07 task-29：4 条可无头产品动作（复用产品 action 注册表 runAction；协议名即 action id）
+ACTION_NAMES = ["editor.table.insert", "editor.footnote.insert", "editor.note.insert", "doc.save"]
+ALL_DECLARED = PROTOCOL_NAMES + ACTION_NAMES
 
 
 def sha_file(p: Path) -> str:
@@ -119,8 +122,8 @@ def main() -> int:
         "signatureKeyId": (manifest.get("signature") or {}).get("keyId"),
     }
     check(
-        "W-T26-1 pack B 构建/签名：manifest 声明 14 条 editor.* 协议名（含 3 条 kebab）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
-        sorted(n for n in declared_names if n.startswith("editor.")) == sorted(DECLARED)
+        "W-T26-1 pack B 构建/签名：manifest 声明 18 条协议名（14 切换命令含 3 kebab + 4 动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+        sorted(n for n in declared_names if n.startswith(("editor.", "doc."))) == sorted(ALL_DECLARED)
         and "editor.commands.readonly" in (manifest.get("capabilities") or [])
         and (manifest.get("signature") or {}).get("keyId") == "k1",
         {"editorCommands": [n for n in declared_names if n.startswith("editor.")],
@@ -207,8 +210,8 @@ def main() -> int:
         except Exception:
             gs = {}
         accepted = gs.get("accepted") or []
-        check("W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 14 条 editor.* 协议名可见",
-              "editor.commands.readonly" in accepted and len(gs.get("cmds") or []) == 14,
+        check("W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 18 条协议名可见（14 切换 + 4 动作）",
+              "editor.commands.readonly" in accepted and len(gs.get("cmds") or []) == 18,
               {"acceptedFeatures": accepted, "editorCommands": gs.get("cmds"), "handshake": session.get("handshake")})
 
         # ---- host 编辑器 DOM 断言工具 ----
@@ -230,6 +233,18 @@ def main() -> int:
                     "(() => { const el=document.querySelector('.ProseMirror'); if(!el) return false; el.focus();"
                     " const s=window.getSelection(); const r=document.createRange(); r.selectNodeContents(el);"
                     " s.removeAllRanges(); s.addRange(r); return String(s); })()",
+                )
+            )
+
+        def place_host_caret() -> bool:
+            """主窗口编辑器内放置折叠光标（段落内），供插入类动作使用。"""
+            return bool(
+                R.host_eval(
+                    cdp,
+                    "(() => { const el=document.querySelector('.ProseMirror'); if(!el) return false; el.focus();"
+                    " const p=el.querySelector('p') || el; const s=window.getSelection(); const r=document.createRange();"
+                    " const node=p.firstChild || p; try { r.setStart(node, 0); } catch (e) { r.selectNodeContents(el); }"
+                    " r.collapse(true); s.removeAllRanges(); s.addRange(r); return true; })()",
                 )
             )
 
@@ -315,6 +330,101 @@ def main() -> int:
               and inner.get("name") == "editor.bullet-list" and inner.get("executed") is True,
               {"ephemeralEcho": echo})
 
+        # ---- W07 task-29：4 条可无头产品动作（table / footnote / note / doc.save） ----
+        # 24) editor.table.insert → 主窗口 table（3 行，含表头 th）+ 撤销还原
+        place_host_caret()
+        time.sleep(0.2)
+        t_before = host_counts()
+        clicked = guest_click("#btn-cmd-table-insert")
+        grew = R.wait_until(lambda: (host_counts().get("tables") or 0) > (t_before.get("tables") or 0), 20, 0.25)
+        table_info = R.host_eval(
+            cdp,
+            "(() => { const t=document.querySelector('.ProseMirror table'); if(!t) return null;"
+            " return {rows:t.querySelectorAll('tr').length, th:t.querySelectorAll('th').length,"
+            " cols:(t.querySelector('tr')||{children:{length:0}}).children.length, html:t.outerHTML.slice(0,220)}; })()",
+        ) or {}
+        host_undo()
+        t_restored = R.wait_until(lambda: (host_counts().get("tables") or 0) == (t_before.get("tables") or 0), 20, 0.25)
+        check("W-T26-24 guest 点击「插入表格 3×3」→ command.invoke(editor.table.insert) → 主窗口 DOM table 3行/3表头(th) 且撤销还原",
+              bool(clicked and grew and table_info.get("rows", 0) >= 3 and table_info.get("th", 0) == 3 and t_restored),
+              {"guestClick": clicked, "tableBefore": t_before.get("tables"), "tableInfo": table_info, "undoRestored": t_restored})
+        time.sleep(0.2)
+
+        # 25) editor.footnote.insert → 脚注引用/sup + 脚注区 DOM + 撤销还原
+        place_host_caret()
+        time.sleep(0.2)
+        fn_before = R.host_eval(cdp, "(() => { const pm=document.querySelector('.ProseMirror');"
+                                     " return {ref:pm.querySelectorAll('.ke-footnote-ref').length,"
+                                     " section:pm.querySelectorAll('[data-ke-footnotes]').length,"
+                                     " sup:pm.querySelectorAll('sup').length}; })()") or {}
+        clicked = guest_click("#btn-cmd-footnote-insert")
+        grew = R.wait_until(
+            lambda: bool(R.host_eval(cdp, "(() => { const pm=document.querySelector('.ProseMirror');"
+                                          " return pm.querySelectorAll('.ke-footnote-ref,[data-ke-footnotes],sup').length; })()"))
+            and (R.host_eval(cdp, "document.querySelectorAll('.ProseMirror .ke-footnote-ref, .ProseMirror [data-ke-footnotes], .ProseMirror sup').length") or 0) > (fn_before.get("ref", 0) + fn_before.get("section", 0) + fn_before.get("sup", 0)),
+            20, 0.25,
+        )
+        fn_after = R.host_eval(cdp, "(() => { const pm=document.querySelector('.ProseMirror');"
+                                   " return {ref:pm.querySelectorAll('.ke-footnote-ref').length,"
+                                   " section:pm.querySelectorAll('[data-ke-footnotes]').length,"
+                                   " sup:pm.querySelectorAll('sup').length,"
+                                   " html:pm.innerHTML.slice(0,240)}; })()") or {}
+        host_undo()
+        fn_restored = R.wait_until(lambda: (R.host_eval(cdp, "document.querySelectorAll('.ProseMirror .ke-footnote-ref, .ProseMirror [data-ke-footnotes], .ProseMirror sup').length") or 0) == (fn_before.get("ref", 0) + fn_before.get("section", 0) + fn_before.get("sup", 0)), 20, 0.25)
+        fn_total_after = (fn_after.get("ref", 0) + fn_after.get("section", 0) + fn_after.get("sup", 0))
+        check("W-T26-25 guest 点击「插入脚注」→ command.invoke(editor.footnote.insert) → 主窗口脚注 DOM（ke-footnote-ref/脚注区/sup）+ 撤销还原",
+              bool(clicked and grew and fn_total_after > (fn_before.get("ref", 0) + fn_before.get("section", 0) + fn_before.get("sup", 0)) and fn_restored),
+              {"guestClick": clicked, "before": fn_before, "after": fn_after, "undoRestored": fn_restored})
+        time.sleep(0.2)
+
+        # 26) editor.note.insert → ke-note（[data-ke-note]）+ 撤销还原
+        place_host_caret()
+        time.sleep(0.2)
+        note_before = R.host_eval(cdp, "document.querySelectorAll('.ProseMirror [data-ke-note]').length")
+        clicked = guest_click("#btn-cmd-note-insert")
+        grew = R.wait_until(lambda: (R.host_eval(cdp, "document.querySelectorAll('.ProseMirror [data-ke-note]').length") or 0) > (note_before or 0), 20, 0.25)
+        note_after = R.host_eval(cdp, "document.querySelectorAll('.ProseMirror [data-ke-note]').length")
+        note_html = R.host_eval(cdp, "(() => { const n=document.querySelector('.ProseMirror [data-ke-note]'); return n?n.outerHTML.slice(0,200):null; })()")
+        host_undo()
+        note_restored = R.wait_until(lambda: (R.host_eval(cdp, "document.querySelectorAll('.ProseMirror [data-ke-note]').length") or 0) == (note_before or 0), 20, 0.25)
+        check("W-T26-26 guest 点击「插入信息块」→ command.invoke(editor.note.insert) → 主窗口 [data-ke-note] + 撤销还原",
+              bool(clicked and grew and note_restored and (note_after or 0) > (note_before or 0)),
+              {"guestClick": clicked, "before": note_before, "after": note_after, "html": note_html, "undoRestored": note_restored})
+        time.sleep(0.2)
+
+        # 27) doc.save → 真实落盘（编辑 marker → guest 点击保存 → 等磁盘内容变化；不得只看返回值）
+        doc_path = ws / "Articles" / REL_LEAF
+        disk_before = doc_path.read_text(encoding="utf-8", errors="replace")
+        mtime_before = doc_path.stat().st_mtime
+        marker = "T30-DOC-SAVE-MARK"
+        R.host_eval(cdp, "(() => { const el=document.querySelector('.ProseMirror'); if(!el) return false; el.focus();"
+                         " const s=window.getSelection(); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false);"
+                         " s.removeAllRanges(); s.addRange(r); return true; })()")
+        cdp.call("Input.insertText", {"text": marker})
+        time.sleep(0.6)
+        marker_in_editor = marker in R.editor_text(cdp)
+        marker_on_disk_before = marker in disk_before
+        status_before = R.body_text(cdp)[-120:]
+        save_clicked = guest_click("#btn-cmd-doc-save")
+        saved_to_disk = R.wait_until(lambda: marker in doc_path.read_text(encoding="utf-8", errors="replace"), 30, 0.4)
+        disk_after = doc_path.read_text(encoding="utf-8", errors="replace")
+        mtime_after = doc_path.stat().st_mtime
+        status_after = R.body_text(cdp)[-140:]
+        save_echo = R.guest_eval(cdp, PACK_B_SLUG, "(() => { const st=window.__packBState;"
+                                                  " const r=(st.commandResults||[]).slice().reverse().find(x=>x.name==='doc.save');"
+                                                  " return JSON.stringify(r||null); })()")
+        check("W-T26-27 guest 点击「保存文档」→ command.invoke(doc.save) → 产品真实保存落盘（编辑 marker 后磁盘内容出现 marker、mtime 变化；不只看返回值）",
+              bool(save_clicked and marker_in_editor and not marker_on_disk_before and saved_to_disk
+                   and (mtime_after != mtime_before)),
+              {"guestClick": save_clicked, "markerInEditor": marker_in_editor, "markerOnDiskBefore": marker_on_disk_before,
+               "savedToDisk": saved_to_disk, "mtimeBefore": mtime_before, "mtimeAfter": mtime_after,
+               "statusBefore": status_before, "statusAfter": status_after, "saveEcho": save_echo})
+        # 清理：撤销 marker 并再次保存到磁盘（保持隔离工作区一致；失败不影响本轮结论）
+        host_undo()
+        time.sleep(0.4)
+        guest_click("#btn-cmd-doc-save")
+        R.wait_until(lambda: marker not in doc_path.read_text(encoding="utf-8", errors="replace"), 20, 0.4)
+
         # ---- 撤销 / 重做（往返） ----
         select_all_host()
         before_ur = host_counts()
@@ -355,6 +465,10 @@ def main() -> int:
             ("大写命令名", "editor.Bold"),
             ("未知命令", "editor.explode"),
             ("camelCase 白名单但 manifest 无法声明", "editor.bulletList"),
+            ("对话框类动作未接（link.insert）", "editor.link.insert"),
+            ("对话框类动作未接（image.insert）", "editor.image.insert"),
+            ("对话框类动作未接（math.block）", "editor.math.block"),
+            ("对话框类动作未接（module.insert）", "editor.module.insert"),
         ]
         neg_results = []
         for label, name in neg_cases:
@@ -369,16 +483,16 @@ def main() -> int:
                "codes": [n.get("error") or n.get("lastErrorCode") for n in neg_results]})
 
         # ---- W07 task-27：kebab 修复验证（14 条规范协议名均可声明；legacy camelCase 仍被 broker 拒绝） ----
-        declared_editor = [n for n in declared_names if n.startswith("editor.")]
+        declared_protocol = [n for n in declared_names if n.startswith(("editor.", "doc."))]
         legacy_rejected = all(
             any(n.get("name") == legacy and not n.get("ok") for n in neg_results)
             for legacy in ["editor.bulletList"]
         )
         check(
-            "W-T26-18 kebab 修复：14 条规范协议名全部可在 manifest 声明（含 editor.bullet-list/ordered-list/code-block）；"
+            "W-T26-18 协议名修复：18 条规范协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 动作）；"
             "旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
-            sorted(declared_editor) == sorted(DECLARED) and legacy_rejected and len(declared_editor) == 14,
-            {"declaredEditor": declared_editor, "legacyCamel": LEGACY_CAMEL, "legacyRejected": legacy_rejected},
+            sorted(declared_protocol) == sorted(ALL_DECLARED) and legacy_rejected and len(declared_protocol) == 18,
+            {"declaredProtocol": declared_protocol, "legacyCamel": LEGACY_CAMEL, "legacyRejected": legacy_rejected},
         )
 
         # ---- 会话仍 active / 命令计数 ----

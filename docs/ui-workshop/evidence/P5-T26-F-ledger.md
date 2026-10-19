@@ -290,3 +290,11 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - F03 台账：packBEntry 新增 **3 行 PASS**（CMD.editor.list.bullet / list.ordered / codeBlock）→ **packB PASS 行数 11→14**。
 - legacy camelCase 不可在 manifest 声明（schema 限制，非缺陷）：直接请求被 E_FORBIDDEN 拒绝。
 - 证据：`evidence/P5-T26-pack-editor-cmd.md` v8 段 + `T26-pack-editor-cmd-results.json`；报告附录 K。
+
+## v9 4 条动作（table/footnote/note/doc.save）W + F03 packB 补齐（task-30，2026-10-19）
+
+- 构建 `e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`（含 38748a2：18 条协议名 = 14 切换 + 4 无头动作）；pack B manifest 声明 18 条，签名包重建。
+- 产品 W 探针 **30/30 PASS**：table→`table` 3 行/3 表头且撤销还原；footnote→`ke-footnote-ref`+`sup` 且撤销还原；note→`[data-ke-note]` 且撤销还原；**doc.save → 编辑 marker 后真实落盘（磁盘 marker 出现 + mtime 变化，不只查返回值）**。
+- 负向：未声明/大写/未知 + 不接的对话框类（link/image/math/module）全部拒绝（E_FORBIDDEN）且 DOM 不变；原 26 项全部回归 PASS。
+- F03 台账：packBEntry 新增 **4 行 PASS**（CMD.editor.table.insert / footnote.insert / note.insert / UI.toolbar.保存-Ctrl-S）→ **packB PASS 行数 14→18**。
+- 证据：`evidence/P5-T26-pack-editor-cmd.md` v9 段 + `T26-pack-editor-cmd-results.json`；报告附录 L。

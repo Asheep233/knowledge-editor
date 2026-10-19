@@ -74,6 +74,10 @@
         <button id="btn-cmd-code-block" type="button">代码块</button>
         <button id="btn-cmd-undo" type="button">撤销</button>
         <button id="btn-cmd-redo" type="button">重做</button>
+        <button id="btn-cmd-table-insert" type="button">插入表格 3×3</button>
+        <button id="btn-cmd-footnote-insert" type="button">插入脚注</button>
+        <button id="btn-cmd-note-insert" type="button">插入信息块</button>
+        <button id="btn-cmd-doc-save" type="button">保存文档</button>
       </div>
       <div class="row"><span class="k">最近命令</span><span id="editor-command-result">（未执行）</span></div>
       <p class="hint">命令名与 manifest.commands 逐条一致；未声明/未知/大写名一律被宿主拒绝（E_FORBIDDEN），不假成功。</p>
@@ -91,7 +95,7 @@
 
     <footer class="foot">
       包 id：<code>com.astranota.examples.pack-b</code> · 发布 SDK <span id="sdk-version">—</span> ·
-      心跳 200ms · 命令：article.set-title / article.set-tags / editor.*（14 条，多词命令用 kebab 名）
+      心跳 200ms · 命令：article.set-title / article.set-tags / editor.*（14 条切换）+ 4 条动作（table/footnote/note/doc.save）
     </footer>
     <script src="vendor/guest-sdk.js"></script>
     <script src="pack.js"></script>

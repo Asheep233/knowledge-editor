@@ -201,3 +201,14 @@ ACCEPTANCE A 节：
 - 统计：CSV 130 行 → packA PASS 24 / PARTIAL 3 / NOT_RUN 103；packB PASS 25 / PARTIAL 2 / NOT_RUN 93。
 - 未映射：网络边界/无受控协议、仅部分覆盖（不扩大解释、不把官方 UI 通过映射成 pack 通过）、不在 pack
   能力面（F01 工作区/F08 历史/F09 附件/F11 回收站/F13 导出/F15 设置 UI）。
+
+## 3m. 参数化无头命令（link/math/table）与 F04/F05 pack 覆盖（2026-10-19，v12）
+
+- 新增 3 条参数化命令（`editor.link.insert`/`editor.math.inline`/`editor.math.block`，`table.insert`
+  升级为 rows/cols/withHeaderRow 参数化）：严格 args 校验（https/http/mailto only、长度上限、控制字符、
+  1–8 越界拒绝；失败 E_BAD_PAYLOAD 且不执行）。
+- pack A/B 产品 W **各 36/36 PASS**（链接无/有选区、行内/块公式节点无弹窗、2×4 表格真实尺寸、全部负向
+  DOM 不变、撤销还原）；F04/F05 域行 packA/packB=**PARTIAL**（仅插入动作面，MathLive 输入/公式转换/
+  表格深层操作不在 pack 能力面，不伪造）。
+- F03 新增 pack PASS 2 行（`CMD.editor.link.insert`、`CMD.editor.math.block`）→ **packA PASS 26 / packB 27**。
+- 证据：`P5-T26-pack-editor-cmd.md` v12、`T26-pack*-editor-cmd-results.json`（各 36 checks）、F 报告附录 O。

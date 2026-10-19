@@ -188,3 +188,10 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 
 - `docs/ui-workshop/EVIDENCE-INDEX.md`（自动生成）：矩阵 62 行 → 证据文件/任务/结果/计数/复现命令；
   同时列出 results JSON 缺说明 md、说明 md 未被引用等可维护性提示。
+
+## 12. 参数化无头命令（v12）
+
+- `editor.link.insert`（https/http/mailto 严格校验）/`editor.math.inline|block`（latex 校验、不开对话框）/
+  `editor.table.insert`（rows/cols 1–8）接入 guest 命令桥；pack A/B 产品 W **各 36/36 PASS**。
+- F 台账：F03 +2 行 pack PASS（link/math.block）→ **packA PASS 26 / packB 27**；F04/F05 域行 PARTIAL
+  （仅插入动作面，不伪造全量）。证据 `P5-T26-pack-editor-cmd.md` v12、F 报告附录 O。

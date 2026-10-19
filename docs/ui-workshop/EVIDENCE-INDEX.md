@@ -1,6 +1,6 @@
 # UI 工坊证据索引（自动生成）
 
-- 生成时间：2026-10-19T18:55:36+0800
+- 生成时间：2026-10-19T19:20:56+0800
 - 证据目录：`docs/ui-workshop/evidence/`（150 个文件；47 个 results JSON、94 个说明 md）
 - 由 `tools/build_evidence_index.py` 生成；验收结论以 `validation-matrix.csv` 与各证据文件为准。
 
@@ -53,8 +53,8 @@
 | T26-W09-workshop-results.json | T26/W09 | W | PASS | 6/6 | `python tools/run_t26_w09_workshop_probe.py` |
 | T26-cloud-handoff-results.json | T26/cloud | B（本地模拟自验） | PASS | 9/9 | `见 evidence/P5-T26-cloud-handoff-verification.md` |
 | T26-isolated-smoke-results.json | T26/A1 | W | PASS | 7/7 | `手工隔离构建流程（见 evidence/P5-T26-isolated-smoke.md）` |
-| T26-pack-editor-cmd-results.json | T26/F03-packB | W | PASS | 30/30 | `python tools/run_t26_pack_editor_cmd_probe.py` |
-| T26-packA-editor-cmd-results.json | T26/F03-packA | W | PASS | 30/30 | `python tools/run_t26_pack_editor_cmd_probe.py --pack a` |
+| T26-pack-editor-cmd-results.json | T26/F03-packB | W | PASS | 36/36 | `python tools/run_t26_pack_editor_cmd_probe.py` |
+| T26-packA-editor-cmd-results.json | T26/F03-packA | W | PASS | 36/36 | `python tools/run_t26_pack_editor_cmd_probe.py --pack a` |
 | P0-S3-prototype.md（pytest 10/10 双平台） | T04 | A/U | PASS |  | `pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py` |
 | P0-S5-prototype.md（pytest 10/10 双平台） | T06 | A/U | PASS |  | `pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py` |
 | P5-T26-F16-native-menu-audit.md（11/11 结构性审计；W/DOM 未覆盖） | T26/F16 | U/静态（非 W） | NOT_RUN(结构性审计 11/11；W 未覆盖) |  | `只读审计 desktop/src-tauri/src/menu.rs（见 evidence/P5-T26-F16-native-menu-audit.md）` |

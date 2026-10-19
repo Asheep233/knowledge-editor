@@ -1054,3 +1054,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - 803460c：packA PASS 22→24、packB 22→25（F15 doc.save、P3/P4 W05/W02 等）；F07 PARTIAL；10 行后端 API
   NOT_RUN（W06 网络边界原因）。证据 P5-T26-F-pack-mapping.md、F 报告附录 N。
+
+## P6 进度（参数化命令，2026-10-19）
+
+- 1d33dd6/7abafc4：link/math/table 参数化（严格 args 校验，危险 scheme/超长/越界拒绝）；pack A/B W 各 36/36；
+  F03 +2 pack PASS（packA 26/packB 27）；F04/F05 PARTIAL（仅插入动作面）。证据 v12/附录 O。

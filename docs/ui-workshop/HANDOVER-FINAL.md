@@ -461,3 +461,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `docs/ui-workshop/EVIDENCE-INDEX.md`：按 `validation-matrix.csv` 行列出每个证据文件、任务/类型/结果/
   passed-total/复现命令，并报告「results JSON 缺说明 md」「说明 md 未被交付文档引用」等可维护性提示
   （生成：`python3 docs/ui-workshop/tools/build_evidence_index.py`）。最近一次：矩阵 62 行 / results JSON 47 / md 94。
+
+## 追加（2026-10-19 末段 · 参数化命令）
+
+- `1d33dd6` + `7abafc4`：`editor.link.insert`（仅 http/https/mailto、长度上限、危险 scheme 拒绝）、
+  `editor.math.inline|block`（latex 校验，不开 MathLive 对话框）、`editor.table.insert`（rows/cols 1–8）
+  参数化接入；pack A/B 产品 W **各 36/36 PASS**（成功/负向 DOM 不变/撤销还原）。
+- F 台账：F03 link/math.block +2 行 pack PASS → **packA PASS 26 / packB 27**；F04/F05 域行 PARTIAL
+  （仅插入动作面）。证据 `P5-T26-pack-editor-cmd.md` v12、F 报告附录 O。

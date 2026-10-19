@@ -13,7 +13,7 @@ UI 工坊（UI Workshop）的**参考 guest 包 A**：最小可用的「读场�
 | `context.read` | `context.snapshot` 返回正文（`content`/`contentBytes`，G1） |
 | `print.request` | `print.snapshot` 走宿主真实打印管线（真实 PDF + 不透明 token，G3） |
 
-不声明 `context.write`、`editor.commands.readonly` 等未用能力——参考包演示**能力最小化**。
+不声明 `context.write` 等未用写能力——参考包演示**能力最小化**；W07 task-31 起声明 `editor.commands.readonly`（trusted 才授予）以接入受控编辑命令桥（见下节）。
 
 ## 功能
 
@@ -29,6 +29,23 @@ UI 工坊（UI Workshop）的**参考 guest 包 A**：最小可用的「读场�
 - **状态镜像**：状态变化时向宿主 `postMessage({type:'t19-guest-results', payload})`，
   便于宿主工坊/自动化探针观察 UI 状态（产品宿主组件本身即收集该消息）。
 
+## W07 task-31 受控编辑命令桥（18 条协议名）
+
+- 宿主白名单共 18 条协议名：14 条切换命令（`editor.bold/italic/underline/strike/code/heading1/heading2/heading3/`
+  `editor.bullet-list/ordered-list/blockquote/code-block/undo/redo`）+ 4 条可无头产品动作
+  （`editor.table.insert`【产品默认 3×3 带表头】/`editor.footnote.insert`/`editor.note.insert`/`doc.save`）。
+- 本包在 `manifest.commands` **逐条声明 18 条**（声明是 broker `declaredCommands` 前置；未声明 → `E_FORBIDDEN`），
+  并声明能力 `editor.commands.readonly`（trusted 才授予；未授予 → `E_CAPABILITY`）。
+- UI：「编辑器命令」面板 18 个按钮 → 真实 `command.invoke`；结果/错误显示在「最近命令」与错误框（不静默）。
+- 负向：`window.__packAInvokeCommand(name, args)`（参考包自动化用 hook）可请求任意命令名；未声明/未知/大写名
+  一律被宿主拒绝；**不接**对话框/文件选择类动作（`editor.link.insert`/`image.insert`/`math.*`/`module.insert`），
+  guest 调用被拒绝（`E_FORBIDDEN`，无头环境不弹窗）。
+
+### 已知限制
+
+- 多词命令协议名使用 kebab-case（`editor.bullet-list` 等）；旧 camelCase（`editor.bulletList`）仅宿主后端
+  legacy 兼容直调，manifest 命令名 schema 不允许大写 → 无法声明。
+- `doc.save` 的真实落盘由产品保存链保证（W 验证：编辑 marker 后磁盘出现 marker + mtime 变化，不只查返回值）。
 ## 构建与签名
 
 ```bash

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""T26 F03：pack B 受控编辑器命令桥 + 产品 W 探针（task-26）。
+"""T26 F03：pack B / pack A 受控编辑器命令桥 + 产品 W 探针（task-26/30/31）。
+
+用法：默认验证 pack B；`--pack a` 验证 pack A（task-31，同一套 W 断言/负向）。
 
 验证链路：
   1) pack B（manifest.commands 逐条声明 11 条 editor.* + capability editor.commands.readonly）
@@ -40,6 +42,8 @@ BASE = Path(r"C:\ke-tmp\uiws-t26-T26")
 EVID = REPO / "docs" / "ui-workshop" / "evidence"
 PACK_B_ID = "com.astranota.examples.pack-b"
 PACK_B_SLUG = "pack-b"
+# 运行期包选择：默认 pack B；`--pack a` 切换 pack A（task-31）
+PACK = {"id": PACK_B_ID, "slug": PACK_B_SLUG, "label": "pack B", "hook": "__packB", "prefix": "W-T26"}
 REL_LEAF = "fe-ledger.md"
 DOC_BODY_MARK = "F-LEDGER-BODY-MARKER"
 DOC_CONTENT = (
@@ -90,6 +94,13 @@ def main() -> int:
         checks.append({"name": name, "pass": bool(ok), "detail": detail})
         print(("PASS " if ok else "FAIL ") + name + " | " + json.dumps(detail, ensure_ascii=False)[:420], flush=True)
 
+    argv = sys.argv[1:]
+    if "--pack" in argv:
+        idx = argv.index("--pack")
+        if idx + 1 < len(argv) and argv[idx + 1].lower() == "a":
+            PACK.update({"id": "com.astranota.examples.pack-a", "slug": "pack-a",
+                         "label": "pack A", "hook": "__packA", "prefix": "W-T31"})
+    print("PACK MODE:", PACK["label"], "| id:", PACK["id"], flush=True)
     if not EXE.exists():
         print("缺少测试构建:", EXE, flush=True)
         return 2
@@ -108,7 +119,7 @@ def main() -> int:
     }
     # ---- 1) 构建/签名参考包（含 pack B manifest 校验） ----
     build_info = R.build_reference_packs(checks, check)
-    packb_info = (build_info.get("packs") or {}).get(PACK_B_ID) or {}
+    packb_info = (build_info.get("packs") or {}).get(PACK["id"]) or {}
     dist_b = Path(packb_info.get("distDir") or "")
     if not dist_b.is_absolute():
         dist_b = REPO / dist_b
@@ -180,7 +191,7 @@ def main() -> int:
 
         # ---- 3) 安装 → trusted → 启用 guest ----
         inst = R.invoke(cdp, "workshop_pack_install", {"sourceDir": str(dist_b)})
-        verify = R.invoke(cdp, "workshop_pack_verify", {"id": PACK_B_ID, "version": "1.0.0"})
+        verify = R.invoke(cdp, "workshop_pack_verify", {"id": PACK["id"], "version": "1.0.0"})
         check("W-T26-3 安装 pack B（Rust 安装 + 产品签名校验 valid）",
               inst.get("ok") is True and verify.get("ok") is True and verify.get("value") is True,
               {"install": inst, "verify": verify})
@@ -189,22 +200,22 @@ def main() -> int:
         R.wait_until(lambda: R.has_text(cdp, "授予信任") or R.has_text(cdp, "启用 guest"), 20, 0.25)
         body = R.body_text(cdp)
         sig_visible = "签名：valid" in body
-        trust_clicked = R.click_card_button(cdp, PACK_B_ID, "授予信任")
-        trusted = R.wait_until(lambda: R.card_has_text(cdp, PACK_B_ID, "信任：trusted"), 20, 0.25)
+        trust_clicked = R.click_card_button(cdp, PACK["id"], "授予信任")
+        trusted = R.wait_until(lambda: R.card_has_text(cdp, PACK["id"], "信任：trusted"), 20, 0.25)
         check("W-T26-4 授予 pack B trusted（签名 valid + 信任 trusted；trusted 才授予 editor.commands.readonly）",
               bool(trust_clicked and trusted and sig_visible),
               {"trustClicked": trust_clicked, "trustedVisible": trusted, "signatureValidVisible": sig_visible})
-        if not R.click_card_button(cdp, PACK_B_ID, "启用 guest"):
+        if not R.click_card_button(cdp, PACK["id"], "启用 guest"):
             raise RuntimeError("未找到 pack B「启用 guest」按钮: " + R.body_text(cdp)[:800])
-        sid = R.wait_guest_session(cdp, PACK_B_SLUG, 60)
+        sid = R.wait_guest_session(cdp, PACK["slug"], 60)
         session = (R.invoke(cdp, "workshop_pack_session_status", {}) or {}).get("value") or {}
         check("W-T26-5 启用 pack B guest 会话 active（握手完成）",
               bool(sid) and session.get("state") == "active", {"sid": bool(sid), "session": session})
-        R.wait_until(lambda: bool(R.guest_eval(cdp, PACK_B_SLUG, "!!window.__packBInvokeCommand")), 30, 0.3)
-        guest_state = R.guest_eval(
-            cdp, PACK_B_SLUG,
-            "JSON.stringify({accepted: (window.__packBState||{}).acceptedFeatures||[], cmds: window.__packBEditorCommands||[], result: (document.getElementById('editor-command-result')||{}).textContent||''})",
-        )
+        R.wait_until(lambda: bool(R.guest_eval(cdp, PACK["slug"], "!!window." + PACK["hook"] + "InvokeCommand")), 30, 0.3)
+        gs_expr = ("JSON.stringify({accepted: (window." + PACK["hook"] + "State||{}).acceptedFeatures||[],"
+                   " cmds: window." + PACK["hook"] + "EditorCommands||[],"
+                   " result: (document.getElementById('editor-command-result')||{}).textContent||''})")
+        guest_state = R.guest_eval(cdp, PACK["slug"], gs_expr)
         try:
             gs = json.loads(guest_state or "{}")
         except Exception:
@@ -253,7 +264,7 @@ def main() -> int:
             time.sleep(0.3)
 
         def guest_click(selector: str) -> bool:
-            return bool(R.guest_click(cdp, PACK_B_SLUG, selector))
+            return bool(R.guest_click(cdp, PACK["slug"], selector))
 
         # 11 条命令：guest 真实 DOM 点按钮 → 主窗口 DOM 断言（before/after）
         CASES = [
@@ -302,8 +313,8 @@ def main() -> int:
             restored = R.wait_until(lambda: (host_counts().get(key) or 0) == (before.get(key) or 0), 20, 0.25)
             if name == "editor.bullet-list":
                 kebab_echo = R.guest_eval(
-                    cdp, PACK_B_SLUG,
-                    "(() => { const st=window.__packBState; const r=(st.commandResults||[]).slice().reverse().find(x=>x.name==='editor.bullet-list');"
+                    cdp, PACK["slug"],
+                    "(() => { const st=window." + PACK["hook"] + "State; const r=(st.commandResults||[]).slice().reverse().find(x=>x.name==='editor.bullet-list');"
                     " return JSON.stringify(r ? {name:r.name, ok:r.ok, value:r.value} : null); })()",
                 )
             check(
@@ -410,7 +421,7 @@ def main() -> int:
         disk_after = doc_path.read_text(encoding="utf-8", errors="replace")
         mtime_after = doc_path.stat().st_mtime
         status_after = R.body_text(cdp)[-140:]
-        save_echo = R.guest_eval(cdp, PACK_B_SLUG, "(() => { const st=window.__packBState;"
+        save_echo = R.guest_eval(cdp, PACK["slug"], "(() => { const st=window." + PACK["hook"] + "State;"
                                                   " const r=(st.commandResults||[]).slice().reverse().find(x=>x.name==='doc.save');"
                                                   " return JSON.stringify(r||null); })()")
         check("W-T26-27 guest 点击「保存文档」→ command.invoke(doc.save) → 产品真实保存落盘（编辑 marker 后磁盘内容出现 marker、mtime 变化；不只看返回值）",
@@ -444,16 +455,16 @@ def main() -> int:
         # ---- 负向：未声明 / 未知 / 大写名 → 宿主拒绝且不假成功、编辑器不被改 ----
         def guest_invoke_expect_error(name: str) -> dict:
             expr = (
-                "(async () => { const st = window.__packBState;"
+                "(async () => { const st = window." + PACK["hook"] + "State;"
                 " const before = (st.commandResults || []).length;"
-                " await window.__packBInvokeCommand(%s, {});"
+                " await window." + PACK["hook"] + "InvokeCommand(%s, {});"
                 " const r = (st.commandResults || [])[st.commandResults.length - 1] || {};"
                 " const le = st.lastError || null;"
                 " return JSON.stringify({name: %s, ok: r.ok === true, error: r.error || null,"
                 " lastErrorCode: le && (le.code || null), added: (st.commandResults || []).length - before}); })()"
                 % (json.dumps(name), json.dumps(name))
             )
-            raw = R.guest_eval(cdp, PACK_B_SLUG, expr)
+            raw = R.guest_eval(cdp, PACK["slug"], expr)
             try:
                 return json.loads(raw or "{}")
             except Exception:
@@ -499,6 +510,10 @@ def main() -> int:
         session_final = (R.invoke(cdp, "workshop_pack_session_status", {}) or {}).get("value") or {}
         check("W-T26-19 探针结束：pack B 会话仍 active（命令桥未破坏会话）",
               session_final.get("state") == "active", {"session": session_final})
+        if PACK["prefix"] == "W-T31":
+            for c in checks:
+                c["name"] = c["name"].replace("W-T26", "W-T31").replace("pack B", "pack A").replace("packB", "packA")
+        result["pack"] = "a" if PACK["prefix"] == "W-T31" else "b"
         result["positiveCount"] = sum(1 for c in checks if c["pass"])
         result["summary"] = {"total": len(checks), "pass": sum(1 for c in checks if c["pass"])}
         result["guestStateTail"] = gs

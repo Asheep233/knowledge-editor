@@ -22,7 +22,7 @@
     <p class="hint">
       读场景最小示例：使用发布 SDK（<code>KeWorkshopSDK.autoConnect</code>）经宿主 Broker 读取
       <code>context.snapshot</code>（含 <code>content</code>），接收 <code>document-saved</code> 事件后自动刷新，
-      并可请求 <code>print.snapshot</code> 产出真实 PDF。能力声明：ui.shell / panel.sidebar / context.read / print.request。
+      并可请求 <code>print.snapshot</code> 产出真实 PDF。能力声明：ui.shell / panel.sidebar / context.read / print.request / editor.commands.readonly（后者 trusted 才授予；下方「编辑器命令」区演示受控编辑命令桥）。
     </p>
 
     <section class="panel">
@@ -46,6 +46,32 @@
       <ul id="event-list" class="events"></ul>
     </section>
 
+    <section class="panel" id="editor-cmd-panel">
+      <h2>编辑器命令（command.invoke editor.* / doc.save，真实宿主编辑器）</h2>
+      <div class="row" id="editor-cmd-buttons">
+        <button id="btn-cmd-bold" type="button">加粗</button>
+        <button id="btn-cmd-italic" type="button">斜体</button>
+        <button id="btn-cmd-underline" type="button">下划线</button>
+        <button id="btn-cmd-strike" type="button">删除线</button>
+        <button id="btn-cmd-code" type="button">行内代码</button>
+        <button id="btn-cmd-heading1" type="button">标题1</button>
+        <button id="btn-cmd-heading2" type="button">标题2</button>
+        <button id="btn-cmd-heading3" type="button">标题3</button>
+        <button id="btn-cmd-bullet-list" type="button">无序列表</button>
+        <button id="btn-cmd-ordered-list" type="button">有序列表</button>
+        <button id="btn-cmd-blockquote" type="button">引用</button>
+        <button id="btn-cmd-code-block" type="button">代码块</button>
+        <button id="btn-cmd-undo" type="button">撤销</button>
+        <button id="btn-cmd-redo" type="button">重做</button>
+        <button id="btn-cmd-table-insert" type="button">插入表格 3×3</button>
+        <button id="btn-cmd-footnote-insert" type="button">插入脚注</button>
+        <button id="btn-cmd-note-insert" type="button">插入信息块</button>
+        <button id="btn-cmd-doc-save" type="button">保存文档</button>
+      </div>
+      <div class="row"><span class="k">最近命令</span><span id="editor-command-result">（未执行）</span></div>
+      <p class="hint">命令名与 manifest.commands 逐条一致；未声明/未知/大写名被宿主拒绝（E_FORBIDDEN），不假成功。</p>
+    </section>
+
     <section class="panel">
       <h2>打印</h2>
       <div class="row"><span class="k">结果</span><span id="print-result">（未触发）</span></div>
@@ -58,7 +84,7 @@
 
     <footer class="foot">
       包 id：<code>com.astranota.examples.pack-a</code> · 发布 SDK <span id="sdk-version">—</span> ·
-      心跳 200ms · 状态镜像经 <code>t19-guest-results</code> 供宿主/测试观察
+      心跳 200ms · 命令：18 条编辑协议名（14 切换 + 4 动作） · 状态镜像经 <code>t19-guest-results</code> 供宿主/测试观察
     </footer>
     <script src="vendor/guest-sdk.js"></script>
     <script src="pack.js"></script>

@@ -1,0 +1,883 @@
+{
+  "generated_at": "2026-10-19T18:49:42+0800",
+  "build": {
+    "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+    "sha256": "e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce",
+    "mtime": "2026-10-19T18:37:46"
+  },
+  "whitelist": [
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "code",
+    "heading1",
+    "heading2",
+    "heading3",
+    "bulletList",
+    "orderedList",
+    "blockquote",
+    "codeBlock",
+    "undo",
+    "redo"
+  ],
+  "declared": [
+    "editor.bold",
+    "editor.italic",
+    "editor.underline",
+    "editor.strike",
+    "editor.code",
+    "editor.heading1",
+    "editor.heading2",
+    "editor.heading3",
+    "editor.bullet-list",
+    "editor.ordered-list",
+    "editor.blockquote",
+    "editor.code-block",
+    "editor.undo",
+    "editor.redo"
+  ],
+  "protocolNames": [
+    "editor.bold",
+    "editor.italic",
+    "editor.underline",
+    "editor.strike",
+    "editor.code",
+    "editor.heading1",
+    "editor.heading2",
+    "editor.heading3",
+    "editor.bullet-list",
+    "editor.ordered-list",
+    "editor.blockquote",
+    "editor.code-block",
+    "editor.undo",
+    "editor.redo"
+  ],
+  "legacyCamel": [
+    "editor.bulletList",
+    "editor.orderedList",
+    "editor.codeBlock"
+  ],
+  "checks": [
+    {
+      "name": "W-G7-1 构建工具产出两个签名参考包（A/B）：dist manifest assets sha256/size 与实际文件一致、签名为 ed25519/k1 128hex、zip 根含 manifest+资产",
+      "pass": true,
+      "detail": {
+        "packs": {
+          "com.astranota.examples.pack-a": {
+            "distDir": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a",
+            "signature": {
+              "alg": "ed25519",
+              "keyId": "k1",
+              "signatureLen": 128
+            },
+            "assets": [
+              {
+                "path": "index.html",
+                "declaredSha256": "e00c157112e06aed782bacc3f94f30cc6a81be8ed7a502fc954efbf53a3946e8",
+                "actualSha256": "e00c157112e06aed782bacc3f94f30cc6a81be8ed7a502fc954efbf53a3946e8",
+                "match": true,
+                "size": 4823,
+                "declaredSize": 4823
+              },
+              {
+                "path": "pack.css",
+                "declaredSha256": "e99b54625bb5d890acabca8ab466b48ada7b43885ffc573850c6044d84eb3f82",
+                "actualSha256": "e99b54625bb5d890acabca8ab466b48ada7b43885ffc573850c6044d84eb3f82",
+                "match": true,
+                "size": 2056,
+                "declaredSize": 2056
+              },
+              {
+                "path": "pack.js",
+                "declaredSha256": "dbc645ad6101710b4c8832be7d6c2a7386a9c89055f3b9ec1b529b01f234c1fb",
+                "actualSha256": "dbc645ad6101710b4c8832be7d6c2a7386a9c89055f3b9ec1b529b01f234c1fb",
+                "match": true,
+                "size": 15743,
+                "declaredSize": 15743
+              },
+              {
+                "path": "vendor/guest-sdk.js",
+                "declaredSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "actualSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "match": true,
+                "size": 5478,
+                "declaredSize": 5478
+              }
+            ]
+          },
+          "com.astranota.examples.pack-b": {
+            "distDir": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b",
+            "signature": {
+              "alg": "ed25519",
+              "keyId": "k1",
+              "signatureLen": 128
+            },
+            "assets": [
+              {
+                "path": "index.html",
+                "declaredSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
+                "actualSha256": "8ccb278df6ee90a6fb981cf5fbf6c4d9f6e62956c6091b50f5949544521a9667",
+                "match": true,
+                "size": 5320,
+                "declaredSize": 5320
+              },
+              {
+                "path": "pack.css",
+                "declaredSha256": "9dc672847e98b51aa7e850e3711422874d17f18ce44218ba2f3731ddbbe99880",
+                "actualSha256": "9dc672847e98b51aa7e850e3711422874d17f18ce44218ba2f3731ddbbe99880",
+                "match": true,
+                "size": 2070,
+                "declaredSize": 2070
+              },
+              {
+                "path": "pack.js",
+                "declaredSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
+                "actualSha256": "4120c0b1fd4c0bf1260442f7559ae870e06d3aa6a9369db1bee2ef291d200609",
+                "match": true,
+                "size": 16347,
+                "declaredSize": 16347
+              },
+              {
+                "path": "vendor/guest-sdk.js",
+                "declaredSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "actualSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "match": true,
+                "size": 5478,
+                "declaredSize": 5478
+              }
+            ]
+          }
+        },
+        "zips": {
+          "com.astranota.examples.pack-a": {
+            "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
+            "sha256": "4488cff7a90a1aa73a2da028c728454d601ed5bdabb8979029c6ba909d234910",
+            "names": [
+              "index.html",
+              "manifest.json",
+              "pack.css",
+              "pack.js",
+              "vendor/guest-sdk.js"
+            ],
+            "rootOk": true,
+            "assetsMatch": true,
+            "size": 11249
+          },
+          "com.astranota.examples.pack-b": {
+            "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
+            "sha256": "3b6dd0e669b6a26048b3f132f40f17f475fcb755157bcc6342c972155222dde4",
+            "names": [
+              "index.html",
+              "manifest.json",
+              "pack.css",
+              "pack.js",
+              "vendor/guest-sdk.js"
+            ],
+            "rootOk": true,
+            "assetsMatch": true,
+            "size": 11365
+          }
+        },
+        "publicKeyHex": "496282d934d49ecf7ed942e22cf63c55be2e8d33291d52234cba2a8c3f64feac",
+        "buildKeySource": "provided"
+      }
+    },
+    {
+      "name": "W-G7-2 构建幂等：`--check` 通过（源 manifest assets 哈希已回写、vendored SDK 已同步）",
+      "pass": true,
+      "detail": {
+        "exit": 0,
+        "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=496282d934d49ecf…（provided）\n"
+      }
+    },
+    {
+      "name": "W-G7-3 源 manifest（入库）只含哈希/大小、不含签名，且与 dist 签名清单字段一致",
+      "pass": true,
+      "detail": {
+        "com.astranota.examples.pack-a": {
+          "sourceManifest": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\packs\\pack-a\\manifest.json",
+          "signedInSource": false,
+          "alignedWithDist": true
+        },
+        "com.astranota.examples.pack-b": {
+          "sourceManifest": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\packs\\pack-b\\manifest.json",
+          "signedInSource": false,
+          "alignedWithDist": true
+        }
+      }
+    },
+    {
+      "name": "W-T31-1 pack A 构建/签名：manifest 声明 18 条协议名（14 切换命令含 3 kebab + 4 动作）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+      "pass": true,
+      "detail": {
+        "editorCommands": [
+          "editor.bold",
+          "editor.italic",
+          "editor.underline",
+          "editor.strike",
+          "editor.code",
+          "editor.heading1",
+          "editor.heading2",
+          "editor.heading3",
+          "editor.bullet-list",
+          "editor.ordered-list",
+          "editor.blockquote",
+          "editor.code-block",
+          "editor.undo",
+          "editor.redo",
+          "editor.table.insert",
+          "editor.footnote.insert",
+          "editor.note.insert"
+        ],
+        "capabilities": [
+          "ui.shell",
+          "panel.sidebar",
+          "context.read",
+          "print.request",
+          "editor.commands.readonly"
+        ],
+        "legacyCamel": [
+          "editor.bulletList",
+          "editor.orderedList",
+          "editor.codeBlock"
+        ]
+      }
+    },
+    {
+      "name": "W-T31-2 隔离产品实例启动 + CDP 就绪（工坊入口渲染）",
+      "pass": true,
+      "detail": {
+        "port": 9802,
+        "exeSha256": "e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce",
+        "exeMtime": "2026-10-19T18:37:46"
+      }
+    },
+    {
+      "name": "W-T31-3 安装 pack A（Rust 安装 + 产品签名校验 valid）",
+      "pass": true,
+      "detail": {
+        "install": {
+          "ok": true,
+          "value": {
+            "active": "1.0.0",
+            "previous": null,
+            "updatedAt": "SystemTime { intervals: 134368805869295261 }"
+          }
+        },
+        "verify": {
+          "ok": true,
+          "value": true
+        }
+      }
+    },
+    {
+      "name": "W-T31-4 授予 pack A trusted（签名 valid + 信任 trusted；trusted 才授予 editor.commands.readonly）",
+      "pass": true,
+      "detail": {
+        "trustClicked": true,
+        "trustedVisible": true,
+        "signatureValidVisible": true
+      }
+    },
+    {
+      "name": "W-T31-5 启用 pack A guest 会话 active（握手完成）",
+      "pass": true,
+      "detail": {
+        "sid": true,
+        "session": {
+          "capabilities": [
+            "ui.shell",
+            "panel.sidebar",
+            "context.read",
+            "print.request",
+            "editor.commands.readonly"
+          ],
+          "lastError": null,
+          "packId": "com.astranota.examples.pack-a",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368805872369664 }"
+        }
+      }
+    },
+    {
+      "name": "W-T31-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack A 声明 18 条协议名可见（14 切换 + 4 动作）",
+      "pass": true,
+      "detail": {
+        "acceptedFeatures": [
+          "ui.shell",
+          "panel.sidebar",
+          "context.read",
+          "print.request",
+          "editor.commands.readonly"
+        ],
+        "editorCommands": [
+          "editor.bold",
+          "editor.italic",
+          "editor.underline",
+          "editor.strike",
+          "editor.code",
+          "editor.heading1",
+          "editor.heading2",
+          "editor.heading3",
+          "editor.bullet-list",
+          "editor.ordered-list",
+          "editor.blockquote",
+          "editor.code-block",
+          "editor.undo",
+          "editor.redo",
+          "editor.table.insert",
+          "editor.footnote.insert",
+          "editor.note.insert",
+          "doc.save"
+        ],
+        "handshake": null
+      }
+    },
+    {
+      "name": "W-T31-7 guest 点击「加粗」→ command.invoke(editor.bold) → 主窗口 DOM strong 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.bold",
+        "guestClick": true,
+        "before": {
+          "strong": 0
+        },
+        "after": {
+          "strong": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-8 guest 点击「斜体」→ command.invoke(editor.italic) → 主窗口 DOM em 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.italic",
+        "guestClick": true,
+        "before": {
+          "em": 0
+        },
+        "after": {
+          "em": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-9 guest 点击「下划线」→ command.invoke(editor.underline) → 主窗口 DOM u 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.underline",
+        "guestClick": true,
+        "before": {
+          "u": 0
+        },
+        "after": {
+          "u": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-10 guest 点击「删除线」→ command.invoke(editor.strike) → 主窗口 DOM s 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.strike",
+        "guestClick": true,
+        "before": {
+          "s": 0
+        },
+        "after": {
+          "s": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-11 guest 点击「行内代码」→ command.invoke(editor.code) → 主窗口 DOM code 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.code",
+        "guestClick": true,
+        "before": {
+          "code": 0
+        },
+        "after": {
+          "code": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-12 guest 点击「标题1」→ command.invoke(editor.heading1) → 主窗口 DOM h1 1→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.heading1",
+        "guestClick": true,
+        "before": {
+          "h1": 1
+        },
+        "after": {
+          "h1": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-13 guest 点击「标题2」→ command.invoke(editor.heading2) → 主窗口 DOM h2 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.heading2",
+        "guestClick": true,
+        "before": {
+          "h2": 0
+        },
+        "after": {
+          "h2": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-14 guest 点击「标题3」→ command.invoke(editor.heading3) → 主窗口 DOM h3 0→4",
+      "pass": true,
+      "detail": {
+        "command": "editor.heading3",
+        "guestClick": true,
+        "before": {
+          "h3": 0
+        },
+        "after": {
+          "h3": 4
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-15 guest 点击「引用」→ command.invoke(editor.blockquote) → 主窗口 DOM blockquote 0→1",
+      "pass": true,
+      "detail": {
+        "command": "editor.blockquote",
+        "guestClick": true,
+        "before": {
+          "blockquote": 0
+        },
+        "after": {
+          "blockquote": 1
+        },
+        "editorTouched": true
+      }
+    },
+    {
+      "name": "W-T31-20 guest 点击「无序列表」→ command.invoke(editor.bullet-list) → 主窗口 DOM ul 0→1 且撤销还原",
+      "pass": true,
+      "detail": {
+        "command": "editor.bullet-list",
+        "guestClick": true,
+        "before": {
+          "ul": 0
+        },
+        "after": {
+          "ul": 1
+        },
+        "undoRestored": true,
+        "domHead": "<ul><li><p>F 台账标题</p></li><li><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></li><li><p>列表项一</p></li><li><p>列表项二</p></li></ul><p><br class=\"ProseMirro"
+      }
+    },
+    {
+      "name": "W-T31-21 guest 点击「有序列表」→ command.invoke(editor.ordered-list) → 主窗口 DOM ol 0→1 且撤销还原",
+      "pass": true,
+      "detail": {
+        "command": "editor.ordered-list",
+        "guestClick": true,
+        "before": {
+          "ol": 0
+        },
+        "after": {
+          "ol": 1
+        },
+        "undoRestored": true,
+        "domHead": "<ol><li><p>F 台账标题</p></li><li><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></li><li><p>列表项一</p></li><li><p>列表项二</p></li></ol><p><br class=\"ProseMirro"
+      }
+    },
+    {
+      "name": "W-T31-22 guest 点击「代码块」→ command.invoke(editor.code-block) → 主窗口 DOM pre 0→4 且撤销还原",
+      "pass": true,
+      "detail": {
+        "command": "editor.code-block",
+        "guestClick": true,
+        "before": {
+          "pre": 0
+        },
+        "after": {
+          "pre": 4
+        },
+        "undoRestored": true,
+        "domHead": "<pre><code>F 台账标题</code></pre><pre><code>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</code></pre><pre><code>列表项一</code></pre><pre><code>列表项二</code></pre><"
+      }
+    },
+    {
+      "name": "W-T31-23 guest 收到的 command.invoke 结果回显 {ok:true, value:{name: editor.bullet-list, executed:true}}（kebab 协议名原样回显）",
+      "pass": true,
+      "detail": {
+        "ephemeralEcho": {
+          "name": "editor.bullet-list",
+          "ok": true,
+          "value": {
+            "ok": true,
+            "value": {
+              "name": "editor.bullet-list",
+              "executed": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "W-T31-24 guest 点击「插入表格 3×3」→ command.invoke(editor.table.insert) → 主窗口 DOM table 3行/3表头(th) 且撤销还原",
+      "pass": true,
+      "detail": {
+        "guestClick": true,
+        "tableBefore": 0,
+        "tableInfo": {
+          "rows": 3,
+          "th": 3,
+          "cols": 3,
+          "html": "<table style=\"min-width: 75px;\"><colgroup><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"><col style=\"min-width: 25px;\"></colgroup><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p><br class=\"ProseMirror-trailingBrea"
+        },
+        "undoRestored": true
+      }
+    },
+    {
+      "name": "W-T31-25 guest 点击「插入脚注」→ command.invoke(editor.footnote.insert) → 主窗口脚注 DOM（ke-footnote-ref/脚注区/sup）+ 撤销还原",
+      "pass": true,
+      "detail": {
+        "guestClick": true,
+        "before": {
+          "ref": 0,
+          "section": 0,
+          "sup": 0
+        },
+        "after": {
+          "ref": 1,
+          "section": 0,
+          "sup": 1,
+          "html": "<h1>F 台账标题</h1><p><span class=\"react-renderer node-footnote\" contenteditable=\"false\"><sup as=\"sup\" contenteditable=\"false\" class=\"ke-footnote-ref\" title=\"注释引用 [n]，点击可修改编号\" data-node-view-wrapper=\"\" style=\"white-space: normal;\"><span class=\""
+        },
+        "undoRestored": true
+      }
+    },
+    {
+      "name": "W-T31-26 guest 点击「插入信息块」→ command.invoke(editor.note.insert) → 主窗口 [data-ke-note] + 撤销还原",
+      "pass": true,
+      "detail": {
+        "guestClick": true,
+        "before": 0,
+        "after": 1,
+        "html": "<div as=\"div\" data-ke-note=\"\" data-id=\"15149d33-85cd-4dc0-a18a-51f99de2460f\" data-label=\"\" data-title=\"信息块 18:49\" data-color=\"blue\" data-author=\"\" data-created=\"2026-10-19T10:49:56.518Z\" data-updated=",
+        "undoRestored": true
+      }
+    },
+    {
+      "name": "W-T31-27 guest 点击「保存文档」→ command.invoke(doc.save) → 产品真实保存落盘（编辑 marker 后磁盘内容出现 marker、mtime 变化；不只看返回值）",
+      "pass": true,
+      "detail": {
+        "guestClick": true,
+        "markerInEditor": true,
+        "markerOnDiskBefore": false,
+        "savedToDisk": true,
+        "mtimeBefore": 1792406983.5765371,
+        "mtimeAfter": 1792406997.697289,
+        "statusBefore": ".commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
+        "statusAfter": "rint.request, editor.commands.readonly\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
+        "saveEcho": "{\"name\":\"doc.save\",\"ok\":true,\"value\":{\"ok\":true,\"value\":{\"name\":\"doc.save\",\"executed\":true}},\"at\":1792406997646}"
+      }
+    },
+    {
+      "name": "W-T31-16 guest 点「撤销/重做」→ 主窗口 DOM 往返（bold 生效→撤销消失→重做恢复）",
+      "pass": true,
+      "detail": {
+        "bold": true,
+        "boldOn": true,
+        "undoClicked": true,
+        "undone": true,
+        "redoClicked": true,
+        "redone": true,
+        "before": 0,
+        "after": 4
+      }
+    },
+    {
+      "name": "W-T31-17 负向：大写/未知/未声明命令被宿主拒绝（E_FORBIDDEN 等，不假成功）且主窗口 DOM 不被修改",
+      "pass": true,
+      "detail": {
+        "selectionAll": true,
+        "negatives": [
+          {
+            "label": "大写命令名",
+            "name": "editor.Bold",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          },
+          {
+            "label": "未知命令",
+            "name": "editor.explode",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.explode",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          },
+          {
+            "label": "camelCase 白名单但 manifest 无法声明",
+            "name": "editor.bulletList",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          },
+          {
+            "label": "对话框类动作未接（link.insert）",
+            "name": "editor.link.insert",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          },
+          {
+            "label": "对话框类动作未接（image.insert）",
+            "name": "editor.image.insert",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          },
+          {
+            "label": "对话框类动作未接（math.block）",
+            "name": "editor.math.block",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          },
+          {
+            "label": "对话框类动作未接（module.insert）",
+            "name": "editor.module.insert",
+            "ok": false,
+            "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert",
+            "lastErrorCode": "E_FORBIDDEN",
+            "added": 1
+          }
+        ],
+        "domUnchanged": true,
+        "codes": [
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold",
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.explode",
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
+          "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert"
+        ]
+      }
+    },
+    {
+      "name": "W-T31-18 协议名修复：18 条规范协议名全部可在 manifest 声明（14 切换含 3 kebab + 4 动作）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
+      "pass": true,
+      "detail": {
+        "declaredProtocol": [
+          "editor.bold",
+          "editor.italic",
+          "editor.underline",
+          "editor.strike",
+          "editor.code",
+          "editor.heading1",
+          "editor.heading2",
+          "editor.heading3",
+          "editor.bullet-list",
+          "editor.ordered-list",
+          "editor.blockquote",
+          "editor.code-block",
+          "editor.undo",
+          "editor.redo",
+          "editor.table.insert",
+          "editor.footnote.insert",
+          "editor.note.insert",
+          "doc.save"
+        ],
+        "legacyCamel": [
+          "editor.bulletList",
+          "editor.orderedList",
+          "editor.codeBlock"
+        ],
+        "legacyRejected": true
+      }
+    },
+    {
+      "name": "W-T31-19 探针结束：pack A 会话仍 active（命令桥未破坏会话）",
+      "pass": true,
+      "detail": {
+        "session": {
+          "capabilities": [
+            "ui.shell",
+            "panel.sidebar",
+            "context.read",
+            "print.request",
+            "editor.commands.readonly"
+          ],
+          "lastError": null,
+          "packId": "com.astranota.examples.pack-a",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368805872369664 }"
+        }
+      }
+    }
+  ],
+  "manifest": {
+    "distDir": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a",
+    "capabilities": [
+      "ui.shell",
+      "panel.sidebar",
+      "context.read",
+      "print.request",
+      "editor.commands.readonly"
+    ],
+    "commands": [
+      "editor.bold",
+      "editor.italic",
+      "editor.underline",
+      "editor.strike",
+      "editor.code",
+      "editor.heading1",
+      "editor.heading2",
+      "editor.heading3",
+      "editor.bullet-list",
+      "editor.ordered-list",
+      "editor.blockquote",
+      "editor.code-block",
+      "editor.undo",
+      "editor.redo",
+      "editor.table.insert",
+      "editor.footnote.insert",
+      "editor.note.insert",
+      "doc.save"
+    ],
+    "editorCommands": [
+      "editor.bold",
+      "editor.italic",
+      "editor.underline",
+      "editor.strike",
+      "editor.code",
+      "editor.heading1",
+      "editor.heading2",
+      "editor.heading3",
+      "editor.bullet-list",
+      "editor.ordered-list",
+      "editor.blockquote",
+      "editor.code-block",
+      "editor.undo",
+      "editor.redo",
+      "editor.table.insert",
+      "editor.footnote.insert",
+      "editor.note.insert"
+    ],
+    "signatureKeyId": "k1"
+  },
+  "pack": "a",
+  "positiveCount": 30,
+  "summary": {
+    "total": 30,
+    "pass": 30
+  },
+  "guestStateTail": {
+    "accepted": [
+      "ui.shell",
+      "panel.sidebar",
+      "context.read",
+      "print.request",
+      "editor.commands.readonly"
+    ],
+    "cmds": [
+      "editor.bold",
+      "editor.italic",
+      "editor.underline",
+      "editor.strike",
+      "editor.code",
+      "editor.heading1",
+      "editor.heading2",
+      "editor.heading3",
+      "editor.bullet-list",
+      "editor.ordered-list",
+      "editor.blockquote",
+      "editor.code-block",
+      "editor.undo",
+      "editor.redo",
+      "editor.table.insert",
+      "editor.footnote.insert",
+      "editor.note.insert",
+      "doc.save"
+    ],
+    "result": "（未执行）"
+  },
+  "negativeResults": [
+    {
+      "label": "大写命令名",
+      "name": "editor.Bold",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    },
+    {
+      "label": "未知命令",
+      "name": "editor.explode",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.explode",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    },
+    {
+      "label": "camelCase 白名单但 manifest 无法声明",
+      "name": "editor.bulletList",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    },
+    {
+      "label": "对话框类动作未接（link.insert）",
+      "name": "editor.link.insert",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.link.insert",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    },
+    {
+      "label": "对话框类动作未接（image.insert）",
+      "name": "editor.image.insert",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.image.insert",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    },
+    {
+      "label": "对话框类动作未接（math.block）",
+      "name": "editor.math.block",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.math.block",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    },
+    {
+      "label": "对话框类动作未接（module.insert）",
+      "name": "editor.module.insert",
+      "ok": false,
+      "error": "E_FORBIDDEN: 命令未在 manifest 声明: editor.module.insert",
+      "lastErrorCode": "E_FORBIDDEN",
+      "added": 1
+    }
+  ],
+  "appLogTail": ""
+}

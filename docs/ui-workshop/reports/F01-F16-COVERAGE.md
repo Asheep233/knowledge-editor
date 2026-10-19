@@ -744,3 +744,30 @@
 - packBEntry 新增 4 行 PASS：`CMD.editor.table.insert` / `CMD.editor.footnote.insert` / `CMD.editor.note.insert` / `UI.toolbar.保存-Ctrl-S`（后者以 doc.save 产品保存 action 的真实落盘为 packB 证据）；
 - F03 packB PASS 行数：**14 → 18**；F03 域行 packBEntry 更新为 PARTIAL（18 行 + 剩余缺口）；
 - 证据：`evidence/P5-T26-pack-editor-cmd.md`（v9 段）、`evidence/T26-pack-editor-cmd-results.json`。
+
+---
+
+## 附录 M：pack A 编辑命令桥 W 与 packA 台账（v10，2026-10-19）
+
+> task-31：pack A（侧栏阅读器）接入 18 条受控编辑协议名并做产品 W；不改产品代码。
+
+### M.1 结果（30/30 PASS；构建 `e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`）
+
+| 覆盖 | 结果 | 证据 |
+| --- | --- | --- |
+| 14 切换命令 DOM（bold/italic/underline/strike/code/heading1-3/bullet-list/ordered-list/blockquote/code-block/undo/redo） | PASS | W-T31-7..16/20..22 |
+| 4 动作（table.insert/footnote.insert/note.insert/doc.save） | PASS | W-T31-24..27 |
+| 撤销还原（各插入/切换动作） | PASS | 各 check detail `undoRestored` |
+| doc.save 真实落盘（marker+mtime，不只查返回值） | PASS | W-T31-27 |
+| 负向（未声明/大写/未知 + 对话框类 link/image/math/module） | PASS（拒绝且 DOM 不变） | W-T31-17 |
+
+### M.2 F03 / F05 packA 台账
+
+- F03：packAEntry 新增 **18 行 PASS**（与 packB 覆盖的 18 条协议名对应行；注明 pack A + DOM 断言 + W check）；
+- F05：域行 packAEntry=`PARTIAL`——仅 `editor.table.insert` 的 3×3 表格插入动作面（W-T31-24），F05 其余语义未覆盖，保持 NOT_RUN 不伪造；
+- 其余 packA 行保持 NOT_RUN（如实）。
+
+### M.3 证据
+
+- `evidence/T26-packA-editor-cmd-results.json`（30 checks）；`evidence/P5-T26-pack-editor-cmd.md` v10 段；
+- 探针：`docs/ui-workshop/tools/run_t26_pack_editor_cmd_probe.py --pack a`；pack A：`docs/ui-workshop/packs/pack-a/`。

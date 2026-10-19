@@ -23,7 +23,15 @@
   'use strict';
 
   var PACK_ID = 'com.astranota.examples.pack-a';
-  var FEATURES = ['ui.shell', 'panel.sidebar', 'context.read', 'print.request'];
+  var FEATURES = ['ui.shell', 'panel.sidebar', 'context.read', 'print.request', 'editor.commands.readonly'];
+  // W07 task-31：pack A 也接入受控编辑命令桥（18 条协议名 = 14 切换 + 4 动作；逐条与 manifest 声明一致）。
+  var EDITOR_COMMANDS = [
+    'editor.bold', 'editor.italic', 'editor.underline', 'editor.strike', 'editor.code',
+    'editor.heading1', 'editor.heading2', 'editor.heading3',
+    'editor.bullet-list', 'editor.ordered-list', 'editor.blockquote', 'editor.code-block',
+    'editor.undo', 'editor.redo',
+    'editor.table.insert', 'editor.footnote.insert', 'editor.note.insert', 'doc.save'
+  ];
   var HEARTBEAT_MS = 200;
   var SDK = window.KeWorkshopSDK;
 
@@ -39,6 +47,7 @@
     heartbeatCount: 0,
     snapshot: null,
     printResult: null,
+    commandResults: [],
     lastEvent: null,
     lastError: null,
     statusText: '启动中…',
@@ -233,6 +242,47 @@
 
   // ---------------- HostEvent（发布 SDK 0.1.0 无事件订阅 API → 按 wire 直接监听） ----------------
 
+  // ---------------- W07 task-31：受控编辑器命令桥（command.invoke editor.* / doc.save） ----------------
+
+  function renderEditorCommand(entry) {
+    setText('editor-command-result', entry.name + ' → ' + (entry.ok ? 'ok' : '失败（' + entry.error + '）'));
+  }
+
+  async function invokeEditorCommand(name) {
+    if (!conn) {
+      showError(new Error('未连接：协议线尚未建立'));
+      return null;
+    }
+    try {
+      var result = await conn.request('command.invoke', { name: name, args: {} });
+      var entry = { name: name, ok: true, value: result, at: Date.now() };
+      state.commandResults.push(entry);
+      renderEditorCommand(entry);
+      clearError();
+      setStatus('命令 ' + name + ' 已由宿主执行');
+      report();
+      return result;
+    } catch (e) {
+      var code = e && e.code ? String(e.code) : 'ERROR';
+      var message = e && e.message ? String(e.message) : String(e);
+      var fail = { name: name, ok: false, error: code + ': ' + message, at: Date.now() };
+      state.commandResults.push(fail);
+      renderEditorCommand(fail);
+      showError(e);
+      setStatus('命令 ' + name + ' 失败');
+      report();
+      return null;
+    }
+  }
+
+  // 负向测试 hook（参考包自动化/演示用；真实调用仍受 manifest 声明 + 能力 + 白名单三重校验）
+  window.__packAInvokeCommand = function (name, args) {
+    if (!conn) return Promise.resolve(null);
+    return invokeEditorCommand(name);
+  };
+  window.__packAEditorCommands = EDITOR_COMMANDS.slice();
+  window.__packAState = state;
+
   function handleHostEvent(event) {
     if (!event || typeof event !== 'object') return;
     var summary = { type: event.type };
@@ -314,6 +364,33 @@
     }
   }
 
+  var EDITOR_BUTTONS = {
+    'btn-cmd-bold': 'editor.bold',
+    'btn-cmd-italic': 'editor.italic',
+    'btn-cmd-underline': 'editor.underline',
+    'btn-cmd-strike': 'editor.strike',
+    'btn-cmd-code': 'editor.code',
+    'btn-cmd-heading1': 'editor.heading1',
+    'btn-cmd-heading2': 'editor.heading2',
+    'btn-cmd-heading3': 'editor.heading3',
+    'btn-cmd-bullet-list': 'editor.bullet-list',
+    'btn-cmd-ordered-list': 'editor.ordered-list',
+    'btn-cmd-blockquote': 'editor.blockquote',
+    'btn-cmd-code-block': 'editor.code-block',
+    'btn-cmd-undo': 'editor.undo',
+    'btn-cmd-redo': 'editor.redo',
+    'btn-cmd-table-insert': 'editor.table.insert',
+    'btn-cmd-footnote-insert': 'editor.footnote.insert',
+    'btn-cmd-note-insert': 'editor.note.insert',
+    'btn-cmd-doc-save': 'doc.save'
+  };
+  Object.keys(EDITOR_BUTTONS).forEach(function (id) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('click', function () {
+      void invokeEditorCommand(EDITOR_BUTTONS[id]);
+    });
+  });
   $('btn-load').addEventListener('click', function () {
     void loadSnapshot($('rel-path').value, 'manual');
   });

@@ -298,3 +298,10 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - 负向：未声明/大写/未知 + 不接的对话框类（link/image/math/module）全部拒绝（E_FORBIDDEN）且 DOM 不变；原 26 项全部回归 PASS。
 - F03 台账：packBEntry 新增 **4 行 PASS**（CMD.editor.table.insert / footnote.insert / note.insert / UI.toolbar.保存-Ctrl-S）→ **packB PASS 行数 14→18**。
 - 证据：`evidence/P5-T26-pack-editor-cmd.md` v9 段 + `T26-pack-editor-cmd-results.json`；报告附录 L。
+
+## v10 pack A 编辑命令桥（task-31，2026-10-19）
+
+- pack A（侧栏阅读器）接入受控编辑命令桥：manifest 声明 18 条协议名（14 切换 + 4 动作）+ `editor.commands.readonly`；UI 新增 18 个命令按钮；保留原读/打印/事件；签名包重建。
+- 产品 W 探针 `--pack a`：**30/30 PASS**（复用 pack B 同一套断言）：guest 真实 DOM 点按钮 → command.invoke → 主窗口 DOM strong/em/u/s/code/h1/h2/h3/ul/ol/pre/blockquote/table 3×3/脚注/ke-note + 撤销还原；doc.save 真实落盘（磁盘 marker+mtime）；负向全部拒绝且 DOM 不变。
+- F03 台账：packAEntry 新增 **18 行 PASS**；F05 域行 packAEntry=PARTIAL（仅表格插入动作面，不伪造）。
+- 证据：`evidence/T26-packA-editor-cmd-results.json` + `P5-T26-pack-editor-cmd.md` v10 段；报告附录 M。

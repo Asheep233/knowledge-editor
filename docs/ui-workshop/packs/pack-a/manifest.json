@@ -7,17 +7,91 @@
     "ui.shell",
     "panel.sidebar",
     "context.read",
-    "print.request"
+    "print.request",
+    "editor.commands.readonly"
   ],
   "entry": {
     "html": "index.html"
   },
-  "commands": [],
+  "commands": [
+    {
+      "name": "editor.bold",
+      "handler": "editorBold"
+    },
+    {
+      "name": "editor.italic",
+      "handler": "editorItalic"
+    },
+    {
+      "name": "editor.underline",
+      "handler": "editorUnderline"
+    },
+    {
+      "name": "editor.strike",
+      "handler": "editorStrike"
+    },
+    {
+      "name": "editor.code",
+      "handler": "editorCode"
+    },
+    {
+      "name": "editor.heading1",
+      "handler": "editorHeading1"
+    },
+    {
+      "name": "editor.heading2",
+      "handler": "editorHeading2"
+    },
+    {
+      "name": "editor.heading3",
+      "handler": "editorHeading3"
+    },
+    {
+      "name": "editor.bullet-list",
+      "handler": "editorBulletList"
+    },
+    {
+      "name": "editor.ordered-list",
+      "handler": "editorOrderedList"
+    },
+    {
+      "name": "editor.blockquote",
+      "handler": "editorBlockquote"
+    },
+    {
+      "name": "editor.code-block",
+      "handler": "editorCodeBlock"
+    },
+    {
+      "name": "editor.undo",
+      "handler": "editorUndo"
+    },
+    {
+      "name": "editor.redo",
+      "handler": "editorRedo"
+    },
+    {
+      "name": "editor.table.insert",
+      "handler": "actionTableInsert"
+    },
+    {
+      "name": "editor.footnote.insert",
+      "handler": "actionFootnoteInsert"
+    },
+    {
+      "name": "editor.note.insert",
+      "handler": "actionNoteInsert"
+    },
+    {
+      "name": "doc.save",
+      "handler": "actionDocSave"
+    }
+  ],
   "assets": [
     {
       "path": "index.html",
-      "sha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
-      "size": 2863
+      "sha256": "e00c157112e06aed782bacc3f94f30cc6a81be8ed7a502fc954efbf53a3946e8",
+      "size": 4823
     },
     {
       "path": "pack.css",
@@ -26,8 +100,8 @@
     },
     {
       "path": "pack.js",
-      "sha256": "8ef26d3d0a4562023008faa231914884383a87db2223ab8ad80a4112a45c7a6c",
-      "size": 12577
+      "sha256": "dbc645ad6101710b4c8832be7d6c2a7386a9c89055f3b9ec1b529b01f234c1fb",
+      "size": 15743
     },
     {
       "path": "vendor/guest-sdk.js",

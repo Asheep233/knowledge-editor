@@ -91,3 +91,32 @@
 ### 负向（含不接的对话框类动作）
 
 - 未声明/大写/未知命令、以及 **不接的对话框类动作**（`editor.link.insert`/`image.insert`/`math.block`/`module.insert`）全部被宿主拒绝（`E_FORBIDDEN`），主窗口 DOM 不变（W-T26-17，共 7 个负向用例）。
+
+---
+
+## v10 增量：pack A 接入编辑命令桥（task-31，2026-10-19）
+
+- 测试构建：`e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`（sha256=`e5a0891de9b18b5f1996470aee13927e14ffd3898244de8e37c3db26fd9223ce`，mtime=`2026-10-19T18:37:46`；无需重建，已含 18 条协议名）。
+- pack A：manifest 声明 **18 条协议名**（14 切换 + 4 动作）+ capabilities 增 `editor.commands.readonly`；UI 新增「编辑器命令」18 按钮；保留原读/打印/事件；签名包已重建。
+- 产品 W（`--pack a`）：**30/30 PASS**。
+
+### 关键断言（guest 真实 DOM 点击 → command.invoke → 主窗口 DOM）
+
+| 协议名 | 主窗口 `.ProseMirror` DOM | 撤销还原 | W check |
+| --- | --- | --- | --- |
+| `editor.bold` | strong 0→4 | PASS | W-T31-7 |
+| `editor.italic` | em 0→4 | PASS | W-T31-8 |
+| `editor.heading1` | h1 1→4 | PASS | W-T31-12 |
+| `editor.bullet-list` | ul 0→1 | PASS | W-T31-20 |
+| `editor.table.insert` | table rows=3 / th=3 / cols=3 | PASS | W-T31-24 |
+| `editor.footnote.insert` | ke-footnote-ref→1、sup→1 | PASS | W-T31-25 |
+| `editor.note.insert` | [data-ke-note] 0→1 | PASS | W-T31-26 |
+| 撤销/重做（W-T31-16） | strong 往返：undone=True / redone=True | — | W-T31-16 |
+
+### doc.save 真实落盘（不只查返回值）
+
+- 编辑 marker 后 guest 点击「保存文档」→ 磁盘出现 marker、mtime 变化；saveEcho=`{"name":"doc.save","ok":true,"value":{"ok":true,"value":{"name":"doc.save","executed":true}},"at":1792406997646}`（W-T31-27）。
+
+### 负向（含未接的对话框类动作）
+
+- 未声明/大写/未知 + `editor.link.insert`/`image.insert`/`math.block`/`module.insert` 全部 `E_FORBIDDEN`，主窗口 DOM 不变（W-T31-17，共 7 用例）。

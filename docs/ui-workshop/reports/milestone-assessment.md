@@ -189,3 +189,15 @@ ACCEPTANCE A 节：
 - F03 台账：**packAEntry 0 → 18 行 PASS**（与 packBEntry 18 行对齐）；official 42/42 不变；
   **F05 域行 packAEntry=PARTIAL**（仅 table.insert 3×3 动作面，其余语义未覆盖，不伪造 PASS）。
 - 证据：`T26-packA-editor-cmd-results.json`、`P5-T26-pack-editor-cmd.md` v10、F 报告附录 M。
+
+## 3l. F 台账 pack 路径证据映射（2026-10-19，v11）
+
+- 用既有产品 W 证据（G1/G2、W02、G3/G4、G7、packA/packB 命令桥）补全可达行：
+  **packA PASS 22→24 行、packB PASS 22→25 行**（新增 F15 `CMD.doc.save`、P3/P4 W05/W02 等；映射见
+  `evidence/P5-T26-F-pack-mapping.md`）。
+- 升级/如实：**F07 域行 NOT_RUN→PARTIAL**（doc.save 真实保存 + document-saved 事件；自动保存注册/草稿
+  恢复无受控通道）；F02/F10 原因更新；**10 行后端 API（/api/fs|modules|drafts|index|tags）NOT_RUN**，
+  原因 = W06 网络边界（CSP connect-src 'none' + 仅受控协议，guest 不能直调后端 API）。
+- 统计：CSV 130 行 → packA PASS 24 / PARTIAL 3 / NOT_RUN 103；packB PASS 25 / PARTIAL 2 / NOT_RUN 93。
+- 未映射：网络边界/无受控协议、仅部分覆盖（不扩大解释、不把官方 UI 通过映射成 pack 通过）、不在 pack
+  能力面（F01 工作区/F08 历史/F09 附件/F11 回收站/F13 导出/F15 设置 UI）。

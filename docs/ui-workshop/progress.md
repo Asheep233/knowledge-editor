@@ -1049,3 +1049,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - 0e1ce59：pack A 声明 editor.commands.readonly + 18 协议名、18 按钮；产品 W 30/30；F03 packA PASS 0→18
   （packB 18）；F05 packA=PARTIAL（仅表格动作面）。证据 P5-T26-pack-editor-cmd.md v10、F 报告附录 M。
+
+## P6 进度（F 台账 pack 证据映射 v11，2026-10-19）
+
+- 803460c：packA PASS 22→24、packB 22→25（F15 doc.save、P3/P4 W05/W02 等）；F07 PARTIAL；10 行后端 API
+  NOT_RUN（W06 网络边界原因）。证据 P5-T26-F-pack-mapping.md、F 报告附录 N。

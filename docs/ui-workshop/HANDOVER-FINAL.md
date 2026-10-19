@@ -447,3 +447,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   产品 W **30/30 PASS**（DOM/撤销/doc.save 真实落盘/负向拒绝，与 packB 对齐）。
 - **F03 台账：packAEntry 0→18 行 PASS、packBEntry 18 行 PASS**（official 42/42 不变）；
   **F05 域行 packAEntry=PARTIAL**（仅 table.insert 动作面，未伪造）；证据 `T26-packA-editor-cmd-results.json`。
+
+## 追加（2026-10-19 后段 · F 台账 pack 证据映射 v11）
+
+- `803460c` **pack 路径证据映射**：用既有产品 W（G1/G2 读写信、W02 元数据、G3/G4 打印事件、G7 参考包、
+  packA/B 命令桥）补全可达行 → **packA PASS 22→24、packB PASS 22→25**（新增 F15 doc.save、P3/P4 W05/W02 等）。
+- 升级/如实：F07 NOT_RUN→**PARTIAL**（doc.save 真实保存+事件，自动保存/草稿恢复无受控通道）；
+  10 行后端 API（/api/fs|modules|drafts|index|tags）**NOT_RUN**，原因=W06 网络边界（CSP connect-src 'none'，
+  guest 不能直调后端 API）；不把官方 UI 通过映射成 pack 通过。证据 `P5-T26-F-pack-mapping.md`。

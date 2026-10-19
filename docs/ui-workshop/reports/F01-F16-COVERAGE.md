@@ -345,3 +345,27 @@
 - **G3/G4 已闭环**（commit `50621cc`，U+W 18/18）：print.snapshot 接真实打印管线；宿主事件
   document-saved/context-changed/theme-changed 真实发射并到达 guest。剩余：G5/G7 等（参考 UI/逐项台账、
   完整原生入口仍未逐项登记）。
+
+---
+
+## 附：G7 状态更新（2026-10-19，packs-ab 追加，未改动上文审计结论）
+
+- **G7「参考 UI / pack A/B 缺失」已有真实参考包 + 产品 W 证据**（commit 见本轮 `feat(ui-workshop): T26 G7 ...`）：
+  - 新增 `docs/ui-workshop/packs/pack-a/`（侧栏读场景；capabilities = ui.shell / panel.sidebar /
+    context.read / print.request）与 `packs/pack-b/`（Dock 写场景；capabilities = ui.shell / panel.dock /
+    context.read；commands = `article.set-title` / `article.set-tags`），入口相对引用包内 vendored 发布 SDK
+    `sdk/dist/guest-sdk.js`（iife，全局 `KeWorkshopSDK`），`autoConnect` 握手 + 200ms 心跳 + 错误展示；
+  - 构建/签名工具 `docs/ui-workshop/tools/build_reference_packs.mjs`：回写 assets sha256/size、同步 vendored
+    SDK、ed25519 签名只写入 dist（源 manifest 不含签名）、生成 zip 离线包；测试自签密钥不入仓（dist gitignore）；
+  - 产品 W 探针 `docs/ui-workshop/tools/run_reference_packs_probe.py` + 证据
+    `evidence/T26-G7-reference-packs-results.json` / `evidence/P5-T26-G7-reference-packs.md`：
+    **W-G7 24/24 checks PASS**（构建/签名/幂等 3；pack A 读快照/打印/事件/错误/停用 8；pack B 能力/握手/
+    快照/命令落盘/错误 6；安全/进程 1 等）。pack A 真实展示文档标题+正文（=磁盘原文语义），
+    `document-saved` 事件自动刷新；pack B `command.invoke` 真实写盘 frontmatter title/tags。
+- **该证据不改变 F01–F16 覆盖判定与逐项台账状态**：`feature-baseline.csv` 的 `packAEntry`/`packBEntry`
+  仍为 0/130（F 域 121 行 + P3/P4 9 行）、`officialBaselineResult` 仍 NOT_RUN ×130；逐项「任务 → pack A/B
+  入口 → 官方基线结果」**仍未登记**。
+- **G7 内部剩余缺口（如实记录）**：① F01–F16 逐项映射与官方基线运行未开始（参考包只提供可复用载体，
+  不等于逐项通过）；② 发布 SDK 0.1.0 无事件订阅 API、协议无「当前打开文档 relPath」发现通道（参考包按
+  wire / 用户输入绕过，已写入证据限制）；③ 打印 renderer 仍为 `KE_WS_PRINT_RENDER=1` env 门控、页数不可得；
+  ④ 正式发布密钥管理/信任根未做（本轮为测试自签密钥）；⑤ 官方 UI 全量基线未跑（本证据为隔离测试构建 W）。

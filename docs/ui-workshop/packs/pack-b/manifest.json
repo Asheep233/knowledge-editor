@@ -1,0 +1,46 @@
+{
+  "id": "com.astranota.examples.pack-b",
+  "name": "参考包 B · Dock 写作表单",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "capabilities": [
+    "ui.shell",
+    "panel.dock",
+    "context.read"
+  ],
+  "entry": {
+    "html": "index.html"
+  },
+  "commands": [
+    {
+      "name": "article.set-title",
+      "handler": "setTitle"
+    },
+    {
+      "name": "article.set-tags",
+      "handler": "setTags"
+    }
+  ],
+  "assets": [
+    {
+      "path": "index.html",
+      "sha256": "755fe8af09f09c28e809bbbb8b1856e221089eac4546eb398e72a95b480a5630",
+      "size": 3290
+    },
+    {
+      "path": "pack.css",
+      "sha256": "9dc672847e98b51aa7e850e3711422874d17f18ce44218ba2f3731ddbbe99880",
+      "size": 2070
+    },
+    {
+      "path": "pack.js",
+      "sha256": "8b248a50c5a7dd27d6e79617ab46eb7866ad1d58f07b5196846b28814b71e948",
+      "size": 13503
+    },
+    {
+      "path": "vendor/guest-sdk.js",
+      "sha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+      "size": 5478
+    }
+  ]
+}

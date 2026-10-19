@@ -181,3 +181,11 @@ ACCEPTANCE A 节：
 - F03 台账：packB PASS **14 → 18 行**（新增 CMD.editor.table.insert / footnote.insert / note.insert /
   UI.toolbar.保存-Ctrl-S（以 doc.save 真实落盘为 packB 证据））；official 42/42 不变。
 - 证据：`P5-T26-pack-editor-cmd.md` v9、`T26-pack-editor-cmd-results.json`、F 报告附录 L。
+
+## 3k. pack A 接入编辑命令桥（2026-10-19，v10）
+
+- pack A manifest 增加 `editor.commands.readonly` 能力 + 18 条协议名声明，UI 18 命令按钮；产品 W **30/30 PASS**
+  （与 packB 同断言：DOM/撤销/doc.save 真实落盘/负向拒绝）。
+- F03 台账：**packAEntry 0 → 18 行 PASS**（与 packBEntry 18 行对齐）；official 42/42 不变；
+  **F05 域行 packAEntry=PARTIAL**（仅 table.insert 3×3 动作面，其余语义未覆盖，不伪造 PASS）。
+- 证据：`T26-packA-editor-cmd-results.json`、`P5-T26-pack-editor-cmd.md` v10、F 报告附录 M。

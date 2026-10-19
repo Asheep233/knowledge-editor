@@ -45,6 +45,7 @@ T26-W09-workshop-results.json,T26/W09,W,Windows 产品壳（工坊口径：无�
 T26-cloud-handoff-results.json,T26/cloud,B（本地模拟自验）,本地模拟（云端交接包）,PASS,9,9,见 evidence/P5-T26-cloud-handoff-verification.md
 T26-isolated-smoke-results.json,T26/A1,W,Windows 产品壳（隔离构建，冒烟/独立 appData/单实例）,PASS,7,7,手工隔离构建流程（见 evidence/P5-T26-isolated-smoke.md）
 T26-pack-editor-cmd-results.json,T26/F03-packB,W,Windows 产品壳（隔离构建，packB 编辑器命令桥）,PASS,30,30,python tools/run_t26_pack_editor_cmd_probe.py
+T26-packA-editor-cmd-results.json,T26/F03-packA,W,Windows 产品壳（隔离构建，packA 编辑器命令桥）,PASS,30,30,python tools/run_t26_pack_editor_cmd_probe.py --pack a
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py
 P5-T26-F16-native-menu-audit.md（11/11 结构性审计；W/DOM 未覆盖）,T26/F16,U/静态（非 W）,Windows 源码只读审计,NOT_RUN(结构性审计 11/11；W 未覆盖),11,11,只读审计 desktop/src-tauri/src/menu.rs（见 evidence/P5-T26-F16-native-menu-audit.md）

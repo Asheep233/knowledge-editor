@@ -440,3 +440,10 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   18 条协议名全集可被 manifest 声明；**不接**对话框/文件选择类动作（link/image/math/module，调用被拒）。
 - `ec52226` **packB W 30/30 PASS**：表格 rows=3/th=3、脚注 sup、信息块 data-ke-note、**doc.save 真实落盘**
   （marker 出现 + mtime 变化，不只查返回值）；负向 7 用例 E_FORBIDDEN 且 DOM 不变；F03 packB PASS 14→18 行。
+
+## 追加（2026-10-19 后段 · pack A 接入编辑命令桥）
+
+- `0e1ce59` **pack A 接入**：manifest 增加 `editor.commands.readonly` + 18 条协议名声明、UI 18 命令按钮；
+  产品 W **30/30 PASS**（DOM/撤销/doc.save 真实落盘/负向拒绝，与 packB 对齐）。
+- **F03 台账：packAEntry 0→18 行 PASS、packBEntry 18 行 PASS**（official 42/42 不变）；
+  **F05 域行 packAEntry=PARTIAL**（仅 table.insert 动作面，未伪造）；证据 `T26-packA-editor-cmd-results.json`。

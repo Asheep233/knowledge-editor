@@ -1004,3 +1004,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - f164ce1：checks 71/76；F03 42/42 登记（37 PASS/5 FAIL）；F16 11 项原生菜单结构性审计（W 未覆盖如实
   NOT_RUN）；CSV 72/130 行。剩余：F03 5 FAIL 复核、F16 OS 级交互、F14 导出隔离限制、guest 能力面。
+
+## P6 进度（F03 FAIL 根因审计 v5，2026-10-19）
+
+- 4784980：F03 42 行中 4 项 FAIL 归因自动化限制（改判 PASS），1 项真实产品 FINDING（Ctrl+Shift+B 引用
+  快捷键被 KeBlockJoin 覆盖失效）；F03 41 PASS/1 FAIL；证据 `P5-T26-F03-fail-audit.md`。
+- 后续：修复 blockquote 快捷键（task-22/23）→ 复测。

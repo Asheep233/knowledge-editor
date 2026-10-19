@@ -322,3 +322,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   CSV 累计 **72/130 行**登记。
 - 剩余：F03 5 FAIL 待产品/探针复核；F16 原生菜单真实交互需 OS 级 UI 自动化；F14 最终导出 Documents 隔离限制
   NOT_RUN；guest 能力面未覆盖行 NOT_RUN。
+
+## 追加（2026-10-19 后段 · F03 FAIL 根因审计 v5）
+
+- `4784980` **F03 五 FAIL 根因审计**：4 项为探针/自动化限制（断言只数 `<ul>`、连续自动化保存状态耦合、
+  链接需正确前置、模块 portal 懒加载时序）→ 定向复核后 CSV 改判 **PASS**；**1 项真实产品 FINDING**：
+  `KeBlockJoin.ts:104/131` 的 `KeBlockquote.addKeyboardShortcuts()` 丢弃上游 `Mod-Shift-b`（+editor/index.ts:158
+  blockquote:false）→ Ctrl+Shift+B 引用快捷键失效（工具栏可用）。F03 变为 **41 PASS / 1 FAIL**；
+  证据 `P5-T26-F03-fail-audit.md`（含修复建议，未改产品代码）。后续：修复该快捷键并复测。

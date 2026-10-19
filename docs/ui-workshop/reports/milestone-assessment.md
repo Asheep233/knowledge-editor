@@ -109,7 +109,7 @@ ACCEPTANCE A 节：
 - `feature-baseline.csv`：**72/130 行**已登记（v4）；**F03 42/42 全量登记（37 PASS / 5 FAIL：链接/模块插入
   2 行 v4 新 FAIL + Ctrl+Shift+8 无序列表/Ctrl+Shift+B 引用/工具栏保存 3 行既有 FAIL，如实保留）**；
   F16 11/11 行：原生菜单为 **结构性审计证据（U/静态）**、W/DOM 未覆盖 → NOT_RUN；官方 UI 累计
-  49 PASS / 5 FAIL / 76 NOT_RUN（其余未执行行保持 NOT_RUN）。
+  59 PASS / 1 FAIL / 70 NOT_RUN（其余未执行行保持 NOT_RUN）。
 - F16 原生菜单审计：`menu.rs` 11 个 MenuItem（含 `ke-menu:*` ID/标签/加速键/handle_event 分发）→
   `evidence/P5-T26-F16-native-menu-audit.md`；CDP 无法点击原生菜单，不伪造 W。
 - F14 官方导出：对话框入口 PASS；**最终 export_pdf 落 Documents 未执行（NOT_RUN，USERPROFILE 覆盖会禁用
@@ -121,3 +121,13 @@ ACCEPTANCE A 节：
 - 未覆盖（如实）：F14 官方导出落盘（仅验证到对话框入口）、F16 原生菜单（非 DOM）、F03 其余 35 行、
   F01/F03/F04/F05/F09/F11/F13/F16 的 pack 路径（协议无对应方法，能力面 NOT_RUN）。
 - 参考包≠逐项通过：登记口径为「真实执行过的行」，未执行不伪造；F01–F16 整体仍未达成。
+
+## 3g. F03 五 FAIL 根因审计（2026-10-19，v5）
+
+- 4 项为 **AUTOMATION_LIMITATION**（探针断言/前置条件缺陷，非产品失败）：Ctrl+Shift+8 无序列表（只数 `<ul>`
+  而产品真实产生 li）、工具栏保存（连续自动化状态耦合）、链接插入（需正确前置/选区）、模块插入（portal 懒加载时序）；
+  经定向复核均产生真实 DOM/落盘 → CSV 改判 PASS；
+- **1 项真实产品 FINDING**：`KeBlockJoin.ts:104` 的 `KeBlockquote.addKeyboardShortcuts()` 重写快捷键表
+  只返回 Backspace，丢弃上游 `Mod-Shift-b`（且 `editor/index.ts:158 blockquote:false` 关内置）→ Ctrl+Shift+B
+  引用快捷键失效（工具栏按钮正常）。建议修复：合并 `this.parent?.()` 或显式绑定 `Mod-Shift-b`。
+- 证据：`evidence/P5-T26-F03-fail-audit.md`、`P5-T26-F-ledger.md` v5、F 报告附录 H。

@@ -1,6 +1,22 @@
 {
-  "generated_at": "2026-10-19T08:22:51+0800",
-  "scenario": "T26 W02 表单交接产品 W（command.invoke title + 未知命令拒绝）",
+  "generated_at": "2026-10-19T09:29:49+0800",
+  "scenario": "T26 W02 表单交接产品 W（command.invoke title/tags 原子写 + 未知命令拒绝 + 停用后迟到请求旧连接失效）",
+  "evidence_note": "产品点「停用 guest」会卸载 guest iframe（guest realm 销毁），guest 无法在停用后自己发命令；本探针按 guest 原定 T+3s，在宿主窗口重放 guest 在 pre 中冻结的迟到命令原始 wire 请求（CDP 测试脚本注入，非 guest 通道），验证已关闭的 dispatcher 丢弃迟到请求（无响应/超时、不落盘）。这是「旧连接失效」的重放验证，不代表 guest 停用后仍存活/仍能发命令。",
+  "environment_note": "并发窗口：本探针与 W07 boot 探针共用隔离构建。基线运行（09:08）在 check 6 处 CDP 连接断开，app.log 显示窗口异常关闭，疑似并发窗口内其它探针的 cleanup（按 C:\\\\ke-tmp\\\\uiws-t26\\\\bin\\\\* Stop-Process）误杀本 app；属环境并发冲突，不是产品缺陷。正式证据取自串行窗口内完整跑通的本次运行。",
+  "attempts": 1,
+  "late_command": {
+    "name": "article.set-title",
+    "title": "W02 迟到标题",
+    "scheduled_delay_ms": 3000,
+    "replay_only": true,
+    "guest_iframes_after_stop": 0,
+    "guest_iframe_alive_after_stop": false,
+    "guest_done_after_stop": false,
+    "rejection_observed": "no_response_closed_dispatcher_no_disk_write"
+  },
+  "stop_state": "stopped",
+  "iframes_before": 1,
+  "iframes_after": 0,
   "checks": [
     {
       "name": "W-T26-W02-1 安装签名包",
@@ -10,7 +26,7 @@
         "value": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368429686255046 }"
+          "updatedAt": "SystemTime { intervals: 134368469819555338 }"
         }
       }
     },
@@ -40,7 +56,7 @@
       "name": "W-T26-W02-4 宿主后端原子写生效（frontmatter title 已更新）",
       "pass": true,
       "detail": {
-        "head": "---\ntitle: W02 交接标题\ntags:\n  - w02\n  - 交接\n---\n\nW02 form\n"
+        "head": "\ntitle: W02 交接标题\ntags:\n  - w02\n  - 交接\n"
       }
     },
     {
@@ -64,7 +80,21 @@
       "detail": "E_INTERNAL: E_COMMAND_NOT_ALLOWED: 未授权命令 article.delete"
     },
     {
-      "name": "W-T26-W02-6 会话 active",
+      "name": "W-T26-W02-6 收到 guest 中间回报 w02-guest-pre（停用前 title/tags/未知命令已完成）",
+      "pass": true,
+      "detail": {
+        "preAt": 1792373382369,
+        "lateRequest": {
+          "requestId": "w02-late-1792373382327-7dmf9l",
+          "method": "command.invoke",
+          "name": "article.set-title",
+          "title": "W02 迟到标题",
+          "scheduledDelayMs": 3000
+        }
+      }
+    },
+    {
+      "name": "W-T26-W02-7 停用前会话 active（旧连接仍在服务）",
       "pass": true,
       "detail": {
         "ok": true,
@@ -76,18 +106,70 @@
           "lastError": null,
           "packId": "com.probe.t26w02",
           "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368429689141085 }"
+          "updatedAt": "SystemTime { intervals: 134368469822751375 }"
         }
       }
     },
     {
-      "name": "W-T26-W02-7 主进程存活 / 用户实例未运行（N/A）",
+      "name": "W-T26-W02-8 停用 guest 生效：会话状态 stopped/failed/idle + guest iframe 已卸载",
       "pass": true,
       "detail": {
-        "user_pid": "(not running)"
+        "state": "stopped",
+        "status": {
+          "capabilities": [],
+          "lastError": null,
+          "packId": "com.probe.t26w02",
+          "state": "stopped",
+          "updatedAt": "SystemTime { intervals: 134368469824295602 }"
+        },
+        "iframes_before": 1,
+        "iframes_after": 0,
+        "guest_frame_gone": true
+      }
+    },
+    {
+      "name": "W-T26-W02-9 旧连接失效：停用后重放的迟到请求被丢弃（无响应/超时，未执行；重放验证，非 guest 存活）",
+      "pass": true,
+      "detail": {
+        "stop_ok": true,
+        "replay": {
+          "firedAt": 1792373385370,
+          "requestId": "w02-late-1792373382327-7dmf9l",
+          "iframes": 0,
+          "resultsLogLen": 1
+        },
+        "lateRequestId": "w02-late-1792373382327-7dmf9l",
+        "state_after": "stopped",
+        "guest_done_after_stop": false,
+        "phases_after": [
+          "w02-guest-pre"
+        ],
+        "mechanism": "停用 → guest iframe 卸载 → 宿主 dispatcher close()；迟到 wire 请求无订阅者，被丢弃",
+        "injection": "window.postMessage 由 CDP 测试脚本注入，非 guest 通道"
+      }
+    },
+    {
+      "name": "W-T26-W02-10 磁盘 frontmatter 不含迟到标题（迟到请求未落盘，原 title/tags 保留）",
+      "pass": true,
+      "detail": {
+        "stop_ok": true,
+        "head_after": "\ntitle: W02 交接标题\ntags:\n  - w02\n  - 交接\n",
+        "late_title_present": false
+      }
+    },
+    {
+      "name": "W-T26-W02-11 主进程存活 / 用户实例未运行（N/A）/ 无残留 guest 会话",
+      "pass": true,
+      "detail": {
+        "proc_alive": true,
+        "user_pid": "(not running)",
+        "our_processes": 1,
+        "backend_processes": 2,
+        "safe_mode_banner": false,
+        "session_state": "stopped"
       }
     }
   ],
-  "pass_count": 8,
-  "total": 8
+  "pass_count": 12,
+  "total": 12
 }

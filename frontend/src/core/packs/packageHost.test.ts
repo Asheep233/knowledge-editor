@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { PACK_API_VERSION, type PackManifest } from './manifest'
-import { PackageHost, type PackageHostBackend } from './packageHost'
+import { HOST_UNAVAILABLE_PREFIX, PackageHost, type PackageHostBackend } from './packageHost'
 
 const MANIFEST: PackManifest = {
   id: 'com.demo.hello',
@@ -130,5 +130,55 @@ describe('T19 包隔离宿主', () => {
     expect(src).not.toMatch(/document\./)
     expect(src).not.toMatch(/window\./)
     expect(src).not.toMatch(/from ['"]react['"]/)
+  })
+
+  it('W07 B-5：宿主后端不可用 → active 会话 suspended + E_HOST_UNAVAILABLE（不计崩溃/不触发 recover）', async () => {
+    const b = backend()
+    const host = makeHost(b)
+    const seen: string[] = []
+    host.subscribe((s) => seen.push(s.state))
+    await host.start('com.demo.hello', '1.0.0')
+    const session = host.get('com.demo.hello')!
+    const connectionId = session.connection?.connectionId
+    const affected = host.markHostUnavailable('后端连接中断，正在自动恢复')
+    expect(affected).toHaveLength(1)
+    expect(host.get('com.demo.hello')?.state).toBe('suspended')
+    expect(session.lastError).toContain(HOST_UNAVAILABLE_PREFIX)
+    expect(session.lastError).toContain('自动恢复')
+    expect(session.crashCount).toBe(0)
+    expect(session.connection?.connectionId).toBe(connectionId)
+    expect(b.deactivate).not.toHaveBeenCalled()
+    expect(b.recover).not.toHaveBeenCalled()
+    expect(host.isSafeMode()).toBe(false)
+    expect(seen).toContain('suspended')
+  })
+
+  it('W07 B-5：宿主恢复 → 仅因宿主故障挂起的会话回 active 并清除错误', async () => {
+    const host = makeHost()
+    await host.start('com.demo.hello', '1.0.0')
+    host.markHostUnavailable('sidecar 退出')
+    expect(host.get('com.demo.hello')?.state).toBe('suspended')
+    const restored = host.markHostRestored()
+    expect(restored).toHaveLength(1)
+    expect(host.get('com.demo.hello')?.state).toBe('active')
+    expect(host.get('com.demo.hello')?.lastError).toBeUndefined()
+    // 无事件/无挂起会话时恢复是 no-op（不误报）
+    expect(host.markHostRestored()).toHaveLength(0)
+  })
+
+  it('W07 B-5：guest 自身崩溃导致的 suspended 不被「宿主恢复」误恢复', async () => {
+    const host = makeHost()
+    await host.start('com.demo.hello', '1.0.0')
+    await host.reportCrash('com.demo.hello', 'heartbeat timeout')
+    expect(host.get('com.demo.hello')?.state).toBe('suspended')
+    expect(host.markHostRestored()).toHaveLength(0)
+    expect(host.get('com.demo.hello')?.state).toBe('suspended')
+    expect(host.get('com.demo.hello')?.lastError).toContain('heartbeat timeout')
+  })
+
+  it('W07 B-5：未启用会话时 markHostUnavailable/Restored 均为 no-op（不误报）', () => {
+    const host = makeHost()
+    expect(host.markHostUnavailable('x')).toHaveLength(0)
+    expect(host.markHostRestored()).toHaveLength(0)
   })
 })

@@ -84,4 +84,41 @@ describe('A7 GuestSessionHost', () => {
     expect(b.deactivate).not.toHaveBeenCalled()
     await host.stop()
   })
+
+  it('W07 B-5：宿主后端不可用/恢复 → 会话状态上报 suspended(含 lastError) → active(清除错误)', async () => {
+    const b = backend()
+    const statuses: string[] = []
+    const reports: Array<{ state: string; lastError?: string | null }> = []
+    const reportMock = b.reportSession as unknown as {
+      mockImplementation: (fn: (status: { state: string; lastError?: string | null }) => Promise<unknown>) => void
+    }
+    reportMock.mockImplementation(async (status) => {
+      reports.push({ state: status.state, lastError: status.lastError })
+      return status
+    })
+    const host = createGuestSessionHost({
+      backend: b,
+      tier: 'trusted',
+      onStatus: (s) => statuses.push(s.state),
+    })
+    await host.start('com.demo.guest', '1.0.0')
+    host.markHostUnavailable('后端连接中断，正在自动恢复（第 1/3 次）')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(statuses).toContain('suspended')
+    expect(reports.some((r) => r.state === 'suspended' && String(r.lastError ?? '').includes('E_HOST_UNAVAILABLE'))).toBe(true)
+    host.markHostRestored()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(statuses[statuses.length - 1]).toBe('active')
+    expect(reports.some((r) => r.state === 'active' && !r.lastError)).toBe(true)
+    await host.stop()
+  })
+
+  it('W07 B-5：未启用时 markHostUnavailable/Restored 为 no-op（无事件不误报）', async () => {
+    const b = backend()
+    const host = createGuestSessionHost({ backend: b, tier: 'trusted' })
+    host.markHostUnavailable('x')
+    host.markHostRestored()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(b.reportSession).not.toHaveBeenCalled()
+  })
 })

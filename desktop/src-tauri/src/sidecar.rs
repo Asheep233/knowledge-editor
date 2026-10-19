@@ -9,7 +9,7 @@
 // - 动态端口：默认 8000，被占则换下一个空闲端口，最多 3 次
 // - 侧车运行中崩溃：自动拉起重试 health，≤3 次
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
@@ -77,6 +77,75 @@ fn runtime_file() -> PathBuf {
 
 fn default_workspace() -> PathBuf {
     data_dir().join("workspace")
+}
+
+// ---------------- W07 B-8：运行时状态清理（崩溃/终态不再对外提供已死 pid） ----------------
+
+/// 崩溃后是否还应自动重启（restarts = 已重启次数）。
+fn should_restart(restarts: u32) -> bool {
+    restarts < MAX_CRASH_RESTARTS
+}
+
+/// B-8：清空 `SidecarState.info`（可单测；返回是否清理了一个已记录的运行时信息）。
+fn clear_runtime_info(info: &Mutex<Option<RuntimeInfo>>) -> bool {
+    match info.lock() {
+        Ok(mut guard) => guard.take().is_some(),
+        // 锁中毒（持有线程 panic）时仍尽力清空：运行时信息本身无跨线程不变量。
+        Err(poisoned) => poisoned.into_inner().take().is_some(),
+    }
+}
+
+/// B-8：删除指定 `runtime.json`（可单测；返回是否真的删除了文件）。
+fn remove_runtime_file_at(path: &Path) -> bool {
+    std::fs::remove_file(path).is_ok()
+}
+
+/// B-8：崩溃/终态清理（可单测）—— 清空已死运行时信息 + 删除 stale `runtime.json`。
+/// 返回值表示 info 是否被清空；文件删除失败不视为致命（仅诊断文件）。
+fn clear_stale_runtime(info: &Mutex<Option<RuntimeInfo>>, runtime_path: &Path) -> bool {
+    let cleared = clear_runtime_info(info);
+    let _ = remove_runtime_file_at(runtime_path);
+    cleared
+}
+
+/// B-8 生产入口：sidecar 进程退出后立即清理当前应用的运行时状态，`get_runtime_info`
+/// 不再返回已死 pid；自动重启成功后由 `watch_sidecar` 写入新的 info/runtime.json。
+fn clear_runtime_state(app: &AppHandle) {
+    if let Some(state) = app.try_state::<SidecarState>() {
+        clear_stale_runtime(&state.info, &runtime_file());
+    } else {
+        let _ = remove_runtime_file_at(&runtime_file());
+    }
+}
+
+/// B-4：`ke:sidecar-exited` 事件载荷（additive 字段：restarting/attempt/maxRestarts，
+/// 供前端区分「自动恢复中」与「已降级」；旧消费者忽略未知字段即可）。
+fn sidecar_exited_payload(
+    code: Option<i32>,
+    signal: Option<i32>,
+    restarting: bool,
+    attempt: u32,
+) -> serde_json::Value {
+    serde_json::json!({
+        "code": code,
+        "signal": signal,
+        "restarting": restarting,
+        "attempt": attempt,
+        "maxRestarts": MAX_CRASH_RESTARTS,
+    })
+}
+
+/// B-4：`ke:runtime-error` 事件载荷（terminal=true 表示不再自动恢复，UI 应提示降级）。
+fn runtime_error_payload(message: &str, terminal: bool, attempt: Option<u32>) -> serde_json::Value {
+    let mut value = serde_json::json!({
+        "message": message,
+        "terminal": terminal,
+        "maxRestarts": MAX_CRASH_RESTARTS,
+    });
+    if let Some(attempt) = attempt {
+        value["attempt"] = serde_json::json!(attempt);
+    }
+    value
 }
 
 /// 找到从 start 起的空闲端口（尝试 bind 127.0.0.1:port，成功即空闲）。
@@ -461,17 +530,25 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                 CommandEvent::Terminated(payload) => {
                     // R-3：进程已终止 → 立刻清零登记 PID，避免残留 PID 被系统复用后误判。
                     SPAWNED_PID.store(0, Ordering::SeqCst);
+                    // W07 B-8：进程已死 → 立刻清空 SidecarState.info 并删除 stale runtime.json
+                    //（get_runtime_info 不再返回已死 pid；自动重启成功后重新写入新记录）。
+                    clear_runtime_state(&app_clone);
+                    let shutting_down = SHUTTING_DOWN.load(Ordering::SeqCst);
+                    let will_restart = !shutting_down && should_restart(restarts);
+                    // W07 B-4：载荷区分「自动恢复中」与「显式停机」，供前端 banner 分级。
                     let _ = app_clone.emit(
                         "ke:sidecar-exited",
-                        serde_json::json!({
-                            "code": payload.code,
-                            "signal": payload.signal,
-                        }),
+                        sidecar_exited_payload(
+                            payload.code,
+                            payload.signal,
+                            will_restart,
+                            if will_restart { restarts + 1 } else { restarts },
+                        ),
                     );
-                    if SHUTTING_DOWN.load(Ordering::SeqCst) {
+                    if shutting_down {
                         return;
                     }
-                    if restarts < MAX_CRASH_RESTARTS {
+                    if will_restart {
                         eprintln!(
                             "[sidecar] 进程异常退出（code={:?} signal={:?}），1s 后自动拉起（第 {}/{} 次）",
                             payload.code, payload.signal, restarts + 1, MAX_CRASH_RESTARTS
@@ -492,18 +569,22 @@ fn watch_sidecar(app: AppHandle, port: u16, restarts: u32) -> Result<(), String>
                             Ok(()) => {}
                             Err(e) => {
                                 eprintln!("[sidecar] 自动拉起失败: {e}");
+                                // W07 B-8：重启失败 = 终态（不会再产生新 info）→ 确保运行时状态已清空。
+                                clear_runtime_state(&app_clone);
                                 let _ = app_clone.emit(
                                     "ke:runtime-error",
-                                    serde_json::json!({ "message": e }),
+                                    runtime_error_payload(&e, true, Some(restarts + 1)),
                                 );
                             }
                         }
                         return;
                     }
                     eprintln!("[sidecar] 崩溃重启次数耗尽（{MAX_CRASH_RESTARTS} 次），不再自动拉起");
+                    // W07 B-8：终态清理（幂等：退出瞬间已清空，这里保证「耗尽后」仍无 stale 运行时状态）。
+                    clear_runtime_state(&app_clone);
                     let _ = app_clone.emit(
                         "ke:runtime-error",
-                        serde_json::json!({ "message": "侧车崩溃且自动重启次数已耗尽" }),
+                        runtime_error_payload("侧车崩溃且自动重启次数已耗尽", true, Some(restarts)),
                     );
                 }
                 _ => {}
@@ -537,7 +618,12 @@ pub fn start(app: AppHandle) {
                 }
             }
         }
-        let _ = app.emit("ke:runtime-error", serde_json::json!({ "message": last_err }));
+        // W07 B-8：全部启动尝试失败 = 终态 → 确保没有 stale 运行时状态对外暴露。
+        clear_runtime_state(&app);
+        let _ = app.emit(
+            "ke:runtime-error",
+            runtime_error_payload(&last_err, true, None),
+        );
     });
 }
 
@@ -607,7 +693,13 @@ pub fn get_runtime_info(state: State<'_, SidecarState>) -> Result<RuntimeInfo, S
 
 #[cfg(test)]
 mod tests {
-    use super::build_cors_origins;
+    use super::{
+        build_cors_origins, clear_runtime_info, clear_stale_runtime, remove_runtime_file_at,
+        runtime_error_payload, should_restart, sidecar_exited_payload, RuntimeInfo,
+        MAX_CRASH_RESTARTS,
+    };
+    use std::path::PathBuf;
+    use std::sync::Mutex;
 
     /// SEC-6：release（dev=false）必须**完全忽略**环境变量 —— 不可由环境注入任意来源。
     #[test]
@@ -669,5 +761,89 @@ mod tests {
         let cors = build_cors_origins(true, None, Some("not-a-port".to_string()));
         assert!(cors.contains(&"http://127.0.0.1:5173".to_string()));
         assert!(cors.contains(&"http://tauri.localhost".to_string()));
+    }
+
+    fn runtime_info(pid: u32) -> RuntimeInfo {
+        RuntimeInfo {
+            api_base: format!("http://127.0.0.1:8000"),
+            workspace: "C:\\tmp\\ws".to_string(),
+            version: "test".to_string(),
+            pid,
+            port: 8000,
+        }
+    }
+
+    fn temp_runtime_path(tag: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "ke-runtime-b8-test-{}-{tag}.json",
+            std::process::id()
+        ))
+    }
+
+    /// W07 B-8：崩溃/终态清空 SidecarState.info → get_runtime_info 不再返回已死 pid。
+    #[test]
+    fn b8_clear_runtime_info_drops_dead_pid() {
+        let info = Mutex::new(Some(runtime_info(4242)));
+        assert!(clear_runtime_info(&info), "首次清理应报告「清掉了一条记录」");
+        assert!(info.lock().unwrap().is_none(), "清理后不得再返回已死 pid");
+        assert!(!clear_runtime_info(&info), "重复清理应幂等（无记录可清）");
+    }
+
+    /// W07 B-8：终态清理同时删除 stale runtime.json。
+    #[test]
+    fn b8_clear_stale_runtime_removes_runtime_json() {
+        let path = temp_runtime_path("stale");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, "{\"backend\":{\"pid\":4242}}").unwrap();
+        let info = Mutex::new(Some(runtime_info(4242)));
+        assert!(clear_stale_runtime(&info, &path));
+        assert!(info.lock().unwrap().is_none());
+        assert!(!path.exists(), "stale runtime.json 必须被删除");
+        // 幂等：再调用不 panic、返回 false
+        assert!(!clear_stale_runtime(&info, &path));
+    }
+
+    /// W07 B-8：runtime.json 不存在时删除失败不算清理（不 panic）。
+    #[test]
+    fn b8_remove_runtime_file_missing_is_false() {
+        let path = temp_runtime_path("missing");
+        let _ = std::fs::remove_file(&path);
+        assert!(!remove_runtime_file_at(&path));
+    }
+
+    /// W07 B-8：崩溃重启预算判定（0/1/2 可重启，3 次耗尽后终态）。
+    #[test]
+    fn b8_should_restart_until_budget_exhausted() {
+        assert!(should_restart(0));
+        assert!(should_restart(1));
+        assert!(should_restart(MAX_CRASH_RESTARTS - 1));
+        assert!(!should_restart(MAX_CRASH_RESTARTS), "第 3 次崩溃后不得再自动拉起");
+        assert!(!should_restart(MAX_CRASH_RESTARTS + 1));
+    }
+
+    /// W07 B-4：sidecar-exited 载荷带 restarting/attempt/maxRestarts（前端据此分级 banner）。
+    #[test]
+    fn b4_sidecar_exited_payload_has_restart_metadata() {
+        let restarting = sidecar_exited_payload(Some(1), None, true, 2);
+        assert_eq!(restarting["restarting"], serde_json::json!(true));
+        assert_eq!(restarting["attempt"], serde_json::json!(2));
+        assert_eq!(restarting["maxRestarts"], serde_json::json!(MAX_CRASH_RESTARTS));
+        assert_eq!(restarting["code"], serde_json::json!(1));
+
+        let terminal = sidecar_exited_payload(None, Some(9), false, MAX_CRASH_RESTARTS);
+        assert_eq!(terminal["restarting"], serde_json::json!(false));
+        assert_eq!(terminal["signal"], serde_json::json!(9));
+    }
+
+    /// W07 B-4：runtime-error 载荷标记 terminal（UI 显示「已降级」而不是「恢复中」）。
+    #[test]
+    fn b4_runtime_error_payload_marks_terminal() {
+        let with_attempt = runtime_error_payload("重启失败", true, Some(2));
+        assert_eq!(with_attempt["terminal"], serde_json::json!(true));
+        assert_eq!(with_attempt["message"], serde_json::json!("重启失败"));
+        assert_eq!(with_attempt["attempt"], serde_json::json!(2));
+        assert_eq!(with_attempt["maxRestarts"], serde_json::json!(MAX_CRASH_RESTARTS));
+        let without_attempt = runtime_error_payload("启动失败", true, None);
+        assert!(without_attempt.get("attempt").is_none());
     }
 }

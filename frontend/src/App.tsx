@@ -28,6 +28,7 @@ import RightPanel from './components/layout/RightPanel'
 import WorkspacePicker from './components/layout/WorkspacePicker'
 import SettingsPanel from './components/settings/SettingsPanel'
 import { WorkshopEntry } from './components/workshop/WorkshopEntry'
+import { RuntimeHealthBanner } from './components/runtime/RuntimeHealthBanner'
 import {
   TabsContext,
   adjacentTabId,
@@ -996,6 +997,7 @@ export default function App() {
   if (workspaceChecked && (!workspace?.open || firstRun)) {
     return (
       <PromptRoot>
+        <RuntimeHealthBanner />
         <WorkspacePicker
           onOpened={applyWorkspace}
           guide={!!workspace?.open && firstRun}
@@ -1014,6 +1016,8 @@ export default function App() {
   const bootLoading = !(settingsReady && workspaceChecked && bootStartupDone)
   return (
     <>
+      {/* W07 B-4：sidecar 崩溃/恢复/降级全局可见（不依赖工坊面板是否打开） */}
+      <RuntimeHealthBanner />
       {bootLoading ? (
         <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-5" style={{ background: 'var(--background)' }}>
           <img src={horizontalLogoLight} alt="AstraNota" className="an-logo-light h-12 w-auto" draggable={false} />

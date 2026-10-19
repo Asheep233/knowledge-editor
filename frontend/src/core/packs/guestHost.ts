@@ -6,6 +6,7 @@
  *   读取已安装包真实 entry（adapter.loadEntry）→ 返回 {session, entryHtml} 供 UI 注入 sandbox iframe；
  * - 心跳监控：guest 每 tick 心跳；超时（默认 1200ms）自动 host.reportCrash('heartbeat timeout')；
  * - 会话状态持久化：状态变化经 adapter.reportSession 落 `workshop-session-status.json`；
+ * - W07 B-5：宿主后端不可用/恢复 → 将 guest 会话挂起/恢复并上报（含 lastError 摘要）；
  * - stop：停止会话并持久化 stopped（崩溃/超限时由 PackageHost 触发 deactivate+recover+safeMode）。
  *
  * 安全：本模块不接触 DOM；sandbox/隔离守卫（isolationGuard）由 UI 组件在注入前执行。
@@ -81,7 +82,8 @@ export class GuestSessionHost {
       maxCrashes: this.options.maxCrashes,
       capabilityCeiling: () => ceiling,
       onSessionChange: (session) => {
-        void this.report(session.state, undefined, session.connection?.capabilities)
+        // W07 B-5：把 lastError（如 E_HOST_UNAVAILABLE 摘要）如实落盘，便于 UI/诊断区分故障来源。
+        void this.report(session.state, session.lastError, session.connection?.capabilities)
       },
     })
     this.startedAt = Date.now()
@@ -123,6 +125,19 @@ export class GuestSessionHost {
 
   isSafeMode(): boolean {
     return this.host?.isSafeMode() ?? false
+  }
+
+  /**
+   * W07 B-5：宿主后端（sidecar）不可用 → 挂起进行中的 guest 会话并上报 suspended + lastError。
+   * 未启用/已停止时调用是 no-op（无事件时不产生状态变化/不误报）。
+   */
+  markHostUnavailable(reason: string): void {
+    this.host?.markHostUnavailable(reason)
+  }
+
+  /** W07 B-5：宿主后端恢复 → 恢复因宿主故障挂起的会话为 active 并清除错误。 */
+  markHostRestored(): void {
+    this.host?.markHostRestored()
   }
 
   private async report(state: string, lastError?: string, capabilities?: string[]): Promise<void> {

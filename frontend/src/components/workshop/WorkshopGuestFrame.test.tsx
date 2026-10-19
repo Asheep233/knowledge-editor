@@ -1,5 +1,17 @@
 /** UI 工坊 A7：guest 宿主 UI（blocked/启用路径；产品测试栈 react-dom/client + act）。 */
 import { act } from 'react'
+
+const CS = vi.hoisted(() => ({
+  runtimeSubscribers: [] as Array<{ onUnavailable?: (m: string) => void; onReady?: () => void }>,
+}))
+
+vi.mock('../../core/packs/runtimeHealthEvents', () => ({
+  subscribeRuntimeHealthEvents: async (callbacks?: { onUnavailable?: (m: string) => void; onReady?: () => void }) => {
+    CS.runtimeSubscribers.push(callbacks ?? {})
+    return () => undefined
+  },
+}))
+
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -54,17 +66,18 @@ const click = async (el: HTMLElement | undefined) => {
   await flush()
 }
 
-async function mount(tier: 'trusted' | 'community') {
+async function mount(tier: 'trusted' | 'community', backendImpl = backend()) {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   await act(async () => {
-    root!.render(<WorkshopGuestFrame packId="com.demo.guest" version="1.0.0" tier={tier} backend={backend()} />)
+    root!.render(<WorkshopGuestFrame packId="com.demo.guest" version="1.0.0" tier={tier} backend={backendImpl} />)
   })
   await flush()
 }
 
 beforeEach(() => {
+  CS.runtimeSubscribers.length = 0
   container = document.createElement('div')
   document.body.appendChild(container)
 })
@@ -130,5 +143,46 @@ describe('T26 G4 宿主事件 → dispatcher.emit（guest 协议事件源）', (
     window.dispatchEvent(new CustomEvent('ke:workshop-context-changed', { detail: { relPath: 'Articles/b.md' } }))
     await flush(8)
     expect(emitSpy).toHaveBeenCalledWith({ type: 'context-changed', contextId: 'ke-default', epoch: 1 })
+  })
+})
+
+describe('W07 B-5 宿主 sidecar 健康事件 → guest 会话状态', () => {
+  it('sidecar 异常 → guest 会话 suspended + lastError 落盘；runtime-ready → 恢复 active', async () => {
+    const b = backend()
+    const reports: Array<{ state: string; lastError?: string | null }> = []
+    const reportMock = b.reportSession as unknown as {
+      mockImplementation: (fn: (s: { state: string; lastError?: string | null }) => Promise<unknown>) => void
+    }
+    reportMock.mockImplementation(async (status) => {
+      reports.push({ state: status.state, lastError: status.lastError })
+      return status
+    })
+    await mount('trusted', b)
+    await click(buttonByText('启用 guest'))
+    expect(text()).toContain('guest：active')
+    expect(CS.runtimeSubscribers.length).toBeGreaterThan(0)
+    const subscriber = CS.runtimeSubscribers[CS.runtimeSubscribers.length - 1]
+
+    act(() => subscriber.onUnavailable?.('后端连接中断，正在自动恢复（第 1/3 次）'))
+    await flush(4)
+    expect(text()).toContain('guest：suspended')
+    expect(reports.some((r) => r.state === 'suspended' && String(r.lastError ?? '').includes('E_HOST_UNAVAILABLE'))).toBe(true)
+
+    act(() => subscriber.onReady?.())
+    await flush(4)
+    expect(text()).toContain('guest：active')
+    expect(reports.some((r) => r.state === 'active' && !r.lastError)).toBe(true)
+  })
+
+  it('未启用 guest 时收到事件 → 不产生状态上报/不误报', async () => {
+    const b = backend()
+    await mount('trusted', b)
+    // 不点「启用 guest」，只触发事件
+    expect(CS.runtimeSubscribers.length).toBeGreaterThan(0)
+    const subscriber = CS.runtimeSubscribers[CS.runtimeSubscribers.length - 1]
+    act(() => subscriber.onUnavailable?.('后端连接中断'))
+    await flush(3)
+    expect(text()).not.toContain('guest：suspended')
+    expect(b.reportSession).not.toHaveBeenCalled()
   })
 })

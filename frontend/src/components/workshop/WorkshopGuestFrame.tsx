@@ -19,6 +19,7 @@ import { isolationGuard } from '../../core/packs/productHostAdapter'
 import type { TrustTier } from '../../core/packs/trustPolicy'
 import { createGuestSessionHost, type GuestSessionHost, type GuestHostBackend } from '../../core/packs/guestHost'
 import { createHostEventBridge, observeProductTheme } from './hostEventBridge'
+import { subscribeRuntimeHealthEvents } from '../../core/packs/runtimeHealthEvents'
 import { contextInfo, DEFAULT_CONTEXT_ID, ProductBrokerBackend, resolveGuestRevision } from './productBrokerBackend'
 import { notifyWorkshopThemeChanged } from './workshopHostEvents'
 
@@ -57,6 +58,28 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
   }, [])
 
   useEffect(() => () => { void stop() }, [stop])
+
+  // W07 B-5：宿主 sidecar 健康事件 → guest 会话如实挂起/恢复（仅事件驱动，无事件不误报）。
+  // - ke:sidecar-exited / ke:runtime-error → reportSession(suspended/failed 语义) + lastError 摘要；
+  // - ke:runtime-ready → 恢复因宿主故障挂起的会话为 active 并清除错误；
+  // - 非 Tauri/测试环境订阅安全降级为 no-op。
+  useEffect(() => {
+    let disposed = false
+    let off: (() => void) | null = null
+    void subscribeRuntimeHealthEvents({
+      onUnavailable: (message) => hostRef.current?.markHostUnavailable(message),
+      onReady: () => hostRef.current?.markHostRestored(),
+    })
+      .then((unlisten) => {
+        if (disposed) unlisten()
+        else off = unlisten
+      })
+      .catch(() => undefined)
+    return () => {
+      disposed = true
+      off?.()
+    }
+  }, [])
 
   const enable = useCallback(async () => {
     setError(null)

@@ -1,8 +1,8 @@
 # P5-T26 G1/G2：guest 内容读通道 + 真实写通道（隔离产品 W 证据）
 
-- 生成时间：2026-10-19T09:28:45+0800
+- 生成时间：2026-10-19T17:29:38+0800
 - 分支/环境：`feat/ui-workshop`（本地，未 push/Release）；Windows 隔离产品构建
-- 测试构建：`C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`（sha256=`be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a`，mtime=`2026-10-19T09:27:26`）
+- 测试构建：`C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`（sha256=`c849241bc9dd6be31cae8f3b7ac6c386b7c3431dcbec4d706f7725e86577be8f`，mtime=`2026-10-19T16:43:26`）
 - guest 包：`com.probe.t26io`（capabilities=`["ui.shell","context.read","context.write"]`，签名 keyId=k1，trusted）
 - 隔离工作区：`C:\ke-tmp\uiws-t26-guest-io\workspace`；隔离 APPDATA：`C:\ke-tmp\uiws-t26-guest-io\appdata`；测试文档：`Articles/io.md`
 - 场景：guest 经真实协议线 → `context.snapshot` 读正文 → `context.write` 写新正文 → 回读 → 旧 revision 再写（CAS 冲突）
@@ -15,8 +15,8 @@
 
 | # | check | 结果 | 关键值 |
 | --- | --- | --- | --- |
-| 1 | W-T26-G1G2-1 安装声明 context.write 的签名包（Rust ALLOWED_CAPS 放行） | PASS | `{"ok": true, "value": {"active": "1.0.0", "previous": null, "updatedAt": "SystemTime { intervals: 134368469243127729 }"}}` |
-| 2 | W-T26-G1G2-2 会话 active（guest 经真实协议线启用） | PASS | `{"capabilities": ["ui.shell", "context.read", "context.write"], "lastError": null, "packId": "com.probe.t26io", "state": "active", "updatedAt": "SystemTime { intervals: 134368469248413694 }"}` |
+| 1 | W-T26-G1G2-1 安装声明 context.write 的签名包（Rust ALLOWED_CAPS 放行） | PASS | `{"ok": true, "value": {"active": "1.0.0", "previous": null, "updatedAt": "SystemTime { intervals: 134368757756700535 }"}}` |
+| 2 | W-T26-G1G2-2 会话 active（guest 经真实协议线启用） | PASS | `{"capabilities": ["ui.shell", "context.read", "context.write"], "lastError": null, "packId": "com.probe.t26io", "state": "active", "updatedAt": "SystemTime { intervals: 134368757762388910 }"}` |
 | 3 | W-T26-G1G2-3 握手能力协商含 context.read + context.write（G2 能力可授予） | PASS | `{"acceptedFeatures": ["context.read", "context.write"]}` |
 | 4 | W-T26-G1G2-4 context.snapshot 返回正文（G1），且等于磁盘原文 | PASS | `{"phase": "guest-io-done", "error": null, "contentLen": 37, "revision": 0}` |
 | 5 | W-T26-G1G2-5 contentBytes/diskHash 与磁盘原文一致（revision 绑定可信） | PASS | `{"contentBytes": 37, "expectBytes": 37, "diskHash": "f1a6be4d47a7e9e904d166f35329dba87b806fd17cebc93a10ea749a711898d0"}` |

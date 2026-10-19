@@ -8,7 +8,7 @@
 ## 1. 代码与基线
 
 - 分支：`feat/ui-workshop`（基线 v1.2.18 `4c71233` + overlay `e54d37b`），本地，未推送/未 Release；
-- 回归基线（最近一次）：frontend **133 files / 1811 passed + 1 skipped**（tsc 0）、backend
+- 回归基线（最近一次）：frontend **134 files / 1819 passed + 1 skipped**（tsc 0）、backend
   **847 collected / exit 0**、产品 cargo **50 passed**、原型 W 探针 **13/13 PASS**、验证矩阵 **39 行** --check PASS；
 - 关键复现命令：
   ```bash

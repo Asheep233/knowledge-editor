@@ -109,7 +109,7 @@
 ```bash
 git checkout feat/ui-workshop   # 本地分支；HEAD 见 git log
 # 1) 基线回归
-cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 133 files / 1811 passed +1 skipped
+cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2   # 134 files / 1819 passed +1 skipped
 cd ../backend && python3 -m pytest backend/tests -q                  # 846 collected
 # 2) 产品 Tauri
 cd desktop/src-tauri && cargo test --release                          # 34 passed

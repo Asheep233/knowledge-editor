@@ -48,3 +48,10 @@
 - backend：847 collected / exit 0；
 - 产品 cargo：**50 passed**（含 zip 安全/staging guard 测试）；
 - 验证矩阵基线更新（packs 83/workshop UI 19/cargo 50），--check PASS。
+
+## W02 后追加回归（2026-10-19）
+
+- frontend：134 files / **1819 passed** + 1 skipped、tsc 0；
+- backend：847 collected / exit 0；
+- 产品 cargo：50 passed；
+- 验证矩阵基线更新（session 48/packs 85/全量 1819），--check 通过。

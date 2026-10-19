@@ -81,3 +81,10 @@
 - backend：847 collected / exit 0（未改）；
 - 产品 cargo：**57 passed**（+6 sidecar 事件/清理单测）；
 - 验证矩阵：**59 行**，--check PASS（runtime banner 单测行 + W07 bridge 36/40）。
+
+## W07 C 类 + F v3 后最终回归（2026-10-19）
+
+- frontend：**142 files / 1922 passed** + 1 skipped、tsc 0；
+- backend：847 collected / exit 0（未改）；
+- 产品 cargo：**61 passed**（+4 startup status 命令单测）；
+- 验证矩阵：**59 行**，--check PASS（W07 bridge 43/45、F ledger v3 60/63 显式标注记录）。

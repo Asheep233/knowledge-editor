@@ -46,7 +46,7 @@ ACCEPTANCE A 节：
 | W04 SDK 外部独立开发模板/CLI | NOT_RUN | 未提供外部开发模板与第二套 UI 全任务 |
 | W05 协议 snapshot/subscribe/断连重放 | 部分（握手+snapshot W 7/7） | 产品 host 真实 Broker/Dispatcher + SDK GuestClient 握手/snapshot 已验证；subscribe/断连/慢包/超时 queryResult 未做 |
 | W06 执行/网络边界（IPC/loopback/fetch/worker） | 部分（网络/worker/WS 功能级 W 8/8） | fetch 相对/loopback/外部、worker、WebSocket 均被阻断；越权方法 E_CAPABILITY；guest internals 自检上报；剩余：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归 |
-| W07 原生故障恢复（无限循环/CPU/内存/boot crash） | 部分（无限循环 W 8/8） | guest busy loop 未阻塞宿主（独立 renderer），心跳检测→suspended→failed+safeMode→停用持久化；**CPU/内存/boot crash/桥接超时/连续启动失败/原生 Rust 恢复/I 门禁未验证** |
+| W07 原生故障恢复（无限循环/CPU/内存/boot crash） | 部分（无限循环 W 8/8 + 内存压力 W 11/11 + CPU 压力 W 10/10） | 独立 renderer 故障均未阻塞宿主。内存：guest 分配 2048MB（0 失败），宿主 IPC max 3.6ms、renderer 工作集 +2057MB、心跳持续；renderer 崩溃（CDP Page.crash 注入，非自然 OOM）后 ≈1.0s 检出 suspended → failed + safeMode → 停用 stopped 持久化。CPU：40ms 分片满载 ≈0.80 core 未误判（心跳 +14、active）；2500ms 长任务饥饿 ≈1.6s 检出 suspended → failed + safeMode → stopped。证据 `P5-T26-W07-fault-mem.md`/`T26-W07-mem-results.json`；**boot crash/桥接超时/连续启动失败/原生 Rust 恢复/I 门禁未验证；自然 OOM 未触发（崩溃路径为注入），2GB 压力上限受同机安全约束** |
 | W09 性能/资源预算 | 工坊口径 **PASS（W 6/6）**；产品大文档首开限制另记 | 无双编辑器/无逐字符广播（34 字符→1 次写）/8 次切换堆增 4.7MB；大文档首开慢为产品既有 @tiptap/markdown 解析限制（非工坊回归，见 `P5-T26-W09-workshop.md`/`-plain`） |
 | F01–F16 全功能基线逐项 guest 覆盖 | 部分 | 官方 UI 基线回归绿；**guest 入口全任务覆盖**未逐项验证 |
 | 正式发布密钥流程 | NOT_RUN | ADR-003 实施清单未执行（无正式密钥） |

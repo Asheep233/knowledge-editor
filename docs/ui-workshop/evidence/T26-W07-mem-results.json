@@ -1,0 +1,1599 @@
+{
+  "generated_at": "2026-10-19T08:51:58+0800",
+  "scenario": "T26 W07 扩展故障类别：guest 内存压力 + guest CPU 压力（隔离产品 W 证据）",
+  "environment": {
+    "generated_at": "2026-10-19T08:51:58+0800",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.7",
+    "repo": "F:\\Work\\KE Project\\knowledge-editor",
+    "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+    "exe_sha256": "c5781adfe2d4c1415538f828cc70c4930ccd9585d14d739120e5fcbe9563332f",
+    "exe_mtime": "2026-10-19T08:20:01",
+    "cdp_port": 9900,
+    "mem_pack_id": "com.probe.t26w07mem",
+    "cpu_pack_id": "com.probe.t26w07cpu",
+    "git_head": "a62961b3462c60d715ed6817286b643383aeb9b1",
+    "webview2_version": "Edg/155.0.4283.62",
+    "system_memory_mb": {
+      "total": 32273,
+      "free": 10061
+    }
+  },
+  "checks": [
+    {
+      "scenario": "mem",
+      "name": "W07M-1 安装签名包（内存压力故障包）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368447254309842 }"
+        }
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "W07M-2 guest 启用并心跳流动（active）",
+      "pass": true,
+      "detail": {
+        "start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "heartbeats": 2,
+        "status": {
+          "ok": true,
+          "value": {
+            "capabilities": [
+              "ui.shell"
+            ],
+            "lastError": null,
+            "packId": "com.probe.t26w07mem",
+            "state": "active",
+            "updatedAt": "SystemTime { intervals: 134368447292235364 }"
+          }
+        }
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "W07M-3 guest 持续分配达目标（≥1.5GB 且无 allocation 失败）",
+      "pass": true,
+      "detail": {
+        "heldMB": 2048,
+        "ok_ticks": 32,
+        "failed_ticks": 0,
+        "elapsed_ms": 3300
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "W07M-4 内存压力期间宿主 IPC 仍可响应（无超时，最大延迟 < 2000ms）",
+      "pass": true,
+      "detail": {
+        "samples": 13,
+        "timeouts": 0,
+        "max_ms": 3.6,
+        "p95_ms": 3.6
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "W07M-5 内存压力期间会话保持 active（心跳持续，无误判）",
+      "pass": true,
+      "detail": {
+        "state": "active",
+        "heartbeats": 16,
+        "hb_delta": 8
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "W07M-6 独立 renderer 可观测内存增长（guest renderer WS 增量 ≥ 1200MB）",
+      "pass": true,
+      "detail": {
+        "guest_pid": 30316,
+        "baseline_ws_mb": 52.1,
+        "peak_ws_mb": 2109.5,
+        "delta_mb": 2057.4
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "W07M-7 renderer 崩溃后心跳中断被检测（suspended/failed 可观测）",
+      "pass": true,
+      "detail": {
+        "injection": "cdp-page-crash",
+        "effective": true,
+        "suspended_at_s": 7.281,
+        "failed_at_s": 9.863,
+        "injected_at_s": 6.278
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "连续故障超限 → failed + safeMode（宿主侧恢复策略生效）",
+      "pass": true,
+      "detail": {
+        "state": "failed",
+        "safeMode_in_ui": true,
+        "body_tail": "8\nC:\\ke-tmp\\uiws-t26-w07mem\\mem\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07mem 设为 trusted\n已安装包\nT26 W07 Mem Fault Pack com.probe.t26w07mem\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n协议线已连接\n能力：ui.shell\nsafeMode：guest 已禁用\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "停用 guest → stopped 持久化（恢复操作可用）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "capabilities": [],
+          "lastError": null,
+          "packId": "com.probe.t26w07mem",
+          "state": "stopped",
+          "updatedAt": "SystemTime { intervals: 134368447421050106 }"
+        }
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "宿主进程存活（未被 guest 故障拖垮）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "exit_code": null
+      }
+    },
+    {
+      "scenario": "mem",
+      "name": "用户实例未被触碰（用户 App 未运行 → N/A）",
+      "pass": true,
+      "detail": {
+        "user_pid_before": "",
+        "user_pid_after": "",
+        "result": "N/A: 用户 App 未运行（只读确认）"
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "W07C-1 安装签名包（CPU 压力故障包）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368447479334555 }"
+        }
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "W07C-2 guest 启用并心跳流动（active）",
+      "pass": true,
+      "detail": {
+        "start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "heartbeats": 2,
+        "status": {
+          "ok": true,
+          "value": {
+            "capabilities": [
+              "ui.shell"
+            ],
+            "lastError": null,
+            "packId": "com.probe.t26w07cpu",
+            "state": "active",
+            "updatedAt": "SystemTime { intervals: 134368447515297414 }"
+          }
+        }
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "W07C-3 CPU 密集负载期间宿主 IPC 仍可响应（无超时，最大延迟 < 2000ms）",
+      "pass": true,
+      "detail": {
+        "samples": 9,
+        "max_ms": 2.5,
+        "timeouts": 0
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "W07C-4 CPU 密集负载期间心跳正常、会话保持 active（无误判）",
+      "pass": true,
+      "detail": {
+        "state_at_load_end": "active",
+        "heartbeats_at_end": 19,
+        "hb_delta_during_load": 14,
+        "load_window_guest_s": 6.0
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "W07C-5 guest CPU 压力可观测（独立 renderer 负载 ≥ 0.5 core）",
+      "pass": true,
+      "detail": {
+        "cpu_seconds": 4.781,
+        "wall_seconds": 5.957,
+        "core_ratio": 0.803,
+        "guest_pid": 29780,
+        "load_window_guest_s": 6.002,
+        "hb_delta_during_load": 14
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "W07C-6 长任务 CPU 饥饿 → 心跳超时被检测（suspended/failed 可观测）",
+      "pass": true,
+      "detail": {
+        "starve_started_at_s": 6.462,
+        "first_suspended_at_s": 8.064,
+        "detection_after_starve_s": 1.602,
+        "first_failed_at_s": 10.256
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "连续故障超限 → failed + safeMode（宿主侧恢复策略生效）",
+      "pass": true,
+      "detail": {
+        "state": "failed",
+        "safeMode_in_ui": true,
+        "body_tail": "8\nC:\\ke-tmp\\uiws-t26-w07mem\\cpu\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07cpu 设为 trusted\n已安装包\nT26 W07 CPU Fault Pack com.probe.t26w07cpu\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n协议线已连接\n能力：ui.shell\nsafeMode：guest 已禁用\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "停用 guest → stopped 持久化（恢复操作可用）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "capabilities": [],
+          "lastError": null,
+          "packId": "com.probe.t26w07cpu",
+          "state": "stopped",
+          "updatedAt": "SystemTime { intervals: 134368447639416111 }"
+        }
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "宿主进程存活（未被 guest 故障拖垮）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "exit_code": null
+      }
+    },
+    {
+      "scenario": "cpu",
+      "name": "用户实例未被触碰（用户 App 未运行 → N/A）",
+      "pass": true,
+      "detail": {
+        "user_pid_before": "",
+        "user_pid_after": "",
+        "result": "N/A: 用户 App 未运行（只读确认）"
+      }
+    }
+  ],
+  "pass_count": 21,
+  "total": 21,
+  "scenarios": {
+    "mem": {
+      "checks": [
+        {
+          "scenario": "mem",
+          "name": "W07M-1 安装签名包（内存压力故障包）",
+          "pass": true,
+          "detail": {
+            "ok": true,
+            "value": {
+              "active": "1.0.0",
+              "previous": null,
+              "updatedAt": "SystemTime { intervals: 134368447254309842 }"
+            }
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "W07M-2 guest 启用并心跳流动（active）",
+          "pass": true,
+          "detail": {
+            "start": {
+              "blocked": false,
+              "capabilities": [
+                "ui.shell"
+              ],
+              "hasEntry": true,
+              "hasSession": true
+            },
+            "heartbeats": 2,
+            "status": {
+              "ok": true,
+              "value": {
+                "capabilities": [
+                  "ui.shell"
+                ],
+                "lastError": null,
+                "packId": "com.probe.t26w07mem",
+                "state": "active",
+                "updatedAt": "SystemTime { intervals: 134368447292235364 }"
+              }
+            }
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "W07M-3 guest 持续分配达目标（≥1.5GB 且无 allocation 失败）",
+          "pass": true,
+          "detail": {
+            "heldMB": 2048,
+            "ok_ticks": 32,
+            "failed_ticks": 0,
+            "elapsed_ms": 3300
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "W07M-4 内存压力期间宿主 IPC 仍可响应（无超时，最大延迟 < 2000ms）",
+          "pass": true,
+          "detail": {
+            "samples": 13,
+            "timeouts": 0,
+            "max_ms": 3.6,
+            "p95_ms": 3.6
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "W07M-5 内存压力期间会话保持 active（心跳持续，无误判）",
+          "pass": true,
+          "detail": {
+            "state": "active",
+            "heartbeats": 16,
+            "hb_delta": 8
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "W07M-6 独立 renderer 可观测内存增长（guest renderer WS 增量 ≥ 1200MB）",
+          "pass": true,
+          "detail": {
+            "guest_pid": 30316,
+            "baseline_ws_mb": 52.1,
+            "peak_ws_mb": 2109.5,
+            "delta_mb": 2057.4
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "W07M-7 renderer 崩溃后心跳中断被检测（suspended/failed 可观测）",
+          "pass": true,
+          "detail": {
+            "injection": "cdp-page-crash",
+            "effective": true,
+            "suspended_at_s": 7.281,
+            "failed_at_s": 9.863,
+            "injected_at_s": 6.278
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "连续故障超限 → failed + safeMode（宿主侧恢复策略生效）",
+          "pass": true,
+          "detail": {
+            "state": "failed",
+            "safeMode_in_ui": true,
+            "body_tail": "8\nC:\\ke-tmp\\uiws-t26-w07mem\\mem\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07mem 设为 trusted\n已安装包\nT26 W07 Mem Fault Pack com.probe.t26w07mem\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n协议线已连接\n能力：ui.shell\nsafeMode：guest 已禁用\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "停用 guest → stopped 持久化（恢复操作可用）",
+          "pass": true,
+          "detail": {
+            "ok": true,
+            "value": {
+              "capabilities": [],
+              "lastError": null,
+              "packId": "com.probe.t26w07mem",
+              "state": "stopped",
+              "updatedAt": "SystemTime { intervals: 134368447421050106 }"
+            }
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "宿主进程存活（未被 guest 故障拖垮）",
+          "pass": true,
+          "detail": {
+            "alive": true,
+            "exit_code": null
+          }
+        },
+        {
+          "scenario": "mem",
+          "name": "用户实例未被触碰（用户 App 未运行 → N/A）",
+          "pass": true,
+          "detail": {
+            "user_pid_before": "",
+            "user_pid_after": "",
+            "result": "N/A: 用户 App 未运行（只读确认）"
+          }
+        }
+      ],
+      "pass_count": 11,
+      "total": 11,
+      "metrics": {
+        "scenario": "mem",
+        "target_mb": 2048,
+        "system_memory_mb": {
+          "total": 32273,
+          "free_before": 9744
+        },
+        "webview2": {
+          "Browser": "Edg/155.0.4283.62",
+          "Protocol-Version": "1.3",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+        },
+        "guest_start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "status_after_enable": {
+          "ok": true,
+          "value": {
+            "capabilities": [
+              "ui.shell"
+            ],
+            "lastError": null,
+            "packId": "com.probe.t26w07mem",
+            "state": "active",
+            "updatedAt": "SystemTime { intervals: 134368447292235364 }"
+          }
+        },
+        "enable_diag": {
+          "install": {
+            "ok": true,
+            "value": {
+              "active": "1.0.0",
+              "previous": null,
+              "updatedAt": "SystemTime { intervals: 134368447254309842 }"
+            }
+          },
+          "enable_button": true,
+          "clicked_enable": true,
+          "start": {
+            "blocked": false,
+            "capabilities": [
+              "ui.shell"
+            ],
+            "hasEntry": true,
+            "hasSession": true
+          },
+          "heartbeats": 2,
+          "status": {
+            "ok": true,
+            "value": {
+              "capabilities": [
+                "ui.shell"
+              ],
+              "lastError": null,
+              "packId": "com.probe.t26w07mem",
+              "state": "active",
+              "updatedAt": "SystemTime { intervals: 134368447292235364 }"
+            }
+          },
+          "body_tail": "\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nw07.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07mem\\mem\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07mem 设为 trusted\n已安装包\nT26 W07 Mem Fault Pack com.probe.t26w07mem\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+        },
+        "guest_target": {
+          "targetId": "2B5D7B68726D08E82BA61DCB1FD0B898",
+          "type": "iframe",
+          "url": "http://workshop.localhost/com.probe.t26w07mem/1.0.0/index.html",
+          "pid": 30316
+        },
+        "host_page_target": {
+          "targetId": "FAF6F0BA274387D5F23AC1AE03534AF0",
+          "type": "page",
+          "url": "http://tauri.localhost/",
+          "pid": 10112
+        },
+        "baseline": {
+          "procs": {
+            "26064": {
+              "name": "knowledgeeditor",
+              "ws": 31133696,
+              "private": 7909376,
+              "cpu": 0.203125
+            },
+            "10112": {
+              "name": "msedgewebview2",
+              "ws": 94019584,
+              "private": 50700288,
+              "cpu": 0.5
+            },
+            "30316": {
+              "name": "msedgewebview2",
+              "ws": 54648832,
+              "private": 23699456,
+              "cpu": 0.09375
+            }
+          },
+          "tree": {
+            "pids": [
+              26064,
+              29900,
+              12908,
+              3716,
+              37900,
+              30316,
+              10112,
+              23736,
+              27920,
+              32528,
+              21544
+            ],
+            "process_count": 11,
+            "working_set_bytes": 723787776,
+            "cpu_100ns": 47968750
+          }
+        },
+        "start_cmd_posted": true,
+        "alloc_start_report": {
+          "type": "w07-report",
+          "scenario": "mem",
+          "event": "alloc-start",
+          "phase": "alloc",
+          "totalMB": 0,
+          "allocCount": 0,
+          "allocFails": 0,
+          "heartbeats": 6,
+          "elapsedMs": 0,
+          "t": 1792371131761
+        },
+        "target_reached_report": {
+          "type": "w07-report",
+          "scenario": "mem",
+          "event": "target-reached",
+          "phase": "hold",
+          "totalMB": 2048,
+          "allocCount": 32,
+          "allocFails": 0,
+          "heartbeats": 14,
+          "elapsedMs": 3300,
+          "t": 1792371135061,
+          "heldMB": 2048,
+          "chunks": 32
+        },
+        "target_reached_at_s": 4.039,
+        "alloc": {
+          "ok_ticks": 32,
+          "failed_ticks": 0,
+          "failed_errors": [],
+          "guest_reported_total_mb": 2048,
+          "elapsed_ms": 3300,
+          "natural_crash": false
+        },
+        "host_ipc_latency_during_alloc": {
+          "samples": 13,
+          "timeouts": 0,
+          "max_ms": 3.6,
+          "p95_ms": 3.6
+        },
+        "heartbeats": {
+          "first": 8,
+          "last": 16,
+          "series": [
+            {
+              "t": 0.77,
+              "hb": 8
+            },
+            {
+              "t": 0.92,
+              "hb": 8
+            },
+            {
+              "t": 1.08,
+              "hb": 8
+            },
+            {
+              "t": 1.23,
+              "hb": 9
+            },
+            {
+              "t": 1.39,
+              "hb": 9
+            },
+            {
+              "t": 1.54,
+              "hb": 9
+            },
+            {
+              "t": 2.4,
+              "hb": 12
+            },
+            {
+              "t": 2.55,
+              "hb": 12
+            },
+            {
+              "t": 2.71,
+              "hb": 12
+            },
+            {
+              "t": 2.86,
+              "hb": 13
+            },
+            {
+              "t": 3.02,
+              "hb": 13
+            },
+            {
+              "t": 3.18,
+              "hb": 14
+            },
+            {
+              "t": 4.04,
+              "hb": 16
+            }
+          ]
+        },
+        "renderer_memory": {
+          "guest_pid": 30316,
+          "baseline_ws_mb": 52.1,
+          "peak_ws_mb": 2109.5,
+          "delta_mb": 2057.4,
+          "peak_proc": {
+            "name": "msedgewebview2",
+            "ws": 2211946496,
+            "private": 2182692864,
+            "cpu": 0.796875
+          }
+        },
+        "crash_injection": {
+          "natural_crash": false,
+          "method": "cdp-page-crash",
+          "sent": true,
+          "first_response_error": "WebSocketTimeoutException",
+          "effective": true
+        },
+        "injected_at_s": 6.278,
+        "fault_observation": {
+          "suspended_at_s": 7.281,
+          "failed_at_s": 9.863
+        },
+        "state_timeline": [
+          {
+            "t": 0.156,
+            "state": "active"
+          },
+          {
+            "t": 7.281,
+            "state": "suspended"
+          },
+          {
+            "t": 9.863,
+            "state": "failed"
+          }
+        ],
+        "guest_renderer_after_crash": {
+          "pid": 30316,
+          "alive": false
+        },
+        "status_after_stop": {
+          "ok": true,
+          "value": {
+            "capabilities": [],
+            "lastError": null,
+            "packId": "com.probe.t26w07mem",
+            "state": "stopped",
+            "updatedAt": "SystemTime { intervals: 134368447421050106 }"
+          }
+        },
+        "tree_after_stop": {
+          "pids": [
+            26064,
+            29900,
+            12908,
+            3716,
+            37900,
+            10112,
+            23736,
+            27920,
+            32528,
+            21544
+          ],
+          "process_count": 10,
+          "working_set_bytes": 692936704,
+          "cpu_100ns": 59531250
+        },
+        "host_alive": true
+      }
+    },
+    "cpu": {
+      "checks": [
+        {
+          "scenario": "cpu",
+          "name": "W07C-1 安装签名包（CPU 压力故障包）",
+          "pass": true,
+          "detail": {
+            "ok": true,
+            "value": {
+              "active": "1.0.0",
+              "previous": null,
+              "updatedAt": "SystemTime { intervals: 134368447479334555 }"
+            }
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "W07C-2 guest 启用并心跳流动（active）",
+          "pass": true,
+          "detail": {
+            "start": {
+              "blocked": false,
+              "capabilities": [
+                "ui.shell"
+              ],
+              "hasEntry": true,
+              "hasSession": true
+            },
+            "heartbeats": 2,
+            "status": {
+              "ok": true,
+              "value": {
+                "capabilities": [
+                  "ui.shell"
+                ],
+                "lastError": null,
+                "packId": "com.probe.t26w07cpu",
+                "state": "active",
+                "updatedAt": "SystemTime { intervals: 134368447515297414 }"
+              }
+            }
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "W07C-3 CPU 密集负载期间宿主 IPC 仍可响应（无超时，最大延迟 < 2000ms）",
+          "pass": true,
+          "detail": {
+            "samples": 9,
+            "max_ms": 2.5,
+            "timeouts": 0
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "W07C-4 CPU 密集负载期间心跳正常、会话保持 active（无误判）",
+          "pass": true,
+          "detail": {
+            "state_at_load_end": "active",
+            "heartbeats_at_end": 19,
+            "hb_delta_during_load": 14,
+            "load_window_guest_s": 6.0
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "W07C-5 guest CPU 压力可观测（独立 renderer 负载 ≥ 0.5 core）",
+          "pass": true,
+          "detail": {
+            "cpu_seconds": 4.781,
+            "wall_seconds": 5.957,
+            "core_ratio": 0.803,
+            "guest_pid": 29780,
+            "load_window_guest_s": 6.002,
+            "hb_delta_during_load": 14
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "W07C-6 长任务 CPU 饥饿 → 心跳超时被检测（suspended/failed 可观测）",
+          "pass": true,
+          "detail": {
+            "starve_started_at_s": 6.462,
+            "first_suspended_at_s": 8.064,
+            "detection_after_starve_s": 1.602,
+            "first_failed_at_s": 10.256
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "连续故障超限 → failed + safeMode（宿主侧恢复策略生效）",
+          "pass": true,
+          "detail": {
+            "state": "failed",
+            "safeMode_in_ui": true,
+            "body_tail": "8\nC:\\ke-tmp\\uiws-t26-w07mem\\cpu\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07cpu 设为 trusted\n已安装包\nT26 W07 CPU Fault Pack com.probe.t26w07cpu\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：failed\n协议线已连接\n能力：ui.shell\nsafeMode：guest 已禁用\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "停用 guest → stopped 持久化（恢复操作可用）",
+          "pass": true,
+          "detail": {
+            "ok": true,
+            "value": {
+              "capabilities": [],
+              "lastError": null,
+              "packId": "com.probe.t26w07cpu",
+              "state": "stopped",
+              "updatedAt": "SystemTime { intervals: 134368447639416111 }"
+            }
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "宿主进程存活（未被 guest 故障拖垮）",
+          "pass": true,
+          "detail": {
+            "alive": true,
+            "exit_code": null
+          }
+        },
+        {
+          "scenario": "cpu",
+          "name": "用户实例未被触碰（用户 App 未运行 → N/A）",
+          "pass": true,
+          "detail": {
+            "user_pid_before": "",
+            "user_pid_after": "",
+            "result": "N/A: 用户 App 未运行（只读确认）"
+          }
+        }
+      ],
+      "pass_count": 10,
+      "total": 10,
+      "metrics": {
+        "scenario": "cpu",
+        "system_memory_mb": {
+          "total": 32273,
+          "free_before": 9352
+        },
+        "webview2": {
+          "Browser": "Edg/155.0.4283.62",
+          "Protocol-Version": "1.3",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+        },
+        "guest_start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "status_after_enable": {
+          "ok": true,
+          "value": {
+            "capabilities": [
+              "ui.shell"
+            ],
+            "lastError": null,
+            "packId": "com.probe.t26w07cpu",
+            "state": "active",
+            "updatedAt": "SystemTime { intervals: 134368447515297414 }"
+          }
+        },
+        "enable_diag": {
+          "install": {
+            "ok": true,
+            "value": {
+              "active": "1.0.0",
+              "previous": null,
+              "updatedAt": "SystemTime { intervals: 134368447479334555 }"
+            }
+          },
+          "enable_button": true,
+          "clicked_enable": true,
+          "start": {
+            "blocked": false,
+            "capabilities": [
+              "ui.shell"
+            ],
+            "hasEntry": true,
+            "hasSession": true
+          },
+          "heartbeats": 2,
+          "status": {
+            "ok": true,
+            "value": {
+              "capabilities": [
+                "ui.shell"
+              ],
+              "lastError": null,
+              "packId": "com.probe.t26w07cpu",
+              "state": "active",
+              "updatedAt": "SystemTime { intervals: 134368447515297414 }"
+            }
+          },
+          "body_tail": "\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nw07.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07mem\\cpu\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07cpu 设为 trusted\n已安装包\nT26 W07 CPU Fault Pack com.probe.t26w07cpu\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+        },
+        "guest_target": {
+          "targetId": "8E12D6D23A56685BE3836CD4DDE9991B",
+          "type": "iframe",
+          "url": "http://workshop.localhost/com.probe.t26w07cpu/1.0.0/index.html",
+          "pid": 29780
+        },
+        "host_page_target": {
+          "targetId": "CCF92E0829C766952B232675966B7C2C",
+          "type": "page",
+          "url": "http://tauri.localhost/",
+          "pid": 30032
+        },
+        "baseline_procs": {
+          "20112": {
+            "name": "knowledgeeditor",
+            "ws": 31207424,
+            "private": 8495104,
+            "cpu": 0.203125
+          },
+          "29780": {
+            "name": "msedgewebview2",
+            "ws": 51798016,
+            "private": 20860928,
+            "cpu": 0.09375
+          },
+          "30032": {
+            "name": "msedgewebview2",
+            "ws": 92299264,
+            "private": 48033792,
+            "cpu": 0.4375
+          }
+        },
+        "start_cmd_posted": true,
+        "load_start_report": {
+          "type": "w07-report",
+          "scenario": "cpu",
+          "event": "load-start",
+          "phase": "load",
+          "loadTicks": 0,
+          "starveBlocks": 0,
+          "heartbeats": 3,
+          "elapsedMs": 0,
+          "t": 1792371153136,
+          "loadMs": 6000
+        },
+        "starve_start_guest": {
+          "t": 1792371159444,
+          "elapsedMs": 6308
+        },
+        "state_timeline": [
+          {
+            "t": 0.156,
+            "state": "active"
+          },
+          {
+            "t": 8.066,
+            "state": "suspended"
+          },
+          {
+            "t": 10.258,
+            "state": "failed"
+          }
+        ],
+        "heartbeats_series": [
+          {
+            "t": 0.15,
+            "hb": 5
+          },
+          {
+            "t": 1.35,
+            "hb": 8
+          },
+          {
+            "t": 2.02,
+            "hb": 10
+          },
+          {
+            "t": 2.67,
+            "hb": 11
+          },
+          {
+            "t": 3.33,
+            "hb": 13
+          },
+          {
+            "t": 4.0,
+            "hb": 15
+          },
+          {
+            "t": 4.66,
+            "hb": 16
+          },
+          {
+            "t": 5.35,
+            "hb": 18
+          },
+          {
+            "t": 6.09,
+            "hb": 19
+          },
+          {
+            "t": 7.31,
+            "hb": 19
+          },
+          {
+            "t": 8.06,
+            "hb": 19
+          },
+          {
+            "t": 8.76,
+            "hb": 20
+          },
+          {
+            "t": 9.5,
+            "hb": 20
+          },
+          {
+            "t": 10.26,
+            "hb": 20
+          }
+        ],
+        "load_start_at_s": 0.154,
+        "load_end_at_s": 6.156,
+        "starve_started_at_s": 6.462,
+        "first_suspended_at_s": 8.064,
+        "first_failed_at_s": 10.256,
+        "host_ipc_latency_during_load": {
+          "samples": 9,
+          "max_ms": 2.5,
+          "timeouts": 0
+        },
+        "guest_cpu": {
+          "cpu_seconds": 4.781,
+          "wall_seconds": 5.957,
+          "core_ratio": 0.803,
+          "guest_pid": 29780,
+          "load_window_guest_s": 6.002,
+          "hb_delta_during_load": 14
+        },
+        "detection_after_starve_s": 1.602,
+        "status_after_stop": {
+          "ok": true,
+          "value": {
+            "capabilities": [],
+            "lastError": null,
+            "packId": "com.probe.t26w07cpu",
+            "state": "stopped",
+            "updatedAt": "SystemTime { intervals: 134368447639416111 }"
+          }
+        },
+        "host_alive": true
+      }
+    }
+  },
+  "metrics": {
+    "mem": {
+      "scenario": "mem",
+      "target_mb": 2048,
+      "system_memory_mb": {
+        "total": 32273,
+        "free_before": 9744
+      },
+      "webview2": {
+        "Browser": "Edg/155.0.4283.62",
+        "Protocol-Version": "1.3",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+      },
+      "guest_start": {
+        "blocked": false,
+        "capabilities": [
+          "ui.shell"
+        ],
+        "hasEntry": true,
+        "hasSession": true
+      },
+      "status_after_enable": {
+        "ok": true,
+        "value": {
+          "capabilities": [
+            "ui.shell"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26w07mem",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368447292235364 }"
+        }
+      },
+      "enable_diag": {
+        "install": {
+          "ok": true,
+          "value": {
+            "active": "1.0.0",
+            "previous": null,
+            "updatedAt": "SystemTime { intervals: 134368447254309842 }"
+          }
+        },
+        "enable_button": true,
+        "clicked_enable": true,
+        "start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "heartbeats": 2,
+        "status": {
+          "ok": true,
+          "value": {
+            "capabilities": [
+              "ui.shell"
+            ],
+            "lastError": null,
+            "packId": "com.probe.t26w07mem",
+            "state": "active",
+            "updatedAt": "SystemTime { intervals: 134368447292235364 }"
+          }
+        },
+        "body_tail": "\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nw07.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07mem\\mem\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07mem 设为 trusted\n已安装包\nT26 W07 Mem Fault Pack com.probe.t26w07mem\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+      },
+      "guest_target": {
+        "targetId": "2B5D7B68726D08E82BA61DCB1FD0B898",
+        "type": "iframe",
+        "url": "http://workshop.localhost/com.probe.t26w07mem/1.0.0/index.html",
+        "pid": 30316
+      },
+      "host_page_target": {
+        "targetId": "FAF6F0BA274387D5F23AC1AE03534AF0",
+        "type": "page",
+        "url": "http://tauri.localhost/",
+        "pid": 10112
+      },
+      "baseline": {
+        "procs": {
+          "26064": {
+            "name": "knowledgeeditor",
+            "ws": 31133696,
+            "private": 7909376,
+            "cpu": 0.203125
+          },
+          "10112": {
+            "name": "msedgewebview2",
+            "ws": 94019584,
+            "private": 50700288,
+            "cpu": 0.5
+          },
+          "30316": {
+            "name": "msedgewebview2",
+            "ws": 54648832,
+            "private": 23699456,
+            "cpu": 0.09375
+          }
+        },
+        "tree": {
+          "pids": [
+            26064,
+            29900,
+            12908,
+            3716,
+            37900,
+            30316,
+            10112,
+            23736,
+            27920,
+            32528,
+            21544
+          ],
+          "process_count": 11,
+          "working_set_bytes": 723787776,
+          "cpu_100ns": 47968750
+        }
+      },
+      "start_cmd_posted": true,
+      "alloc_start_report": {
+        "type": "w07-report",
+        "scenario": "mem",
+        "event": "alloc-start",
+        "phase": "alloc",
+        "totalMB": 0,
+        "allocCount": 0,
+        "allocFails": 0,
+        "heartbeats": 6,
+        "elapsedMs": 0,
+        "t": 1792371131761
+      },
+      "target_reached_report": {
+        "type": "w07-report",
+        "scenario": "mem",
+        "event": "target-reached",
+        "phase": "hold",
+        "totalMB": 2048,
+        "allocCount": 32,
+        "allocFails": 0,
+        "heartbeats": 14,
+        "elapsedMs": 3300,
+        "t": 1792371135061,
+        "heldMB": 2048,
+        "chunks": 32
+      },
+      "target_reached_at_s": 4.039,
+      "alloc": {
+        "ok_ticks": 32,
+        "failed_ticks": 0,
+        "failed_errors": [],
+        "guest_reported_total_mb": 2048,
+        "elapsed_ms": 3300,
+        "natural_crash": false
+      },
+      "host_ipc_latency_during_alloc": {
+        "samples": 13,
+        "timeouts": 0,
+        "max_ms": 3.6,
+        "p95_ms": 3.6
+      },
+      "heartbeats": {
+        "first": 8,
+        "last": 16,
+        "series": [
+          {
+            "t": 0.77,
+            "hb": 8
+          },
+          {
+            "t": 0.92,
+            "hb": 8
+          },
+          {
+            "t": 1.08,
+            "hb": 8
+          },
+          {
+            "t": 1.23,
+            "hb": 9
+          },
+          {
+            "t": 1.39,
+            "hb": 9
+          },
+          {
+            "t": 1.54,
+            "hb": 9
+          },
+          {
+            "t": 2.4,
+            "hb": 12
+          },
+          {
+            "t": 2.55,
+            "hb": 12
+          },
+          {
+            "t": 2.71,
+            "hb": 12
+          },
+          {
+            "t": 2.86,
+            "hb": 13
+          },
+          {
+            "t": 3.02,
+            "hb": 13
+          },
+          {
+            "t": 3.18,
+            "hb": 14
+          },
+          {
+            "t": 4.04,
+            "hb": 16
+          }
+        ]
+      },
+      "renderer_memory": {
+        "guest_pid": 30316,
+        "baseline_ws_mb": 52.1,
+        "peak_ws_mb": 2109.5,
+        "delta_mb": 2057.4,
+        "peak_proc": {
+          "name": "msedgewebview2",
+          "ws": 2211946496,
+          "private": 2182692864,
+          "cpu": 0.796875
+        }
+      },
+      "crash_injection": {
+        "natural_crash": false,
+        "method": "cdp-page-crash",
+        "sent": true,
+        "first_response_error": "WebSocketTimeoutException",
+        "effective": true
+      },
+      "injected_at_s": 6.278,
+      "fault_observation": {
+        "suspended_at_s": 7.281,
+        "failed_at_s": 9.863
+      },
+      "state_timeline": [
+        {
+          "t": 0.156,
+          "state": "active"
+        },
+        {
+          "t": 7.281,
+          "state": "suspended"
+        },
+        {
+          "t": 9.863,
+          "state": "failed"
+        }
+      ],
+      "guest_renderer_after_crash": {
+        "pid": 30316,
+        "alive": false
+      },
+      "status_after_stop": {
+        "ok": true,
+        "value": {
+          "capabilities": [],
+          "lastError": null,
+          "packId": "com.probe.t26w07mem",
+          "state": "stopped",
+          "updatedAt": "SystemTime { intervals: 134368447421050106 }"
+        }
+      },
+      "tree_after_stop": {
+        "pids": [
+          26064,
+          29900,
+          12908,
+          3716,
+          37900,
+          10112,
+          23736,
+          27920,
+          32528,
+          21544
+        ],
+        "process_count": 10,
+        "working_set_bytes": 692936704,
+        "cpu_100ns": 59531250
+      },
+      "host_alive": true
+    },
+    "cpu": {
+      "scenario": "cpu",
+      "system_memory_mb": {
+        "total": 32273,
+        "free_before": 9352
+      },
+      "webview2": {
+        "Browser": "Edg/155.0.4283.62",
+        "Protocol-Version": "1.3",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36 Edg/155.0.0.0"
+      },
+      "guest_start": {
+        "blocked": false,
+        "capabilities": [
+          "ui.shell"
+        ],
+        "hasEntry": true,
+        "hasSession": true
+      },
+      "status_after_enable": {
+        "ok": true,
+        "value": {
+          "capabilities": [
+            "ui.shell"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26w07cpu",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368447515297414 }"
+        }
+      },
+      "enable_diag": {
+        "install": {
+          "ok": true,
+          "value": {
+            "active": "1.0.0",
+            "previous": null,
+            "updatedAt": "SystemTime { intervals: 134368447479334555 }"
+          }
+        },
+        "enable_button": true,
+        "clicked_enable": true,
+        "start": {
+          "blocked": false,
+          "capabilities": [
+            "ui.shell"
+          ],
+          "hasEntry": true,
+          "hasSession": true
+        },
+        "heartbeats": 2,
+        "status": {
+          "ok": true,
+          "value": {
+            "capabilities": [
+              "ui.shell"
+            ],
+            "lastError": null,
+            "packId": "com.probe.t26w07cpu",
+            "state": "active",
+            "updatedAt": "SystemTime { intervals: 134368447515297414 }"
+          }
+        },
+        "body_tail": "\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nw07.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07mem\\cpu\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26w07cpu 设为 trusted\n已安装包\nT26 W07 CPU Fault Pack com.probe.t26w07cpu\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+      },
+      "guest_target": {
+        "targetId": "8E12D6D23A56685BE3836CD4DDE9991B",
+        "type": "iframe",
+        "url": "http://workshop.localhost/com.probe.t26w07cpu/1.0.0/index.html",
+        "pid": 29780
+      },
+      "host_page_target": {
+        "targetId": "CCF92E0829C766952B232675966B7C2C",
+        "type": "page",
+        "url": "http://tauri.localhost/",
+        "pid": 30032
+      },
+      "baseline_procs": {
+        "20112": {
+          "name": "knowledgeeditor",
+          "ws": 31207424,
+          "private": 8495104,
+          "cpu": 0.203125
+        },
+        "29780": {
+          "name": "msedgewebview2",
+          "ws": 51798016,
+          "private": 20860928,
+          "cpu": 0.09375
+        },
+        "30032": {
+          "name": "msedgewebview2",
+          "ws": 92299264,
+          "private": 48033792,
+          "cpu": 0.4375
+        }
+      },
+      "start_cmd_posted": true,
+      "load_start_report": {
+        "type": "w07-report",
+        "scenario": "cpu",
+        "event": "load-start",
+        "phase": "load",
+        "loadTicks": 0,
+        "starveBlocks": 0,
+        "heartbeats": 3,
+        "elapsedMs": 0,
+        "t": 1792371153136,
+        "loadMs": 6000
+      },
+      "starve_start_guest": {
+        "t": 1792371159444,
+        "elapsedMs": 6308
+      },
+      "state_timeline": [
+        {
+          "t": 0.156,
+          "state": "active"
+        },
+        {
+          "t": 8.066,
+          "state": "suspended"
+        },
+        {
+          "t": 10.258,
+          "state": "failed"
+        }
+      ],
+      "heartbeats_series": [
+        {
+          "t": 0.15,
+          "hb": 5
+        },
+        {
+          "t": 1.35,
+          "hb": 8
+        },
+        {
+          "t": 2.02,
+          "hb": 10
+        },
+        {
+          "t": 2.67,
+          "hb": 11
+        },
+        {
+          "t": 3.33,
+          "hb": 13
+        },
+        {
+          "t": 4.0,
+          "hb": 15
+        },
+        {
+          "t": 4.66,
+          "hb": 16
+        },
+        {
+          "t": 5.35,
+          "hb": 18
+        },
+        {
+          "t": 6.09,
+          "hb": 19
+        },
+        {
+          "t": 7.31,
+          "hb": 19
+        },
+        {
+          "t": 8.06,
+          "hb": 19
+        },
+        {
+          "t": 8.76,
+          "hb": 20
+        },
+        {
+          "t": 9.5,
+          "hb": 20
+        },
+        {
+          "t": 10.26,
+          "hb": 20
+        }
+      ],
+      "load_start_at_s": 0.154,
+      "load_end_at_s": 6.156,
+      "starve_started_at_s": 6.462,
+      "first_suspended_at_s": 8.064,
+      "first_failed_at_s": 10.256,
+      "host_ipc_latency_during_load": {
+        "samples": 9,
+        "max_ms": 2.5,
+        "timeouts": 0
+      },
+      "guest_cpu": {
+        "cpu_seconds": 4.781,
+        "wall_seconds": 5.957,
+        "core_ratio": 0.803,
+        "guest_pid": 29780,
+        "load_window_guest_s": 6.002,
+        "hb_delta_during_load": 14
+      },
+      "detection_after_starve_s": 1.602,
+      "status_after_stop": {
+        "ok": true,
+        "value": {
+          "capabilities": [],
+          "lastError": null,
+          "packId": "com.probe.t26w07cpu",
+          "state": "stopped",
+          "updatedAt": "SystemTime { intervals: 134368447639416111 }"
+        }
+      },
+      "host_alive": true
+    }
+  },
+  "raw_notes": [
+    "PASS/FAIL 为可观测断言；自然 OOM 是否发生、崩溃注入方式见 metrics.crash_injection",
+    "用户 App 未运行 → 用户实例影响 N/A（只读确认，不触碰用户数据/进程）",
+    "进程清理仅按路径白名单或自身 Popen PID；无 taskkill /IM"
+  ]
+}

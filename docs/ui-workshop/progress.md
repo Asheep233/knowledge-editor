@@ -871,3 +871,20 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 真实产品 W **7/7**：外部脚手架 → 外部签名 → 产品安装（signature valid）→ guest active，
   无需修改宿主源码。证据：`evidence/P5-T26-W04-sdk.md`。
 - W04 剩余：SDK 发布形态（npm/tgz/模板仓库）、文档站/示例集、签名工具分发。
+
+## P6/T26 进度（W07 扩展故障类别：内存/CPU 压力 W 21/21，2026-10-19）
+
+- 新增 `tools/run_t26_fault_mem_probe.py`（隔离产品构建 + 隔离 APPDATA/工作区 + 签名包 + CDP +
+  按路径白名单清理；两场景可单跑 `--scenario mem|cpu` 或 `all`）。
+- 场景 a 内存压力 **W 11/11**：guest 独立 renderer 累计分配 2048MB（32×64MB，0 allocation 失败，
+  3.3s），期间宿主 IPC 13 采样 max **3.6ms**/0 超时、renderer 工作集 +2057MB、心跳持续 active；
+  保持 2s 后注入 renderer 崩溃（**CDP Page.crash 注入，非自然 OOM**）→ ≈1.0s 检出 suspended →
+  failed + safeMode → 停用 stopped 持久化；宿主存活、guest renderer 进程消失。
+- 场景 b CPU 压力 **W 10/10**：40ms 分片 setTimeout 满载 6.0s（独立 renderer ≈**0.80 core**）期间
+  宿主 IPC max **2.5ms**、心跳 +14、会话 active 未误判；2500ms 长任务链饥饿 → ≈**1.6s** 心跳超时检出
+  suspended → failed + safeMode → 停用 stopped 持久化（worker 被 CSP 阻断，W06 已证）。
+- 证据：`evidence/P5-T26-W07-fault-mem.md`、`evidence/T26-W07-mem-results.json`（含原始 checks/metrics）；
+  用户 App 未运行 → 用户实例影响 N/A，未触碰用户进程/数据。
+- W07 剩余：boot crash、桥接超时、连续启动失败、原生 Rust 恢复、I 门禁；自然 OOM 崩溃路径未触发
+  （2GB 压力上限受同机安全约束，崩溃检测用注入验证）。
+

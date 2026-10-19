@@ -54,3 +54,6 @@ docs/ui-workshop/prototypes/p0/s1_runtime/tauri_sandbox/frontend/pack.js
 docs/ui-workshop/core/packs/probe/t19-guest-code.txt
 docs/ui-workshop/prototypes/p0/s1_runtime/tauri_sandbox/frontend/t19.js
 docs/ui-workshop/core/packs/probe/w02-guest-code.txt
+# UI 工坊 guest SDK 发布产物（dist 由 build.mjs 生成，需入仓供外部使用）
+!docs/ui-workshop/sdk/dist/
+!docs/ui-workshop/sdk/dist/**

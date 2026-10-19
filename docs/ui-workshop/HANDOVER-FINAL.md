@@ -179,3 +179,16 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 5. **W09 产品性能优化**（大文档首开 `@tiptap/markdown` 解析）后复跑全量 W09；
 6. **正式发布密钥流程**（ADR-003 实施清单）与 Tauri 升级回归；
 7. 全部完成并复评 T26 认证后，才可评估 `LOCAL_WORKSHOP_RELEASE_CANDIDATE`；发布/推送需主理人明确授权。
+
+## 追加交付物（2026-10-19 会话后段）
+
+- **人工验收指引**：`reports/MANUAL-IME-DPI-CHECKLIST.md`（真实系统 IME + 多 DPI/多显示器逐步
+  清单与记录模板；需主理人在本机执行，结果登记后更新本文档与矩阵）。
+- **T27 I 门禁执行手册**：`reports/T27-I-GATE-RUNBOOK.md`（安装/覆盖升级/回滚/卸载/重启 U1–U6；
+  就绪检查 `evidence/T27-gate-readiness.json` = NOT_READY(6/8)，仅缺主理人授权 + 专用隔离环境；
+  当前仓库**不含自动安装脚本**，禁止在用户日常机执行）。
+- **W04 SDK 发布形态**：`docs/ui-workshop/sdk/`（dist guest-sdk.js/mjs 入仓）+ `P5-T26-W04-sdk-dist.md`
+  （自检 4/4 + 产品 W 7/7）。
+- **W07 扩展**：`P5-T26-W07-fault-mem.md`（内存 11/11 + CPU 10/10，独立 renderer；自然 OOM 未触发，
+  renderer crash 为 CDP 注入，如实记录）。
+- 交付文档定稿：`reports/FINAL-DELIVERY-STATUS.md` + 矩阵 51 行 --check PASS（38 个 results JSON 全覆盖）。

@@ -93,3 +93,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check   # Windows + 原型�
 5. **W09 大文档性能优化**后复跑全量预算；
 6. 正式发布密钥流程 + Tauri 升级回归；
 7. 全部完成并复评 T26 认证后，才可评估 `LOCAL_WORKSHOP_RELEASE_CANDIDATE`（发布需主理人授权）。
+
+## 7. 待主理人操作项（不阻塞当前交付，但影响最终认证）
+
+| 项 | 需要 | 入口 |
+| --- | --- | --- |
+| T27 安装/覆盖升级/回滚 I 门禁 | 授权 + 专用隔离环境（VM/实验机） | `reports/T27-I-GATE-RUNBOOK.md`；就绪检查 `evidence/T27-gate-readiness.json` |
+| 人工真实 IME/多 DPI | 本机逐步操作 + 截图 | `reports/MANUAL-IME-DPI-CHECKLIST.md` |
+| 正式发布/推送 | 主理人明确授权 | 当前分支本地，未推送/未 Release |

@@ -7,6 +7,9 @@
  *   （正文 + revision）→ PrintJobManager（产品渲染器 + Rust `print_snapshot_pdf`）→ 隔离输出目录
  *   产出真实 PDF → 返回不透明 `pdfToken`（宿主注册表可查真实路径）+ 页数（不可得 → null）；
  *   失败（能力/参数/读快照/渲染/打印）一律如实抛类型化错误，不返回假 token；
+ * - W07 B-6：sidecar 崩溃自动重启后新后端内存上下文丢失（HTTP 404）→ 丢弃缓存绑定、
+ *   重新 ensureContext（context/open）后**重试一次**（snapshot/write/print 读取路径共用）；
+ * - W07 A-10：宿主 fetch 超时 → 协议错误 `E_TIMEOUT`（retryable=true），guest 可按 code 区分超时；
  * - W02：`command.invoke` 白名单命令（article.setTitle/setTags）。
  */
 import { connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
@@ -17,7 +20,9 @@ import { registerPrintToken } from '../../core/print/printTokenRegistry'
 import { createTauriPrintTransport } from '../../core/print/tauriPrintTransport'
 import {
   createArticleMetaCommandHandler,
+  createGuestRequestId,
   fetchContextSnapshotWithContent,
+  isRecoverableContextError,
   writeContextDocument,
   type ContextSnapshotWithContent,
 } from '../../core/packs/productHostAdapter'
@@ -55,15 +60,12 @@ export function refreshGuestContext(): void {
   sharedBridge?.invalidate()
 }
 
-function isStaleContextError(e: unknown): boolean {
-  const message = String((e as Error)?.message ?? e)
-  return /HTTP 409/.test(message) || /E_STALE_CONTEXT/.test(message) || /epoch 已过期/.test(message)
-}
-
 /**
- * 以「真实上下文」执行一次 guest 后端操作；遇到 epoch 失效（宿主保存桥 switch 过上下文）
- * 丢弃缓存上下文后重试一次 —— 否则 guest 在宿主 Core 保存后立刻读快照/打印会 409。
- * 仍失败则如实抛错。
+ * 以「真实上下文」执行一次 guest 后端操作；遇到**可恢复的上下文失效**时丢弃缓存绑定后重试一次：
+ * - B-6：sidecar 崩溃自动重启 → 新后端内存上下文丢失，快照/写返回 HTTP 404（`E_SNAPSHOT` /
+ *   `context write 失败`）→ 重新 ensureContext（context/open 重建绑定）后重试；
+ * - 既有：宿主保存桥 switch 过上下文导致 epoch 失效（HTTP 409 / E_STALE_CONTEXT）。
+ * 只重试一次（不无限循环）；仍失败则如实抛错，不吞错。
  */
 async function withGuestContext<T>(
   op: (ctx: GuestContextInfo) => Promise<T>,
@@ -73,7 +75,7 @@ async function withGuestContext<T>(
   try {
     return await op(ctx)
   } catch (e) {
-    if (!isStaleContextError(e)) throw e
+    if (!isRecoverableContextError(e)) throw e
     refreshGuestContext()
     const fresh = await resolveContext()
     return await op(fresh)
@@ -84,6 +86,8 @@ export interface GuestSnapshotOptions {
   baseUrl?: string
   fetchImpl?: typeof fetch
   context?: () => Promise<GuestContextInfo>
+  /** 单次宿主请求超时（ms；A-10：超时映射 E_TIMEOUT/retryable） */
+  timeoutMs?: number
 }
 
 /** guest 侧可信快照读取（带 epoch 失效重试；G1 内容读与 G3 打印共用）。 */
@@ -97,6 +101,7 @@ export async function fetchGuestSnapshot(
     fetchContextSnapshotWithContent(ctx, relPath, includeContent, {
       baseUrl: options.baseUrl ?? (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '',
       fetchImpl: options.fetchImpl,
+      timeoutMs: options.timeoutMs,
     })
   return await withGuestContext(read, resolveContext)
 }
@@ -135,6 +140,8 @@ export interface ProductBrokerBackendOptions {
   fetchImpl?: typeof fetch
   /** 上下文解析（默认 CoreSaveBridge.ensureContext；测试注入） */
   context?: () => Promise<GuestContextInfo>
+  /** 单次宿主请求超时（ms，默认 15000；A-10 超时 → E_TIMEOUT/retryable；测试可缩短） */
+  requestTimeoutMs?: number
   /** 打印渲染器/传输/输出目标（默认产品真实实现；测试注入以隔离真实 IO） */
   printRenderer?: PrintRenderer
   printTransport?: PrintTransport
@@ -168,16 +175,29 @@ export class ProductBrokerBackend implements BrokerBackend {
       baseUrl: this.baseUrl(),
       fetchImpl: this.options.fetchImpl,
       context: () => this.context(),
+      timeoutMs: this.options.requestTimeoutMs,
     })
   }
 
   async write(params: ProtocolMethods['context.write']['params'], _conn: BrokerConnection) {
     // G2：真实 /api/context/write；completed/conflict/stale/failed 如实返回，不伪造 revision/fileDurable。
-    const ctx = await this.context()
-    return await writeContextDocument(ctx, params, {
-      baseUrl: this.baseUrl(),
-      fetchImpl: this.options.fetchImpl,
-    })
+    // B-6：sidecar 重启后上下文丢失（HTTP 404）→ 重建绑定后**重试一次**；requestId 幂等复用。
+    const requestId = params.requestId ?? createGuestRequestId('guest-write')
+    try {
+      return await withGuestContext(
+        (ctx) =>
+          writeContextDocument(ctx, { ...params, requestId }, {
+            baseUrl: this.baseUrl(),
+            fetchImpl: this.options.fetchImpl,
+            timeoutMs: this.options.requestTimeoutMs,
+            throwOnError: true,
+          }),
+        () => this.context(),
+      )
+    } catch {
+      // 重试后仍失败 / 非可恢复错误：按 G2 协议语义如实返回 failed（不伪造 revision/fileDurable）
+      return { requestId, status: 'failed' as const }
+    }
   }
 
   /** T26 G3：真实打印管线（能力：print.request；输出到宿主应用数据目录下的隔离 PDF）。 */
@@ -199,6 +219,7 @@ export class ProductBrokerBackend implements BrokerBackend {
       baseUrl: this.baseUrl(),
       fetchImpl: this.options.fetchImpl,
       context: () => this.context(),
+      timeoutMs: this.options.requestTimeoutMs,
     })
     if (typeof snapshot.content !== 'string' || snapshot.content.length === 0) {
       throw protocolError('E_INTERNAL', `E_PRINT_SNAPSHOT: 无法读取文档正文（${relPath}）`, { relPath })

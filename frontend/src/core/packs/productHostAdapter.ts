@@ -12,7 +12,7 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 
-import type { ProtocolMethods } from '../protocol/types'
+import { protocolError, type ProtocolMethods } from '../protocol/types'
 import { HttpTransport } from '../session/httpTransport'
 import { validateManifest, type PackManifest } from './manifest'
 import type { PackageHostBackend } from './packageHost'
@@ -222,6 +222,16 @@ export function utf8ByteLength(text: string): number {
   return new TextEncoder().encode(text).length
 }
 
+/**
+ * A-10：宿主 fetch 超时/中止 → 协议错误 `E_TIMEOUT`（retryable=true）。
+ * 其它网络/HTTP 错误原样抛出（由上层按各自语义处理，不吞错）。
+ */
+function isAbortError(e: unknown): boolean {
+  const name = (e as { name?: unknown } | null)?.name
+  if (name === 'AbortError') return true
+  return /aborted|abort/i.test(String((e as { message?: unknown } | null)?.message ?? e))
+}
+
 async function requestJson<T>(
   fetchImpl: typeof fetch,
   baseUrl: string,
@@ -240,9 +250,38 @@ async function requestJson<T>(
       body = null
     }
     return { status: resp.status, body }
+  } catch (e) {
+    // 自建 AbortController 到点 abort（或 fetch 以 AbortError 中止）→ E_TIMEOUT（guest 可按 code 重试）
+    if (controller.signal.aborted || isAbortError(e)) {
+      throw protocolError('E_TIMEOUT', `宿主请求超时（${init.method ?? 'GET'} ${path}，${timeoutMs}ms）`, { path, timeoutMs }, true)
+    }
+    throw e
   } finally {
     clearTimeout(timer)
   }
+}
+
+/**
+ * B-6：判断错误是否属于「上下文绑定失效、重建绑定后可恢复」——
+ * sidecar 崩溃自动重启后新后端内存上下文丢失（HTTP 404 `上下文不存在或已关闭`）或
+ * epoch 失效（HTTP 409 / E_STALE_CONTEXT）。调用方（ProductBrokerBackend）据此**重试一次**。
+ */
+export function isRecoverableContextError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false
+  const code = (e as { code?: unknown }).code
+  if (code === 'E_STALE_CONTEXT') return true
+  const message = String((e as { message?: unknown }).message ?? e)
+  if (/E_STALE_CONTEXT|epoch 已过期/.test(message)) return true
+  // 快照/写请求在后端上下文缺失时的真实响应（E_SNAPSHOT: HTTP 404 / context write 失败: HTTP 404）
+  if (/E_SNAPSHOT: HTTP (404|409)/.test(message)) return true
+  if (/context write 失败: HTTP (404|409)/.test(message)) return true
+  if (/上下文不存在|上下文已关闭/.test(message)) return true
+  return false
+}
+
+/** 幂等 requestId（guest 写请求在「重建上下文后重试」时复用同一 id，避免重复写）。 */
+export function createGuestRequestId(prefix = 'guest'): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 /**
@@ -297,20 +336,29 @@ export async function fetchContextSnapshotWithContent(
   return result
 }
 
+export interface ContextWriteOptions extends ContextIOOptions {
+  /**
+   * true = 传输/HTTP 失败向上抛出（供上层在「上下文绑定失效」时重建绑定后重试一次）；
+   * 默认 false = 返回 `{status:'failed'}`（G2 协议语义，不伪造 revision/fileDurable）。
+   */
+  throwOnError?: boolean
+}
+
 /**
  * G2（真实写通道）：把 guest 的 `context.write` 接到真实 `POST /api/context/write`。
  *
  * 语义复用 `HttpTransport`（T10/T14 已验证的保存链传输层）：
  * - 200 `completed` → 原样透传真实 `revision/accepted/recoveryDurable/fileDurable`（**不伪造**）；
  * - 409 epoch 过期 → `stale`；revision/外部改盘冲突 → `conflict`（`kind/currentRevision` 透传）；
- * - 传输/其它 HTTP 失败 → `failed`（不携带 revision/fileDurable；`requestId` 幂等可经后端查询复核）。
+ * - 传输/其它 HTTP 失败 → `failed`（不携带 revision/fileDurable；`requestId` 幂等可经后端查询复核）；
+ *   若 `throwOnError=true` 则向上抛出（B-6 重试判据）。
  */
 export async function writeContextDocument(
   binding: GuestContextBinding,
   params: ProtocolMethods['context.write']['params'],
-  options: ContextIOOptions = {},
+  options: ContextWriteOptions = {},
 ): Promise<ProtocolMethods['context.write']['result']> {
-  const requestId = params.requestId ?? `guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  const requestId = params.requestId ?? createGuestRequestId('guest-write')
   const transport = new HttpTransport({
     baseUrl: options.baseUrl,
     fetchImpl: options.fetchImpl,
@@ -339,7 +387,8 @@ export async function writeContextDocument(
       if (result.currentRevision !== undefined) mapped.currentRevision = result.currentRevision
     }
     return mapped
-  } catch {
+  } catch (e) {
+    if (options.throwOnError) throw e
     return { requestId, status: 'failed' }
   }
 }

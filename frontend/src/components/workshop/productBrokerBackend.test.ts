@@ -2,9 +2,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Broker, type BrokerConnection } from '../../core/broker/broker'
+import { brokeredHandlers } from '../../core/broker/binding'
+import { GuestClient, HostDispatcher, ProtocolCallError, createInMemoryPorts } from '../../core/protocol/channel'
 import { resetPrintTokensForTests, lookupPrintToken } from '../../core/print/printTokenRegistry'
 import type { PrintRenderer, PrintTransport } from '../../core/print/printJob'
-import { ProductBrokerBackend, normalizeGuestPrintRelPath, type ProductBrokerBackendOptions } from './productBrokerBackend'
+import {
+  ProductBrokerBackend,
+  normalizeGuestPrintRelPath,
+  resetGuestContextBridgeForTests,
+  type ProductBrokerBackendOptions,
+} from './productBrokerBackend'
 
 const REL = 'Articles/a.md'
 const CONTENT = '---\ntitle: a\n---\n\n# 标题\n\n正文段落\n'
@@ -193,5 +200,253 @@ describe('T26 G3 ProductBrokerBackend.print.snapshot', () => {
     const b = await backend.print({ relPath: REL }, conn())
     expect(a.pdfToken).not.toBe(b.pdfToken)
     expect(lookupPrintToken(a.pdfToken)?.pdfPath).not.toBe(lookupPrintToken(b.pdfToken)?.pdfPath)
+  })
+})
+
+
+// ---------------- W07 B-6/A-10：sidecar 重启后上下文重建重试 + 超时语义 ----------------
+
+type Step = 'ok' | '404' | '409' | '500'
+
+interface RetryPlan {
+  snapshot?: Step[]
+  write?: Step[]
+  openEpochs?: number[]
+}
+
+/**
+ * 有状态假后端：按调用序号模拟 sidecar 重启后的「上下文丢失(404) → 重建后可读」序列。
+ * 覆盖 /api/workspace/info、/api/context/open、/api/context/snapshot、/api/context/write、/api/articles/*。
+ */
+function statefulFetch(plan: RetryPlan = {}) {
+  const calls: { url: string; method: string; body?: Record<string, unknown> }[] = []
+  let snapshotCalls = 0
+  let writeCalls = 0
+  let openCalls = 0
+  const reply = (status: number, body: unknown) =>
+    ({ status, ok: status >= 200 && status < 300, json: async () => body }) as unknown as Response
+  const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input)
+    const method = init?.method ?? 'GET'
+    const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined
+    calls.push({ url, method, body })
+    if (url.endsWith('/api/workspace/info')) return reply(200, { root: 'C:\\ke-tmp\\ws' })
+    if (url.endsWith('/api/context/open')) {
+      openCalls += 1
+      const epochs = plan.openEpochs ?? [1]
+      return reply(200, { id: 'ke-default', epoch: epochs[Math.min(openCalls - 1, epochs.length - 1)] })
+    }
+    if (url.endsWith('/api/context/snapshot')) {
+      snapshotCalls += 1
+      const step = (plan.snapshot ?? ['ok']).at(Math.min(snapshotCalls - 1, (plan.snapshot ?? ['ok']).length - 1)) ?? 'ok'
+      if (step === 'ok') return reply(200, { rel_path: REL, revision: 5, disk_hash: 'h-5' })
+      if (step === '409') return reply(409, { detail: '上下文 epoch 已过期: 期望 2, 收到 1' })
+      if (step === '500') return reply(500, { detail: 'boom' })
+      return reply(404, { detail: '上下文不存在或已关闭: ke-default' })
+    }
+    if (url.endsWith('/api/context/write')) {
+      writeCalls += 1
+      const seq = plan.write ?? ['ok']
+      const step = seq[Math.min(writeCalls - 1, seq.length - 1)]
+      if (step === 'ok') {
+        return reply(200, {
+          request_id: 'rid-server',
+          context_id: 'ke-default',
+          rel_path: REL,
+          status: 'completed',
+          revision: 2,
+          accepted: true,
+          recovery_durable: true,
+          file_durable: true,
+        })
+      }
+      if (step === '500') return reply(500, { detail: 'boom' })
+      return reply(404, { detail: '上下文不存在或已关闭: ke-default' })
+    }
+    if (url.includes('/api/articles/')) return reply(200, { content: CONTENT })
+    return reply(404, {})
+  })
+  return {
+    fetchImpl: fetchImpl as unknown as typeof fetch,
+    calls,
+    counts: () => ({ snapshotCalls, writeCalls, openCalls }),
+  }
+}
+
+/** 上下文解析注入替身：每次 resolve 返回 epoch 递增，模拟「失效后重建绑定拿到新 epoch」。 */
+function incrementingContext() {
+  const state = { resolves: 0 }
+  const context = async () => {
+    state.resolves += 1
+    return { contextId: 'ke-default', epoch: state.resolves }
+  }
+  return { state, context }
+}
+
+function abortError(): Error {
+  const e = new Error('signal is aborted without reason')
+  e.name = 'AbortError'
+  return e
+}
+
+/** 永不自行完成的 fetch：仅在 AbortSignal abort 时以 AbortError 拒绝（模拟宿主 fetch 超时）。 */
+function hangingAbortFetch(): typeof fetch {
+  return vi.fn(
+    (_input: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal
+        if (signal?.aborted) {
+          reject(abortError())
+          return
+        }
+        signal?.addEventListener('abort', () => reject(abortError()), { once: true })
+      }),
+  ) as unknown as typeof fetch
+}
+
+describe('W07 B-6：上下文丢失(404)/epoch 失效(409) → 重建绑定重试一次', () => {
+  it('snapshot：404 一次后重建上下文重试成功（重试用新 epoch，快照读真实结果）', async () => {
+    const { fetchImpl, calls, counts } = statefulFetch({ snapshot: ['404', 'ok'] })
+    const { state, context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const snap = await backend.snapshot({ relPath: REL }, conn(['context.read']))
+    expect(snap).toMatchObject({ relPath: REL, revision: 5, diskHash: 'h-5' })
+    expect(counts().snapshotCalls).toBe(2)
+    expect(state.resolves).toBe(2) // 首次绑定 + invalidate 后重建
+    const bodies = calls.filter((c) => c.url.endsWith('/api/context/snapshot')).map((c) => c.body)
+    expect(bodies[0]).toMatchObject({ context_id: 'ke-default', epoch: 1, rel_path: REL })
+    expect(bodies[1]).toMatchObject({ context_id: 'ke-default', epoch: 2, rel_path: REL })
+  })
+
+  it('snapshot：仍失败 → 如实抛 E_SNAPSHOT HTTP 404，且只重试一次（不无限循环/不吞错）', async () => {
+    const { fetchImpl, counts } = statefulFetch({ snapshot: ['404'] })
+    const { state, context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const err = (await backend.snapshot({ relPath: REL }, conn(['context.read'])).catch((e) => e)) as Error
+    expect(String(err.message)).toContain('E_SNAPSHOT: HTTP 404')
+    expect(counts().snapshotCalls).toBe(2)
+    expect(state.resolves).toBe(2)
+  })
+
+  it('snapshot：非上下文错误（HTTP 500）→ 不重试、直接如实抛错', async () => {
+    const { fetchImpl, counts } = statefulFetch({ snapshot: ['500'] })
+    const { state, context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const err = (await backend.snapshot({ relPath: REL }, conn(['context.read'])).catch((e) => e)) as Error
+    expect(String(err.message)).toContain('E_SNAPSHOT: HTTP 500')
+    expect(counts().snapshotCalls).toBe(1)
+    expect(state.resolves).toBe(1)
+  })
+
+  it('snapshot：409 epoch 失效 → 重建绑定重试成功（既有语义保持）', async () => {
+    const { fetchImpl, counts } = statefulFetch({ snapshot: ['409', 'ok'] })
+    const { context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const snap = await backend.snapshot({ relPath: REL }, conn(['context.read']))
+    expect(snap.revision).toBe(5)
+    expect(counts().snapshotCalls).toBe(2)
+  })
+
+  it('集成：默认 contextInfo/CoreSaveBridge 路径被 invalidate 后重新 context/open（bind 重建真实生效）', async () => {
+    resetGuestContextBridgeForTests()
+    const { fetchImpl, calls, counts } = statefulFetch({ snapshot: ['404', 'ok'], openEpochs: [1, 2] })
+    vi.stubGlobal('fetch', fetchImpl)
+    try {
+      // 不注入 context：走真实 contextInfo()（CoreSaveBridge.ensureContext）→ refreshGuestContext 清缓存
+      const backend = new ProductBrokerBackend({ baseUrl: '' })
+      const snap = await backend.snapshot({ relPath: REL }, conn(['context.read']))
+      expect(snap.revision).toBe(5)
+      expect(counts().openCalls).toBe(2) // 首次 open + 404 后 invalidate → 重新 open
+      const bodies = calls.filter((c) => c.url.endsWith('/api/context/snapshot')).map((c) => c.body)
+      expect(bodies[1]).toMatchObject({ context_id: 'ke-default', epoch: 2 }) // 重试携带重建后的新 epoch
+    } finally {
+      vi.unstubAllGlobals()
+      resetGuestContextBridgeForTests()
+    }
+  })
+
+  it('write：404 一次后重建上下文重试成功，且重试复用同一 requestId（幂等）', async () => {
+    const { fetchImpl, calls, counts } = statefulFetch({ write: ['404', 'ok'] })
+    const { state, context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const result = await backend.write({ relPath: REL, content: '新正文', expectedRevision: 1, requestId: 'guest-rid-1' }, conn())
+    expect(result).toMatchObject({ status: 'completed', revision: 2, fileDurable: true })
+    expect(counts().writeCalls).toBe(2)
+    expect(state.resolves).toBe(2)
+    const writeBodies = calls.filter((c) => c.url.endsWith('/api/context/write')).map((c) => c.body)
+    expect(writeBodies).toHaveLength(2)
+    expect(writeBodies[0]?.request_id).toBe('guest-rid-1')
+    expect(writeBodies[1]?.request_id).toBe('guest-rid-1') // 重试复用同一幂等键
+    expect(writeBodies[1]).toMatchObject({ epoch: 2, expected_revision: 1 })
+  })
+
+  it('write：重试仍失败 → 如实返回 status=failed（不伪造 revision/fileDurable）', async () => {
+    const { fetchImpl, counts } = statefulFetch({ write: ['404'] })
+    const { context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const result = await backend.write({ relPath: REL, content: 'x', expectedRevision: 1, requestId: 'guest-rid-2' }, conn())
+    expect(result.status).toBe('failed')
+    expect(result.requestId).toBe('guest-rid-2')
+    expect(result.revision).toBeUndefined()
+    expect(result.fileDurable).toBeUndefined()
+    expect(counts().writeCalls).toBe(2)
+  })
+
+  it('write：非上下文错误（HTTP 500）→ 不重试，返回 failed', async () => {
+    const { fetchImpl, counts } = statefulFetch({ write: ['500'] })
+    const { state, context } = incrementingContext()
+    const backend = new ProductBrokerBackend({ baseUrl: '', fetchImpl, context })
+    const result = await backend.write({ relPath: REL, content: 'x', expectedRevision: 1 }, conn())
+    expect(result.status).toBe('failed')
+    expect(counts().writeCalls).toBe(1)
+    expect(state.resolves).toBe(1)
+  })
+
+  it('print：快照读取 404 一次后经重建绑定重试，仍能产出真实 token（打印读取路径同样恢复）', async () => {
+    const { fetchImpl, counts } = statefulFetch({ snapshot: ['404', 'ok'] })
+    const { context } = incrementingContext()
+    const renderer = makeRenderer(null)
+    const transport = makeTransport(null)
+    const backend = new ProductBrokerBackend({
+      baseUrl: '',
+      fetchImpl,
+      context,
+      printRenderer: renderer,
+      printTransport: transport,
+      resolvePrintTarget: async () => TARGET,
+    })
+    const result = await backend.print({ relPath: REL }, conn())
+    expect(result.pdfToken).toMatch(/^pdf-/)
+    expect(counts().snapshotCalls).toBe(2)
+    expect(transport.print).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('W07 A-10：超时 E_TIMEOUT 经 Broker/HostDispatcher 映射到 guest', () => {
+  it('guest 收到 ProtocolCallError(code=E_TIMEOUT, retryable=true) 而非 E_INTERNAL', async () => {
+    const [hostPort, guestPort] = createInMemoryPorts()
+    const backend = new ProductBrokerBackend({
+      baseUrl: '',
+      context: async () => ({ contextId: 'ke-default', epoch: 1 }),
+      fetchImpl: hangingAbortFetch(),
+      requestTimeoutMs: 20,
+    })
+    const broker = new Broker(backend, {})
+    const dispatcher = new HostDispatcher(hostPort, brokeredHandlers(broker, conn(['context.read'])), {
+      context: () => ({ contextId: 'ke-default', epoch: 1 }),
+    })
+    dispatcher.start()
+    const guest = new GuestClient(guestPort, { sdkVersion: 'w07-test', requestedFeatures: ['context.read'], timeoutMs: 2000 })
+    try {
+      await guest.handshake()
+      const err = (await guest.request('context.snapshot', { relPath: REL }).catch((e) => e)) as ProtocolCallError
+      expect(err).toBeInstanceOf(ProtocolCallError)
+      expect(err.error.code).toBe('E_TIMEOUT')
+      expect(err.error.retryable).toBe(true)
+      expect(err.error.details).toMatchObject({ path: '/api/context/snapshot' })
+    } finally {
+      guest.close()
+      dispatcher.close()
+    }
   })
 })

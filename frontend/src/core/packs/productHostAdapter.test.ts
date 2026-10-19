@@ -6,8 +6,10 @@ import { PACK_API_VERSION, type PackManifest } from './manifest'
 import {
   capabilityCeilingFor,
   createArticleMetaCommandHandler,
+  createGuestRequestId,
   createProductHostBackend,
   fetchContextSnapshotWithContent,
+  isRecoverableContextError,
   isolationGuard,
   utf8ByteLength,
   writeContextDocument,
@@ -284,5 +286,76 @@ describe('T26 G2 真实写通道：context.write → /api/context/write', () => 
     expect(JSON.parse(String(calls[0].init?.body)).request_id).toBe('guest-req-42')
     expect(result.requestId).toBe('rid-9')
     expect(result.revision).toBe(1)
+  })
+})
+
+
+// ---------------- W07 A-10/B-6：桥接超时语义 + 可恢复上下文错误判据 ----------------
+
+function abortError(): Error {
+  const e = new Error('signal is aborted without reason')
+  e.name = 'AbortError'
+  return e
+}
+
+/** 永不自行完成的 fetch：仅在 AbortSignal abort 时以 AbortError 拒绝（模拟宿主 fetch 超时）。 */
+function hangingAbortFetch(): typeof fetch {
+  return vi.fn(
+    (_input: RequestInfo | URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal
+        if (signal?.aborted) {
+          reject(abortError())
+          return
+        }
+        signal?.addEventListener('abort', () => reject(abortError()), { once: true })
+      }),
+  ) as unknown as typeof fetch
+}
+
+describe('W07 A-10：宿主 fetch 超时 → 协议错误 E_TIMEOUT（retryable）', () => {
+  it('snapshot 请求超时 → E_TIMEOUT/retryable=true（不再是 E_INTERNAL/signal aborted）', async () => {
+    const err = (await fetchContextSnapshotWithContent(CTX, 'Articles/a.md', false, {
+      fetchImpl: hangingAbortFetch(),
+      baseUrl: BASE,
+      timeoutMs: 20,
+    }).catch((e) => e)) as { code?: string; retryable?: boolean; message?: string }
+    expect(err.code).toBe('E_TIMEOUT')
+    expect(err.retryable).toBe(true)
+    expect(String(err.message)).toContain('超时')
+    expect(String(err.message)).not.toMatch(/aborted/i)
+  })
+
+  it('可选正文读取超时 → 仍返回旧形状快照（G1 兼容语义不变，不把可选字段失败升级为协议错误）', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/api/context/snapshot')) {
+        return { status: 200, ok: true, json: async () => ({ rel_path: 'Articles/a.md', revision: 2, disk_hash: 'h-2' }) } as unknown as Response
+      }
+      return await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(abortError()), { once: true })
+      })
+    }) as unknown as typeof fetch
+    const snap = await fetchContextSnapshotWithContent(CTX, 'Articles/a.md', true, { fetchImpl, baseUrl: BASE, timeoutMs: 20 })
+    expect(snap).toEqual({ relPath: 'Articles/a.md', revision: 2, diskHash: 'h-2' })
+    expect(snap.content).toBeUndefined()
+  })
+
+  it('isRecoverableContextError：404/409 上下文失效可恢复；500/E_TIMEOUT/网络错误不重试', () => {
+    expect(isRecoverableContextError(new Error('E_SNAPSHOT: HTTP 404'))).toBe(true)
+    expect(isRecoverableContextError(new Error('E_SNAPSHOT: HTTP 409'))).toBe(true)
+    expect(isRecoverableContextError(new Error('context write 失败: HTTP 404'))).toBe(true)
+    expect(isRecoverableContextError(new Error('上下文不存在或已关闭: ke-default'))).toBe(true)
+    expect(isRecoverableContextError(Object.assign(new Error('epoch'), { code: 'E_STALE_CONTEXT' }))).toBe(true)
+    expect(isRecoverableContextError(new Error('E_SNAPSHOT: HTTP 500'))).toBe(false)
+    expect(isRecoverableContextError(new Error('context write 失败: HTTP 500'))).toBe(false)
+    expect(isRecoverableContextError({ code: 'E_TIMEOUT', retryable: true, message: '宿主请求超时' })).toBe(false)
+    expect(isRecoverableContextError(new Error('ECONNREFUSED'))).toBe(false)
+    expect(isRecoverableContextError(null)).toBe(false)
+  })
+
+  it('createGuestRequestId：前缀 + 非空随机后缀（写重试复用同一 id）', () => {
+    const a = createGuestRequestId('guest-write')
+    expect(a).toMatch(/^guest-write-[0-9a-z]+-[0-9a-z]+$/)
+    expect(createGuestRequestId('guest-write')).not.toBe(a)
   })
 })

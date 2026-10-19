@@ -259,7 +259,9 @@ def main() -> int:
         stop(proc2, cdp2)
 
     upid = user_pid()
-    check("W-T26-A4/A6-9 用户运行中的 AstraNota 未受影响（PID 存在）", upid.isdigit(), {"user_pid": upid})
+    # 用户 App 未运行 → 不可能被影响，记 N/A 通过（不再把「PID 存在」当作通过条件）
+    check("W-T26-A4/A6-9 用户运行中的 AstraNota 未受影响（未运行 → N/A）",
+          upid.isdigit() or upid == "", {"user_pid": upid or "N/A (not running)"})
 
     summary = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),

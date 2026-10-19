@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-19T09:28:45+0800",
+  "generated_at": "2026-10-19T17:29:38+0800",
   "scenario": "T26 G1/G2 产品 W：guest context.snapshot.content 内容读 + context.write 真实写/CAS",
   "build": {
     "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-    "exe_sha256": "be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a",
-    "exe_mtime": "2026-10-19T09:27:26"
+    "exe_sha256": "c849241bc9dd6be31cae8f3b7ac6c386b7c3431dcbec4d706f7725e86577be8f",
+    "exe_mtime": "2026-10-19T16:43:26"
   },
   "pack": {
     "id": "com.probe.t26io",
@@ -24,7 +24,7 @@
         "value": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368469243127729 }"
+          "updatedAt": "SystemTime { intervals: 134368757756700535 }"
         }
       }
     },
@@ -40,7 +40,7 @@
         "lastError": null,
         "packId": "com.probe.t26io",
         "state": "active",
-        "updatedAt": "SystemTime { intervals: 134368469248413694 }"
+        "updatedAt": "SystemTime { intervals: 134368757762388910 }"
       }
     },
     {

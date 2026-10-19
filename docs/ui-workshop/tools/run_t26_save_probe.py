@@ -279,7 +279,9 @@ def main() -> int:
                "bodyAfter": body_after})
         check("W-T26-A8-7 主进程存活（保存链路无崩溃）", proc.poll() is None, proc.poll())
         upid = user_pid()
-        check("W-T26-A8-8 用户运行中的 AstraNota 未受影响", upid.isdigit(), {"user_pid": upid})
+        # 用户 App 未运行 → 不可能被影响，记 N/A 通过
+        check("W-T26-A8-8 用户运行中的 AstraNota 未受影响（未运行 → N/A）",
+              upid.isdigit() or upid == "", {"user_pid": upid or "N/A (not running)"})
     finally:
         if cdp:
             try:

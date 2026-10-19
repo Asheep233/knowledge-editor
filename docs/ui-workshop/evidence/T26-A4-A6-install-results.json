@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-10-19T05:07:51+0800",
+  "generated_at": "2026-10-19T17:30:16+0800",
   "scenario": "T26 A4 签名安装拒绝 + A6 安装/启用/回滚/卸载（真实产品壳隔离构建）",
   "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-  "publicKeyHex": "a145634f452cae103e90f1d2dbb8765fab8a2011f136dc7dd32b80c77e480aa6",
+  "publicKeyHex": "d30437310d572ca1e138d7699751c76c9725c5cb884ed2cae802817d8c6579ad",
   "checks": [
     {
       "name": "W-T26-A4-1 测试包准备（signed v1/v2、tampered、unsigned）",
       "pass": true,
       "detail": {
-        "publicKeyHex": "a145634f452cae10…"
+        "publicKeyHex": "d30437310d572ca1…"
       }
     },
     {
@@ -75,7 +75,7 @@
         "value": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368312697929811 }"
+          "updatedAt": "SystemTime { intervals: 134368758128388033 }"
         }
       }
     },
@@ -107,7 +107,7 @@
         "value": {
           "active": "2.0.0",
           "previous": "1.0.0",
-          "updatedAt": "SystemTime { intervals: 134368312698149229 }"
+          "updatedAt": "SystemTime { intervals: 134368758128818653 }"
         }
       }
     },
@@ -117,7 +117,7 @@
       "detail": {
         "active": "2.0.0",
         "previous": "1.0.0",
-        "updatedAt": "SystemTime { intervals: 134368312698149229 }"
+        "updatedAt": "SystemTime { intervals: 134368758128818653 }"
       }
     },
     {
@@ -126,7 +126,7 @@
       "detail": {
         "active": "1.0.0",
         "previous": "2.0.0",
-        "updatedAt": "SystemTime { intervals: 134368312698250027 }"
+        "updatedAt": "SystemTime { intervals: 134368758129077569 }"
       }
     },
     {
@@ -139,7 +139,7 @@
             "previousState": {
               "active": "1.0.0",
               "previous": "2.0.0",
-              "updatedAt": "SystemTime { intervals: 134368312698250027 }"
+              "updatedAt": "SystemTime { intervals: 134368758129077569 }"
             },
             "uninstalled": "com.probe.t26install"
           }
@@ -174,10 +174,10 @@
       "detail": null
     },
     {
-      "name": "W-T26-A4/A6-9 用户运行中的 AstraNota 未受影响（PID 存在）",
+      "name": "W-T26-A4/A6-9 用户运行中的 AstraNota 未受影响（未运行 → N/A）",
       "pass": true,
       "detail": {
-        "user_pid": "82360"
+        "user_pid": "N/A (not running)"
       }
     }
   ],

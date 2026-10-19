@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T05:48:45+0800",
+  "generated_at": "2026-10-19T17:30:38+0800",
   "scenario": "T26 A8 Core 保存 flag（真实产品 UI，VITE_KE_CORE_SAVE=1）",
   "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
   "checks": [
@@ -14,7 +14,7 @@
       "detail": {
         "opened": true,
         "editor": true,
-        "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nhello.md\n附件 0\n设置\nhello\n正文\n模块\n导出\nArticles\nhello\n更新于 2026/10/19 05:48:31\n·\n4 字\n·\nKE v1\n\n初始内容\n\n文档属性\n标题\n标签\n类型\n文档\n字数\n4\n创建时间\n2026/10/19 05:48:31\n修改时间\n2026/10/19 05:48:31\n大小\n40 B\n保存位置\nArticles/hello.md\nKE 版本\nv—\nfrontmatter\n{\n  \"title\": \"hello\"\n}\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\n历史快照\nauto-save\n2026/10/19 05:48:33 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMark"
+        "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nhello.md\n附件 0\n设置\nhello\n正文\n模块\n导出\nArticles\nhello\n更新于 2026/10/19 17:30:19\n·\n4 字\n·\nKE v1\n\n初始内容\n\n文档属性\n标题\n标签\n类型\n文档\n字数\n4\n创建时间\n2026/10/19 17:30:19\n修改时间\n2026/10/19 17:30:19\n大小\n40 B\n保存位置\nArticles/hello.md\nKE 版本\nv—\nfrontmatter\n{\n  \"title\": \"hello\"\n}\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\n历史快照\nauto-save\n2026/10/19 17:30:24 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMark"
       }
     },
     {
@@ -55,16 +55,16 @@
       "pass": true,
       "detail": {
         "logTail": [
-          "[sidecar] INFO:     127.0.0.1:63221 - \"DELETE /api/drafts/recovery/Articles/hello.md HTTP/1.1\" 204 No Content",
-          "[sidecar] INFO:     127.0.0.1:63221 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
-          "[sidecar] INFO:     127.0.0.1:63221 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+          "[sidecar] INFO:     127.0.0.1:53243 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+          "[sidecar] INFO:     127.0.0.1:53243 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+          "[sidecar] INFO:     127.0.0.1:53243 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
         ],
         "saveIndicator": [
           "未保存…",
           "已保存 30 份快照，存放于笔记旁",
           "未保存"
         ],
-        "bodyAfter": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nhello.md\n附件 0\n设置\nhello\n正文\n模块\n已保存\n导出\nArticles\nhello\n更新于 2026/10/19 05:48:31\n·\n4 字\n·\nKE v1\n\n初始内容A8MARK\n\n文档属性\n标题\n标签\n类型\n文档\n字数\n4\n创建时间\n2026/10/19 05:48:31\n修改时间\n2026/10/19 05:48:31\n大小\n40 B\n保存位置\nArticles/hello.md\nKE 版本\nv—\nfrontmatter\n{\n  \"title\": \"hello\"\n}\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\n历史快照\nauto-save\n2026/10/19 05:48:39 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMarkdown 为唯一事实源\n索引可整体重建\n\nhello · 4 字\n本地存储 · 自动保存已开启\n已保存\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-save\\workspace\n文档已被外部修改\n\nArticles/hello.md\n该文件在工作区外被修改（例如其他编辑器）。\n\n保留当前编辑内容\n重新加载外部版本"
+        "bodyAfter": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nhello.md\n附件 0\n设置\nhello\n正文\n模块\n已保存\n导出\nArticles\nhello\n更新于 2026/10/19 17:30:19\n·\n4 字\n·\nKE v1\n\n初始内容A8MARK\n\n文档属性\n标题\n标签\n类型\n文档\n字数\n4\n创建时间\n2026/10/19 17:30:19\n修改时间\n2026/10/19 17:30:19\n大小\n40 B\n保存位置\nArticles/hello.md\nKE 版本\nv—\nfrontmatter\n{\n  \"title\": \"hello\"\n}\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\n历史快照\nauto-save\n2026/10/19 17:30:31 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMarkdown 为唯一事实源\n索引可整体重建\n\nhello · 4 字\n本地存储 · 自动保存已开启\n已保存\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-save\\workspace\n创意工坊\n文档已被外部修改\n\nArticles/hello.md\n该文件在工作区外被修改（例如其他编辑器）。\n\n保留当前编辑内容\n重新加载外部版本"
       }
     },
     {
@@ -73,10 +73,10 @@
       "detail": null
     },
     {
-      "name": "W-T26-A8-8 用户运行中的 AstraNota 未受影响",
+      "name": "W-T26-A8-8 用户运行中的 AstraNota 未受影响（未运行 → N/A）",
       "pass": true,
       "detail": {
-        "user_pid": "20688"
+        "user_pid": "N/A (not running)"
       }
     }
   ],

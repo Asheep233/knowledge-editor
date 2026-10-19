@@ -483,10 +483,11 @@ def has_enabled_button(cdp: CDP, text: str) -> bool:
 
 
 def row_button_enabled(cdp: CDP, pack_id: str, labels) -> bool:
-    expr = ("(() => { const li=[...document.querySelectorAll('li')].find(x=>(x.textContent||'').includes("
-            + json.dumps(pack_id) + ")); if(!li) return false; const labels=" + json.dumps(list(labels)) + ";"
-            " const b=[...li.querySelectorAll('button')].find(x=>labels.some(l=>(x.textContent||'').includes(l)));"
-            " return !!b && !b.disabled; })()")
+    # 注意：启动恢复 notice 里也有含包 id 的 <li>（无按钮）→ 必须选「真正含目标按钮」的包行 li
+    expr = ("(() => { const lis=[...document.querySelectorAll('li')].filter(x=>(x.textContent||'').includes("
+            + json.dumps(pack_id) + ")); const labels=" + json.dumps(list(labels)) + ";"
+            " for (const li of lis) { const b=[...li.querySelectorAll('button')].find(x=>"
+            " labels.some(l=>(x.textContent||'').includes(l))); if (b) return !b.disabled; } return false; })()")
     try:
         return bool(cdp.eval(expr))
     except Exception:
@@ -494,14 +495,28 @@ def row_button_enabled(cdp: CDP, pack_id: str, labels) -> bool:
 
 
 def click_row_button(cdp: CDP, pack_id: str, labels) -> bool:
-    expr = ("(() => { const li=[...document.querySelectorAll('li')].find(x=>(x.textContent||'').includes("
-            + json.dumps(pack_id) + ")); if(!li) return false; const labels=" + json.dumps(list(labels)) + ";"
-            " const b=[...li.querySelectorAll('button')].find(x=>labels.some(l=>(x.textContent||'').includes(l))"
-            " && !x.disabled); if(!b) return false; b.click(); return true; })()")
+    expr = ("(() => { const lis=[...document.querySelectorAll('li')].filter(x=>(x.textContent||'').includes("
+            + json.dumps(pack_id) + ")); const labels=" + json.dumps(list(labels)) + ";"
+            " for (const li of lis) { const b=[...li.querySelectorAll('button')].find(x=>"
+            " labels.some(l=>(x.textContent||'').includes(l))); if (b) { if (b.disabled) return false;"
+            " b.click(); return true; } } return false; })()")
     try:
         return bool(cdp.eval(expr))
     except Exception:
         return False
+
+
+def click_row_button_retry(cdp: CDP, pack_id: str, labels, timeout: float = 10.0) -> bool:
+    """行内按钮点击（带重试：面板 refresh 期间列表可能短暂重渲染）。"""
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            if click_row_button(cdp, pack_id, labels):
+                return True
+        except Exception:
+            pass
+        time.sleep(0.2)
+    return False
 
 
 def open_workshop(cdp: CDP, timeout: float = 20.0) -> bool:
@@ -1595,10 +1610,89 @@ def scenario_b(checks: list, ctx: dict) -> dict:
     return metrics
 
 
+# ---- W07 C1-4/C2-2/C3-5 复测辅助：启动恢复 notice / safeMode 立即可见 / 只读校验 ----
+
+def startup_notice(cdp: CDP):
+    """读取 WorkshopPanel 启动恢复 notice（data-testid=startup-recover-notice）；无则 None。"""
+    try:
+        return cdp.eval(
+            "(() => { const el=document.querySelector('[data-testid=\"startup-recover-notice\"]');"
+            " if(!el) return null; const buttons=[...el.querySelectorAll('button')].map(b=>({"
+            "label: b.getAttribute('aria-label'), text: (b.textContent||'').trim()}));"
+            " return {text: (el.textContent||'').trim(), role: el.getAttribute('role'), buttons: buttons}; })()")
+    except Exception:
+        return None
+
+
+def wait_startup_notice(cdp: CDP, timeout: float = 15.0):
+    end = time.time() + timeout
+    last = None
+    while time.time() < end:
+        st = startup_notice(cdp)
+        if isinstance(st, dict):
+            last = st
+            if st.get("text"):
+                return st
+        time.sleep(0.15)
+    return last
+
+
+def safe_mode_alert_text(cdp: CDP) -> str:
+    try:
+        return str(cdp.eval(
+            "(() => { const els=[...document.querySelectorAll('[role=\"alert\"]')];"
+            " const hit=els.find(x=>(x.textContent||'').includes('无法自动恢复'));"
+            " return hit ? (hit.textContent||'').trim() : ''; })()") or "")
+    except Exception:
+        return ""
+
+
+def entry_safe_mode_badge(cdp: CDP) -> bool:
+    try:
+        return bool(cdp.eval(
+            "(() => { const b=document.querySelector('button[aria-label=\"打开创意工坊\"]');"
+            " if(!b) return false; return (b.textContent||'').includes('safe mode'); })()"))
+    except Exception:
+        return False
+
+
+def click_startup_notice_close(cdp: CDP) -> bool:
+    try:
+        return bool(cdp.eval(
+            "(() => { const el=document.querySelector('[data-testid=\"startup-recover-notice\"]');"
+            " if(!el) return false; const b=[...el.querySelectorAll('button')].find(x=>"
+            " (x.getAttribute('aria-label')||'').includes('关闭启动恢复提示'));"
+            " if(!b) return false; b.click(); return true; })()"))
+    except Exception:
+        return False
+
+
+def click_panel_close(cdp: CDP) -> bool:
+    """关闭工坊面板（dialog 头部「关闭」；避免点到 notice 的关闭按钮）。"""
+    try:
+        return bool(cdp.eval(
+            "(() => { const dlg=document.querySelector('[role=\"dialog\"][aria-label=\"创意工坊面板\"]');"
+            " if(!dlg) return false; const b=[...dlg.querySelectorAll('button')].find(x=>"
+            " (x.textContent||'').trim()==='关闭' && !x.getAttribute('aria-label'));"
+            " if(!b) return false; b.click(); return true; })()"))
+    except Exception:
+        return False
+
+
+def status_file_fingerprint() -> dict:
+    refresh_pack_root()
+    try:
+        st = RECOVER_STATUS.stat()
+        return {"exists": True, "mtime": round(st.st_mtime, 3), "size": st.st_size,
+                "sha256": sha_file(RECOVER_STATUS)}
+    except OSError:
+        return {"exists": False, "mtime": None, "size": None, "sha256": None}
+
+
 # ============================== 场景 C：原生 Rust 恢复 ==============================
 
 def scenario_c1(checks: list, ctx: dict) -> dict:
-    print("\n===== 场景 C1：损坏 active + 可用 previous → 启动 rollback + IPC/UI 修复 =====", flush=True)
+    print("\n===== 场景 C1（C1-4 修复后复测）：rollback-corrupt-active → 启动 notice / IPC/UI 修复 =====", flush=True)
     cleanup_my_packs()
     appdata, ws = ctx["c_appdata"], ctx["c_ws"]
     fs_make_pack(PACK_ROOT, C1_ID, "1.0.0", "<html>c1 v1 ok</html>")
@@ -1638,27 +1732,42 @@ def scenario_c1(checks: list, ctx: dict) -> dict:
               and ((rec.get("value") or {}).get("recovered") is False)
               and st2.get("active") == "1.0.0",
               {"recover": rec, "state": st2})
-        pre_panel_body = body_text(cdp)
-        silent = not any(m in pre_panel_body for m in
-                         ("回滚", "已恢复", "safe mode", "safeMode", "恢复"))
-        check(checks, "C1", "W07B-C1-4",
-              "[缺口观测] 启动自动回滚有用户可见提示（实测预期 FAIL：仅写 recover-status 文件；启动事件 emit 早于"
-              "前端挂载 → 工坊入口无提示，用户需主动点「检查/修复全部包」才可见）",
-              not silent,
-              {"body_snippet": pre_panel_body[-500:], "silent": silent})
+
+        # C1-4（修复后）：打开面板即显示启动恢复 notice（无需先点「检查/修复全部包」）
+        fp_before = status_file_fingerprint()
         open_workshop(cdp)
+        notice = wait_startup_notice(cdp, 15)
+        notice_text = str((notice or {}).get("text") or "")
+        c14_ok = (isinstance(notice, dict) and "已回滚到上一版本" in notice_text
+                  and C1_ID in notice_text and "共检查" in notice_text)
+        check(checks, "C1", "W07B-C1-4",
+              "启动自动回滚 UI 提示（修复后）：打开工坊面板即出现 startup-recover-notice，"
+              "文案含「已回滚到上一版本」+ 包 id + 共检查 N 个包（无需先点检查/修复）",
+              c14_ok, {"notice": notice})
+        # C1-5（修复后）：读取 notice 为只读（不触发 recover_all）+ notice 可关闭
+        fp_after = status_file_fingerprint()
+        readonly_ok = fp_before == fp_after
+        close_ok = click_startup_notice_close(cdp)
+        notice_gone = wait_until(lambda: startup_notice(cdp) is None, 5, 0.1) if close_ok else False
+        check(checks, "C1", "W07B-C1-5",
+              "启动 notice 为只读（读取前后 workshop-recover-status.json mtime/sha256 不变 → 未触发 recover_all）"
+              "且「关闭」生效（notice 消失）",
+              readonly_ok and close_ok and notice_gone,
+              {"fingerprint_before": fp_before, "fingerprint_after": fp_after,
+               "readonly_ok": readonly_ok, "close_clicked": close_ok, "notice_gone": notice_gone})
         click_text(cdp, "检查/修复全部包")
         msg = wait_panel_message(cdp, "已检查", 20)
         status2 = read_recover_status()
         res2 = recover_result(status2, C1_ID)
         safe2 = (status2 or {}).get("safeMode")
-        check(checks, "C1", "W07B-C1-5",
+        check(checks, "C1", "W07B-C1-6",
               "UI「检查/修复全部包」可观测：面板提示「已检查 N 个包」、本包结果 clean、safeMode 与其它包审计一致",
               msg is not None and isinstance(res2, dict) and res2.get("action") == "clean"
               and safe2 == expected_safe,
               {"message": msg, "pack_result": res2, "safeMode": safe2,
                "expected_safeMode": expected_safe, "others": others,
                "generatedAtLocal": (status2 or {}).get("generatedAtLocal")})
+        metrics["notice"] = notice
         metrics["status"] = {k: (status or {}).get(k) for k in ("checked", "safeMode", "generatedAtLocal")}
         metrics["status_after_ui"] = {k: (status2 or {}).get(k) for k in
                                       ("checked", "safeMode", "generatedAtLocal")}
@@ -1684,7 +1793,7 @@ def scenario_c1(checks: list, ctx: dict) -> dict:
 
 
 def scenario_c2(checks: list, ctx: dict) -> dict:
-    print("\n===== 场景 C2：损坏 active + 无回退 → safeMode + UI 修复/卸载重装恢复 =====", flush=True)
+    print("\n===== 场景 C2（C2-2 修复后复测）：corrupt-no-fallback + safeMode → 面板即时提示 / 恢复路径 =====", flush=True)
     cleanup_my_packs()
     appdata, ws = ctx["c_appdata"], ctx["c_ws"]
     fs_make_pack(PACK_ROOT, C2_ID, "1.0.0", "<html>c2 v1 ok</html>")
@@ -1709,38 +1818,55 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
               {"pack_result": res, "safeMode": (status or {}).get("safeMode"),
                "checked": (status or {}).get("checked"),
                "generatedAtLocal": (status or {}).get("generatedAtLocal")})
-        pre_panel_body = body_text(cdp)
-        entry_marker = ("safe mode" in pre_panel_body) or ("safeMode" in pre_panel_body)
-        check(checks, "C2", "W07B-C2-2",
-              "[缺口观测] 启动后工坊入口显示 safeMode 标记（实测预期 FAIL：Rust setup 中 emit "
-              "workshop://recover-status 早于前端挂载 → 事件丢失，入口无标记）",
-              entry_marker,
-              {"body_head": pre_panel_body[:400], "entry_marker": entry_marker})
+        # C2-2（修复后）：打开面板即显示 safeMode 横幅 + notice（无需先点检查）
+        entry_badge = entry_safe_mode_badge(cdp)
+        fp_before = status_file_fingerprint()
         open_workshop(cdp)
+        notice = wait_startup_notice(cdp, 15)
+        alert_text = safe_mode_alert_text(cdp)
+        c22_ok = (isinstance(notice, dict) and "safe mode" in str(notice.get("text") or "").lower()
+                  and "无法自动恢复" in alert_text)
+        check(checks, "C2", "W07B-C2-2",
+              "启动 safeMode UI 提示（修复后，面板级）：打开工坊面板即显示「有包无法自动恢复（safe mode）」横幅 + "
+              "startup-recover-notice（含 safe mode），无需先点「检查/修复全部包」",
+              c22_ok, {"notice": notice, "safe_mode_alert": alert_text})
+        # C2-3（残余缺口）：入口角标（未打开面板时）是否立即可见 —— 原 C2-2 的入口口径
+        check(checks, "C2", "W07B-C2-3",
+              "[残余缺口] 冷启动未打开面板时工坊入口「safe mode」角标是否立即可见（原检查口径；"
+              "入口仍依赖 Rust setup 早期 emit 的 workshop://recover-status，前端挂载前会丢失）",
+              entry_badge, {"entry_safe_mode_badge": entry_badge})
+        # C2-4（修复后）：读取 notice 只读（不触发 recover_all）
+        fp_after = status_file_fingerprint()
+        check(checks, "C2", "W07B-C2-4",
+              "启动 notice 为只读：读取前后 workshop-recover-status.json mtime/sha256 不变（未触发 recover_all）",
+              fp_before == fp_after, {"before": fp_before, "after": fp_after})
         click_text(cdp, "检查/修复全部包")
         msg = wait_panel_message(cdp, "已检查", 20)
-        body_panel = body_text(cdp)
-        banner = "有包无法自动恢复" in body_panel
-        check(checks, "C2", "W07B-C2-3",
-              "主动「检查/修复全部包」后 UI 显示「有包无法自动恢复（safe mode）」横幅（恢复状态可经主动操作观测）",
+        banner = "有包无法自动恢复" in body_text(cdp)
+        check(checks, "C2", "W07B-C2-5",
+              "主动「检查/修复全部包」后 UI 横幅仍可观测（行为未回退）",
               msg is not None and banner, {"message": msg, "banner": banner})
-        clicked = click_row_button(cdp, C2_ID, ["修复/恢复"])
+        open_workshop(cdp)
+        wait_until(lambda: C2_ID in body_text(cdp), 10, 0.2)
+        clicked = click_row_button_retry(cdp, C2_ID, ["修复/恢复"], 10)
         msg2 = wait_panel_message(cdp, "无需恢复", 15) or wait_panel_message(cdp, "已恢复", 15)
         still_corrupt = fs_verify_pack(PACK_ROOT, C2_ID, "1.0.0")[0] is False
-        st = fs_state(PACK_ROOT, C2_ID) or {}
-        check(checks, "C2", "W07B-C2-4",
+        check(checks, "C2", "W07B-C2-6",
               "单包「修复/恢复」如实返回 corrupt-no-fallback（不假修复）：UI 提示 + 磁盘仍损坏",
               clicked and msg2 is not None and "corrupt-no-fallback" in (msg2 or "") and still_corrupt,
-              {"clicked": clicked, "message": msg2, "state": st, "still_corrupt": still_corrupt})
-        check(checks, "C2", "W07B-C2-5",
-              "[缺口观测] 无回退损坏包可自动修复（实测预期 FAIL：recover 命令对 corrupt-no-fallback 无修复能力，"
-              "唯一恢复路径=用户卸载/重装）",
+              {"clicked": clicked, "message": msg2, "still_corrupt": still_corrupt})
+        check(checks, "C2", "W07B-C2-7",
+              "[缺口观测] 无回退损坏包可自动修复（recover 无修复能力，唯一恢复路径=用户卸载/重装）",
               not still_corrupt, {"still_corrupt": still_corrupt})
-        # 恢复路径：UI 卸载 → 安装有效包 → 检查/修复 → safeMode 清除
-        click_row_button(cdp, C2_ID, ["卸载"])
-        time.sleep(0.4)
-        click_row_button(cdp, C2_ID, ["确认卸载"])
+        # C2-8：恢复路径（UI 卸载 + 重装有效包 + 检查）
+        open_workshop(cdp)
+        wait_until(lambda: C2_ID in body_text(cdp), 10, 0.2)
+        click_row_button_retry(cdp, C2_ID, ["卸载"], 10)
+        time.sleep(0.5)
+        click_row_button_retry(cdp, C2_ID, ["确认卸载"], 10)
         msg_un = wait_panel_message(cdp, "已卸载", 20)
+        if msg_un is None:  # 兜底诊断：确认卸载失败时记录面板文本
+            metrics["uninstall_failed_body"] = body_text(cdp)[-800:]
         inst = invoke(cdp, "workshop_pack_install", {"sourceDir": str(c2_fixed)}, timeout=30)
         wait_until(lambda: ((fs_state(PACK_ROOT, C2_ID) or {}).get("active") == "1.0.0"), 20, 0.3)
         click_text(cdp, "检查/修复全部包")
@@ -1750,7 +1876,7 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
         fixed_ok = fs_verify_pack(PACK_ROOT, C2_ID, "1.0.0")[0]
         expected_safe = bool(others["corrupt"])
         banner_gone = "有包无法自动恢复" not in body_text(cdp)
-        check(checks, "C2", "W07B-C2-6",
+        check(checks, "C2", "W07B-C2-8",
               "恢复路径（用户卸载+重装有效包）→ safeMode 清除、本包 verify=true、UI 横幅消失且「已检查」可观测",
               msg_un is not None and inst.get("ok") is True and fixed_ok
               and (status3 or {}).get("safeMode") == expected_safe
@@ -1758,6 +1884,17 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
               {"uninstall_message": msg_un, "install": inst, "verify_ok": fixed_ok,
                "safeMode": (status3 or {}).get("safeMode"), "expected": expected_safe,
                "pack_result": res3, "banner_gone": banner_gone, "ui_message": msg3})
+        # C2-9（修复后）：无恢复动作/无 safeMode 时 notice 不显示（重新挂载面板）
+        click_panel_close(cdp)
+        time.sleep(0.4)
+        open_workshop(cdp)
+        time.sleep(1.2)
+        no_notice = startup_notice(cdp) is None
+        check(checks, "C2", "W07B-C2-9",
+              "无恢复动作/无 safeMode 时 notice 不显示（修复后重开面板读取到 clean 状态 → 不误报）",
+              no_notice, {"notice_after_reopen": startup_notice(cdp)})
+        metrics["entry_badge"] = entry_badge
+        metrics["notice"] = notice
         metrics["status"] = {k: (status or {}).get(k) for k in ("checked", "safeMode", "generatedAtLocal")}
         metrics["status_after_recovery"] = {k: (status3 or {}).get(k) for k in
                                             ("checked", "safeMode", "generatedAtLocal")}
@@ -1783,7 +1920,7 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
 
 
 def scenario_c3(checks: list, ctx: dict) -> dict:
-    print("\n===== 场景 C3：半成品事务（txn/journal）→ 启动 cleanup-journal + IPC/UI 一致 =====", flush=True)
+    print("\n===== 场景 C3（C3-5 修复后复测）：cleanup-journal → 启动 notice / IPC/UI 一致 =====", flush=True)
     cleanup_my_packs()
     appdata, ws = ctx["c_appdata"], ctx["c_ws"]
     fs_make_pack(PACK_ROOT, C3_ID, "1.0.0", "<html>c3 v1 ok</html>")
@@ -1816,8 +1953,7 @@ def scenario_c3(checks: list, ctx: dict) -> dict:
               and res.get("recovered") is True
               and (status or {}).get("safeMode") == expected_safe,
               {"pack_result": res, "safeMode": (status or {}).get("safeMode"),
-               "expected_safeMode": expected_safe, "others": others,
-               "generatedAtLocal": (status or {}).get("generatedAtLocal")})
+               "expected_safeMode": expected_safe, "generatedAtLocal": (status or {}).get("generatedAtLocal")})
         txn_gone = not (pdir / "txn.json").exists()
         staging_gone = not staging.exists()
         partial_gone = not partial.exists()
@@ -1832,25 +1968,41 @@ def scenario_c3(checks: list, ctx: dict) -> dict:
         check(checks, "C3", "W07B-C3-3",
               "IPC workshop_pack_recover 幂等一致：事务清理后 action=clean、recovered=false",
               rec.get("ok") is True and ((rec.get("value") or {}).get("action") == "clean")
-              and ((rec.get("value") or {}).get("recovered") is False),
-              rec)
-        pre_panel_body = body_text(cdp)
-        silent = not any(m in pre_panel_body for m in ("恢复", "清理", "safe mode", "safeMode"))
+              and ((rec.get("value") or {}).get("recovered") is False), rec)
+        # C3-4（修复后）：打开面板即显示 cleanup-journal notice（无需先点检查）
+        fp_before = status_file_fingerprint()
         open_workshop(cdp)
+        notice = wait_startup_notice(cdp, 15)
+        notice_text = str((notice or {}).get("text") or "")
+        c34_ok = (isinstance(notice, dict) and "已清理中断安装残留" in notice_text
+                  and C3_ID in notice_text and "共检查" in notice_text)
+        check(checks, "C3", "W07B-C3-4",
+              "启动 cleanup-journal UI 提示（修复后）：打开工坊面板即出现 startup-recover-notice，"
+              "文案含「已清理中断安装残留」+ 包 id + 共检查 N 个包（无需先点检查/修复）",
+              c34_ok, {"notice": notice})
+        # C3-5（修复后）：只读（不触发 recover_all）+ notice 可关闭
+        fp_after = status_file_fingerprint()
+        readonly_ok = fp_before == fp_after
+        close_ok = click_startup_notice_close(cdp)
+        notice_gone = wait_until(lambda: startup_notice(cdp) is None, 5, 0.1) if close_ok else False
+        check(checks, "C3", "W07B-C3-5",
+              "启动 notice 为只读（读取前后 workshop-recover-status.json mtime/sha256 不变 → 未触发 recover_all）"
+              "且「关闭」生效（notice 消失）",
+              readonly_ok and close_ok and notice_gone,
+              {"fingerprint_before": fp_before, "fingerprint_after": fp_after,
+               "readonly_ok": readonly_ok, "close_clicked": close_ok, "notice_gone": notice_gone})
         click_text(cdp, "检查/修复全部包")
         msg = wait_panel_message(cdp, "已检查", 20)
         status2 = read_recover_status()
         res2 = recover_result(status2, C3_ID)
-        check(checks, "C3", "W07B-C3-4",
+        check(checks, "C3", "W07B-C3-6",
               "UI「检查/修复全部包」可观测：提示「已检查 N 个包」、本包 clean、safeMode 与审计一致",
               msg is not None and isinstance(res2, dict) and res2.get("action") == "clean"
               and (status2 or {}).get("safeMode") == expected_safe,
               {"message": msg, "pack_result": res2,
                "safeMode": (status2 or {}).get("safeMode"), "expected": expected_safe,
                "generatedAtLocal": (status2 or {}).get("generatedAtLocal")})
-        check(checks, "C3", "W07B-C3-5",
-              "[缺口观测] 启动自动清理半成品有用户可见提示（实测预期 FAIL：仅写 recover-status 文件，UI 无提示）",
-              not silent, {"silent": silent, "body_snippet": pre_panel_body[-400:]})
+        metrics["notice"] = notice
         metrics["status"] = {k: (status or {}).get(k) for k in ("checked", "safeMode", "generatedAtLocal")}
         metrics["status_after_ui"] = {k: (status2 or {}).get(k) for k in
                                       ("checked", "safeMode", "generatedAtLocal")}

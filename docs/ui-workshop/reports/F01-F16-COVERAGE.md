@@ -771,3 +771,47 @@
 
 - `evidence/T26-packA-editor-cmd-results.json`（30 checks）；`evidence/P5-T26-pack-editor-cmd.md` v10 段；
 - 探针：`docs/ui-workshop/tools/run_t26_pack_editor_cmd_probe.py --pack a`；pack A：`docs/ui-workshop/packs/pack-a/`。
+
+---
+
+## 附录 N：pack 路径证据映射（v11，2026-10-19）
+
+> task-32：用既有产品 W 证据（无新 W）补全 `feature-baseline.csv` 中能力可达的 pack 路径行；语义不符/不可达一律 NOT_RUN。
+
+### N.1 本次映射（可达）
+
+| 行 | 能力 | 证据 | 结论 |
+| --- | --- | --- | --- |
+| `CMD.doc.save`（F15） | doc.save 产品保存动作 | W-T26-27（pack B）/ W-T31-27（pack A）：磁盘 marker+mtime | packA PASS / packB PASS |
+| `W05` 协议快照、订阅、命令结果 | snapshot/事件/命令结果 | G1G2-4/5、G7-10/14/15/20、G3G4-12/14/15、W02-3/4b、pack-editor-cmd 18 命令 | packA PASS / packB PASS |
+| `W02` UI 激活与表单交接 | title/tags command.invoke | W-T26-W02-3/4/4b、W-G7-20..22 | packB PASS / packA NOT_RUN（无元数据命令） |
+| `F07` 域行 | 保存（切片） | doc.save 真实落盘 + document-saved 事件 | **PARTIAL**（自动保存/恢复无通道） |
+
+### N.2 不可达行（补 NOT_RUN 原因，原空白）
+
+- `API.fs.put._dir` / `API.fs.put._doc` / `API.fs.post._move` / `API.fs.get._events`（F02）
+- `API.modules.get.root` / `API.modules.get._{module_path:path}`（F06）
+- `API.drafts.post._recovery_restore`（F07）
+- `API.index.post._rebuild` / `API.tags.get.root` / `API.tags.get._{tag_name}`（F10）
+- 统一原因：guest 网络边界 W06（CSP `connect-src 'none'` + 仅受控协议方法）→ 无 /api/* 等价方法，不能直调后端 API。
+
+### N.3 统计（130 行 CSV；packA PASS 24 / packB PASS 25 / PARTIAL A=3 B=2）
+
+| 域 | 行数 | packA PASS | packB PASS | packA PARTIAL | packB PARTIAL |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| F02 | 6 | 0 | 1 | 0 | 0 |
+| F03 | 42 | 18 | 18 | 1 | 1 |
+| F05 | 1 | 0 | 0 | 1 | 0 |
+| F06 | 3 | 1 | 1 | 0 | 0 |
+| F07 | 3 | 0 | 0 | 1 | 1 |
+| F10 | 5 | 0 | 1 | 0 | 0 |
+| F12 | 1 | 1 | 1 | 0 | 0 |
+| F14 | 1 | 1 | 0 | 0 | 0 |
+| F15 | 19 | 2 | 1 | 0 | 0 |
+| P3/P4 | 9 | 1 | 2 | 0 | 0 |
+
+### N.4 未映射原因
+
+- 网络边界/无受控协议（10 行后端 API）；语义只部分覆盖（F07 → PARTIAL）；
+- 不在 pack 能力面（F01 工作区/F08 历史/F09 附件/F11 回收站/F13 导出/F15 设置 UI 等）保持 NOT_RUN；
+- **不得把官方 UI 通过映射成 pack 通过**；证据均为 guest 协议实测。详见 `evidence/P5-T26-F-pack-mapping.md`。

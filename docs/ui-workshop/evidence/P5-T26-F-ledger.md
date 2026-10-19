@@ -305,3 +305,10 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - 产品 W 探针 `--pack a`：**30/30 PASS**（复用 pack B 同一套断言）：guest 真实 DOM 点按钮 → command.invoke → 主窗口 DOM strong/em/u/s/code/h1/h2/h3/ul/ol/pre/blockquote/table 3×3/脚注/ke-note + 撤销还原；doc.save 真实落盘（磁盘 marker+mtime）；负向全部拒绝且 DOM 不变。
 - F03 台账：packAEntry 新增 **18 行 PASS**；F05 域行 packAEntry=PARTIAL（仅表格插入动作面，不伪造）。
 - 证据：`evidence/T26-packA-editor-cmd-results.json` + `P5-T26-pack-editor-cmd.md` v10 段；报告附录 M。
+
+## v11 pack 路径证据映射（task-32，2026-10-19）
+
+- 用既有产品 W 证据补全 pack 路径行（**无新 W/不启动产品**）：新增 packA PASS **2 行**、packB PASS **5 行**（CMD.doc.save 行 ×2、W05 协议快照/订阅/命令结果 ×2、W02 表单交接 packB）。
+- 不可达行（fs/modules/drafts/index/tags 后端 API，原空白）10 行 → 如实 `NOT_RUN` + W06 网络边界原因；F07 域行 `NOT_RUN→PARTIAL`（doc.save 真实落盘 + document-saved 事件；自动保存/恢复无通道）；F02/F10 域行原因更新。
+- 统计：packA PASS **24/130 行**、packB PASS **25/130 行**；PARTIAL：packA 3、packB 2；详见 `evidence/P5-T26-F-pack-mapping.md`。
+- 证据：`evidence/P5-T26-F-pack-mapping.md`（逐行映射/不可达原因/域统计）；报告附录 N。

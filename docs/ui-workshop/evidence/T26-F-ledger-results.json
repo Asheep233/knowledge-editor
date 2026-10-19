@@ -1173,8 +1173,8 @@
       {
         "featureId": "F02",
         "domain": "F02",
-        "packAEntry": "NOT_RUN:pack A 未声明 commands（能力面）",
-        "packBEntry": "PASS:command.invoke article.set-title → 后端 frontmatter 落盘",
+        "packAEntry": "NOT_RUN:pack A 已声明 18 条编辑命令但无 article.set-title/tags；F02 新建/改名/移动/删除无受控协议（W06 网络边界）→ 能力面不覆盖",
+        "packBEntry": "PASS:command.invoke article.set-title → 后端 frontmatter 落盘（W-T26-W02-3/4；元数据写切片）",
         "officialBaselineResult": "PASS:官方 UI 右栏标题→保存属性→frontmatter 落盘",
         "note": "",
         "forceFill": false
@@ -1218,8 +1218,8 @@
       {
         "featureId": "F07",
         "domain": "F07",
-        "packAEntry": "NOT_RUN:guest 无写/恢复通道；已收到 document-saved 事件（只读观察；方法=bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)）",
-        "packBEntry": "NOT_RUN:同左",
+        "packAEntry": "PARTIAL:pack A 经 doc.save 触发产品真实保存（磁盘 marker+mtime，W-T31-27）+ G7 pack A 实测 document-saved 事件（W-G7-14/15）；自动保存注册/草稿恢复无受控通道 → 仅部分覆盖",
+        "packBEntry": "PARTIAL:pack B 经 doc.save 触发产品真实保存（W-T26-27）；document-saved 事件为 G3G4 独立包实测（W-T26-G3G4-12），pack B 未单测；自动保存/恢复无通道 → 仅部分覆盖",
         "officialBaselineResult": "PASS:官方 UI 正文编辑→自动/手动保存→磁盘落盘",
         "note": "",
         "forceFill": false
@@ -1245,8 +1245,8 @@
       {
         "featureId": "F10",
         "domain": "F10",
-        "packAEntry": "NOT_RUN:pack A 无命令/搜索通道",
-        "packBEntry": "PASS:article.set-tags → frontmatter tags 落盘（tags 写入切片）",
+        "packAEntry": "NOT_RUN:pack A 无 article.set-tags/搜索/索引通道（仅 18 条编辑命令桥）",
+        "packBEntry": "PASS:article.set-tags → frontmatter tags 落盘（W-T26-W02-4b；tags 写入切片，搜索/高亮/索引不在能力面）",
         "officialBaselineResult": "PASS:官方 UI 搜索框搜索→结果渲染（/api/search 命中 2 次）",
         "note": "",
         "forceFill": false
@@ -2350,7 +2350,7 @@
     "F03 仅抽样 7 条真实执行，其余保持 NOT_RUN",
     "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）"
   ],
-  "verificationStatus": "V10_PACKA_EDITOR_CMD",
+  "verificationStatus": "V11_PACK_EVIDENCE_MAPPING",
   "v4Note": "task-20 第三轮增量：F03 剩余 12 行（工具栏/菜单入口真实执行；10 PASS / 2 FAIL）+ F16 原生菜单只读结构审计（menu.rs 11 项 MenuItem；原生菜单非 DOM，CSV 11 行如实 NOT_RUN，不伪造 W/DOM）。",
   "v4": {
     "f03_remaining_rows": 12,
@@ -4550,5 +4550,343 @@
       }
     ],
     "evidence": "docs/ui-workshop/evidence/T26-packA-editor-cmd-results.json + P5-T26-pack-editor-cmd.md（v10 段）"
+  },
+  "v11Note": "task-32：用既有产品 W 证据补全 pack 路径行（无新 W）。可达映射：CMD.doc.save（packA/B PASS，doc.save 真实落盘）、W05 协议快照/订阅/命令结果（packA/B PASS）、W02 表单交接（packB PASS）；F07 域行 NOT_RUN→PARTIAL（doc.save+document-saved）。不可达 10 行（fs/modules/drafts/index/tags API）如实 NOT_RUN+W06 网络边界原因；F02/F10 域行原因更新。统计：packA PASS 24 行 / packB PASS 25 行。",
+  "packEvidenceMapping": {
+    "generatedAt": "2026-10-19T19:05:00+0800",
+    "sources": [
+      "evidence/P5-T26-G1G2-content-io.md",
+      "evidence/P5-T26-W02-form.md",
+      "evidence/P5-T26-G3G4-print-events.md",
+      "evidence/P5-T26-G7-reference-packs.md",
+      "evidence/P5-T26-pack-editor-cmd.md（v10）",
+      "evidence/P5-T26-W06-boundary.md"
+    ],
+    "changedRows": [
+      {
+        "featureId": "API.fs.put._dir",
+        "domain": "F02",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；无 /api/fs/dir 等价受控协议 → 不能直调后端 API",
+        "packBEntry": "同左",
+        "capability": "后端 fs 写入 API",
+        "evidence": "P5-T26-W06-boundary.md W-T26-W06-3/6",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.fs.put._doc",
+        "domain": "F02",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；无 /api/fs/doc 等价受控协议 → 不能直调后端 API",
+        "packBEntry": "同左",
+        "capability": "后端文档写入 API",
+        "evidence": "P5-T26-W06-boundary.md W-T26-W06-3",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.fs.post._move",
+        "domain": "F02",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；无 /api/fs/move 等价受控协议 → 不能直调后端 API",
+        "packBEntry": "同左",
+        "capability": "后端移动 API",
+        "evidence": "P5-T26-W06-boundary.md W-T26-W06-3",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.fs.get._events",
+        "domain": "F02",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；/api/fs/events 为后端文件事件流，guest 无等价协议（仅 document-saved/context/theme 事件，不含 fs 事件流）",
+        "packBEntry": "同左",
+        "capability": "后端文件事件 API",
+        "evidence": "P5-T26-W06-boundary.md；P5-T26-G3G4-print-events.md W-T26-G3G4-12/14/15",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.modules.get.root",
+        "domain": "F06",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；受控协议无模块读取方法（editor 命令桥无 module；模块插入仅官方 UI）",
+        "packBEntry": "同左",
+        "capability": "后端模块列表 API",
+        "evidence": "P5-T26-W06-boundary.md；P5-T26-pack-editor-cmd.md（18 命令不含 module）",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.modules.get._{module_path:path}",
+        "domain": "F06",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；受控协议无模块内容读取方法（guest 不能直调 /api/modules/*）",
+        "packBEntry": "同左",
+        "capability": "后端模块内容 API",
+        "evidence": "P5-T26-W06-boundary.md",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.drafts.post._recovery_restore",
+        "domain": "F07",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；受控协议无草稿恢复方法（doc.save 仅保存，不恢复）",
+        "packBEntry": "同左",
+        "capability": "后端草稿恢复 API",
+        "evidence": "P5-T26-W06-boundary.md；P5-T26-pack-editor-cmd.md v10",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.index.post._rebuild",
+        "domain": "F10",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；受控协议无索引重建方法",
+        "packBEntry": "同左",
+        "capability": "后端索引重建 API",
+        "evidence": "P5-T26-W06-boundary.md",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "API.tags.get.root",
+        "domain": "F10",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；受控协议无 tags 读取方法；tags 写入仅 pack B article.set-tags（W02）",
+        "packBEntry": "同左",
+        "capability": "后端 tags 列表 API",
+        "evidence": "P5-T26-W06-boundary.md；P5-T26-W02-form.md",
+        "decision": "NOT_RUN（能力不可达，读路径）"
+      },
+      {
+        "featureId": "API.tags.get._{tag_name}",
+        "domain": "F10",
+        "packAEntry": "NOT_RUN:guest 网络边界 W06（CSP connect-src 'none' + 仅受控协议方法，见 P5-T26-W06-boundary.md W-T26-W06-3）；受控协议无按 tag 查询方法",
+        "packBEntry": "同左",
+        "capability": "后端 tags 查询 API",
+        "evidence": "P5-T26-W06-boundary.md",
+        "decision": "NOT_RUN（能力不可达）"
+      },
+      {
+        "featureId": "CMD.doc.save",
+        "domain": "F15",
+        "packAEntry": "PASS:guest command.invoke(doc.save) → 产品真实保存落盘（编辑 marker 后磁盘出现 marker + mtime 变化，不只查返回值；W-T31-27 pack A 命令桥）",
+        "packBEntry": "PASS:guest command.invoke(doc.save) → 产品真实保存落盘（编辑 marker 后磁盘出现 marker + mtime 变化，不只查返回值；W-T26-27 pack B 命令桥）",
+        "capability": "doc.save 产品保存动作（guest command.invoke）",
+        "evidence": "P5-T26-pack-editor-cmd.md v10：W-T31-27（pack A）/ W-T26-27（pack B）；磁盘 marker+mtime 断言",
+        "decision": "PASS×2（真实落盘）"
+      },
+      {
+        "featureId": "W05",
+        "domain": "P3/P4",
+        "packAEntry": "PASS:pack A：context.snapshot 读原文+diskHash（W-T26-G1G2-4/5、W-G7-10）、print.snapshot 真实 PDF（W-G7-12）、document-saved 事件+自动刷新（W-G7-14/15）、18 条编辑命令结果（W-T31-7..27）",
+        "packBEntry": "PASS:pack B：context.snapshot（W-G7-20）、article.set-title/tags command.invoke 落盘（W-T26-W02-3/4/4b、W-G7-21/22）、18 条编辑命令结果（W-T26-7..27）",
+        "capability": "协议快照/订阅（事件）/命令结果",
+        "evidence": "P5-T26-G1G2-content-io.md、P5-T26-G3G4-print-events.md、P5-T26-G7-reference-packs.md、P5-T26-W02-form.md、P5-T26-pack-editor-cmd.md",
+        "decision": "PASS×2"
+      },
+      {
+        "featureId": "W02",
+        "domain": "P3/P4",
+        "packAEntry": "NOT_RUN:pack A 无 article.set-title/tags 元数据表单命令（W02 表单交接由 pack B 覆盖）",
+        "packBEntry": "PASS:pack B 表单提交 title/tags 经 command.invoke → 后端 frontmatter 原子落盘（W-T26-W02-3/4/4b、W-G7-20..22）",
+        "capability": "UI 激活 + 表单交接（command.invoke 元数据写）",
+        "evidence": "P5-T26-W02-form.md W-T26-W02-3/4/4b；P5-T26-G7-reference-packs.md W-G7-20..22",
+        "decision": "PASS（pack B）"
+      },
+      {
+        "featureId": "F02",
+        "domain": "F02",
+        "packAEntry": "NOT_RUN:pack A 已声明 18 条编辑命令但无 article.set-title/tags；F02 新建/改名/移动/删除无受控协议（W06 网络边界）→ 能力面不覆盖",
+        "packBEntry": "PASS:command.invoke article.set-title → 后端 frontmatter 落盘（W-T26-W02-3/4；元数据写切片）",
+        "capability": "F02 域（元数据写 + fs 操作）",
+        "evidence": "P5-T26-W02-form.md；P5-T26-W06-boundary.md",
+        "decision": "packA NOT_RUN 原因更新 / packB 保持 PASS"
+      },
+      {
+        "featureId": "F07",
+        "domain": "F07",
+        "packAEntry": "PARTIAL:pack A 经 doc.save 触发产品真实保存（磁盘 marker+mtime，W-T31-27）+ G7 pack A 实测 document-saved 事件（W-G7-14/15）；自动保存注册/草稿恢复无受控通道 → 仅部分覆盖",
+        "packBEntry": "PARTIAL:pack B 经 doc.save 触发产品真实保存（W-T26-27）；document-saved 事件为 G3G4 独立包实测（W-T26-G3G4-12），pack B 未单测；自动保存/恢复无通道 → 仅部分覆盖",
+        "capability": "F07 域（手动/自动保存、恢复登记）",
+        "evidence": "P5-T26-pack-editor-cmd.md v10 W-T26-27/W-T31-27；P5-T26-G3G4-print-events.md W-T26-G3G4-12；P5-T26-G7-reference-packs.md W-G7-14/15",
+        "decision": "PARTIAL（新证据；原 NOT_RUN）"
+      },
+      {
+        "featureId": "F10",
+        "domain": "F10",
+        "packAEntry": "NOT_RUN:pack A 无 article.set-tags/搜索/索引通道（仅 18 条编辑命令桥）",
+        "packBEntry": "PASS:article.set-tags → frontmatter tags 落盘（W-T26-W02-4b；tags 写入切片，搜索/高亮/索引不在能力面）",
+        "capability": "F10 域（搜索/高亮/tags/索引）",
+        "evidence": "P5-T26-W02-form.md W-T26-W02-4b",
+        "decision": "packA 原因更新；packB 保持既有 PASS（范围见映射表）"
+      }
+    ],
+    "changedRowCount": 16,
+    "statsPerDomain": {
+      "F03": {
+        "rows": 42,
+        "packAPass": 18,
+        "packBPass": 18,
+        "packAPartial": 1,
+        "packBPartial": 1,
+        "packANr": 23,
+        "packBNr": 23
+      },
+      "F15": {
+        "rows": 19,
+        "packAPass": 2,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 17,
+        "packBNr": 18
+      },
+      "F09": {
+        "rows": 5,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 5,
+        "packBNr": 5
+      },
+      "F02": {
+        "rows": 6,
+        "packAPass": 0,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 6,
+        "packBNr": 1
+      },
+      "F07": {
+        "rows": 3,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 1,
+        "packBPartial": 1,
+        "packANr": 2,
+        "packBNr": 1
+      },
+      "F01": {
+        "rows": 10,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 10,
+        "packBNr": 10
+      },
+      "F08": {
+        "rows": 4,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 4,
+        "packBNr": 4
+      },
+      "F10": {
+        "rows": 5,
+        "packAPass": 0,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 5,
+        "packBNr": 1
+      },
+      "F06": {
+        "rows": 3,
+        "packAPass": 1,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 2,
+        "packBNr": 0
+      },
+      "F11": {
+        "rows": 3,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 3,
+        "packBNr": 3
+      },
+      "F16": {
+        "rows": 11,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 11,
+        "packBNr": 11
+      },
+      "F13": {
+        "rows": 6,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 6,
+        "packBNr": 6
+      },
+      "F04": {
+        "rows": 1,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 1,
+        "packBNr": 1
+      },
+      "F05": {
+        "rows": 1,
+        "packAPass": 0,
+        "packBPass": 0,
+        "packAPartial": 1,
+        "packBPartial": 0,
+        "packANr": 0,
+        "packBNr": 1
+      },
+      "F12": {
+        "rows": 1,
+        "packAPass": 1,
+        "packBPass": 1,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 0,
+        "packBNr": 0
+      },
+      "F14": {
+        "rows": 1,
+        "packAPass": 1,
+        "packBPass": 0,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 0,
+        "packBNr": 1
+      },
+      "P3/P4": {
+        "rows": 9,
+        "packAPass": 1,
+        "packBPass": 2,
+        "packAPartial": 0,
+        "packBPartial": 0,
+        "packANr": 8,
+        "packBNr": 7
+      }
+    },
+    "totals": {
+      "rows": 130,
+      "packAPass": 24,
+      "packBPass": 25,
+      "packAPartial": 3,
+      "packBPartial": 2,
+      "packANr": 103,
+      "packBNr": 93
+    },
+    "notMapped": {
+      "networkBoundaryApiRows": [
+        "API.fs.put._dir",
+        "API.fs.put._doc",
+        "API.fs.post._move",
+        "API.fs.get._events",
+        "API.modules.get.root",
+        "API.modules.get._{module_path:path}",
+        "API.drafts.post._recovery_restore",
+        "API.index.post._rebuild",
+        "API.tags.get.root",
+        "API.tags.get._{tag_name}"
+      ],
+      "reason": "guest 网络边界（CSP connect-src 'none' + 受控协议白名单）→ 无 /api/* 等价方法，不能直调后端 API"
+    }
   }
 }

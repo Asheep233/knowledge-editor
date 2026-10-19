@@ -115,3 +115,10 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check   # Windows + 原型�
 | G7 pack A/B 参考 UI（SDK 读/写/打印/事件真实链路） | **W 24/24 PASS**（逐项台账仍未登记） | `P5-T26-G7-reference-packs.md` |
 | T27 I 门禁 | 就绪检查 NOT_READY(6/8)；**云端执行交接单 + 安装包 sha256 清单已给**（VM 由主理人安排） | `T27-CLOUD-EXECUTION-HANDOFF.md`、`T27-ARTIFACTS.md` |
 | F01–F16 覆盖审计 | 已实现 0 / 部分 3 / 未实现 13；G1/G2 已闭环结构阻塞 | `F01-F16-COVERAGE.md` |
+
+## 8. W07 剩余缺口定稿（已知设计限制，不计划修复）
+
+| 缺口 | 说明 | 决策 |
+| --- | --- | --- |
+| C2-7 corrupt-no-fallback 无自动修复 | 损坏且无可回退版本时自动「修复」等于删除用户数据或猜测内容；产品保留唯一安全路径=用户卸载/重装 | **保留为已知限制**，UI 明确提示（safe mode + notice） |
+| B1-6 / B2-5 运行期无自愈 | 资源释放（端口/数据目录）后运行中的实例不自动重试，需重启应用（重启可恢复，W 证据覆盖） | **保留为已知限制**，失败原因已可观测（B1-4） |

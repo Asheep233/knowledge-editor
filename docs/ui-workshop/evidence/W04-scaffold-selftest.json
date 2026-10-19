@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-10-19T00:37:10.974Z",
+  "via": "create_pack.mjs --self-test",
+  "checks": [
+    {
+      "name": "生成 manifest/index/style/README",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest 资产 hash 与文件一致",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest schema（id/version/entry/capabilities）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "非法 id 被拒绝",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "非法能力被拒绝",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "passed": 5,
+  "total": 5
+}

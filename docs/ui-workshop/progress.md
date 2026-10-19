@@ -864,3 +864,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - guest 经 Broker command.invoke 提交 title 与 tags，宿主后端 `/meta` 原子写，frontmatter 同时更新
   （`title: W02 交接标题` + `tags: [w02, 交接]`）；未知命令拒绝；产品 W **8/8 PASS**。
   证据：`evidence/P5-T26-W02-form.md`（guest 源码/探针已更新）。
+
+## P6/T26 进度（W04 外部开发者路径 W 7/7，2026-10-19）
+
+- `tools/create_pack.mjs`：外部脚手架（manifest/assets hash/README/自检 5/5，非法 id 与能力拒绝）；
+- 真实产品 W **7/7**：外部脚手架 → 外部签名 → 产品安装（signature valid）→ guest active，
+  无需修改宿主源码。证据：`evidence/P5-T26-W04-sdk.md`。
+- W04 剩余：SDK 发布形态（npm/tgz/模板仓库）、文档站/示例集、签名工具分发。

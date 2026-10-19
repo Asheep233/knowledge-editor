@@ -84,3 +84,8 @@
   后端原子写 frontmatter；未知命令拒绝；命令名须符合 manifest 小写 schema（`article.set-title`）。
 - W05 协议线 W 7/7（握手/snapshot）、W06 边界 W 8/8、W07 无限循环 W 8/8、W09 工坊口径 W 6/6、
   W01 ZIP W 8/8；回归基线见 `P6-final-verification`。
+
+## 追加（2026-10-19）：W04 外部开发者路径
+
+- `tools/create_pack.mjs` 脚手架 + `sign_pack.mjs` 外部签名 → 产品安装/启用 **W 7/7 PASS**
+  （`P5-T26-W04-sdk.md`）；外部包无需修改宿主源码；SDK 发布形态（npm/tgz/模板）仍未做。

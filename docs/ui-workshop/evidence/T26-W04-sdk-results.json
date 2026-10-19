@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-10-19T08:37:58+0800",
+  "scenario": "T26 W04 外部开发者路径（脚手架→签名→安装→启用）",
+  "checks": [
+    {
+      "name": "W-T26-W04-1 外部脚手架生成包（manifest/index/README）",
+      "pass": true,
+      "detail": {
+        "code": 0,
+        "files": [
+          "README.md",
+          "index.html",
+          "manifest.json"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-W04-2 脚手架 manifest 合法（id/apiVersion/entry/assets）",
+      "pass": true,
+      "detail": {
+        "id": "com.demo.w04",
+        "name": "W04 Scaffold",
+        "version": "1.0.0",
+        "apiVersion": 1,
+        "capabilities": [
+          "ui.shell"
+        ],
+        "entry": {
+          "html": "index.html"
+        },
+        "commands": [],
+        "assets": [
+          {
+            "path": "index.html",
+            "sha256": "4792c9fe44296dfed130137d51e1cc25a5ae2492ee11886acb3b967eb61d7150"
+          }
+        ]
+      }
+    },
+    {
+      "name": "W-T26-W04-3 外部签名成功（不依赖宿主源码修改）",
+      "pass": true,
+      "detail": {
+        "code": 0
+      }
+    },
+    {
+      "name": "W-T26-W04-4 产品安装外部签名包（signature valid）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368438760011886 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W04-5 外部包 guest 启用 active（无需宿主源码修改）",
+      "pass": true,
+      "detail": {
+        "active": true
+      }
+    },
+    {
+      "name": "W-T26-W04-6 会话状态 active / 能力子集",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "capabilities": [
+            "ui.shell"
+          ],
+          "lastError": null,
+          "packId": "com.demo.w04",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368438774810682 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W04-7 主进程存活 / 用户实例未运行（N/A）",
+      "pass": true,
+      "detail": {
+        "user_pid": "(not running)"
+      }
+    }
+  ],
+  "pass_count": 7,
+  "total": 7
+}

@@ -648,3 +648,45 @@
 - `evidence/P5-T26-F03-fail-audit.md`（v5 审计 + 「修复后复测」段）；
 - `evidence/T26-F-ledger-results.json`（`f03FailAudit.fixed` + `verificationStatus=V6_BLOCKQUOTE_FIXED`）；
 - 复测模式：`tools/run_feature_entry_probe.py --audit-blockquote-fix`。
+
+---
+
+## 附录 J：guest 编辑器命令桥与 pack B 覆盖（v7，2026-10-19）
+
+> task-26：pack B 声明 11 条 `editor.*` 命令 + `editor.commands.readonly`；产品 W 探针验证 guest→宿主编辑器真实命令桥；不改产品代码。
+
+### J.1 W 验证链（22/22 PASS；构建 `89a4165aeb947c1d3c1b87653b68e9d25a1b1595e3901863f7bc8b2a1346209a`）
+
+安装（W-T26-3）→ 授予 trusted（W-T26-4）→ 启用 guest 会话 active（W-T26-5）→ 握手 acceptedFeatures 含 `editor.commands.readonly`（W-T26-6） → guest 真实 DOM 点按钮 → `command.invoke(editor.*)` → 主窗口 `.ProseMirror` DOM 断言（W-T26-7..15）→ 撤销/重做往返（W-T26-16） → 负向拒绝（W-T26-17）→ schema 缺口（W-T26-18）→ 会话仍 active（W-T26-19）。
+
+### J.2 命令 → 主窗口 DOM 断言
+
+| featureId | 命令 | guest 操作 | 主窗口 DOM 断言 | 结果 | W check |
+| --- | --- | --- | --- | --- | --- |
+| `CMD.editor.bold` | `editor.bold` | guest DOM 点「加粗」 | strong 0→4 | PASS | W-T26-7 |
+| `CMD.editor.italic` | `editor.italic` | guest DOM 点「斜体」 | em 0→4 | PASS | W-T26-8 |
+| `CMD.editor.underline` | `editor.underline` | guest DOM 点「下划线」 | u 0→4 | PASS | W-T26-9 |
+| `CMD.editor.strike` | `editor.strike` | guest DOM 点「删除线」 | s 0→4 | PASS | W-T26-10 |
+| `CMD.editor.code.inline` | `editor.code` | guest DOM 点「行内代码」 | code 0→4 | PASS | W-T26-11 |
+| `CMD.editor.heading.1` | `editor.heading1` | guest DOM 点「标题1」 | h1 1→4 | PASS | W-T26-12 |
+| `CMD.editor.heading.2` | `editor.heading2` | guest DOM 点「标题2」 | h2 0→4 | PASS | W-T26-13 |
+| `CMD.editor.heading.3` | `editor.heading3` | guest DOM 点「标题3」 | h3 0→4 | PASS | W-T26-14 |
+| `CMD.editor.blockquote` | `editor.blockquote` | guest DOM 点「引用」 | blockquote 0→1 | PASS | W-T26-15 |
+| `CMD.editor.undo` | `editor.undo` | guest DOM 点「撤销」 | strong>0→0 | PASS | W-T26-16 |
+| `CMD.editor.redo` | `editor.redo` | guest DOM 点「重做」 | strong 0→>0 | PASS | W-T26-16 |
+
+### J.3 负向（不假成功）
+
+- `editor.Bold` → `E_FORBIDDEN: 命令未在 manifest 声明: editor.Bold`：被拒绝，未执行
+- `editor.explode` → `E_FORBIDDEN: 命令未在 manifest 声明: editor.explode`：被拒绝，未执行
+- `editor.bulletList` → `E_FORBIDDEN: 命令未在 manifest 声明: editor.bulletList`：被拒绝，未执行
+
+### J.4 已知 schema 缺口（如实记录）
+
+- 白名单 `bulletList`/`orderedList`/`codeBlock` 为 camelCase，packs manifest 命令名校验仅允许 `^[a-z][a-z0-9.-]{1,80}$` → 无法声明，guest 调用被 `E_FORBIDDEN`；需产品决策（放宽命令名或统一协议名）。对应 F03 行保持 NOT_RUN，不伪造 PASS。
+- `E_CAPABILITY`（未授予 `editor.commands.readonly`）当前无法从 pack 路径触发：broker 的 manifest 声明前置先拒绝；能力校验顺序沿用 `productBrokerBackend.invokeEditorCommand`（代码审计），本轮未伪造成 W 证据。
+
+### J.5 证据
+
+- `evidence/P5-T26-pack-editor-cmd.md`、`evidence/T26-pack-editor-cmd-results.json`；
+- 探针：`docs/ui-workshop/tools/run_t26_pack_editor_cmd_probe.py`；pack B：`docs/ui-workshop/packs/pack-b/`。

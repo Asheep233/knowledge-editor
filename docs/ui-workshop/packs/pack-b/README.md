@@ -11,6 +11,7 @@ UI 工坊（UI Workshop）的**参考 guest 包 B**：最小可用的「写场�
 | `ui.shell` | 协议线/命令桥基础能力（Broker 对 `command.invoke` 要求 `ui.shell`） |
 | `panel.dock` | Dock 面板定位（声明式） |
 | `context.read` | `context.snapshot` 读正文（用于展示内容 + 解析 title/tags） |
+| `editor.commands.readonly` | T26 F03 受控编辑器命令桥（`command.invoke('editor.*')` 由 guest 发起）；**trusted 才授予**；最小白名单切换类命令，不允许任意命令/参数 |
 
 声明命令（小写名，宿主按 `manifest.commands` 白名单校验）：
 
@@ -18,6 +19,10 @@ UI 工坊（UI Workshop）的**参考 guest 包 B**：最小可用的「写场�
 | --- | --- | --- |
 | `article.set-title` | `setTitle` | 更新文档 frontmatter title（后端 `/api/articles/{rel}/meta` 原子写） |
 | `article.set-tags` | `setTags` | 更新文档 frontmatter tags（同上） |
+| `editor.bold` / `editor.italic` / `editor.underline` / `editor.strike` / `editor.code` | `editorBold` … | 切换类语内标记（真实宿主编辑器命令桥） |
+| `editor.heading1` / `editor.heading2` / `editor.heading3` | `editorHeading1` … | 标题 1/2/3 |
+| `editor.blockquote` | `editorBlockquote` | 引用块 |
+| `editor.undo` / `editor.redo` | `editorUndo` / `editorRedo` | 撤销 / 重做 |
 
 **不声明** `context.write`：写操作走声明式命令（W02 语义），演示最小能力集下的写场景；
 参考包不请求比用途更多的高风险能力。
@@ -45,6 +50,27 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 `dist/com.astranota.examples.pack-b-1.0.0.zip`（zip 根含 `manifest.json`+资产，兼容 W01 离线安装）。
 测试自签密钥只落在 dist（gitignore）或仓库外，**不入仓**。
 
+## T26 F03 受控编辑器命令桥（editor.*）
+
+- 宿主白名单 14 条：`bold/italic/underline/strike/code/heading1/heading2/heading3/bulletList/orderedList/blockquote/codeBlock/undo/redo`
+  （协议名 `editor.<command>`，**大小写敏感**；实现见 `frontend/src/components/workshop/productBrokerBackend.ts`
+  的 `WORKSHOP_EDITOR_COMMAND_WHITELIST`）。
+- 本包在 `manifest.commands` **逐条声明 11 条**：`editor.bold/italic/underline/strike/code/heading1/heading2/heading3/blockquote/undo/redo`
+  （声明是 broker 的 `declaredCommands` 白名单前置；未声明的命令会被 `E_FORBIDDEN` 拒绝）。
+- 能力：新增声明 `editor.commands.readonly`（trusted 才授予；未授予 → `E_CAPABILITY`）。
+- UI：`index.html` 的「编辑器命令」面板 11 个按钮，真实点击 → `command.invoke` → 宿主真实编辑器 DOM 生效
+  （加粗→strong、斜体→em、标题→h1/h2/h3、引用→blockquote、撤销/重做）。
+- 负向：`window.__packBInvokeCommand(name, args)`（参考包自动化/演示用 hook）可直接请求任意命令名；
+  未声明 / 未知 / 大写名一律被宿主拒绝并展示错误码（**不假成功**）。
+
+### 已知限制（T26 F03 pack B 覆盖缺口，如实记录）
+
+- 白名单中 **`bulletList` / `orderedList` / `codeBlock` 三条为 camelCase**，而 packs manifest 的
+  `commands[].name` 校验仅允许 `^[a-z][a-z0-9.-]{1,80}$`（见 `frontend/src/core/packs/manifest.ts`
+  与 `tools/build_reference_packs.mjs` 的 `COMMAND_RE`）→ 这 3 条**无法在 manifest 声明**，
+  guest 调用会被 broker 的 `declaredCommands` 前置拒绝（`E_FORBIDDEN`）。属产品 schema 与白名单命名
+  不一致的缺口，需后续产品决策（放宽命令名或统一协议名），本参考包不绕过。
+- `editor.*` 仅覆盖切换类/历史类命令，不含文本插入/删除/选区/任意命令（最小白名单，安全边界）。
 ## 安装与启用（产品）
 
 1. 宿主启动时 `KE_WORKSHOP_PUBKEYS` 注入签名公钥（`build-info.json` 的 `signing.publicKeyHex`）；
@@ -56,7 +82,7 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 
 ## 已知限制（如实记录）
 
-- **命令写通道是宿主白名单的两条元信息命令**（title/tags），不是通用文件 API；正文写入需
+- **命令写通道 = 两条元信息命令（title/tags）+ 11 条 `editor.*` 编辑器切换命令**，不是通用文件/任意命令 API；正文写入需
   `context.write`（G2，trusted/builtin），本参考包按最小能力集刻意不声明。
 - **发布 SDK 0.1.0 无事件订阅 API**：事件监听按协议 wire 直接解析，建议后续 SDK 增加 `onEvent()`。
 - **guest 无法发现「当前打开文档」**：需用户输入 relPath（或由 `document-saved` 事件得知），协议无当前路径字段。

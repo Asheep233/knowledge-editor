@@ -272,3 +272,12 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - `--audit-blockquote-fix` 复测：**6/6 PASS**；折叠光标/选中文本 Ctrl+Shift+B 均 blockquote 0→1（可取消）；工具栏行为不变；引用块内 atom 后空段落 Backspace 一次删除（不回归）；Ctrl+B/Ctrl+I/撤销/重做不受影响。
 - 原 v5 唯一 PRODUCT_FINDING 已修复 → **F03 台账 42/42 行全部 PASS**；CSV blockquote 行改判 PASS 并注明修复后复测。
 - 证据：`evidence/P5-T26-F03-fail-audit.md`「修复后复测」段 + JSON `f03FailAudit.fixed`；报告附录 I。
+
+## v7 pack B 编辑器命令桥（task-26，2026-10-19）
+
+- pack B 扩展：`manifest.commands` 逐条声明 **11 条** `editor.*` 命令（bold/italic/underline/strike/code/heading1-3/blockquote/undo/redo），capabilities 新增 `editor.commands.readonly`（trusted 授予）；UI 增加 11 个命令按钮 + 负向 hook；README 记录 schema 缺口。
+- 产品 W 探针（新 `tools/run_t26_pack_editor_cmd_probe.py`）：**22/22 PASS**（构建→安装→trusted→guest→guest 真实 DOM 点按钮→主窗口 `.ProseMirror` DOM 断言→负向拒绝→会话仍 active）。
+- F03 台账：`packBEntry` 新增 **11 行 PASS**（bold/italic/underline/strike/code/heading1-3/blockquote/undo/redo，W-T26-7..16）；F03 域行 packBEntry 记 PARTIAL（覆盖 11 行 + schema 缺口）。
+- 负向：大写/未知/未声明命令均 `E_FORBIDDEN`（broker manifest 前置），主窗口 DOM 不变，不假成功。
+- schema 缺口：`bulletList`/`orderedList`/`codeBlock` camelCase 无法在 manifest 声明（正则 `^[a-z][a-z0-9.-]{1,80}$`）→ 相应行保持 NOT_RUN。
+- 证据：`evidence/P5-T26-pack-editor-cmd.md` + `T26-pack-editor-cmd-results.json`；报告附录 J。

@@ -6,7 +6,8 @@
   "capabilities": [
     "ui.shell",
     "panel.dock",
-    "context.read"
+    "context.read",
+    "editor.commands.readonly"
   ],
   "entry": {
     "html": "index.html"
@@ -19,13 +20,57 @@
     {
       "name": "article.set-tags",
       "handler": "setTags"
+    },
+    {
+      "name": "editor.bold",
+      "handler": "editorBold"
+    },
+    {
+      "name": "editor.italic",
+      "handler": "editorItalic"
+    },
+    {
+      "name": "editor.underline",
+      "handler": "editorUnderline"
+    },
+    {
+      "name": "editor.strike",
+      "handler": "editorStrike"
+    },
+    {
+      "name": "editor.code",
+      "handler": "editorCode"
+    },
+    {
+      "name": "editor.heading1",
+      "handler": "editorHeading1"
+    },
+    {
+      "name": "editor.heading2",
+      "handler": "editorHeading2"
+    },
+    {
+      "name": "editor.heading3",
+      "handler": "editorHeading3"
+    },
+    {
+      "name": "editor.blockquote",
+      "handler": "editorBlockquote"
+    },
+    {
+      "name": "editor.undo",
+      "handler": "editorUndo"
+    },
+    {
+      "name": "editor.redo",
+      "handler": "editorRedo"
     }
   ],
   "assets": [
     {
       "path": "index.html",
-      "sha256": "755fe8af09f09c28e809bbbb8b1856e221089eac4546eb398e72a95b480a5630",
-      "size": 3290
+      "sha256": "a3b6e293f7ea96aa2a409fc50f368dfea6e77caaf26060382f0073aac38c7eec",
+      "size": 4721
     },
     {
       "path": "pack.css",
@@ -34,8 +79,8 @@
     },
     {
       "path": "pack.js",
-      "sha256": "8b248a50c5a7dd27d6e79617ab46eb7866ad1d58f07b5196846b28814b71e948",
-      "size": 13503
+      "sha256": "82d291987ec5ff73cafd863c314d434d29f7772b7b1e94670297f7ad0986de2c",
+      "size": 15652
     },
     {
       "path": "vendor/guest-sdk.js",

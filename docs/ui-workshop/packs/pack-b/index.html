@@ -23,6 +23,8 @@
       经 <code>command.invoke</code> 提交 <code>article.set-title</code> / <code>article.set-tags</code>
       （宿主白名单命令 → 后端原子写 meta）。能力声明：ui.shell / panel.dock / context.read；
       写操作走声明式命令，不声明 <code>context.write</code>（演示最小能力集）。
+      下方「编辑器命令」区演示 T26 F03 受控编辑器命令桥（<code>editor.*</code>，需
+      <code>editor.commands.readonly</code>，trusted 才授予）。
     </p>
 
     <section class="panel">
@@ -55,6 +57,25 @@
       <ul id="command-list" class="events"></ul>
     </section>
 
+    <section class="panel" id="editor-cmd-panel">
+      <h2>编辑器命令（command.invoke editor.*，真实宿主编辑器）</h2>
+      <div class="row" id="editor-cmd-buttons">
+        <button id="btn-cmd-bold" type="button">加粗</button>
+        <button id="btn-cmd-italic" type="button">斜体</button>
+        <button id="btn-cmd-underline" type="button">下划线</button>
+        <button id="btn-cmd-strike" type="button">删除线</button>
+        <button id="btn-cmd-code" type="button">行内代码</button>
+        <button id="btn-cmd-heading1" type="button">标题1</button>
+        <button id="btn-cmd-heading2" type="button">标题2</button>
+        <button id="btn-cmd-heading3" type="button">标题3</button>
+        <button id="btn-cmd-blockquote" type="button">引用</button>
+        <button id="btn-cmd-undo" type="button">撤销</button>
+        <button id="btn-cmd-redo" type="button">重做</button>
+      </div>
+      <div class="row"><span class="k">最近命令</span><span id="editor-command-result">（未执行）</span></div>
+      <p class="hint">命令名与 manifest.commands 逐条一致；未声明/未知/大写名一律被宿主拒绝（E_FORBIDDEN），不假成功。</p>
+    </section>
+
     <section class="panel">
       <h2>宿主事件</h2>
       <div class="row"><span class="k">最近事件</span><span id="last-event">（暂无）</span></div>
@@ -67,7 +88,7 @@
 
     <footer class="foot">
       包 id：<code>com.astranota.examples.pack-b</code> · 发布 SDK <span id="sdk-version">—</span> ·
-      心跳 200ms · 命令：article.set-title / article.set-tags
+      心跳 200ms · 命令：article.set-title / article.set-tags / editor.*（11 条）
     </footer>
     <script src="vendor/guest-sdk.js"></script>
     <script src="pack.js"></script>

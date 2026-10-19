@@ -19,8 +19,16 @@
   'use strict';
 
   var PACK_ID = 'com.astranota.examples.pack-b';
-  var FEATURES = ['ui.shell', 'panel.dock', 'context.read'];
-  var COMMANDS = ['article.set-title', 'article.set-tags'];
+  var FEATURES = ['ui.shell', 'panel.dock', 'context.read', 'editor.commands.readonly'];
+  // T26 F03：受控编辑器命令桥（editor.*，小写；须与 manifest.commands 逐条声明一致）。
+  // 注意：bulletList / orderedList / codeBlock 因 manifest 命令名校验仅允许 [a-z0-9.-]，
+  // 无法逐字声明 camelCase 协议名 → 本包**不声明**这 3 条（调用会被宿主 E_FORBIDDEN 拒绝）。
+  var EDITOR_COMMANDS = [
+    'editor.bold', 'editor.italic', 'editor.underline', 'editor.strike', 'editor.code',
+    'editor.heading1', 'editor.heading2', 'editor.heading3', 'editor.blockquote',
+    'editor.undo', 'editor.redo'
+  ];
+  var COMMANDS = ['article.set-title', 'article.set-tags'].concat(EDITOR_COMMANDS);
   var HEARTBEAT_MS = 200;
   var SDK = window.KeWorkshopSDK;
 
@@ -256,6 +264,42 @@
     }
   }
 
+  // ---------------- 编辑器命令（command.invoke editor.*，真实宿主编辑器命令桥） ----------------
+
+  function renderEditorCommand(name) {
+    var last = state.commandResults[state.commandResults.length - 1];
+    if (!last) return;
+    setText('editor-command-result', last.name + ' → ' + (last.ok ? 'ok' : '失败（' + last.error + '）'));
+  }
+
+  function invokeEditorCommand(name) {
+    void invokeCommand(name, {}).then(function (r) {
+      renderEditorCommand(name);
+      return r;
+    });
+  }
+
+  var EDITOR_BUTTONS = {
+    'btn-cmd-bold': 'editor.bold',
+    'btn-cmd-italic': 'editor.italic',
+    'btn-cmd-underline': 'editor.underline',
+    'btn-cmd-strike': 'editor.strike',
+    'btn-cmd-code': 'editor.code',
+    'btn-cmd-heading1': 'editor.heading1',
+    'btn-cmd-heading2': 'editor.heading2',
+    'btn-cmd-heading3': 'editor.heading3',
+    'btn-cmd-blockquote': 'editor.blockquote',
+    'btn-cmd-undo': 'editor.undo',
+    'btn-cmd-redo': 'editor.redo'
+  };
+
+  // 负向测试 hook（仅参考包演示/自动化用；真实调用仍受宿主 manifest 声明 + 能力 + 白名单三重校验）
+  window.__packBInvokeCommand = function (name, args) {
+    return invokeCommand(name, args || {});
+  };
+  window.__packBEditorCommands = EDITOR_COMMANDS.slice();
+  window.__packBState = state;
+
   function submitTitle() {
     var relPath = relPathOrError();
     if (!relPath) return;
@@ -344,6 +388,13 @@
 
   $('btn-load').addEventListener('click', function () {
     void loadSnapshot('manual');
+  });
+  Object.keys(EDITOR_BUTTONS).forEach(function (id) {
+    var el = $(id);
+    if (!el) return;
+    el.addEventListener('click', function () {
+      invokeEditorCommand(EDITOR_BUTTONS[id]);
+    });
   });
   $('btn-submit-title').addEventListener('click', submitTitle);
   $('btn-submit-tags').addEventListener('click', submitTags);

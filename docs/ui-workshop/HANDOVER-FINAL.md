@@ -192,3 +192,13 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - **W07 扩展**：`P5-T26-W07-fault-mem.md`（内存 11/11 + CPU 10/10，独立 renderer；自然 OOM 未触发，
   renderer crash 为 CDP 注入，如实记录）。
 - 交付文档定稿：`reports/FINAL-DELIVERY-STATUS.md` + 矩阵 51 行 --check PASS（38 个 results JSON 全覆盖）。
+
+## 追加（2026-10-19）：F01–F16 guest 入口覆盖审计
+
+- 报告：`reports/F01-F16-COVERAGE.md`（commit `fdac4ea`）；静态审计 + guest 链路 U 测试复跑（6 files/45 passed）。
+- 结论（如实）：**F01–F16 guest 原生入口 = 已实现 0 / 部分 3（F02/F10/F14）/ 未实现 13**；
+  `feature-baseline.csv` F 域 121 行 `packAEntry`/`packBEntry` 0/121 登记、`officialBaselineResult`
+  130/130 NOT_RUN；guest 协议 5 方法中 2 桩、`context.write` 能力不可声明、5 类宿主事件 0 发射。
+- 前 5 缺口（P0）：G1 无内容读通道（snapshot 无正文）、G2 写通道不可达+假桩伪造完成、G3 print.snapshot
+  为桩、G4 宿主事件 0 发射、G7 无 pack A/B 参考 UI/逐项台账空白。
+- 正在推进：G1/G2 修复（内容读通道 + 真实写通道，见后续提交）。

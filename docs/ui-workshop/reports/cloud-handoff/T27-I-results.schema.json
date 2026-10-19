@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "T27 I 门禁结果",
+  "type": "object",
+  "required": ["generatedAt", "environment", "baselineVersion", "candidateVersion", "checks", "verdict"],
+  "properties": {
+    "generatedAt": {"type": "string"},
+    "environment": {"type": "object", "properties": {
+      "vm": {"type": "string"}, "windows": {"type": "string"}, "webview2": {"type": "string"},
+      "authorizationRef": {"type": "string"}, "snapshot": {"type": "string"}}, "required": ["vm", "windows"]},
+    "baselineVersion": {"type": "string"},
+    "candidateVersion": {"type": "string"},
+    "checks": {"type": "array", "items": {"type": "object", "required": ["id", "name", "pass"],
+      "properties": {"id": {"enum": ["U1", "U2", "U3", "U4", "U5", "U6"]},
+        "name": {"type": "string"}, "pass": {"type": "boolean"},
+        "evidence": {"type": "array", "items": {"type": "string"}}, "detail": {"type": "object"}}}},
+    "verdict": {"enum": ["PASS", "PASS_WITH_FINDINGS", "FAIL"]},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

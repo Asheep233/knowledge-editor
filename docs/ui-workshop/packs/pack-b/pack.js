@@ -25,7 +25,8 @@
   // 无法逐字声明 camelCase 协议名 → 本包**不声明**这 3 条（调用会被宿主 E_FORBIDDEN 拒绝）。
   var EDITOR_COMMANDS = [
     'editor.bold', 'editor.italic', 'editor.underline', 'editor.strike', 'editor.code',
-    'editor.heading1', 'editor.heading2', 'editor.heading3', 'editor.blockquote',
+    'editor.heading1', 'editor.heading2', 'editor.heading3',
+    'editor.bullet-list', 'editor.ordered-list', 'editor.blockquote', 'editor.code-block',
     'editor.undo', 'editor.redo'
   ];
   var COMMANDS = ['article.set-title', 'article.set-tags'].concat(EDITOR_COMMANDS);
@@ -288,7 +289,10 @@
     'btn-cmd-heading1': 'editor.heading1',
     'btn-cmd-heading2': 'editor.heading2',
     'btn-cmd-heading3': 'editor.heading3',
+    'btn-cmd-bullet-list': 'editor.bullet-list',
+    'btn-cmd-ordered-list': 'editor.ordered-list',
     'btn-cmd-blockquote': 'editor.blockquote',
+    'btn-cmd-code-block': 'editor.code-block',
     'btn-cmd-undo': 'editor.undo',
     'btn-cmd-redo': 'editor.redo'
   };

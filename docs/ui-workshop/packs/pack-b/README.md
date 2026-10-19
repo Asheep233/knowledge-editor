@@ -22,6 +22,7 @@ UI 工坊（UI Workshop）的**参考 guest 包 B**：最小可用的「写场�
 | `editor.bold` / `editor.italic` / `editor.underline` / `editor.strike` / `editor.code` | `editorBold` … | 切换类语内标记（真实宿主编辑器命令桥） |
 | `editor.heading1` / `editor.heading2` / `editor.heading3` | `editorHeading1` … | 标题 1/2/3 |
 | `editor.blockquote` | `editorBlockquote` | 引用块 |
+| `editor.bullet-list` / `editor.ordered-list` / `editor.code-block` | `editorBulletList` … | 无序列表 / 有序列表 / 代码块（**多词命令用 kebab 协议名**，manifest 可声明） |
 | `editor.undo` / `editor.redo` | `editorUndo` / `editorRedo` | 撤销 / 重做 |
 
 **不声明** `context.write`：写操作走声明式命令（W02 语义），演示最小能力集下的写场景；
@@ -55,9 +56,12 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 - 宿主白名单 14 条：`bold/italic/underline/strike/code/heading1/heading2/heading3/bulletList/orderedList/blockquote/codeBlock/undo/redo`
   （协议名 `editor.<command>`，**大小写敏感**；实现见 `frontend/src/components/workshop/productBrokerBackend.ts`
   的 `WORKSHOP_EDITOR_COMMAND_WHITELIST`）。
-- 本包在 `manifest.commands` **逐条声明 11 条**：`editor.bold/italic/underline/strike/code/heading1/heading2/heading3/blockquote/undo/redo`
+- 本包在 `manifest.commands` **逐条声明 14 条**：11 条单词命令 `editor.bold/italic/underline/strike/code/heading1/heading2/heading3/blockquote/undo/redo` + 3 条 kebab 多词命令 `editor.bullet-list/ordered-list/code-block`
   （声明是 broker 的 `declaredCommands` 白名单前置；未声明的命令会被 `E_FORBIDDEN` 拒绝）。
 - 能力：新增声明 `editor.commands.readonly`（trusted 才授予；未授予 → `E_CAPABILITY`）。
+- 协议名规则（W07 task-27）：**多词命令统一 kebab-case**（`editor.bullet-list` / `editor.ordered-list` /
+  `editor.code-block`），单命令词保持 `editor.bold` 等；旧 camelCase（`editor.bulletList`）仅宿主后端兼容直调，
+  manifest 无法声明（schema 不允许大写）。
 - UI：`index.html` 的「编辑器命令」面板 11 个按钮，真实点击 → `command.invoke` → 宿主真实编辑器 DOM 生效
   （加粗→strong、斜体→em、标题→h1/h2/h3、引用→blockquote、撤销/重做）。
 - 负向：`window.__packBInvokeCommand(name, args)`（参考包自动化/演示用 hook）可直接请求任意命令名；
@@ -65,12 +69,11 @@ node docs/ui-workshop/tools/build_reference_packs.mjs \
 
 ### 已知限制（T26 F03 pack B 覆盖缺口，如实记录）
 
-- 白名单中 **`bulletList` / `orderedList` / `codeBlock` 三条为 camelCase**，而 packs manifest 的
-  `commands[].name` 校验仅允许 `^[a-z][a-z0-9.-]{1,80}$`（见 `frontend/src/core/packs/manifest.ts`
-  与 `tools/build_reference_packs.mjs` 的 `COMMAND_RE`）→ 这 3 条**无法在 manifest 声明**，
-  guest 调用会被 broker 的 `declaredCommands` 前置拒绝（`E_FORBIDDEN`）。属产品 schema 与白名单命名
-  不一致的缺口，需后续产品决策（放宽命令名或统一协议名），本参考包不绕过。
+- （W07 task-27 已修复）多词命令改名为 **kebab-case 协议名**并写入 manifest；`editor.bulletList` 等旧
+  camelCase 仅后端兼容直调、**不能**写进 manifest（schema `^[a-z][a-z0-9.-]{1,80}$` 不允许大写），
+  guest 若直接请求 camelCase 会被 broker `declaredCommands` 前置拒绝（`E_FORBIDDEN`）。
 - `editor.*` 仅覆盖切换类/历史类命令，不含文本插入/删除/选区/任意命令（最小白名单，安全边界）。
+- 其余 F03 行（packA 路径 / 非命令类 / 插入类命令）不在 pack B 能力范围，保持 NOT_RUN（不伪造）。
 ## 安装与启用（产品）
 
 1. 宿主启动时 `KE_WORKSHOP_PUBKEYS` 注入签名公钥（`build-info.json` 的 `signing.publicKeyHex`）；

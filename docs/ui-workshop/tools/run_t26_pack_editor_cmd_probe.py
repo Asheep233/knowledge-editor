@@ -54,9 +54,20 @@ WHITELIST = [
     "heading1", "heading2", "heading3", "bulletList", "orderedList",
     "blockquote", "codeBlock", "undo", "redo",
 ]
-# pack B manifest 可声明（命令名正则 ^[a-z][a-z0-9.-]{1,80}$ → 仅小写）
-DECLARED = ["bold", "italic", "underline", "strike", "code", "heading1", "heading2", "heading3", "blockquote", "undo", "redo"]
-SCHEMA_GAP = [c for c in WHITELIST if c not in DECLARED]
+# W07 task-27：可写入 manifest 的**规范协议名**（多词命令 kebab-case；单命令词同内部键）
+PROTOCOL_TO_COMMAND = {
+    "editor.bold": "bold", "editor.italic": "italic", "editor.underline": "underline",
+    "editor.strike": "strike", "editor.code": "code",
+    "editor.heading1": "heading1", "editor.heading2": "heading2", "editor.heading3": "heading3",
+    "editor.bullet-list": "bulletList", "editor.ordered-list": "orderedList",
+    "editor.blockquote": "blockquote", "editor.code-block": "codeBlock",
+    "editor.undo": "undo", "editor.redo": "redo",
+}
+PROTOCOL_NAMES = list(PROTOCOL_TO_COMMAND.keys())
+# pack B manifest 声明（14 条规范协议名）
+DECLARED = PROTOCOL_NAMES
+# 旧 camelCase 协议名（仅后端 legacy 兼容直调；manifest schema 不允许大写 → 无法声明）
+LEGACY_CAMEL = ["editor." + c for c in WHITELIST if "editor." + c not in PROTOCOL_TO_COMMAND]
 
 
 def sha_file(p: Path) -> str:
@@ -88,7 +99,8 @@ def main() -> int:
         "build": {"exe": str(EXE), "sha256": build_sha, "mtime": build_mtime},
         "whitelist": WHITELIST,
         "declared": DECLARED,
-        "schemaGap": SCHEMA_GAP,
+        "protocolNames": PROTOCOL_NAMES,
+        "legacyCamel": LEGACY_CAMEL,
         "checks": checks,
     }
     # ---- 1) 构建/签名参考包（含 pack B manifest 校验） ----
@@ -107,12 +119,12 @@ def main() -> int:
         "signatureKeyId": (manifest.get("signature") or {}).get("keyId"),
     }
     check(
-        "W-T26-1 pack B 构建/签名：manifest 声明 11 条 editor.* 命令 + editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
-        [n for n in declared_names if n.startswith("editor.")] == ["editor." + c for c in DECLARED]
+        "W-T26-1 pack B 构建/签名：manifest 声明 14 条 editor.* 协议名（含 3 条 kebab）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+        sorted(n for n in declared_names if n.startswith("editor.")) == sorted(DECLARED)
         and "editor.commands.readonly" in (manifest.get("capabilities") or [])
         and (manifest.get("signature") or {}).get("keyId") == "k1",
         {"editorCommands": [n for n in declared_names if n.startswith("editor.")],
-         "capabilities": manifest.get("capabilities"), "schemaGap": SCHEMA_GAP},
+         "capabilities": manifest.get("capabilities"), "legacyCamel": LEGACY_CAMEL},
     )
 
     # ---- 2) 隔离环境 ----
@@ -195,8 +207,8 @@ def main() -> int:
         except Exception:
             gs = {}
         accepted = gs.get("accepted") or []
-        check("W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 11 条 editor.* 命令可见",
-              "editor.commands.readonly" in accepted and len(gs.get("cmds") or []) == 11,
+        check("W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 14 条 editor.* 协议名可见",
+              "editor.commands.readonly" in accepted and len(gs.get("cmds") or []) == 14,
               {"acceptedFeatures": accepted, "editorCommands": gs.get("cmds"), "handshake": session.get("handshake")})
 
         # ---- host 编辑器 DOM 断言工具 ----
@@ -206,7 +218,8 @@ def main() -> int:
                 "(() => { const pm=document.querySelector('.ProseMirror'); if(!pm) return {editor:false};"
                 " const q=(s)=>pm.querySelectorAll(s).length;"
                 " return {editor:true, strong:q('strong'), em:q('em'), u:q('u'), s:q('s,del,strike'),"
-                " code:q('code'), h1:q('h1'), h2:q('h2'), h3:q('h3'), blockquote:q('blockquote'),"
+                " code:q('code'), ul:q('ul'), ol:q('ol'), pre:q('pre'),"
+                " h1:q('h1'), h2:q('h2'), h3:q('h3'), blockquote:q('blockquote'),"
                 " tables:q('table'), html:pm.innerHTML.slice(0,500)}; })()",
             ) or {}
 
@@ -256,6 +269,52 @@ def main() -> int:
             )
             host_undo()
             time.sleep(0.15)
+        # ---- W07 task-27：3 条 kebab 多词命令（guest 真实 DOM 点击 → 主窗口 DOM 结构 + 撤销还原） ----
+        KEBAB_CASES = [
+            ("editor.bullet-list", "#btn-cmd-bullet-list", "ul", "无序列表", 20),
+            ("editor.ordered-list", "#btn-cmd-ordered-list", "ol", "有序列表", 21),
+            ("editor.code-block", "#btn-cmd-code-block", "pre", "代码块", 22),
+        ]
+        kebab_echo = None
+        for name, selector, key, label, wid in KEBAB_CASES:
+            select_all_host()
+            time.sleep(0.15)
+            before = host_counts()
+            clicked = guest_click(selector)
+            grew = R.wait_until(lambda: (host_counts().get(key) or 0) > (before.get(key) or 0), 20, 0.25)
+            after = host_counts()
+            host_undo()
+            restored = R.wait_until(lambda: (host_counts().get(key) or 0) == (before.get(key) or 0), 20, 0.25)
+            if name == "editor.bullet-list":
+                kebab_echo = R.guest_eval(
+                    cdp, PACK_B_SLUG,
+                    "(() => { const st=window.__packBState; const r=(st.commandResults||[]).slice().reverse().find(x=>x.name==='editor.bullet-list');"
+                    " return JSON.stringify(r ? {name:r.name, ok:r.ok, value:r.value} : null); })()",
+                )
+            check(
+                "W-T26-%d guest 点击「%s」→ command.invoke(%s) → 主窗口 DOM %s %s→%s 且撤销还原"
+                % (wid, label, name, key, before.get(key), after.get(key)),
+                bool(clicked and grew and after.get(key) > before.get(key) and restored),
+                {"command": name, "guestClick": clicked, "before": {key: before.get(key)}, "after": {key: after.get(key)},
+                 "undoRestored": restored, "domHead": (after.get("html") or "")[:160]},
+            )
+            time.sleep(0.15)
+        # 结果回显：value.name 为 guest 请求的 kebab 协议名、executed=true
+        try:
+            echo = json.loads(kebab_echo or "{}")
+        except Exception:
+            echo = {}
+        # 协议响应形状 {ok:true, value:{name:'editor.bullet-list', executed:true}}；
+        # SDK conn.request 返回该结果整体 → commandResults[].value = {ok, value:{name, executed}}
+        inner = {}
+        if isinstance(echo.get("value"), dict):
+            v = echo["value"]
+            inner = v.get("value") if isinstance(v.get("value"), dict) else v
+        check("W-T26-23 guest 收到的 command.invoke 结果回显 {ok:true, value:{name: editor.bullet-list, executed:true}}（kebab 协议名原样回显）",
+              bool(echo) and echo.get("ok") is True
+              and inner.get("name") == "editor.bullet-list" and inner.get("executed") is True,
+              {"ephemeralEcho": echo})
+
         # ---- 撤销 / 重做（往返） ----
         select_all_host()
         before_ur = host_counts()
@@ -309,15 +368,18 @@ def main() -> int:
               {"selectionAll": sel_host, "negatives": neg_results, "domUnchanged": unchanged,
                "codes": [n.get("error") or n.get("lastErrorCode") for n in neg_results]})
 
-        # ---- schema 缺口（如实记录，不伪造 PASS） ----
-        gap_declared = [c for c in SCHEMA_GAP if ("editor." + c) in declared_names]
-        check("W-T26-18 已知 schema 缺口：bulletList/orderedList/codeBlock（camelCase）无法在 manifest 声明，pack B 未声明且调用被拒",
-              not gap_declared and all(
-                  any(n["name"] == "editor." + c and not n.get("ok") for n in neg_results)
-                  for c in ["bulletList"] if c in SCHEMA_GAP),
-              {"schemaGap": SCHEMA_GAP, "declaredGapCommands": gap_declared,
-               "note": "manifest.commands 名称正则 ^[a-z][a-z0-9.-]{1,80}$ 与白名单 camelCase 命名不一致；"
-                       "属产品 schema 缺口，pack B 不绕过；对应 F03 行保持 NOT_RUN（不伪造 PASS）"})
+        # ---- W07 task-27：kebab 修复验证（14 条规范协议名均可声明；legacy camelCase 仍被 broker 拒绝） ----
+        declared_editor = [n for n in declared_names if n.startswith("editor.")]
+        legacy_rejected = all(
+            any(n.get("name") == legacy and not n.get("ok") for n in neg_results)
+            for legacy in ["editor.bulletList"]
+        )
+        check(
+            "W-T26-18 kebab 修复：14 条规范协议名全部可在 manifest 声明（含 editor.bullet-list/ordered-list/code-block）；"
+            "旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
+            sorted(declared_editor) == sorted(DECLARED) and legacy_rejected and len(declared_editor) == 14,
+            {"declaredEditor": declared_editor, "legacyCamel": LEGACY_CAMEL, "legacyRejected": legacy_rejected},
+        )
 
         # ---- 会话仍 active / 命令计数 ----
         session_final = (R.invoke(cdp, "workshop_pack_session_status", {}) or {}).get("value") or {}

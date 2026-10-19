@@ -690,3 +690,29 @@
 
 - `evidence/P5-T26-pack-editor-cmd.md`、`evidence/T26-pack-editor-cmd-results.json`；
 - 探针：`docs/ui-workshop/tools/run_t26_pack_editor_cmd_probe.py`；pack B：`docs/ui-workshop/packs/pack-b/`。
+
+---
+
+## 附录 K：pack B 三命令（kebab）W 复测与 F03 packB 补齐（v8，2026-10-19）
+
+> task-28：W07 task-27 kebab 修复后，pack B 增加 3 条多词命令并做产品 W 复测；不改产品代码。
+
+### K.1 结果（26/26 PASS；构建 `ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70`）
+
+| 命令（kebab） | guest 真实 DOM 操作 | 主窗口 `.ProseMirror` DOM | 撤销还原 | W check |
+| --- | --- | --- | --- | --- |
+| `editor.bullet-list` | 点「无序列表」 | `ul 0→1` | PASS | W-T26-20 |
+| `editor.ordered-list` | 点「有序列表」 | `ol 0→1` | PASS | W-T26-21 |
+| `editor.code-block` | 点「代码块」 | `pre 0→4` | PASS | W-T26-22 |
+
+### K.2 关键结论
+
+- 3 条 kebab 协议名均可在 manifest 声明（schema `^[a-z][a-z0-9.-]{1,80}$` 允许），guest 调用返回 `{ok:true, value:{name:<kebab>, executed:true}}`（W-T26-23）；
+- 旧 camelCase（`editor.bulletList` 等）仍不可声明，guest 直接请求被 broker `declaredCommands` 前置拒绝（`E_FORBIDDEN`，schema 限制非缺陷，W-T26-18）；
+- 原 11 条单词命令与撤销/重做/负向/会话检查全部回归 PASS（26/26）。
+
+### K.3 F03 packB 覆盖
+
+- packBEntry 新增 3 行 PASS：`CMD.editor.list.bullet` / `CMD.editor.list.ordered` / `CMD.editor.codeBlock`；
+- F03 packB PASS 行数：**11 → 14**；F03 域行 packBEntry 更新为 PARTIAL（覆盖 14 行 + 剩余缺口）；
+- 证据：`evidence/P5-T26-pack-editor-cmd.md`（v8 段）、`evidence/T26-pack-editor-cmd-results.json`。

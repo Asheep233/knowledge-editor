@@ -40,3 +40,27 @@
 ## 证据 JSON
 
 - `docs/ui-workshop/evidence/T26-pack-editor-cmd-results.json`（完整 checks/manifest/negatives）。
+
+---
+
+## v8 增量：kebab 三命令（task-28，2026-10-19）
+
+- 测试构建：`ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70`（sha256=`ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70`，mtime=`2026-10-19T18:10:34`，含 8a57a3f kebab 映射）。
+- pack B：manifest 新增 3 条 kebab 命令 `editor.bullet-list` / `editor.ordered-list` / `editor.code-block`（共 14 条 editor.* 协议名），UI 增加 3 按钮；签名包已重建。
+- W 复测：**26/26 PASS**（含原 11 单命令回归与 2 条既有负向/会话检查）。
+
+### kebab 三命令 → 主窗口 DOM
+
+| featureId | 命令（kebab） | guest 操作 | 主窗口 DOM 断言 | 结果 | W check |
+| --- | --- | --- | --- | --- | --- |
+| `CMD.editor.list.bullet` | `editor.bullet-list` | guest DOM 点「无序列表」 | ul 0→1 + 撤销还原 | PASS | W-T26-20 |
+| `CMD.editor.list.ordered` | `editor.ordered-list` | guest DOM 点「有序列表」 | ol 0→1 + 撤销还原 | PASS | W-T26-21 |
+| `CMD.editor.codeBlock` | `editor.code-block` | guest DOM 点「代码块」 | pre 0→4 + 撤销还原 | PASS | W-T26-22 |
+
+### 结果回显（契约形状）
+
+- guest 收到：`{"name": "editor.bullet-list", "ok": true, "value": {"ok": true, "value": {"name": "editor.bullet-list", "executed": true}}}`
+
+### legacy camelCase（schema 限制，非缺陷）
+
+- `editor.bulletList` / `editor.orderedList` / `editor.codeBlock` 仅宿主后端 legacy 兼容直调；manifest 命令名 schema（`^[a-z][a-z0-9.-]{1,80}$`）不允许大写 → 无法声明；guest 直接请求被 broker `declaredCommands` 前置拒绝（`E_FORBIDDEN`，W-T26-18 验证）。

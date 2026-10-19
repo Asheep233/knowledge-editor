@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-19T17:57:43+0800",
+  "generated_at": "2026-10-19T18:14:00+0800",
   "build": {
     "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-    "sha256": "89a4165aeb947c1d3c1b87653b68e9d25a1b1595e3901863f7bc8b2a1346209a",
-    "mtime": "2026-10-19T17:52:40"
+    "sha256": "ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70",
+    "mtime": "2026-10-19T18:10:34"
   },
   "whitelist": [
     "bold",
@@ -22,22 +22,41 @@
     "redo"
   ],
   "declared": [
-    "bold",
-    "italic",
-    "underline",
-    "strike",
-    "code",
-    "heading1",
-    "heading2",
-    "heading3",
-    "blockquote",
-    "undo",
-    "redo"
+    "editor.bold",
+    "editor.italic",
+    "editor.underline",
+    "editor.strike",
+    "editor.code",
+    "editor.heading1",
+    "editor.heading2",
+    "editor.heading3",
+    "editor.bullet-list",
+    "editor.ordered-list",
+    "editor.blockquote",
+    "editor.code-block",
+    "editor.undo",
+    "editor.redo"
   ],
-  "schemaGap": [
-    "bulletList",
-    "orderedList",
-    "codeBlock"
+  "protocolNames": [
+    "editor.bold",
+    "editor.italic",
+    "editor.underline",
+    "editor.strike",
+    "editor.code",
+    "editor.heading1",
+    "editor.heading2",
+    "editor.heading3",
+    "editor.bullet-list",
+    "editor.ordered-list",
+    "editor.blockquote",
+    "editor.code-block",
+    "editor.undo",
+    "editor.redo"
+  ],
+  "legacyCamel": [
+    "editor.bulletList",
+    "editor.orderedList",
+    "editor.codeBlock"
   ],
   "checks": [
     {
@@ -97,11 +116,11 @@
             "assets": [
               {
                 "path": "index.html",
-                "declaredSha256": "a3b6e293f7ea96aa2a409fc50f368dfea6e77caaf26060382f0073aac38c7eec",
-                "actualSha256": "a3b6e293f7ea96aa2a409fc50f368dfea6e77caaf26060382f0073aac38c7eec",
+                "declaredSha256": "9b74f5abab02dfdeab54af9ea0fe2c5c4e4025704d422c47fa8d336de54dee22",
+                "actualSha256": "9b74f5abab02dfdeab54af9ea0fe2c5c4e4025704d422c47fa8d336de54dee22",
                 "match": true,
-                "size": 4721,
-                "declaredSize": 4721
+                "size": 4977,
+                "declaredSize": 4977
               },
               {
                 "path": "pack.css",
@@ -113,11 +132,11 @@
               },
               {
                 "path": "pack.js",
-                "declaredSha256": "82d291987ec5ff73cafd863c314d434d29f7772b7b1e94670297f7ad0986de2c",
-                "actualSha256": "82d291987ec5ff73cafd863c314d434d29f7772b7b1e94670297f7ad0986de2c",
+                "declaredSha256": "817cdb40e43f4d00996c719dfc4c355ee00de8d888f75ebb02940077af660359",
+                "actualSha256": "817cdb40e43f4d00996c719dfc4c355ee00de8d888f75ebb02940077af660359",
                 "match": true,
-                "size": 15652,
-                "declaredSize": 15652
+                "size": 15869,
+                "declaredSize": 15869
               },
               {
                 "path": "vendor/guest-sdk.js",
@@ -133,7 +152,7 @@
         "zips": {
           "com.astranota.examples.pack-a": {
             "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
-            "sha256": "42b8e2ff7968392fe61d6b124bde231ae8e8873c121bfcb150c9f5abfb4fd0c4",
+            "sha256": "cb9e4ebf125f03e3329d0853aa618719093d1230a5044bc02da6d13f2de5eba7",
             "names": [
               "index.html",
               "manifest.json",
@@ -143,11 +162,11 @@
             ],
             "rootOk": true,
             "assetsMatch": true,
-            "size": 9473
+            "size": 9472
           },
           "com.astranota.examples.pack-b": {
             "zipPath": "C:\\ke-tmp\\uiws-t26-T26\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
-            "sha256": "f1b4a580622ec75c6944074470da8e9eab17ba4acc9fa03f828ec008e1f35752",
+            "sha256": "c3ccb0a5e028861309500fb43cb8213dad9182e6cf1f40654267d63704d2c77e",
             "names": [
               "index.html",
               "manifest.json",
@@ -157,10 +176,10 @@
             ],
             "rootOk": true,
             "assetsMatch": true,
-            "size": 10903
+            "size": 11056
           }
         },
-        "publicKeyHex": "b05a9c0498a0df3443e83a70f2d3ea98c18c811c1c117488f2639780e4853209",
+        "publicKeyHex": "dc96886342fe1bdbc3cf5e67865098b3f3eaaeb53c76322aacc0c1b39400f633",
         "buildKeySource": "provided"
       }
     },
@@ -169,7 +188,7 @@
       "pass": true,
       "detail": {
         "exit": 0,
-        "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=b05a9c0498a0df34…（provided）\n"
+        "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=dc96886342fe1bdb…（provided）\n"
       }
     },
     {
@@ -189,7 +208,7 @@
       }
     },
     {
-      "name": "W-T26-1 pack B 构建/签名：manifest 声明 11 条 editor.* 命令 + editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
+      "name": "W-T26-1 pack B 构建/签名：manifest 声明 14 条 editor.* 协议名（含 3 条 kebab）+ editor.commands.readonly；签名 ed25519/k1；构建期 manifest 校验通过",
       "pass": true,
       "detail": {
         "editorCommands": [
@@ -203,7 +222,10 @@
           "editor.heading3",
           "editor.blockquote",
           "editor.undo",
-          "editor.redo"
+          "editor.redo",
+          "editor.bullet-list",
+          "editor.ordered-list",
+          "editor.code-block"
         ],
         "capabilities": [
           "ui.shell",
@@ -211,10 +233,10 @@
           "context.read",
           "editor.commands.readonly"
         ],
-        "schemaGap": [
-          "bulletList",
-          "orderedList",
-          "codeBlock"
+        "legacyCamel": [
+          "editor.bulletList",
+          "editor.orderedList",
+          "editor.codeBlock"
         ]
       }
     },
@@ -223,8 +245,8 @@
       "pass": true,
       "detail": {
         "port": 9862,
-        "exeSha256": "89a4165aeb947c1d3c1b87653b68e9d25a1b1595e3901863f7bc8b2a1346209a",
-        "exeMtime": "2026-10-19T17:52:40"
+        "exeSha256": "ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70",
+        "exeMtime": "2026-10-19T18:10:34"
       }
     },
     {
@@ -236,7 +258,7 @@
           "value": {
             "active": "1.0.0",
             "previous": null,
-            "updatedAt": "SystemTime { intervals: 134368774670955141 }"
+            "updatedAt": "SystemTime { intervals: 134368784455339986 }"
           }
         },
         "verify": {
@@ -269,12 +291,12 @@
           "lastError": null,
           "packId": "com.astranota.examples.pack-b",
           "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368774673933017 }"
+          "updatedAt": "SystemTime { intervals: 134368784458364979 }"
         }
       }
     },
     {
-      "name": "W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 11 条 editor.* 命令可见",
+      "name": "W-T26-6 guest 握手：acceptedFeatures 含 editor.commands.readonly，pack B 声明 14 条 editor.* 协议名可见",
       "pass": true,
       "detail": {
         "acceptedFeatures": [
@@ -292,7 +314,10 @@
           "editor.heading1",
           "editor.heading2",
           "editor.heading3",
+          "editor.bullet-list",
+          "editor.ordered-list",
           "editor.blockquote",
+          "editor.code-block",
           "editor.undo",
           "editor.redo"
         ],
@@ -435,6 +460,71 @@
       }
     },
     {
+      "name": "W-T26-20 guest 点击「无序列表」→ command.invoke(editor.bullet-list) → 主窗口 DOM ul 0→1 且撤销还原",
+      "pass": true,
+      "detail": {
+        "command": "editor.bullet-list",
+        "guestClick": true,
+        "before": {
+          "ul": 0
+        },
+        "after": {
+          "ul": 1
+        },
+        "undoRestored": true,
+        "domHead": "<ul><li><p>F 台账标题</p></li><li><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></li><li><p>列表项一</p></li><li><p>列表项二</p></li></ul><p><br class=\"ProseMirro"
+      }
+    },
+    {
+      "name": "W-T26-21 guest 点击「有序列表」→ command.invoke(editor.ordered-list) → 主窗口 DOM ol 0→1 且撤销还原",
+      "pass": true,
+      "detail": {
+        "command": "editor.ordered-list",
+        "guestClick": true,
+        "before": {
+          "ol": 0
+        },
+        "after": {
+          "ol": 1
+        },
+        "undoRestored": true,
+        "domHead": "<ol><li><p>F 台账标题</p></li><li><p>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</p></li><li><p>列表项一</p></li><li><p>列表项二</p></li></ol><p><br class=\"ProseMirro"
+      }
+    },
+    {
+      "name": "W-T26-22 guest 点击「代码块」→ command.invoke(editor.code-block) → 主窗口 DOM pre 0→4 且撤销还原",
+      "pass": true,
+      "detail": {
+        "command": "editor.code-block",
+        "guestClick": true,
+        "before": {
+          "pre": 0
+        },
+        "after": {
+          "pre": 4
+        },
+        "undoRestored": true,
+        "domHead": "<pre><code>F 台账标题</code></pre><pre><code>F-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。</code></pre><pre><code>列表项一</code></pre><pre><code>列表项二</code></pre><"
+      }
+    },
+    {
+      "name": "W-T26-23 guest 收到的 command.invoke 结果回显 {ok:true, value:{name: editor.bullet-list, executed:true}}（kebab 协议名原样回显）",
+      "pass": true,
+      "detail": {
+        "ephemeralEcho": {
+          "name": "editor.bullet-list",
+          "ok": true,
+          "value": {
+            "ok": true,
+            "value": {
+              "name": "editor.bullet-list",
+              "executed": true
+            }
+          }
+        }
+      }
+    },
+    {
       "name": "W-T26-16 guest 点「撤销/重做」→ 主窗口 DOM 往返（bold 生效→撤销消失→重做恢复）",
       "pass": true,
       "detail": {
@@ -488,16 +578,31 @@
       }
     },
     {
-      "name": "W-T26-18 已知 schema 缺口：bulletList/orderedList/codeBlock（camelCase）无法在 manifest 声明，pack B 未声明且调用被拒",
+      "name": "W-T26-18 kebab 修复：14 条规范协议名全部可在 manifest 声明（含 editor.bullet-list/ordered-list/code-block）；旧 camelCase 仍不可声明、guest 直调被 E_FORBIDDEN 拒绝（schema 限制，非缺陷）",
       "pass": true,
       "detail": {
-        "schemaGap": [
-          "bulletList",
-          "orderedList",
-          "codeBlock"
+        "declaredEditor": [
+          "editor.bold",
+          "editor.italic",
+          "editor.underline",
+          "editor.strike",
+          "editor.code",
+          "editor.heading1",
+          "editor.heading2",
+          "editor.heading3",
+          "editor.blockquote",
+          "editor.undo",
+          "editor.redo",
+          "editor.bullet-list",
+          "editor.ordered-list",
+          "editor.code-block"
         ],
-        "declaredGapCommands": [],
-        "note": "manifest.commands 名称正则 ^[a-z][a-z0-9.-]{1,80}$ 与白名单 camelCase 命名不一致；属产品 schema 缺口，pack B 不绕过；对应 F03 行保持 NOT_RUN（不伪造 PASS）"
+        "legacyCamel": [
+          "editor.bulletList",
+          "editor.orderedList",
+          "editor.codeBlock"
+        ],
+        "legacyRejected": true
       }
     },
     {
@@ -514,7 +619,7 @@
           "lastError": null,
           "packId": "com.astranota.examples.pack-b",
           "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368774673933017 }"
+          "updatedAt": "SystemTime { intervals: 134368784458364979 }"
         }
       }
     }
@@ -540,7 +645,10 @@
       "editor.heading3",
       "editor.blockquote",
       "editor.undo",
-      "editor.redo"
+      "editor.redo",
+      "editor.bullet-list",
+      "editor.ordered-list",
+      "editor.code-block"
     ],
     "editorCommands": [
       "editor.bold",
@@ -553,14 +661,17 @@
       "editor.heading3",
       "editor.blockquote",
       "editor.undo",
-      "editor.redo"
+      "editor.redo",
+      "editor.bullet-list",
+      "editor.ordered-list",
+      "editor.code-block"
     ],
     "signatureKeyId": "k1"
   },
-  "positiveCount": 22,
+  "positiveCount": 26,
   "summary": {
-    "total": 22,
-    "pass": 22
+    "total": 26,
+    "pass": 26
   },
   "guestStateTail": {
     "accepted": [
@@ -578,7 +689,10 @@
       "editor.heading1",
       "editor.heading2",
       "editor.heading3",
+      "editor.bullet-list",
+      "editor.ordered-list",
       "editor.blockquote",
+      "editor.code-block",
       "editor.undo",
       "editor.redo"
     ],

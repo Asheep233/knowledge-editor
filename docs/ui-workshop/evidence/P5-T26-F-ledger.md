@@ -281,3 +281,12 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 - 负向：大写/未知/未声明命令均 `E_FORBIDDEN`（broker manifest 前置），主窗口 DOM 不变，不假成功。
 - schema 缺口：`bulletList`/`orderedList`/`codeBlock` camelCase 无法在 manifest 声明（正则 `^[a-z][a-z0-9.-]{1,80}$`）→ 相应行保持 NOT_RUN。
 - 证据：`evidence/P5-T26-pack-editor-cmd.md` + `T26-pack-editor-cmd-results.json`；报告附录 J。
+
+## v8 kebab 三命令 W + F03 packB 补齐（task-28，2026-10-19）
+
+- 构建 `ad1ffa18a12aaa2b169c0fe386a8dae7b9e9ea0468702a4cb229df3fac144d70`（含 8a57a3f：多词命令协议名 kebab 映射）；pack B 声明 14 条 editor.* 协议名（11 单词 + 3 kebab），签名包重建。
+- 产品 W 探针 **26/26 PASS**：guest 真实 DOM 点「无序列表/有序列表/代码块」→ `command.invoke(editor.bullet-list/ordered-list/code-block)` → 主窗口 DOM `ul 0→1` / `ol 0→1` / `pre 0→4` 且**撤销还原**；结果回显 `{ok:true,value:{name:<kebab>,executed:true}}`。
+- 回归：原 11 条单词命令 DOM 断言与撤销/重做、负向拒绝、会话 active 全部保持 PASS（无回归）。
+- F03 台账：packBEntry 新增 **3 行 PASS**（CMD.editor.list.bullet / list.ordered / codeBlock）→ **packB PASS 行数 11→14**。
+- legacy camelCase 不可在 manifest 声明（schema 限制，非缺陷）：直接请求被 E_FORBIDDEN 拒绝。
+- 证据：`evidence/P5-T26-pack-editor-cmd.md` v8 段 + `T26-pack-editor-cmd-results.json`；报告附录 K。

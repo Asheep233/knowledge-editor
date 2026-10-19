@@ -981,3 +981,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - deed2a7：RuntimeHealthBanner + host 不可用会话挂起/恢复 + stale runtime 清理；cargo 57、vitest 1915。
 - e794a06：B-4/B-5/B-8 FAIL→PASS；W07 bridge 最终 40 checks 36 PASS/4 缺口（仅 C 类 recover UI 提示 +
   no-fallback 不可自动修复）；仍 PASS-with-gaps。
+
+## P6 进度（W07 C1-4/C2-2/C3-5 修复+复测，2026-10-19）
+
+- a41d449：启动 recover 状态只读命令 + Panel startup notice（只读、可关闭、预置 safeMode 横幅）。
+- dcb04d7：C1-4/C2-2/C3-5 FAIL→PASS；W07 bridge 最终 45 checks 43 PASS/2 缺口（C2-3 入口角标、
+  C2-7 no-fallback 不可自动修复）；仍 PASS-with-gaps。

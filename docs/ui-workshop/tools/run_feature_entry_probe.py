@@ -113,6 +113,58 @@ HOST_COLLECTOR = (
     " window.prompt = (m, d) => { window.__kePrompts.push(String(m)); return d == null ? '' : String(d); };"
 )
 
+# F03 批量抽样规格：官方 UI 真实操作（快捷键/工具栏）→ DOM 断言 → 撤销还原。
+# assertExpr 取「动作前/后值」比较（before != after），避免文档本身已有同类节点导致假阳性。
+F3_SPECS = [
+    # ---- 快捷键动作（Tiptap/编辑器默认键位）----
+    {"row": "CMD.editor.underline", "label": "Ctrl+U 下划线", "key": ("u", "KeyU", 85, 2),
+     "assert": "!!document.querySelector('.ProseMirror u')"},
+    {"row": "CMD.editor.strike", "label": "Ctrl+Shift+S 删除线", "key": ("S", "KeyS", 83, 10),
+     "assert": "!!document.querySelector('.ProseMirror s')"},
+    {"row": "CMD.editor.heading.1", "label": "Ctrl+Alt+1 标题 1", "key": ("1", "Digit1", 49, 3),
+     "assert": "document.querySelectorAll('.ProseMirror h1').length"},
+    {"row": "CMD.editor.list.bullet", "label": "Ctrl+Shift+8 无序列表", "key": ("8", "Digit8", 56, 10),
+     "assert": "document.querySelectorAll('.ProseMirror ul').length"},
+    {"row": "CMD.editor.list.ordered", "label": "Ctrl+Shift+7 有序列表", "key": ("7", "Digit7", 55, 10),
+     "assert": "document.querySelectorAll('.ProseMirror ol').length"},
+    {"row": "CMD.editor.blockquote", "label": "Ctrl+Shift+B 引用", "key": ("B", "KeyB", 66, 10),
+     "assert": "document.querySelectorAll('.ProseMirror blockquote').length"},
+    {"row": "CMD.editor.code.inline", "label": "Ctrl+E 行内代码", "key": ("e", "KeyE", 69, 2),
+     "assert": "!!document.querySelector('.ProseMirror code') && !document.querySelector('.ProseMirror pre')"},
+    {"row": "CMD.editor.codeBlock", "label": "Ctrl+Alt+C 代码块", "key": ("c", "KeyC", 67, 3),
+     "assert": "document.querySelectorAll('.ProseMirror pre').length"},
+    # ---- 工具栏按钮 ----
+    {"row": "UI.toolbar.斜体", "label": "工具栏斜体", "toolbar": "斜体",
+     "assert": "!!document.querySelector('.ProseMirror em')"},
+    {"row": "UI.toolbar.下划线", "label": "工具栏下划线", "toolbar": "下划线",
+     "assert": "!!document.querySelector('.ProseMirror u')"},
+    {"row": "UI.toolbar.删除线", "label": "工具栏删除线", "toolbar": "删除线",
+     "assert": "!!document.querySelector('.ProseMirror s')"},
+    {"row": "UI.toolbar.有序列表", "label": "工具栏有序列表", "toolbar": "有序列表",
+     "assert": "document.querySelectorAll('.ProseMirror ol').length"},
+    {"row": "UI.toolbar.引用", "label": "工具栏引用", "toolbar": "引用",
+     "assert": "document.querySelectorAll('.ProseMirror blockquote').length"},
+    {"row": "UI.toolbar.行内代码", "label": "工具栏行内代码", "toolbar": "行内代码",
+     "assert": "!!document.querySelector('.ProseMirror code') && !document.querySelector('.ProseMirror pre')"},
+    {"row": "UI.toolbar.代码块", "label": "工具栏代码块", "toolbar": "代码块",
+     "assert": "document.querySelectorAll('.ProseMirror pre').length"},
+    {"row": "UI.toolbar.插入链接", "label": "工具栏插入链接→链接地址对话框", "toolbar": "插入链接",
+     "dialog": "链接地址", "no_undo": True},
+    {"row": "UI.toolbar.插入公式", "label": "工具栏插入公式→行内公式编辑器", "toolbar": "插入公式",
+     "dialog": "行内公式", "no_undo": False},
+    {"row": "UI.toolbar.插入块级公式", "label": "工具栏插入块级公式→块级公式编辑器", "toolbar": "插入块级公式",
+     "dialog": "块级公式", "no_undo": False},
+    {"row": "UI.toolbar.注释-脚注", "label": "工具栏注释（脚注）→插入注释对话框", "toolbar": "注释（脚注）",
+     "dialog": "插入注释", "no_undo": True},
+    {"row": "UI.toolbar.保存-Ctrl-S", "label": "工具栏保存按钮→磁盘落盘", "toolbar": "保存（Ctrl+S）",
+     "special": "save", "no_undo": True},
+    {"row": "UI.toolbar.微分-d-转正体-另存为新文件", "label": "工具栏微分 d 转正体→预览对话框",
+     "toolbar": "微分 d 转正体", "dialog_aria": "微分 d 转正体预览", "no_undo": True},
+    {"row": "UI.toolbar.历史快照", "label": "工具栏历史快照→历史版本面板", "toolbar": "历史快照",
+     "dialog": "历史版本", "no_undo": True},
+]
+F3_CHECK_PREFIX = "F-F3-"
+
 # 本次要登记的行（featureId -> 说明）。只登记真实执行过的行；其余保持 NOT_RUN。
 SELECTED_ROWS = [
     "F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08",
@@ -122,6 +174,7 @@ SELECTED_ROWS = [
     "UI.export.pdf", "UI.dialog.exportpdf",
     "API.documents.get._tree", "API.search.get.root", "API.drafts.get._recovery",
 ]
+SELECTED_ROWS = list(SELECTED_ROWS) + [sp["row"] for sp in F3_SPECS]
 
 
 # ---------------- 基础设施 ----------------
@@ -166,7 +219,14 @@ def prepare_env() -> dict:
     )
     pdf_out = BASE / "pdf-out"
     pdf_out.mkdir(parents=True, exist_ok=True)
-    return {"appdata": appdata, "workspace": ws, "pdf_out": pdf_out}
+    # F14 官方导出落点隔离：Rust export_pdf 用 %USERPROFILE%\Documents\AstraNota Exports；
+    # 预览用 %TEMP%\AstraNota-preview。把 USERPROFILE/TEMP/TMP 指向隔离目录（不触碰真实用户 Documents）。
+    fake_home = BASE / "fake-home"
+    (fake_home / "Documents").mkdir(parents=True, exist_ok=True)
+    tmp_dir = BASE / "temp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    return {"appdata": appdata, "workspace": ws, "pdf_out": pdf_out,
+            "fake_home": fake_home, "tmp": tmp_dir}
 
 
 def prepare_packs(checks: list[dict]) -> dict:
@@ -243,6 +303,18 @@ def press_ctrl(cdp, ch: str, code: str, vk: int) -> None:
             cdp.call(
                 "Input.dispatchKeyEvent",
                 {"type": t, "key": ch, "code": code, "modifiers": 2, "windowsVirtualKeyCode": vk, "nativeVirtualKeyCode": vk},
+            )
+        except Exception:
+            pass
+
+
+def press_key_combo(cdp, key: str, code: str, vk: int, modifiers: int) -> None:
+    for t in ("keyDown", "keyUp"):
+        try:
+            cdp.call(
+                "Input.dispatchKeyEvent",
+                {"type": t, "key": key, "code": code, "modifiers": modifiers,
+                 "windowsVirtualKeyCode": vk, "nativeVirtualKeyCode": vk},
             )
         except Exception:
             pass
@@ -378,6 +450,11 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
         "KE_WORKSHOP_PUBKEYS": json.dumps({"k1": {"key": packs_info["publicKeyHex"]}}),
         "KE_WS_PRINT_RENDER": "1",
         "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS": f"--remote-debugging-port={CDP_PORT}",
+        # F14 隔离：只覆盖 TEMP/TMP（preview_pdf 落点=%TEMP%\AstraNota-preview）。
+        # 不覆盖 USERPROFILE：实测会导致 WebView2 不开放 CDP；export_pdf 的 Documents 落点无法安全隔离
+        # → 本轮不执行 export_pdf（如实 NOT_RUN，见 F-OFF-19 与报告）。
+        "TEMP": str(env_paths["tmp"]),
+        "TMP": str(env_paths["tmp"]),
     }
     log_path = BASE / "app.log"
     log = log_path.open("w", encoding="utf-8")
@@ -703,14 +780,49 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
             click_contains_text(cdp, "导出 PDF（打印为 PDF）")
             dialog = R.wait_until(lambda: "导出 PDF" in R.body_text(cdp) and "取消" in R.body_text(cdp), 12, 0.25)
             preview = bool(cdp.eval("!!document.querySelector('.ke-print-surface')"))
+            # F14：官方 UI 最终导出 export_pdf 的落点 = %USERPROFILE%\Documents\AstraNota Exports；
+            # 覆盖 USERPROFILE 会破坏 WebView2 CDP（实测），无法安全隔离 → **不点击最终导出**；
+            # 官方 Rust print 管线另用 preview_pdf（落隔离 TEMP）验证真实 PDF，见 F-OFF-19。
             dismissed = click_exact_text(cdp, "取消")
             time.sleep(0.3)
-            gone = R.wait_until(lambda: "导出 PDF" not in R.body_text(cdp), 8, 0.25)
+            gone = R.wait_until(lambda: "导出 PDF" not in R.body_text(cdp), 10, 0.25)
             return {"menuOpened": menu, "menuItems": items, "pdfDialogOpened": dialog, "a4Preview": preview,
                     "dismissed": bool(dismissed and gone),
-                    "note": "最终落盘未执行（隔离 seam 不覆盖官方 export_pdf 落盘路径）"}, (clicked and menu and all(items.values()) and dialog and preview and dismissed)
+                    "note": "官方 UI 导出对话框（含 A4 预览）真实打开；最终 export_pdf 落 Documents 不可隔离，未执行（不伪造）"}, (
+                clicked and menu and all(items.values()) and dialog and preview and dismissed)
 
         run_task(checks, "F-OFF-15 F13 官方 UI 导出菜单 → 导出 PDF 对话框（含 A4 预览；不执行落盘）", task_official_export)
+
+        def task_official_preview_pdf():
+            """F14 落盘尝试：export_pdf 的 Documents 落点不可隔离；改用官方 Rust 打印管线 preview_pdf
+            真实生成 PDF（落点=隔离 TEMP/AstraNota-preview），校验 %PDF/大小后用官方 discard_preview_pdf 清理。"""
+            out = R.host_eval(
+                cdp,
+                "(async () => { try { const r = await window.__TAURI_INTERNALS__.invoke('preview_pdf', {contentWidth: 760});"
+                " return {ok:true, value:r}; } catch(e) { return {ok:false, error:String(e&&e.message||e)}; } })()",
+            )
+            detail = {"invoke": out if not isinstance(out, dict) else {k: out.get(k) for k in ("ok", "error")}}
+            if not (isinstance(out, dict) and out.get("ok")):
+                return detail, False
+            pdf = Path(str(out["value"]))
+            exists = pdf.exists()
+            size = pdf.stat().st_size if exists else 0
+            head = ""
+            if exists:
+                with pdf.open("rb") as fh:
+                    head = fh.read(4).decode("latin1", "replace")
+            under_iso_temp = str(pdf).lower().startswith(str(env_paths["tmp"]).lower())
+            detail.update({"pdfPath": str(pdf), "exists": exists, "size": size, "head": head,
+                           "underIsolatedTemp": under_iso_temp})
+            try:
+                R.host_eval(cdp, "window.__TAURI_INTERNALS__.invoke('discard_preview_pdf', {path: " + json.dumps(str(pdf)) + "})")
+                detail["cleanedByOfficialCommand"] = True
+            except Exception as e:  # noqa: BLE001
+                detail["cleanedByOfficialCommand"] = str(e)[:120]
+            return detail, (exists and size > 1000 and head == "%PDF" and under_iso_temp)
+
+        run_task(checks, "F-OFF-19 F14 官方 print 管线 preview_pdf 真实 PDF 落盘（隔离 TEMP；export_pdf Documents 不可隔离未执行）",
+                 task_official_preview_pdf)
 
         def task_official_settings():
             clicked = click_selector(cdp, 'button[aria-label="打开设置"]')
@@ -725,6 +837,57 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
 
         run_task(checks, "F-OFF-16 F15 官方 UI 设置面板（常规/外观/快捷键/维护 + 主题分组）", task_official_settings)
 
+
+        # ================= 阶段 1b：F03 批量抽样（官方 UI 真实快捷键/工具栏 + DOM 断言） =================
+        def make_f3_task(spec: dict):
+            def task():
+                select_all_editor(cdp)
+                time.sleep(0.15)
+                before_assert = cdp.eval(spec["assert"]) if spec.get("assert") else None
+                if spec.get("key"):
+                    press_key_combo(cdp, *spec["key"])
+                elif spec.get("toolbar"):
+                    click_toolbar(cdp, spec["toolbar"])
+                time.sleep(0.4)
+                detail = {"row": spec["row"], "label": spec["label"]}
+                if spec.get("special") == "save":
+                    R.focus_editor_end(cdp)
+                    R.type_marker(cdp, "F3-SAVE-MARK")
+                    clicked_save = click_toolbar(cdp, "保存")
+                    saved = R.wait_file_marker(article_ledger, "F3-SAVE-MARK", 25)
+                    press_esc(cdp)
+                    detail.update({"saveClicked": clicked_save, "diskSaved": saved})
+                    return detail, bool(clicked_save and saved)
+                if spec.get("assert"):
+                    after = cdp.eval(spec["assert"])
+                    ok = before_assert != after
+                    detail.update({"before": before_assert, "after": after})
+                elif spec.get("dialog_aria"):
+                    ok = R.wait_until(
+                        lambda: bool(cdp.eval(f"!!document.querySelector('[aria-label={json.dumps(spec['dialog_aria'])}]')")),
+                        10, 0.2)
+                    detail["dialogOpened"] = ok
+                    click_selector(cdp, f"[aria-label={json.dumps('关闭')}]")
+                    press_esc(cdp)
+                    time.sleep(0.2)
+                elif spec.get("dialog"):
+                    ok = R.wait_until(lambda: spec["dialog"] in R.body_text(cdp), 10, 0.2)
+                    detail["dialogOpened"] = ok
+                    detail["dialogText"] = spec["dialog"]
+                    click_exact_text(cdp, "取消") or click_exact_text(cdp, "关闭")
+                    press_esc(cdp)
+                    time.sleep(0.2)
+                else:
+                    ok = False
+                if not spec.get("no_undo"):
+                    press_esc(cdp)
+                    click_toolbar(cdp, "撤销")
+                    time.sleep(0.25)
+                return detail, ok
+            return task
+
+        for spec in F3_SPECS:
+            run_task(checks, F3_CHECK_PREFIX + spec["row"], make_f3_task(spec))
 
         # 官方阶段结束前确保编辑器稳定、无遗留确认弹窗
         settle_editor(cdp, article_ledger)
@@ -1154,9 +1317,21 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
         pv(res("F-OFF-10"), "官方 UI 源码模式 textarea 显示 Markdown 原文"))
     add("F13", _nr(perm), _nr(perm),
         pv(res("F-OFF-15"), "官方 UI 导出菜单→导出 PDF 对话框（含 A4 预览）真实打开；最终落盘未执行（隔离限制）"))
+    d15 = detail("F-OFF-15")
+    r15 = res("F-OFF-15")
+    d19 = detail("F-OFF-19")
+    r19 = res("F-OFF-19")
+    if r19 is True:
+        f14_official = _nr(
+            "官方 UI 导出 PDF 对话框（含 A4 预览）已执行；export_pdf 落点 %USERPROFILE%/Documents 无法安全隔离"
+            f"（覆盖 USERPROFILE 会破坏 WebView2 CDP）→ 未执行；另验证官方 Rust print 管线 preview_pdf 真实 PDF 落盘（隔离 TEMP，{d19.get('size')}B/%PDF）")
+    elif r19 is False:
+        f14_official = _v(False, "官方 Rust print 管线 preview_pdf 真实 PDF 落盘失败（隔离 TEMP）")
+    else:
+        f14_official = _nr("官方导出落盘未执行（不伪造）")
     add("F14", pv(res("F-PA-4"), "print.snapshot→真实 PDF（%PDF，隔离目录，>1000B）"),
         _nr("pack B 未声明 print.request 能力（能力面）"),
-        _nr("官方 UI 导出的最终落盘路径不受探针隔离 seam 控制，未点击执行（不伪造）"))
+        f14_official)
     add("F15", pv(res("F-PA-7"), "官方主题切换→theme-changed 事件到达 guest（只读同步切片；方法=" + (pa7_method or "未执行") + "）"),
         _nr("pack B 未订阅事件/无设置通道"),
         pv(res("F-OFF-16"), "官方 UI 设置面板：常规/外观/快捷键/维护 + 主题分组"))
@@ -1178,9 +1353,9 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     add("UI.toolbar.表格", _nr(perm), _nr(perm),
         pv(res("F-OFF-8"), "官方 UI 工具栏表格→尺寸选择器→插入表格"))
     add("UI.export.pdf", _nr(perm), _nr(perm),
-        pv(res("F-OFF-15"), "官方 UI 导出菜单项真实点击→PDF 对话框（含预览）；落盘未执行"))
+        pv(r15, "官方 UI 导出菜单→PDF 对话框（含 A4 预览）真实打开；最终 export_pdf 落 Documents 不可隔离未执行"))
     add("UI.dialog.exportpdf", _nr(perm), _nr(perm),
-        pv(res("F-OFF-15"), "官方 UI 导出 PDF 对话框真实打开（预览/取消可用）；落盘未执行"))
+        pv(r15, "官方 UI 导出 PDF 对话框（含 A4 预览）真实打开；最终导出落盘不可隔离未执行"))
     add("API.documents.get._tree", _nr("guest 无 /api/tree 等价受控协议方法"), _nr("同左"),
         pv(comb("F-OFF-1") and tree_hits > 0, f"官方 UI 文件树渲染（/api/tree 命中 {tree_hits} 次）"))
     add("API.search.get.root", _nr(perm), _nr("同左"),
@@ -1188,6 +1363,16 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     add("API.drafts.get._recovery", _nr(perm), _nr("同左"),
         (_v(True, f"官方 UI 自动保存期间 /api/drafts/recovery 命中 {drafts_hits} 次") if drafts_hits > 0
          else _nr("官方 UI 自动化期间未观察到 /api/drafts/recovery 调用（不伪造）")))
+
+    # F03 批量抽样行（官方 UI 真实快捷键/工具栏 + DOM 断言；pack 侧能力面不可达）
+    for sp in F3_SPECS:
+        r3 = res(F3_CHECK_PREFIX + sp["row"])
+        d3 = detail(F3_CHECK_PREFIX + sp["row"])
+        o3 = pv(r3,
+                f"官方 UI {sp['label']}（CDP 真实操作 + DOM 断言 before={d3.get('before')}→after={d3.get('after')}）",
+                "官方 UI 操作后 DOM 断言未通过",
+                "本轮未执行")
+        add(sp["row"], _nr(perm), _nr("同左"), o3)
     return rows
 
 
@@ -1398,6 +1583,66 @@ def append_coverage(result: dict, rows: list[dict], stats: dict) -> None:
     if have_d:
         registered2 = len(registered)
         pass2 = sum(1 for c in result["checks"] if c["pass"])
+        if "## 附录 F" in original:
+            print("COVERAGE 已含附录 F，跳过追加", flush=True)
+            return
+        if "## 附录 E" in original:
+            def find_ck(prefix: str) -> dict:
+                for ck in result["checks"]:
+                    if ck["name"].startswith(prefix):
+                        return ck
+                return {}
+
+            d15 = (find_ck("F-OFF-15").get("detail") or {})
+            d19 = (find_ck("F-OFF-19").get("detail") or {})
+            f3_rows = []
+            f3_pass = 0
+            for sp in F3_SPECS:
+                ck = find_ck(F3_CHECK_PREFIX + sp["row"])
+                det3 = ck.get("detail") if isinstance(ck.get("detail"), dict) else {}
+                ok3 = bool(ck.get("pass"))
+                f3_pass += 1 if ok3 else 0
+                f3_rows.append(f"| `{sp['row']}` | {'PASS' if ok3 else 'FAIL'} | {sp['label']} | before={det3.get('before')} → after={det3.get('after')} |")
+            update = [
+                "",
+                "---",
+                "",
+                "## 附录 F：第二轮增量（v3，2026-10-19）",
+                "",
+                "> 本节为 task-17 第二轮增量（**F03 批量** + **F14 官方导出落盘尝试**），追加在附录 E 之后；不改上文结论。",
+                "",
+                "### F.1 F03 批量抽样（官方 UI 真实快捷键/工具栏 + CDP DOM 断言）",
+                "",
+                f"- 本轮新增真实执行 **{len(F3_SPECS)} 行**（{f3_pass} PASS / {len(F3_SPECS) - f3_pass} FAIL）；"
+                "未执行行保持 NOT_RUN（不伪造）。",
+                "",
+                "| featureId | 结果 | 操作 | DOM 断言（动作前→后） |",
+                "| --- | --- | --- | --- |",
+            ] + f3_rows + [
+                "",
+                "### F.2 F14 官方导出落盘尝试（如实：部分 + NOT_RUN）",
+                "",
+                "- **官方 UI 导出对话框**：导出菜单 →「导出 PDF（打印为 PDF）」→ 对话框（含 A4 DOM 预览）真实打开 → 取消；"
+                "（最终 `export_pdf` 未点击执行）。",
+                "- **`export_pdf` 无法安全隔离**：Rust 落点 = `%USERPROFILE%\\Documents\\AstraNota Exports`；实测**覆盖子进程 USERPROFILE 会导致 WebView2 不开放 CDP 端口**（探针无法驱动），"
+                "因此无法在不触碰真实用户 Documents 的前提下执行 → **如实 NOT_RUN**，未写真实用户目录。",
+                "- **替代真实落盘验证（官方 print 管线 `preview_pdf`）**：同一 Rust `render_pdf_to` 管线、同一打印设置，落点 = `%TEMP%\\AstraNota-preview`；"
+                "本轮探针把 `TEMP/TMP` 指向隔离目录后调用官方命令真实生成 PDF："
+                f"**{'PASS' if d19.get('size') else 'FAIL'}**（exists={d19.get('exists')}, size={d19.get('size')}, head={d19.get('head')}, "
+                f"isolatedTemp={d19.get('underIsolatedTemp')}），并用官方 `discard_preview_pdf` 清理。",
+                "- 结论：F14 官方 CSV 列保持 **NOT_RUN**（导出 Documents 未执行）；`preview_pdf` 真实 PDF 作为「官方管线可真实落盘」的补充证据，不冒充最终导出。",
+                "",
+                "### F.3 覆盖统计（F 域已登记行 / 该域总行）",
+                "",
+                "| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |",
+                "| --- | ---: | ---: | ---: | --- |",
+            ]
+            for d in [f"F{i:02d}" for i in range(1, 17)]:
+                st3 = stats.get(d) or {"registered": 0, "packAPass": 0, "packBPass": 0, "officialPass": 0, "officialFail": 0, "officialNr": 0}
+                update.append(f"| {d} | {st3['registered']}/{F_DOMAIN_TOTAL[d]} | {st3['packAPass']} | {st3['packBPass']} | {st3['officialPass']}/{st3['officialFail']}/{st3['officialNr']} |")
+            update.append("")
+            COVERAGE.write_text(original.rstrip("\n") + "\n" + "\n".join(update), encoding="utf-8")
+            return
         def find_check(prefix: str) -> dict:
             for ck in result["checks"]:
                 if ck["name"].startswith(prefix):

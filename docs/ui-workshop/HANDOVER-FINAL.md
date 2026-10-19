@@ -275,3 +275,12 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `e794a06` **修复后产品 W 复测**：B-4/B-5/B-8 均 FAIL→**PASS**（banner restarting→recovered→degraded、
   session suspended+E_HOST_UNAVAILABLE→active、runtime.json 即时删除无 stale pid）；W07 bridge 最终
   **40 checks 36 PASS / 4 缺口**（仅剩 C 类：启动 recover 无 UI 提示 ×3、no-fallback 不可自动修复）。
+
+## 追加（2026-10-19 后段 · W07 C1-4/C2-2/C3-5 修复 + 复测）
+
+- `a41d449` **C 类修复**：Rust 只读命令 `workshop_pack_startup_status`（读 workshop-recover-status.json，缺失
+  found:false 不报错、只读不触发 recover_all）+ adapter `startupStatus?()` + WorkshopPanel 挂载时读取并在
+  有恢复动作/safeMode 时显示 `startup-recover-notice`（动作详情/可关闭、同时预置 safeMode 横幅）。
+- `dcb04d7` **修复后产品 W 复测**：C1-4/C2-2/C3-5 均 FAIL→**PASS**（面板打开即显示恢复/安全模式提示、
+  只读校验 mtime/sha 不变、无状态不误报、可关闭）；W07 bridge 最终 **45 checks 43 PASS / 2 缺口**
+  （仅剩 C2-3 冷启动入口 safeMode 角标、C2-7 no-fallback 不可自动修复）。

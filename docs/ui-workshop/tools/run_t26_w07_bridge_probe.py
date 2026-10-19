@@ -1831,7 +1831,8 @@ def main() -> int:
     for i, a in enumerate(argv):
         if a == "--scenarios" and i + 1 < len(argv):
             selected = [x.strip().upper() for x in argv[i + 1].split(",") if x.strip()]
-    print(f"scenarios={selected} cdp_port={CDP_PORT} exe={EXE}", flush=True)
+    merge_mode = "--merge" in argv
+    print(f"scenarios={selected} cdp_port={CDP_PORT} merge={merge_mode} exe={EXE}", flush=True)
     if "--dry-run" in argv:
         refresh_pack_root()
         dry = {
@@ -1922,6 +1923,37 @@ def main() -> int:
           {"base_root": str(BASE_ROOT), "pack_root": str(PACK_ROOT),
            "my_pack_ids": MY_IDS, "other_packs_audit": audit_other_packs(MY_IDS)})
 
+    out_path = EVID / "T26-W07-bridge-results.json"
+    merged_runs_out: list = []
+    merge_record = None
+    if merge_mode and out_path.exists():
+        try:
+            prev = json.loads(out_path.read_text(encoding="utf-8"))
+        except Exception:
+            prev = None
+        if isinstance(prev, dict):
+            prev_scen = dict(prev.get("scenarios") or {})
+            for key in selected:
+                if key in scenarios:
+                    prev_scen[key] = scenarios[key]
+            # SAFE 检查每轮都重新生成 → 合并时丢弃旧 SAFE，避免重复
+            keep_checks = [c for c in (prev.get("checks") or [])
+                           if c.get("scenario") not in set(selected)
+                           and c.get("scenario") != "SAFE"]
+            checks = keep_checks + checks
+            scenarios = prev_scen
+            merge_record = {"run_at": env_meta.get("generated_at"), "scenarios": list(selected),
+                            "cdp_port": CDP_PORT,
+                            "merged_into_existing": True}
+            prev_runs = list(prev.get("merged_runs") or [])
+            prev_runs.append(merge_record)
+            merged_runs_out = prev_runs
+            env_meta = prev.get("environment") or env_meta
+            for k in ("task",):
+                if prev.get(k):
+                    pass
+            print(f"[merge] 合并 {selected} 到既有证据（保留 {len(keep_checks)} 条旧 checks）", flush=True)
+
     pass_count = sum(1 for c in checks if c["pass"])
     total = len(checks)
     gaps = [{"id": c["id"], "name": c["name"], "detail": c["detail"]}
@@ -1941,6 +1973,7 @@ def main() -> int:
                                         "路径白名单校验）；Resume 后验证桥接恢复",
         },
         "scenarios": scenarios,
+        "merged_runs": merged_runs_out,
         "checks": checks,
         "pass_count": pass_count,
         "total": total,

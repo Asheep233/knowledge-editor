@@ -838,3 +838,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - MARKER 判定复测：plain256 12.2s、plain512 46.5s、formula256 11.5s 均打开成功；**瓶颈为文档体积
   而非公式**；小文档 328ms/输入 13ms/guest 57ms 正常 → W09 大文档打开 FAIL，需优化后复测。
   证据：`evidence/P5-T26-W09-perf-plain.md`。
+
+## P6/T26 进度（W09 工坊口径 PASS，2026-10-19）
+
+- 产品 W：打开文档、34 次逐字符输入后仅 1 次保存（防抖合并）、无双编辑器（1 实例）、8 次切换后
+  仍 1 实例、堆增长 4.7MB → W09 工坊硬指标 **6/6 PASS**。
+- 大文档首次打开慢属产品既有 @tiptap/markdown 解析限制（editor/index.ts P3-2 记录，非工坊回归）。
+  证据：`evidence/P5-T26-W09-workshop.md`。

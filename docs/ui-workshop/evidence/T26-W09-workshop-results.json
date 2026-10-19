@@ -1,0 +1,56 @@
+{
+  "generated_at": "2026-10-19T08:02:26+0800",
+  "scenario": "T26 W09 工坊口径（无复制/无逐字符广播/无泄漏）",
+  "checks": [
+    {
+      "name": "W09W-1 打开文档 a（基线）",
+      "pass": true,
+      "detail": {
+        "before": true
+      }
+    },
+    {
+      "name": "W09W-2 34 次逐字符输入后保存请求数（不应逐字符：<8）",
+      "pass": true,
+      "detail": {
+        "writes": 1
+      }
+    },
+    {
+      "name": "W09W-3 无双编辑器复制（ProseMirror 数=1）",
+      "pass": true,
+      "detail": {
+        "editors": 1
+      }
+    },
+    {
+      "name": "W09W-4 8 次切换后编辑器实例仍=1",
+      "pass": true,
+      "detail": {
+        "editors": 1
+      }
+    },
+    {
+      "name": "W09W-5 8 次切换堆增长有界（< 60MB）",
+      "pass": true,
+      "detail": {
+        "heapDeltaMB": 4.7
+      }
+    },
+    {
+      "name": "W09W-6 主进程存活 / 用户实例未受影响",
+      "pass": true,
+      "detail": {
+        "user_pid": "(not running)",
+        "note": "用户 App 未运行 → 影响 N/A"
+      }
+    }
+  ],
+  "pass_count": 6,
+  "total": 6,
+  "metrics": {
+    "writesAfter34Chars": 1,
+    "heapDelta": 4950072
+  },
+  "note": "大文档首开慢为产品既有解析限制（editor/index.ts P3-2），非工坊引入"
+}

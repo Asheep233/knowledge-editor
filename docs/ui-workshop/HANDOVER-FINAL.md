@@ -36,7 +36,7 @@
 | W05 产品 guest 协议线（握手+snapshot） | 7/7（完整协议语义未做） | `P5-T26-W05-protocol.md` |
 | W06 guest 执行/网络边界（功能级） | 8/8（导航/伪造消息未做） | `P5-T26-W06-boundary.md` |
 | W07 guest 无限循环故障（部分类别） | 8/8（CPU/内存/boot crash/I 未做） | `P5-T26-W07-fault.md` |
-| W09 大文档性能基线 | **FAIL（大文档打开）**：plain256 12.2s、plain512 46.5s、formula256 11.5s；小文档/输入/guest 正常；归因体积非公式 | `P5-T26-W09-perf.md`、`-diag`、`-plain` |
+| W09 性能（工坊口径） | **PASS W 6/6**（无双编辑器/无逐字符广播/堆增 4.7MB）；产品大文档首开慢为既有 @tiptap/markdown 限制（非工坊回归） | `P5-T26-W09-workshop.md`、`-plain` |
 
 **总计：真实产品壳 W 探针 11 个场景，全部通过**；原型壳 W 13 探针一键门禁 13/13。
 

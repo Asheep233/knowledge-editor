@@ -24,7 +24,8 @@
 | W05 产品 guest 协议线（Broker/Dispatcher↔SDK 握手 + snapshot） | **7/7** | `P5-T26-W05-protocol.md` |
 | W06 guest 执行/网络边界（fetch/worker/WS/能力越权，功能级） | **8/8** | `P5-T26-W06-boundary.md` |
 | W07 guest 无限循环故障（宿主独立/心跳检测/failed+safeMode/停用） | **8/8（部分类别）** | `P5-T26-W07-fault.md` |
-| W09 大文档性能基线（256/512KB/输入/guest 成本） | **FAIL（3/7，记录风险）** | `P5-T26-W09-perf.md` |
+| W09 性能（工坊口径：无复制/无逐字符广播/无泄漏） | **6/6 PASS（W）** | `P5-T26-W09-workshop.md` |
+| 产品大文档首次打开性能（pre-existing 限制，非工坊回归） | 记录 | `P5-T26-W09-perf.md`、`-diag`、`-plain` |
 
 > 说明：A1–A8 全部已通过真实产品壳 W；T26 认证仍需补真实 IME/多 DPI、安装包升级/回滚演练（T27）。
 

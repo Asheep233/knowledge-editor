@@ -284,3 +284,12 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `dcb04d7` **修复后产品 W 复测**：C1-4/C2-2/C3-5 均 FAIL→**PASS**（面板打开即显示恢复/安全模式提示、
   只读校验 mtime/sha 不变、无状态不误报、可关闭）；W07 bridge 最终 **45 checks 43 PASS / 2 缺口**
   （仅剩 C2-3 冷启动入口 safeMode 角标、C2-7 no-fallback 不可自动修复）。
+
+## 追加（2026-10-19 后段 · F 台账 v3：F03 批量 + F14 尝试）
+
+- `78e5c25` **F 台账 v3**：checks 60/63；F03 新增 **22 行**真实登记（19 PASS/3 FAIL：Ctrl+Shift+8 无序
+  列表、Ctrl+Shift+B 引用、工具栏保存按钮）；全库已登记 **49/130 行**（官方 UI 45 PASS/3 FAIL、F03 30/42、
+  pack A/B 各 4 PASS 其余能力面 NOT_RUN）。
+- **F14**：官方导出对话框/A4 预览 PASS；最终 `export_pdf` 落 Documents **NOT_RUN**（USERPROFILE 覆盖会
+  disable CDP，无法安全隔离，未写真实用户目录）；补充 preview_pdf 隔离 TEMP 真实 PDF 36541B 作为官方管线
+  落盘补充证据（不冒充最终导出）。未覆盖：F03 剩余 12 行、F16 原生菜单等，如实 NOT_RUN。

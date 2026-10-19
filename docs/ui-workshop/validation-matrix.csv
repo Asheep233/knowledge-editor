@@ -23,7 +23,7 @@ T26-A5-ui-results.json,T26/A5,W,Windows 产品壳（隔离构建，工坊信任 
 T26-A7-A5-guest-results.json,T26/A7+A5,W,Windows 产品壳（隔离构建，guest 宿主/能力上限/心跳崩溃/safeMode）,PASS,11,11,python tools/run_t26_guest_probe.py
 T26-A7-isolation-results.json,T26/A7,W,Windows 产品壳（隔离构建，guest origin/internals 自检/IPC 可达性）,PASS,6,6,python tools/run_t26_guest_isolation_probe.py
 T26-A8-save-results.json,T26/A8,W,Windows 产品壳（隔离构建，Core 保存 flag 产品 UI）,PASS,9,9,python tools/run_t26_save_probe.py
-T26-F-ledger-results.json,?,U?,?,PASS,40,40,
+T26-F-ledger-results.json,?,U?,?,PASS_WITH_FINDINGS(3 缺口已记录),60,63,
 T26-G1G2-results.json,T26/G1G2,W,Windows 产品壳（隔离构建，guest 内容读/真实写）,PASS,14,14,python tools/run_t26_guest_io_probe.py
 T26-G3G4-results.json,T26/G3G4,W,Windows 产品壳（隔离构建，真实打印 + 宿主事件）,PASS,18,18,python tools/run_t26_guest_g3g4_probe.py
 T26-G7-reference-packs-results.json,T26/G7,W,Windows 产品壳（隔离构建，pack A/B 参考 UI + SDK）,PASS,24,24,python tools/run_reference_packs_probe.py

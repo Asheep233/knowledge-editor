@@ -987,3 +987,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - a41d449：启动 recover 状态只读命令 + Panel startup notice（只读、可关闭、预置 safeMode 横幅）。
 - dcb04d7：C1-4/C2-2/C3-5 FAIL→PASS；W07 bridge 最终 45 checks 43 PASS/2 缺口（C2-3 入口角标、
   C2-7 no-fallback 不可自动修复）；仍 PASS-with-gaps。
+
+## P6 进度（F 台账 v3：F03 批量 + F14 尝试，2026-10-19）
+
+- 78e5c25：checks 60/63；F03 +22 行（19 PASS/3 FAIL）；CSV 49/130 已登记（官方 45 PASS/3 FAIL）；
+  F14 对话框/预览 PASS、最终导出 NOT_RUN（USERPROFILE 隔离限制）+ preview_pdf 真实 PDF 补充证据。
+- 未覆盖：F03 剩余 12 行、F16 原生菜单等；不宣称 F01–F16 达成。

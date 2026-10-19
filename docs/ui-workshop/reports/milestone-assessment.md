@@ -106,9 +106,13 @@ ACCEPTANCE A 节：
 
 ## 3f. F01–F16 逐项台账登记 v2（2026-10-19）
 
-- `feature-baseline.csv`：**27/130 行**已登记三路径真实结果（pack A 4 PASS/23 能力面 NOT_RUN；
-  pack B 4 PASS/23 NOT_RUN；官方 UI **26 PASS**）；其余保持 NOT_RUN。
-- 探针 `run_feature_entry_probe.py`（官方 CDP + guest OOPIF 真实 DOM）；**v2 checks 40/40 PASS**
+- `feature-baseline.csv`：**49/130 行**已登记（官方 UI **45 PASS / 3 FAIL / 82 NOT_RUN**；pack A 4 PASS/
+  45 能力面 NOT_RUN；pack B 4 PASS/45 NOT_RUN）；F03 现 **30/42** 行（v3 新增 22 行：19 PASS/3 真实 FAIL：
+  Ctrl+Shift+8 无序列表、Ctrl+Shift+B 引用、工具栏保存按钮——均有证据待人工复核）。
+- F14 官方导出：对话框入口 PASS；**最终 export_pdf 落 Documents 未执行（NOT_RUN，USERPROFILE 覆盖会禁用
+  CDP 无法安全隔离）**；补充官方 Rust print 管线 preview_pdf 在隔离 TEMP 真实生成 36541B `%PDF`
+  （不冒充最终导出）。
+- 探针 `run_feature_entry_probe.py`（官方 CDP + guest OOPIF 真实 DOM）；**v3 checks 60/63 PASS**（v2 40/40 后有追加）
   （v1 37/40 的 3 个失败根因 = 探针 `dismiss_overlays()` 误关工坊面板，修复后全绿；document-saved
   使用产品真实 window 事件入口并如实标注 eventMethod）。
 - 未覆盖（如实）：F14 官方导出落盘（仅验证到对话框入口）、F16 原生菜单（非 DOM）、F03 其余 35 行、

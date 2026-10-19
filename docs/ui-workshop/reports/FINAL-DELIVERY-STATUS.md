@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | 分支/基线 | `feat/ui-workshop`（本地） | 基线 v1.2.18 `4c71233` + overlay `e54d37b`；未推送/未 Release |
 | frontend `tsc -b --noEmit` | **0 错** | WSL |
-| frontend `vitest run --maxWorkers=2` | **143 files / 1931 passed + 1 skipped** | WSL/happy-dom（U 级）；本次收敛本地复跑确认 |
+| frontend `vitest run --maxWorkers=2` | **143 files / 1952 passed + 1 skipped** | WSL/happy-dom（U 级）；本次收敛本地复跑确认 |
 | backend `pytest backend/tests -q` | **847 collected / exit 0** | WSL；本次收敛本地复跑确认（Windows Py3.10 曾全绿） |
 | 产品壳 `cargo test --release` | **67 passed** | Windows（Rust 单测，引自 `P6-final-verification.md`；WSL 未复跑） |
 | 原型 W 探针一键门禁 | **13/13 PASS** | `run_all_w_probes.py --check`（引自 `P5-T26-windows-witnesses.md`） |

@@ -102,3 +102,9 @@
 - backend：847 collected / exit 0（未改）；
 - 产品 cargo：67 passed（未改 Rust）；
 - 验证矩阵：**59 行**，--check PASS（F 台账 v6：F03 42/42 全 PASS）。
+
+## guest 编辑器命令桥后最终回归（2026-10-19）
+
+- frontend：**143 files / 1952 passed** + 1 skipped、tsc 0（+编辑器命令桥/kebab 映射单测）；
+- backend：847 collected / exit 0（未改）；产品 cargo：67 passed（未改 Rust）；
+- 验证矩阵：**61 行**，--check PASS（新增 packB 编辑器命令桥 W 26/26 行）。

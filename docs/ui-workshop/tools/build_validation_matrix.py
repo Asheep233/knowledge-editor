@@ -44,6 +44,7 @@ READINESS_EVIDENCE: dict[str, tuple[str, str, str, str, str]] = {
 
 # evidence 文件 → (task, kind, platform, 复现命令/说明)
 META: dict[str, tuple[str, str, str, str]] = {
+    "T26-pack-editor-cmd-results.json": ("T26/F03-packB", "W", "Windows 产品壳（隔离构建，packB 编辑器命令桥）", "python tools/run_t26_pack_editor_cmd_probe.py"),
     "T26-cloud-handoff-results.json": ("T26/cloud", "B（本地模拟自验）", "本地模拟（云端交接包）", "见 evidence/P5-T26-cloud-handoff-verification.md"),
     "P0-S1-probe-results.json": ("T02", "U/W?（Linux 侧 U + Windows 混合，见文档）", "Linux WSL + Windows", "python run_s1_probe.py"),
     "P0-S1-windows-probe-results.json": ("T02", "W", "Windows/WebView2", "python run_s1_windows_probe.py"),
@@ -103,7 +104,7 @@ BASELINE_ROWS = [
     ("frontend: 运行时健康 banner 单测", "P3/T26", "U", "Linux WSL（happy-dom）", "PASS", "5", "5", "cd frontend && npx vitest run src/components/runtime"),
     ("frontend: 工坊 UI 单测", "P3/P4", "U", "Linux WSL（happy-dom）", "PASS", "63", "63", "cd frontend && npx vitest run src/components/workshop"),
     ("frontend: Core print 单测（P2–P4/T16 产品打印）", "P2/P4", "U", "Linux WSL", "PASS", "36", "36", "cd frontend && npx vitest run src/core/print"),
-    ("frontend: tsc + vitest 全量", "P1–P4", "U", "Linux WSL（happy-dom 组件测试）", "PASS", "1931", "1932", "cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2"),
+    ("frontend: tsc + vitest 全量", "P1–P4", "U", "Linux WSL（happy-dom 组件测试）", "PASS", "1952", "1953", "cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2"),
     ("backend: pytest 全量", "P1", "A", "Linux WSL + Windows Py3.10", "PASS", "847", "847", "python3 -m pytest backend/tests -q（Windows: CI venv）"),
     ("cargo: 产品壳单测", "P2–P4", "U", "Windows（Rust 单元测试）", "PASS", "67", "67", "cd desktop/src-tauri && cargo test --release"),
     ("cargo: 原型壳单测（无独立测试，仅构建）", "P0", "B", "Windows", "BUILD_OK", "", "", "cargo build --release（原型 tauri_sandbox）"),

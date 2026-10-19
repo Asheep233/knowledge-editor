@@ -100,3 +100,15 @@ iframe 以 `src=workshop://…` 加载（独立 origin、可设置包文档 CSP�
 **残余风险**：隐藏打印 renderer 仍 `KE_WS_PRINT_RENDER=1` env 门控；`currentEpoch()` 固定 1（epoch 失效检测未生效，
 靠后端 409 兜底）；guest 仍可见 `__TAURI_INTERNALS__`（remote IPC 被拒，见 ADR-004 正文/A7 证据）；Tauri 升级需
 复跑隔离/事件/打印探针。
+
+## 附录 C（2026-10-19）：guest 编辑器命令桥（F03 覆盖解锁）
+
+- `command.invoke` 在既有 article meta 白名单外，新增**受控编辑器命令**能力（`editor.commands.readonly`
+  能力 + manifest 逐条声明，trusted/builtin 才授予）：
+  - 14 条白名单：bold/italic/underline/strike/code/heading1-3/bulletList/orderedList/blockquote/codeBlock/undo/redo；
+  - 协议名统一**小写 kebab**（多词：`editor.bullet-list`/`editor.ordered-list`/`editor.code-block`）以符合
+    manifest `commands[].name` schema `^[a-z][a-z0-9.-]{1,80}$`；旧 camelCase 仅后端 legacy 兼容直调、不可声明；
+  - 执行器由 EditorArea 注册（仅主窗口、卸载清理），未知/未就绪/失败如实错误，不暴露任意命令；
+  - 证据：`P5-T26-pack-editor-cmd.md`（产品 W 26/26：9 格式命令 + 3 列表/代码块 + 撤销重做 + 负向拒绝）；
+  - 残余风险：guest 可经声明命令修改当前文档内容（trusted/builtin 包、命令白名单最小化、不含插入/删除/
+    选区命令）；命令名大小写/协议名规则需随 SDK 文档同步。

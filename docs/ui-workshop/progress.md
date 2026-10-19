@@ -1033,3 +1033,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   已知设计限制）；T26 任务级最终认证未达成。
 - **待主理人**：T27 I 门禁（云端 Codex 执行材料 + 隔离 VM/授权）、人工 IME/多 DPI 验收清单。
 - 约束：分支本地未推送/未 Release；未改产品语义（blockquote 修复为审计确认的真实缺陷）；未触碰用户 App。
+
+## P6 进度（guest 编辑器命令桥 + F03 packB，2026-10-19）
+
+- d68be07/8a57a3f：14 条受控编辑器命令（白名单+能力+manifest 声明；多词 kebab 修复 schema 缺口）。
+- e7dea54/4912292：packB UI 14 按钮 + 产品 W 26/26；F03 packBEntry 0→14 行 PASS（official 42/42）。
+  证据：`P5-T26-pack-editor-cmd.md`、F 报告附录 J/K、ADR-004 附录 C。

@@ -162,3 +162,12 @@ ACCEPTANCE A 节：
   `reports/FINAL-DELIVERY-STATUS.md`、`reports/T26-acceptance-status.md` 口径一致。
 - **最终待主理人**：T27 I 门禁（授权 + 隔离 VM）与人工 IME/多 DPI 验收（清单已给）；完成前不改变
   `EXPERIMENTAL_TRUSTED_PACKS` 结论。
+
+## 3i. guest 编辑器命令桥与 F03 packB 覆盖（2026-10-19，v7/v8）
+
+- 新增受控编辑器命令桥（14 条白名单，`editor.commands.readonly` 能力 + manifest 逐条声明，协议名 kebab
+  符合 schema）；产品 W **26/26 PASS**（9 格式命令 + bullet/ordered/codeBlock + 撤销重做 + 负向拒绝/回显）。
+- F03 台账：official 42/42 PASS 不变；**packBEntry 由 0 → 14 行 PASS**（CMD.editor.bold/italic/underline/
+  strike/code.inline/heading.1-3/blockquote/undo/redo/list.bullet/list.ordered/codeBlock）；packA 路径与
+  非命令行仍 NOT_RUN（如实）。
+- 证据：`P5-T26-pack-editor-cmd.md`、`T26-pack-editor-cmd-results.json`、F 报告附录 J/K、ADR-004 附录 C。

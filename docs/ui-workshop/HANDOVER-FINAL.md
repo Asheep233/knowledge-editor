@@ -1,7 +1,7 @@
 # UI 工坊最终交接（最终交付状态 · 2026-10-19 末段收敛）
 
 > **最终状态一句话**：代码与真实产品 W 证据已收敛（frontend **143 files/1931 passed + 1 skipped**、
-> tsc 0；backend **847**；产品 cargo **67**；矩阵 **59 行 --check PASS**）；里程碑
+> tsc 0；backend **847**；产品 cargo **67**；矩阵 **61 行 --check PASS**）；里程碑
 > **`EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节），**明确不声明** `IMPLEMENTED_WINDOWS_PENDING`
 > 完成态 / `LOCAL_WORKSHOP_RELEASE_CANDIDATE`（T27 I 门禁未执行、人工 IME/多 DPI 未做、F 覆盖部分、
 > W07 3 项已知限制）；**T26 任务级最终认证未达成**。分支 `feat/ui-workshop` **本地，未推送、未 Release**。
@@ -20,11 +20,11 @@
 | 套件 | 结果 | 说明 |
 | --- | --- | --- |
 | frontend `tsc -b --noEmit` | **0 错** | WSL |
-| frontend `vitest run --maxWorkers=2` | **143 files / 1931 passed + 1 skipped** | WSL/happy-dom（U 级）；收敛时本地复跑确认 |
+| frontend `vitest run --maxWorkers=2` | **143 files / 1952 passed + 1 skipped** | WSL/happy-dom（U 级）；收敛时本地复跑确认 |
 | backend `pytest backend/tests -q` | **847 collected / exit 0** | WSL；收敛时本地复跑确认（Windows Py3.10 曾全绿） |
 | 产品壳 `cargo test --release` | **67 passed** | Windows（Rust 单测，引自 `P6-final-verification.md`；WSL 未复跑） |
 | 原型 W 探针一键门禁 | **13/13 PASS** | `run_all_w_probes.py --check`（Windows/WebView2） |
-| 平台验证矩阵 | **59 行**，`--check` **PASS**（44 个 results JSON 全覆盖；另含 F16 结构性审计 NOT_RUN 行、T27 就绪检查 READINESS 行，显式 NOT_READY、非验收通过；W07 boot/bridge 与 F 台账为 PASS_WITH_FINDINGS） | `build_validation_matrix.py --check` |
+| 平台验证矩阵 | **61 行**，`--check` **PASS**（44 个 results JSON 全覆盖；另含 F16 结构性审计 NOT_RUN 行、T27 就绪检查 READINESS 行，显式 NOT_READY、非验收通过；W07 boot/bridge 与 F 台账为 PASS_WITH_FINDINGS） | `build_validation_matrix.py --check` |
 
 > 核对口径：frontend（tsc 0、143 files/1931 passed + 1 skipped）与 backend（847 collected/exit 0）在
 > 本轮收敛时本地复跑确认；产品 cargo 67、原型 W 13/13 引自 `P6-final-verification.md` 与
@@ -202,7 +202,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 2. 旧 A7 隔离核对数字 5/5 → 证据为 **6/6**（`T26-A7-isolation-results.json`），已更正；
 3. 矩阵基线 cargo 38 → **50 → 67**、工坊 UI 单测 18 → **63**（最新回归证据 + 本地复跑核对）；
 4. W09 三份大文档性能结果保持 **KNOWN_FAIL（已知限制）**，未改写为通过；
-5. 矩阵 51 → **59 行**：W07 boot/bridge 与 F 台账改为 `PASS_WITH_FINDINGS` 显式缺口口径（2/1/5），
+5. 矩阵 51 → **61 行**：W07 boot/bridge 与 F 台账改为 `PASS_WITH_FINDINGS` 显式缺口口径（2/1/5），
    未按 FAIL 阻断、也未写成全通过；补齐 bridge/F-ledger META（此前为 `?/U?` 行）；
 6. F03 台账由 v4「37 PASS/5 FAIL」→ 根因审计 v5（4 项自动化限制改判）→ **v6 blockquote 产品缺陷
    修复后 42/42 全 PASS**；旧文中的 5 FAIL 已按证据更新，未删除审计历史；
@@ -386,9 +386,9 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 > 本节为最终交付状态收口记录；历史追加段保留原样（按时间顺序，各段数字为当时状态）。
 
-- **代码/回归基线（复核值）**：frontend **143 files / 1931 passed + 1 skipped**、tsc 0（本轮收敛本地复跑）；
+- **代码/回归基线（复核值）**：frontend **143 files / 1952 passed + 1 skipped**、tsc 0（本轮收敛本地复跑）；
   backend **847 collected / exit 0**（本轮收敛本地复跑）；产品 cargo **67 passed**（引自
-  `P6-final-verification.md`，Windows 侧未复跑）；原型 W **13/13**；验证矩阵 **59 行 --check PASS**
+  `P6-final-verification.md`，Windows 侧未复跑）；原型 W **13/13**；验证矩阵 **61 行 --check PASS**
   （44 个 results JSON 全部纳入；bridge/F-ledger META 已补齐；W07 boot/bridge/F 台账为 PASS_WITH_FINDINGS）。
 - **W 证据最终统计**：A1 7/7、A2 9/9、A3 9/9、A4+A6 16/16、A5 11/11、A7+A5 11/11、A7 隔离 6/6、A8 9/9、
   IME/DPI 7/7；W01 8/8、W02 8/8+12/12、W04 7/7+SDK 7/7、W05 7/7、W06 8/8、W07 无限循环 8/8 +
@@ -421,3 +421,14 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - 构建 exe sha256 前缀 `c849241b`（mtime 16:43，含 blockquote 修复）上复跑关键产品 W：
   A4+A6 **16/16**、G1/G2 **14/14**、A8 **9/9** 全 PASS；证据 `P5-T26-final-build-regression.md`。
 - 修正 install/save 探针「用户 App 未运行」的 N/A 判定（原先误要求 PID 存在），业务断言未变。
+
+## 追加（2026-10-19 后段 · guest 编辑器命令桥 + F03 packB 覆盖）
+
+- `d68be07` **受控 guest 编辑器命令桥**：EditorArea 14 条白名单执行器（bold/italic/underline/strike/code/
+  heading1-3/bulletList/orderedList/blockquote/codeBlock/undo/redo），`command.invoke('editor.*')` 要求
+  `editor.commands.readonly` 能力 + manifest 逐条声明；未知/未就绪/失败如实错误。
+- `8a57a3f` **协议名 kebab 修复**：多词命令统一 `editor.bullet-list`/`editor.ordered-list`/`editor.code-block`
+  以符合 manifest 命令名 schema（camelCase 不可声明为设计约束）；旧 camelCase 仅后端 legacy 兼容。
+- `e7dea54` + `4912292` **pack B 命令 UI + 产品 W**：packB 声明 14 条命令、UI 14 按钮；W **26/26 PASS**
+  （DOM 断言 strong/em/u/s/code/h1/h2/h3/ul/ol/pre/blockquote + 撤销重做 + 负向拒绝/回显）；F03 台账
+  **packBEntry 0→14 行 PASS**（official 42/42 不变）；证据 `P5-T26-pack-editor-cmd.md`、ADR-004 附录 C。

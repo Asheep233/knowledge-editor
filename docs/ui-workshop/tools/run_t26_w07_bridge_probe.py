@@ -1009,6 +1009,12 @@ def enable_guest(cdp: CDP, pack_id: str, timeout: float = 45.0):
     """
     info: dict = {"trusted": None, "trusted_wait": None, "enabled": False,
                   "ready": None, "ok": False, "error": None}
+    # 关键（复测发现）：CDP 可能在页面导航完成前连上，早先注册的 guest 消息收集器随导航丢失。
+    # 在启用 guest 前（面板已就绪、页面已稳定）重新安装收集器，保证 ready/cmd-result 消息可被收集。
+    try:
+        setup_guest_collector(cdp)
+    except Exception:
+        pass
     if not open_workshop(cdp, timeout=20):
         info["error"] = "工坊面板未打开"
         return info
@@ -1259,13 +1265,12 @@ def scenario_a(checks: list, ctx: dict) -> dict:
         err_code = (r_s or {}).get("errorCode")
         retryable = (r_s or {}).get("retryable")
         check(checks, "A", "W07B-A-10",
-              "[缺口观测] 桥接超时错误码为 E_TIMEOUT/可重试语义（实测预期 FAIL：宿主 fetch abort 被映射为 E_INTERNAL，"
-              "协议层无服务端超时语义，guest 无法按 code 区分超时）",
+              "桥接超时错误码为协议 E_TIMEOUT/retryable=true（guest 可按 code 区分超时并重试；修复前为 E_INTERNAL/retryable=false）",
               err_code == "E_TIMEOUT" and retryable is True,
               {"errorCode": err_code, "retryable": retryable,
                "error": (r_s or {}).get("error"),
                "source_ref": "frontend/src/core/packs/productHostAdapter.ts requestJson AbortController(15000)；"
-                             "core/broker/binding.ts normalizeError → E_INTERNAL"})
+                             "task-11 修复：productHostAdapter.requestJson AbortController 超时 → protocolError(E_TIMEOUT, retryable=true)"})
 
         invoke(cdp, "workshop_pack_uninstall", {"id": PACK_ID})
         metrics["stop"] = stop_launch(l, cdp)
@@ -1925,6 +1930,7 @@ def main() -> int:
 
     out_path = EVID / "T26-W07-bridge-results.json"
     merged_runs_out: list = []
+    _merged_build_history: list = []
     merge_record = None
     if merge_mode and out_path.exists():
         try:
@@ -1948,10 +1954,21 @@ def main() -> int:
             prev_runs = list(prev.get("merged_runs") or [])
             prev_runs.append(merge_record)
             merged_runs_out = prev_runs
-            env_meta = prev.get("environment") or env_meta
-            for k in ("task",):
-                if prev.get(k):
-                    pass
+            prev_env = prev.get("environment") or {}
+            if prev_env.get("exe_sha256") and prev_env.get("exe_sha256") != env_meta.get("exe_sha256"):
+                # 测试构建已重建（如修复后复测）→ environment 用新构建，旧构建记入 build_history
+                build_history = list(prev.get("build_history") or [])
+                build_history.append({
+                    "exe_sha256": prev_env.get("exe_sha256"),
+                    "exe_mtime": prev_env.get("exe_mtime"),
+                    "exe_size": prev_env.get("exe_size"),
+                    "note": "上一轮证据所用测试构建（已被新构建替换；旧场景 checks 保留其历史值）",
+                })
+                prev["build_history"] = build_history
+                merge_record["build_changed"] = True
+            else:
+                env_meta = prev_env or env_meta
+            _merged_build_history[:] = list(prev.get("build_history") or [])
             print(f"[merge] 合并 {selected} 到既有证据（保留 {len(keep_checks)} 条旧 checks）", flush=True)
 
     pass_count = sum(1 for c in checks if c["pass"])
@@ -1963,6 +1980,7 @@ def main() -> int:
         "task": "task-10 / W07 扩展：桥接超时 + sidecar 故障 + 原生 Rust 恢复（隔离产品构建 W 证据）",
         "evidence_type": "W（真实产品隔离构建进程/协议/数据行为；故障注入方式见各场景 metrics）",
         "environment": env_meta,
+        "build_history": _merged_build_history,
         "run_conditions": {
             "serial_exclusive_window": True,
             "window_note": "启动前检查无 knowledgeeditor 测试实例（与其它 teammate 探针串行）；被占用则等待且不强杀",

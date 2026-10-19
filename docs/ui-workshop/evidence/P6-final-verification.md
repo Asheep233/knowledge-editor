@@ -62,3 +62,9 @@
 - backend：847 collected / exit 0；
 - 产品 cargo：**51 passed**（含 context.write 能力门禁单测）；
 - 验证矩阵：**53 行**，--check PASS（G1/G2、W07 boot 行纳入；W07 boot = PASS_WITH_FINDINGS(4 缺口)）。
+
+## G3/G4 后最终回归（2026-10-19）
+
+- frontend：**140 files / 1879 passed** + 1 skipped、tsc 0（新增 print/事件/探针相关单测）；
+- backend：847 collected / exit 0（未改）；产品 cargo：51 passed（未改 Rust）；
+- 验证矩阵：**54 行**，--check PASS（G3/G4 真实打印+事件证据纳入）。

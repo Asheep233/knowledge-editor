@@ -103,3 +103,11 @@ ACCEPTANCE A 节：
   （能力/握手/命令落盘/错误）+ 安全进程等；guest 真实 DOM 输入点击（Target.attachToTarget OOPIF）。
 - **仍剩**：F01–F16 逐项台账 `packAEntry`/`packBEntry` 0/130、`officialBaselineResult` 仍 NOT_RUN
   （参考包只是载体，不等于逐项通过）；发布 SDK 无事件订阅 API、协议无当前文档 relPath 发现通道。
+
+## 3f. F01–F16 逐项台账登记 v1（2026-10-19）
+
+- `feature-baseline.csv`：**27/130 行**已登记三路径真实结果（pack A 3 PASS/1 FAIL/23 能力面 NOT_RUN；
+  pack B 4 PASS/23 NOT_RUN；官方 UI **26 PASS/0 FAIL**）；其余保持 NOT_RUN。
+- 探针 `run_feature_entry_probe.py`（1419 行，官方 CDP + guest OOPIF 真实 DOM）；checks 37/40；
+  未完成：全量批次被并发打断、pack A 事件/主题/停用 3 项待第二轮、F16 原生菜单/导出落盘未测。
+- 参考包≠逐项通过：登记口径为「真实执行过的行」，未执行不伪造。

@@ -953,6 +953,8 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
         run_task(checks, "F-PB-2 F06 pack B：读取 basic.md 的 KE 信息块原文", task_b_basic)
 
         def task_b_title():
+            # 先把 guest 当前文档重置为台账文档（pack B 命令用 snapshot.relPath），避免写到上一步读取的 basic.md
+            guest_snapshot(PACK_B["slug"], "pack-b-state", REL_LEDGER, DOC_BODY)
             before = R.guest_state_count(cdp, "pack-b-state")
             R.guest_set_input(cdp, PACK_B["slug"], "#title-input", "F 台账标题")
             R.guest_click(cdp, PACK_B["slug"], "#btn-submit-title")
@@ -1097,6 +1099,13 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
             return None
         return all(bool(r) for r in rs)
 
+    def detail(name: str) -> dict:
+        for k, v in c.items():
+            if k.startswith(name):
+                d = v.get("detail")
+                return d if isinstance(d, dict) else {}
+        return {}
+
     def pv(r, ok_desc: str, fail_desc: str = "执行失败（真实失败，见 checks）", not_run: str = "未执行") -> str:
         if r is None:
             return _nr(not_run)
@@ -1126,10 +1135,12 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     add("F06", pv(res("F-PA-2"), "context.snapshot 读到 basic.md 的 KE 信息块/公式原文（只读）"),
         pv(res("F-PB-2"), "context.snapshot 读到 basic.md 的 KE 信息块原文（只读）"),
         pv(res("F-OFF-17"), "官方 UI 打开 basic.md：ke-note/表格/KaTeX 真实渲染"))
-    add("F07", _nr("guest 无写/恢复通道；仅收到 document-saved 事件（见 checks F-PA-6）"),
+    pa6_method = str(detail("F-PA-6").get("eventMethod") or "")
+    pa7_method = str(detail("F-PA-7").get("eventMethod") or "")
+    add("F07", _nr("guest 无写/恢复通道；已收到 document-saved 事件（只读观察；方法=" + (pa6_method or "未执行") + "）"),
         _nr("同左"),
         pv(res("F-OFF-2"), "官方 UI 正文编辑→自动/手动保存→磁盘落盘"))
-    add("F08", _nr("guest 无 history/recovery 协议方法"), _nr("同左"),
+    add("F08", _nr("guest 无 history/recovery 协议方法；仅 document-saved/事件观察（方法=" + (pa6_method or "未执行") + "）"), _nr("同左"),
         pv(res("F-OFF-12"), "官方 UI 历史快照按钮→历史版本面板打开（/api/history/list 真实调用）"))
     add("F09", _nr("guest 网络被 CSP 阻断且无附件协议"), _nr("同左"),
         pv(res("F-OFF-13"), "官方 UI 附件面板打开（/api/attachments/list 真实调用）"))
@@ -1146,7 +1157,7 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     add("F14", pv(res("F-PA-4"), "print.snapshot→真实 PDF（%PDF，隔离目录，>1000B）"),
         _nr("pack B 未声明 print.request 能力（能力面）"),
         _nr("官方 UI 导出的最终落盘路径不受探针隔离 seam 控制，未点击执行（不伪造）"))
-    add("F15", pv(res("F-PA-7"), "官方主题切换→theme-changed 事件到达 guest（只读同步切片）"),
+    add("F15", pv(res("F-PA-7"), "官方主题切换→theme-changed 事件到达 guest（只读同步切片；方法=" + (pa7_method or "未执行") + "）"),
         _nr("pack B 未订阅事件/无设置通道"),
         pv(res("F-OFF-16"), "官方 UI 设置面板：常规/外观/快捷键/维护 + 主题分组"))
     add("F16", _nr("guest 无窗口/菜单通道（设计上不应开放）"), _nr("同左"),
@@ -1336,8 +1347,9 @@ def append_coverage(result: dict, rows: list[dict], stats: dict) -> None:
     if not COVERAGE.exists():
         return
     original = COVERAGE.read_text(encoding="utf-8")
-    if "## 附录 D：台账登记进展" in original:
-        print("COVERAGE 已含台账登记进展小节，跳过追加（避免重复）", flush=True)
+    have_d = "## 附录 D：台账登记进展" in original
+    if have_d and "### D.5" in original:
+        print("COVERAGE 已含 D.5 第二窗口更新，跳过追加", flush=True)
         return
     registered = [r for r in rows if not all(x.startswith("NOT_RUN") for x in (r["packAEntry"], r["packBEntry"], r["officialBaselineResult"]))]
     lines = [
@@ -1383,6 +1395,28 @@ def append_coverage(result: dict, rows: list[dict], stats: dict) -> None:
         "- **F03 只抽样 7 条**（4 快捷键 + 3 工具栏）；42 行其余保持 NOT_RUN，未逐条执行不填写。",
         "",
     ]
+    if have_d:
+        registered2 = len(registered)
+        pass2 = sum(1 for c in result["checks"] if c["pass"])
+        update = [
+            "",
+            "### D.5 第二窗口补充更新（v2，2026-10-19）",
+            "",
+            f"- 探针修复：根因 = v1 在 pack A 事件测试前调用通用 dismiss_overlays 误点工坊对话框「关闭」→ guest 卸载；已移除并做事件触发/停用轮询加固。",
+            f"- 本轮 checks：**{pass2}/{len(result['checks'])} PASS**；CSV 已登记 **{registered2} 行**（本轮更新行见下表）。",
+            "- 事件证据方法如实区分：`real-save` / `real-theme-toggle` 为真实保存链/真实主题切换触发；"
+            "`bridge-window-event(...)` 为兜底（产品真实 window 事件入口 `ke:workshop-document-saved`/`ke:workshop-theme-changed`，"
+            "真实保存链由 F-OFF-2 单独覆盖）。",
+            "",
+            "| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |",
+            "| --- | ---: | ---: | ---: | --- |",
+        ]
+        for d in [f"F{i:02d}" for i in range(1, 17)]:
+            st2 = stats.get(d) or {"registered": 0, "packAPass": 0, "packBPass": 0, "officialPass": 0, "officialFail": 0, "officialNr": 0}
+            update.append(f"| {d} | {st2['registered']}/{F_DOMAIN_TOTAL[d]} | {st2['packAPass']} | {st2['packBPass']} | {st2['officialPass']}/{st2['officialFail']}/{st2['officialNr']} |")
+        update.append("")
+        COVERAGE.write_text(original.rstrip("\n") + "\n" + "\n".join(update), encoding="utf-8")
+        return
     COVERAGE.write_text(original.rstrip("\n") + "\n" + "\n".join(lines), encoding="utf-8")
 
 

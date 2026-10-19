@@ -19,6 +19,8 @@ OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 # 部分通过但缺口已逐条记录（PASS_WITH_FINDINGS，不等同 FAIL、也不等同全通过）
 PARTIAL_EVIDENCE = {
     "T26-W07-boot-results.json": 4,
+    "T26-W07-bridge-results.json": 9,
+    "T26-F-ledger-results.json": 3,
 }
 
 KNOWN_FAILURES = {

@@ -954,3 +954,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - pack A（读）/ pack B（写）参考 UI + 构建签名工具 + 产品 W **24/24**；私钥不入仓/dist gitignore。
   证据：`evidence/P5-T26-G7-reference-packs.md`。
 - F01–F16 逐项台账仍 0/130（参考包只是载体）；SDK 事件订阅/当前文档发现通道仍缺。
+
+## P6 进度（W07 桥接/sidecar/原生恢复 + F 台账 v1，2026-10-19）
+
+- W07 bridge（5945aaf/f87f243）：39 checks 30 PASS/9 真实缺口（sidecar 自动重启/重启恢复 OK；
+  自动重启后上下文丢失 404、超时 E_INTERNAL、可观测性缺口）；证据 `P5-T26-W07-fault-bridge.md`。
+- F 台账 v1（4528897）：`run_feature_entry_probe.py` + CSV 登记 27/130 行（官方 UI 26 PASS）；
+  第二轮待跑（pack A 事件/主题/停用修复）；不宣称 F01–F16 达成。

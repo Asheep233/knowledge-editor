@@ -238,3 +238,15 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   事件/命令落盘/错误/停用，guest 真实 DOM 操作）。
 - **仍剩**：F01–F16 逐项台账 0/130 未登记（参考包≠逐项通过）；SDK 无事件订阅 API、协议无当前文档
   relPath 发现通道；打印 renderer env 门控、页数 null 等既有缺口未变。
+
+## 追加（2026-10-19 后段 · W07 桥接 + F 台账 v1）
+
+- `5945aaf` + `f87f243` **W07 桥接/sidecar/原生恢复**：39 checks **30 PASS / 9 真实缺口**（sidecar 2.2s
+  自动重启与用户重启恢复 PASS；缺口：自动重启后新后端上下文丢失→`E_SNAPSHOT` 404 桥接不自动恢复、
+  桥接超时映射 `E_INTERNAL` 而非 `E_TIMEOUT`、崩溃 UI/session/stale pid 可观测性、启动 recover 无 UI
+  提示、corrupt-no-fallback 不可自动修复）；证据 `P5-T26-W07-fault-bridge.md`。
+- `4528897` **F01–F16 逐项台账 v1**：`run_feature_entry_probe.py`（官方 CDP + guest OOPIF 真实 DOM）；
+  `feature-baseline.csv` 登记 **27/130 行**（官方 UI 26 PASS、pack A 3 PASS/1 FAIL/23 能力面 NOT_RUN、
+  pack B 4 PASS/23 NOT_RUN）；未完成：全量批次被打断、pack A 事件/主题/停用 3 项待第二轮、
+  F16 原生菜单/导出落盘未测；**不宣称 F01–F16 覆盖达成**。
+- 矩阵：新增 W07 bridge 与 F ledger 行（`PASS_WITH_FINDINGS` 显式标注缺口数），`--check` 待本轮刷新。

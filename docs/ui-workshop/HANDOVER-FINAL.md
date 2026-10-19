@@ -410,3 +410,8 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - **本文与** `reports/FINAL-DELIVERY-STATUS.md`、`reports/milestone-assessment.md`、
   `reports/T26-acceptance-status.md`、`validation-matrix.csv` **数字口径一致**；矛盾处以证据/
   `P6-final-verification.md` 与矩阵为准。
+
+## 交付一致性检查（2026-10-19）
+
+- `docs/ui-workshop/tools/verify_delivery_consistency.py`：只读 8 项检查（矩阵门禁/证据引用/私钥/未推送/
+  工作树/台账可解析/里程碑口径），`--write` 落 evidence；最近一次 **8/8 PASS**。

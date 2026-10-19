@@ -161,3 +161,14 @@ python docs/ui-workshop/tools/run_t27_gate_check.py                    # 就绪�
 **一致性说明**：本文与 `HANDOVER-FINAL.md`、`milestone-assessment.md`、`T26-acceptance-status.md`、
 `validation-matrix.csv` 的数字口径一致（矩阵 59 行、frontend 1931/143 files、backend 847、cargo 67）；
 矩阵中 W07 boot/bridge 与 F 台账为 `PASS_WITH_FINDINGS`（显式缺口数），未按 FAIL 阻断也未写成全通过。
+
+## 9. 交付一致性自动检查（可复跑）
+
+```bash
+python3 docs/ui-workshop/tools/verify_delivery_consistency.py        # 只读，8 项检查
+python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 evidence/T26-delivery-consistency.json
+```
+
+8 项检查：矩阵 --check PASS、所有 results JSON 已被矩阵收录、交付文档 evidence 引用存在、仓库无测试私钥、
+分支本地未推送（无 upstream）、工作树干净、台账 CSV 可解析、最终状态声明 `EXPERIMENTAL_TRUSTED_PACKS`
+且不声明更高。**最近一次：8/8 PASS**（evidence/T26-delivery-consistency.json）。

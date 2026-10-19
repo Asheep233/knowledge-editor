@@ -231,3 +231,12 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 - `docs/ui-workshop/WORKSHOP-INTEGRATION-GUIDE.md`：面向 host 开发者 + guest 包作者的完整接口文档
   （manifest/能力模型/协议线/方法/事件/21 命令白名单/安装信任生命周期/宿主接入点/安全模型/验证）；
 - 目录索引 `docs/ui-workshop/README.md`。
+
+## 17. 接口级交付定位与接口维护（2026-10-19 夜）
+
+- UI 工坊按主理人要求**保留在接口级**：宿主 UI 入口默认关闭（`VITE_KE_WORKSHOP` 未开则不渲染），
+  不把工坊面板作为产品默认前端界面；接口（协议/SDK/manifest/命令白名单/生命周期）是交付主体。
+- 接口维护规则：`WORKSHOP-INTERFACE-POLICY.md`（兼容性 + **每次更新的维护清单 DoD**）；
+  接口变更记录：`WORKSHOP-INTERFACE-CHANGELOG.md`（当前 protocol v1 / sdk v0.1.0 / pack apiVersion 1）。
+- 自动守卫：`verify_delivery_consistency.py` 新增 **DC-9 接口维护检查**（策略/变更记录/SDK 版本一致/
+  Guide 引用/UI 入口默认关闭）。

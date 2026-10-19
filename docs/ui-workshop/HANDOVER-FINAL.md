@@ -499,3 +499,10 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 - 新增 `docs/ui-workshop/WORKSHOP-INTEGRATION-GUIDE.md`：host/guest/SDK/协议/能力模型/21 条命令白名单/
   安装信任生命周期/宿主前端接入点/安全模型/验证命令/已知限制；目录索引 `docs/ui-workshop/README.md`。
+
+## 接口级交付定位（2026-10-19 夜）
+
+- 按主理人要求：UI 工坊**保留在接口级**，宿主 UI 入口默认关闭、不作为产品默认界面交付；
+- 新增 `WORKSHOP-INTERFACE-POLICY.md`（每次更新必须维护接口的 DoD 清单）与
+  `WORKSHOP-INTERFACE-CHANGELOG.md`（变更记录，当前 protocol v1 / sdk v0.1.0 / pack apiVersion 1）；
+- `verify_delivery_consistency.py` 增加 DC-9 接口维护检查。

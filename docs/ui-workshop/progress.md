@@ -1082,3 +1082,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 ## P6 接口文档（2026-10-19 夜）
 
 - 新增 `WORKSHOP-INTEGRATION-GUIDE.md`（host/guest/SDK/协议/命令白名单/生命周期/接入点/验证）与目录索引 `README.md`。
+
+## P6 接口级定位（2026-10-19 夜）
+
+- 工坊保留在接口级：宿主 UI 入口默认关闭；新增 `WORKSHOP-INTERFACE-POLICY.md`（维护 DoD）+
+  `WORKSHOP-INTERFACE-CHANGELOG.md`；一致性检查增加 DC-9（接口维护守卫）。

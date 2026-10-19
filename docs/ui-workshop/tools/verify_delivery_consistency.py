@@ -94,6 +94,46 @@ def main() -> int:
     check("DC-8 最终状态声明 EXPERIMENTAL_TRUSTED_PACKS 且不声明更高",
           "EXPERIMENTAL_TRUSTED_PACKS" in final_txt and "不声明" in final_txt, None)
 
+    # 9) 接口维护守卫（接口级交付 + 每次更新维护接口）
+    import re as _re
+    policy = DOCS / "WORKSHOP-INTERFACE-POLICY.md"
+    changelog = DOCS / "WORKSHOP-INTERFACE-CHANGELOG.md"
+    guide = DOCS / "WORKSHOP-INTEGRATION-GUIDE.md"
+    types_ts = REPO / "frontend" / "src" / "core" / "protocol" / "types.ts"
+    manifest_ts = REPO / "frontend" / "src" / "core" / "packs" / "manifest.ts"
+    sdk_src = DOCS / "sdk" / "src" / "index.ts"
+    sdk_pkg = DOCS / "sdk" / "package.json"
+    app_tsx = REPO / "frontend" / "src" / "components" / "workshop" / "WorkshopEntry.tsx"
+    app_shell = REPO / "frontend" / "src" / "App.tsx"
+    try:
+        proto = _re.search(r"PROTOCOL_VERSION\s*=\s*(\d+)", types_ts.read_text(encoding="utf-8")).group(1)
+        api = _re.search(r"PACK_API_VERSION\s*=\s*(\d+)", manifest_ts.read_text(encoding="utf-8")).group(1)
+        sdk_src_ver = _re.search(r"SDK_VERSION\s*=\s*'([^']+)'", sdk_src.read_text(encoding="utf-8")).group(1)
+        sdk_pkg_ver = str(json.loads(sdk_pkg.read_text(encoding="utf-8")).get("version", ""))
+        changelog_text = changelog.read_text(encoding="utf-8") if changelog.exists() else ""
+        policy_text = policy.read_text(encoding="utf-8") if policy.exists() else ""
+        guide_text = guide.read_text(encoding="utf-8") if guide.exists() else ""
+        shell_text = app_shell.read_text(encoding="utf-8") if app_shell.exists() else ""
+        detail = {
+            "protocol": proto, "packApiVersion": api, "sdkSource": sdk_src_ver, "sdkPackage": sdk_pkg_ver,
+            "policyExists": policy.exists(), "changelogExists": changelog.exists(),
+            "sdkVersionConsistent": sdk_src_ver == sdk_pkg_ver,
+            "changelogHasCurrentVersions": (f"protocol v{proto}" in changelog_text
+                                            and f"sdk v{sdk_src_ver}" in changelog_text
+                                            and f"pack apiVersion {api}" in changelog_text),
+            "guideReferencesPolicyAndChangelog": ("WORKSHOP-INTERFACE-POLICY.md" in guide_text
+                                                  and "WORKSHOP-INTERFACE-CHANGELOG.md" in guide_text),
+            "policyHasMaintenanceChecklist": ("每次更新" in policy_text and "Definition of Done" in policy_text),
+            # 接口级交付：工坊 UI 入口必须仍由 VITE 显式开关控制（默认不渲染）
+            "uiEntryFlagGated": "VITE_KE_WORKSHOP" in shell_text and "WorkshopEntry" in shell_text,
+        }
+        ok = (detail["policyExists"] and detail["changelogExists"] and detail["sdkVersionConsistent"]
+              and detail["changelogHasCurrentVersions"] and detail["guideReferencesPolicyAndChangelog"]
+              and detail["policyHasMaintenanceChecklist"] and detail["uiEntryFlagGated"])
+        check("DC-9 接口维护检查（接口级交付/版本一致/CHANGELOG/维护清单/UI 默认关闭）", ok, detail)
+    except Exception as exc:  # 缺文件/解析失败 → 如实失败
+        check("DC-9 接口维护检查（接口级交付/版本一致/CHANGELOG/维护清单/UI 默认关闭）", False, {"error": str(exc)})
+
     passed = sum(1 for c in checks if c["pass"])
     summary = {"generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "head": head, "branch": branch,
                "checks": checks, "passCount": passed, "total": len(checks), "featureBaselineStats": stats}

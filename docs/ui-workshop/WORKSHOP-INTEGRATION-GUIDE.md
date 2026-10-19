@@ -2,6 +2,8 @@
 
 > 适用：在 AstraNota 宿主里**接入/扩展 UI 工坊**，或开发一个 **guest UI 包**的开发者。
 > 本文对应分支 `feat/ui-workshop`（协议版本 `PROTOCOL_VERSION = 1`，SDK `0.1.0`，包 API `apiVersion = 1`）。
+> **定位：接口级交付**——宿主 UI 入口默认关闭、不是产品默认界面；接口维护规则见
+> `WORKSHOP-INTERFACE-POLICY.md`，变更记录见 `WORKSHOP-INTERFACE-CHANGELOG.md`。
 > 接口以代码为唯一事实源；关键实现位置在文末「参考实现与证据」。
 > 平台边界：宿主产品是 Windows Tauri v2 + WebView2；Linux 只能做构建/单测，**不能**作为 Windows W 证据。
 

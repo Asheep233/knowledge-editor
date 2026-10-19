@@ -942,3 +942,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - F01–F16 审计（fdac4ea，0 已实现/3 部分/13 未实现，G1/G2 结构阻塞已闭环）；
 - T27 I 门禁：云端执行交接单（582f386），待主理人 VM 执行后登记 I 证据。
 - 矩阵 53 行 --check PASS。
+
+## P6 进度（G3/G4 打印+事件闭环，2026-10-19）
+
+- print.snapshot 真实打印（PDF 真实/不覆盖/错误如实）+ 3 类宿主事件到达 guest；U+W 18/18 PASS。
+  已知限制：打印阻塞主线程→心跳超时放宽 8s；PDF 测试输出诊断覆盖；公式 NodeView 打印为 LaTeX。
+  证据：`evidence/P5-T26-G3G4-print-events.md`。

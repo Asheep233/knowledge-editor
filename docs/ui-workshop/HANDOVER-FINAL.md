@@ -222,3 +222,11 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `reports/T27-CLOUD-EXECUTION-HANDOFF.md`：云端 Codex 执行单（环境/构建安装包/U1–U6/证据格式/红线）；
 - `reports/T27-ARTIFACTS.md`：本地 28 个安装包文件名/大小/sha256（含候选 `AstraNota_1.2.18_x64-setup.exe`）；
 - `reports/T27-I-GATE-RUNBOOK.md`：逐步执行手册。I 门禁仍为 **NOT_RUN**，待云端 VM 执行后由 Lead 登记。
+
+## 追加（2026-10-19 后段 · G3/G4）
+
+- `50621cc` **G3/G4**：print.snapshot 接真实打印管线（真实 PDF/不覆盖/错误如实/pages=null 不伪造）；
+  宿主事件 document-saved（revision 与后端一致）/context-changed/theme-changed 到达 guest；
+  单测 + 产品 W **18/18 PASS**（首轮 14/18 的 4 个失败与修复如实记录）。
+- 已知限制：打印期间主线程阻塞 → guest 心跳超时放宽到 8s（彻底方案需打印移出主线程）；
+  PDF 测试输出用诊断覆盖定向隔离目录（生产路径不变）；公式 NodeView 打印为线性 LaTeX（A2 同源）。

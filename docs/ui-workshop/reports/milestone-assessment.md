@@ -81,3 +81,14 @@ ACCEPTANCE A 节：
 - 验证：前端 1834 passed（+15 单测）、cargo 51 passed、产品 W **14/14**（snapshot 正文=磁盘、
   write 落盘 revision 递增、旧 revision conflict 且不覆盖）。
 - **F01–F16 整体仍未逐项登记**（0/121），G1/G2 只消除 F07/F12 的结构性阻塞；不改变 0 项已实现口径。
+
+## 3d. G3/G4 缺口闭环（2026-10-19）
+
+- G3 print.snapshot：真实打印管线（PDF 文件存在/大小/%PDF 头；不同 token 不覆盖；非法/不存在文档如实
+  错误；pages=null 不伪造）；G4 宿主事件：document-saved（revision 与后端 context.snapshot 一致）、
+  context-changed、theme-changed 均到达 guest；宿主三类 window 事件全链路真实触发。
+- 验证：单测 + 产品 W **18/18 PASS**（首轮 14/18 → 修复后 18/18，失败与修复如实记录）。
+- 已知限制：**打印期间 Rust PrintToPdf 阻塞主线程 message pump → guest 心跳超时临时放宽到 8s**
+  （更彻底需移出主线程）；PDF 输出目录测试用诊断覆盖（生产仍 appDataDir）；公式 React NodeView 在
+  打印 HTML 为线性 LaTeX（与 A2 既有来源一致）。
+- F01–F16 逐项台账仍未登记（G3/G4 关闭不等于覆盖达成）。

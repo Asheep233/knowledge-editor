@@ -73,6 +73,7 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T26-W04-sdk-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，外部脚手架→签名→安装→启用）", "python tools/run_t26_w04_probe.py"),
     "T26-W04-sdk-dist-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，发布形态 SDK 握手/snapshot）", "python tools/run_t26_w04_sdk_probe.py"),
     "T26-W02-form-results.json": ("T26/W02", "W", "Windows 产品壳（隔离构建，表单交接 title/tags）", "python tools/run_t26_form_probe.py"),
+    "T26-G3G4-results.json": ("T26/G3G4", "W", "Windows 产品壳（隔离构建，真实打印 + 宿主事件）", "python tools/run_t26_guest_g3g4_probe.py"),
     "T26-G1G2-results.json": ("T26/G1G2", "W", "Windows 产品壳（隔离构建，guest 内容读/真实写）", "python tools/run_t26_guest_io_probe.py"),
     "T26-W07-boot-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，boot crash/连续启动失败；含 4 缺口）", "python tools/run_t26_boot_crash_probe.py"),
     "T26-W05-protocol-results.json": ("T26/W05", "W", "Windows 产品壳（隔离构建，协议线握手/snapshot）", "python tools/run_t26_protocol_probe.py"),

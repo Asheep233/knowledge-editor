@@ -488,3 +488,9 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   未完成：I 门禁（环境）、F 全量 guest 覆盖（能力面）、W07 三项已定稿设计限制。
 - 恢复路径：`reports/cloud-handoff/`（v2，完整 bundle + 修正版脚本 + 39 tests + 签名 test-pack + README）
   在有 Windows 环境时执行回传即可复评。
+
+## 推送授权与前端接入验证（2026-10-19 夜）
+
+- 主理人授权推送 `feat/ui-workshop` 到 origin（仅此分支；不推 master、不创建 Release）。
+- 交接受众扩展：另一前端 UI Agent 使用 `reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` 做完整接入验证
+  （Linux 侧完整验证 + 可选 Windows 产品 W；I 门禁仍按 `DECISION-T27-I-gate-blocked.md` 口径 NOT_RUN）。

@@ -1073,3 +1073,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 主理人确认无 Windows VM → T27 I 门禁 NOT_RUN/BLOCKED（决策 `DECISION-T27-I-gate-blocked.md`）；
   **最终交付状态 `EXPERIMENTAL_TRUSTED_PACKS`**（不声明更高）；矩阵 63 行 PASS、一致性 8/8。
 - 恢复路径：`reports/cloud-handoff/` v2 在 Windows 环境执行并回传后复评。
+
+## P6 推送授权（2026-10-19 夜）
+
+- 主理人授权推送 `feat/ui-workshop`（仅分支；不推 master/不创建 Release）；新增
+  `reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` 供另一前端 UI Agent 做完整接入验证。

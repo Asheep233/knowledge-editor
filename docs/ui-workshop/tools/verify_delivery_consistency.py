@@ -59,11 +59,18 @@ def main() -> int:
     key_files = [l for l in tracked.splitlines() if re.search(r"\.pem$|test-signing-key", l)]
     check("DC-4 仓库无测试私钥/PEM 入仓", not key_files, key_files[:5])
 
-    # 5) 分支本地、未推送（无 upstream）
+    # 5) 推送状态：未推送（本地）或主理人授权后已推送且远端 == HEAD；不允许远端与本地不一致
     upstream = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
     head = git("rev-parse", "--short", "HEAD")
-    check("DC-5 分支本地未推送（无 upstream）", upstream == "", {"branch": branch, "head": head, "upstream": upstream or None})
+    full_head = git("rev-parse", "HEAD")
+    remote_sha = git("ls-remote", "origin", f"refs/heads/{branch}").split()
+    remote_sha = remote_sha[0] if remote_sha else ""
+    if not remote_sha:
+        check("DC-5 推送状态（本地未推送，允许）", True, {"branch": branch, "head": head, "upstream": upstream or None})
+    else:
+        check("DC-5 推送状态（已推送且远端 == HEAD）", remote_sha == full_head,
+              {"branch": branch, "head": head, "remote": remote_sha[:12], "upstream": upstream or None})
 
     # 6) 工作树干净
     status_lines = [l for l in git("status", "--porcelain").splitlines() if "T26-delivery-consistency.json" not in l]

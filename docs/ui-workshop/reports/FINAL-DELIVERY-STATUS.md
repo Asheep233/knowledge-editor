@@ -217,3 +217,9 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 - 未完成（环境阻塞）：T27 **I 类**安装/升级/回滚证据；F01–F16 guest 原生入口整体覆盖（部分域无受控协议）；
   W07 三项已定稿设计限制（重启/卸载可恢复）；
 - 恢复路径：获得 Windows 环境后使用 `reports/cloud-handoff/`（v2）执行并回传 → 复评里程碑。
+
+## 15. 推送授权（2026-10-19 夜）
+
+- 主理人明确授权推送分支：`feat/ui-workshop` → `origin`（GitHub `Asheep233/knowledge-editor`）。
+- **范围**：仅推送该分支；**不推送 master**、**不创建 Release/标签**、不改动其它分支。
+- 另一 Agent 进行前端 UI 接入与完整验证的 Runbook：`reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md`。

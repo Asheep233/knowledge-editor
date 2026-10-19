@@ -3,6 +3,8 @@ node_modules/
 node_modules.ghostbak/
 dist/
 dist-build/
+# UI 工坊参考包构建产物（含测试自签私钥 .test-signing-key.pem，禁止入仓）
+docs/ui-workshop/packs/dist/
 .esbuild/
 *.pyc
 **/target/

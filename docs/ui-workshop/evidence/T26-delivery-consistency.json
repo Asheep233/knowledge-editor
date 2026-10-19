@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T17:24:08+0800",
-  "head": "4116b7f",
+  "generatedAt": "2026-10-19T17:24:34+0800",
+  "head": "a89a8ce",
   "branch": "feat/ui-workshop",
   "checks": [
     {
@@ -18,12 +18,10 @@
     },
     {
       "name": "DC-3 交付文档 evidence 引用文件存在",
-      "pass": false,
+      "pass": true,
       "detail": {
         "refs": 32,
-        "missing": [
-          "P5-T26-A7-isolation-results.json"
-        ]
+        "missing": []
       }
     },
     {
@@ -36,16 +34,14 @@
       "pass": true,
       "detail": {
         "branch": "feat/ui-workshop",
-        "head": "4116b7f",
+        "head": "a89a8ce",
         "upstream": null
       }
     },
     {
       "name": "DC-6 工作树干净",
-      "pass": false,
-      "detail": [
-        "?? docs/ui-workshop/tools/verify_delivery_consistency.py"
-      ]
+      "pass": true,
+      "detail": []
     },
     {
       "name": "DC-7 台账 CSV 可解析且含行",
@@ -65,7 +61,7 @@
       "detail": null
     }
   ],
-  "passCount": 6,
+  "passCount": 8,
   "total": 8,
   "featureBaselineStats": {
     "rows": 130,

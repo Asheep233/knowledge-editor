@@ -102,6 +102,15 @@ export const KeBlockquote = Blockquote.extend({
       .join('')
   },
   addKeyboardShortcuts() {
+      // F03 审计缺陷（2026-10-19）：`Blockquote.extend()` 重写快捷键表时**丢失了上游
+      // `@tiptap/extension-blockquote` 的 `Mod-Shift-b`（Ctrl+Shift+B 切换引用）**；
+      // 而 `editor/index.ts` 又用 `blockquote: false` 关闭了内置扩展 → 该快捷键完全失效
+      //（工具栏「引用」按钮可用，键盘不可用）。修复：继承上游快捷键表，仅覆盖本扩展有意
+      // 接管的 Backspace（容器内 atom 之后的空段落），其余上游行为保持不变。
+      // this.parent 为 Blockquote 上游配置；极端情况下缺失时显式兜底 Mod-Shift-b。
+      const parentShortcuts = this.parent?.() ?? {
+        'Mod-Shift-b': () => this.editor.commands.toggleBlockquote(),
+      }
       const deleteEmptyAfterAtom = (): boolean => {
         const { state, view } = this.editor
         const sel = state.selection
@@ -128,7 +137,8 @@ export const KeBlockquote = Blockquote.extend({
         return false
       }
 
-      return { Backspace: deleteEmptyAfterAtom }
+      // 保留上游快捷键（Mod-Shift-b 等）；Backspace 仍由本扩展修复逻辑接管
+      return { ...parentShortcuts, Backspace: deleteEmptyAfterAtom }
     },
 })
 

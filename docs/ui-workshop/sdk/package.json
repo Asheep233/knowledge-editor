@@ -1,0 +1,16 @@
+{
+  "name": "@astranota/ui-workshop-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AstraNota UI 创意工坊 guest SDK（外部开发者最小可用发布形态）",
+  "main": "./dist/guest-sdk.mjs",
+  "exports": {
+    ".": "./dist/guest-sdk.mjs",
+    "./guest-sdk.js": "./dist/guest-sdk.js"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "self-test": "node build.mjs && node self-test.mjs"
+  }
+}

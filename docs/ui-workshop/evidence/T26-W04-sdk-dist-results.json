@@ -1,0 +1,111 @@
+{
+  "generated_at": "2026-10-19T08:40:52+0800",
+  "scenario": "T26 W04 SDK 发布形态（autoConnect 握手/snapshot）",
+  "checks": [
+    {
+      "name": "W-T26-W04S-1 安装使用发布 SDK 的签名包",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368440293591375 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-W04S-2 产品 host 协议线已连接（Dispatcher/Broker 启动）",
+      "pass": true,
+      "detail": {
+        "diag": {
+          "start": {
+            "blocked": false,
+            "capabilities": [
+              "ui.shell",
+              "context.read"
+            ],
+            "hasEntry": true,
+            "hasSession": true
+          },
+          "log": [
+            "starting",
+            "active",
+            "active"
+          ],
+          "results": {
+            "phase": "sdk-guest-done",
+            "handshake": {
+              "ok": true,
+              "protocolVersion": 1,
+              "hostVersion": "product-guest-host",
+              "acceptedFeatures": [
+                "ui.shell",
+                "context.read"
+              ],
+              "contextId": "ke-default",
+              "epoch": 1
+            },
+            "snapshot": {
+              "relPath": "Articles/a.md",
+              "revision": 0,
+              "diskHash": "c9c4d49e164aaab51ac8b4f0eb48659bc9aa7be44ac41b43e232ca40190df9bc"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "W-T26-W04S-3 发布 SDK autoConnect 握手完成（acceptedFeatures）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "protocolVersion": 1,
+        "hostVersion": "product-guest-host",
+        "acceptedFeatures": [
+          "ui.shell",
+          "context.read"
+        ],
+        "contextId": "ke-default",
+        "epoch": 1
+      }
+    },
+    {
+      "name": "W-T26-W04S-4 发布 SDK 经 Broker 获得真实 context.snapshot",
+      "pass": true,
+      "detail": {
+        "relPath": "Articles/a.md",
+        "revision": 0,
+        "diskHash": "c9c4d49e164aaab51ac8b4f0eb48659bc9aa7be44ac41b43e232ca40190df9bc"
+      }
+    },
+    {
+      "name": "W-T26-W04S-5 会话状态 active（能力子集）",
+      "pass": true,
+      "detail": {
+        "capabilities": [
+          "ui.shell",
+          "context.read"
+        ],
+        "lastError": null,
+        "packId": "com.demo.w04sdk",
+        "state": "active",
+        "updatedAt": "SystemTime { intervals: 134368440312163364 }"
+      }
+    },
+    {
+      "name": "W-T26-W04S-6 主进程存活",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-W04S-7 用户实例未受影响（未运行 → N/A）",
+      "pass": true,
+      "detail": {
+        "user_pid": "(not running)"
+      }
+    }
+  ],
+  "pass_count": 7,
+  "total": 7
+}

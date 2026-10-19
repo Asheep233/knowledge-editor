@@ -41,7 +41,7 @@ ACCEPTANCE A 节：
 | 真实人工系统 IME / 多 DPI | NOT_RUN | 需人工中文输入法与多显示器实测 |
 | W08 覆盖升级/降级/兼容（I 证据） | NOT_RUN | 计划与命令已备：`T27-installer-upgrade-plan.md` |
 | W01 ZIP 离线包/ZIP bomb/多资源完整性 | 部分（U+W 8/8） | zip staging/安装/zip-slip/条目数/总量防护已实现并 W 验证；**I 门禁未执行**、更深炸弹/嵌套 zip 未覆盖 |
-| W02 表单交接（IME/title/tags/公式草稿跨 UI） | 部分（Core U 6/6 + 产品 title W 7/7） | guest→Broker→宿主后端原子写 title 已 W 验证；未知命令拒绝；**tags/公式/重命名草稿、迟到命令、候选启动失败、提交后 UI 同步未做** |
+| W02 表单交接（IME/title/tags/公式草稿跨 UI） | 部分（Core U 6/6 + 产品 title/tags W 8/8） | guest→Broker→宿主后端原子写 title+tags 已 W 验证；未知命令拒绝；**公式/重命名草稿、迟到命令、候选启动失败、提交后 UI 同步、IME 交接未做** |
 | W03 包与私有状态回滚 | NOT_RUN | Core 有 store/recover，U 级；I 门禁未做 |
 | W04 SDK 外部独立开发模板/CLI | NOT_RUN | 未提供外部开发模板与第二套 UI 全任务 |
 | W05 协议 snapshot/subscribe/断连重放 | 部分（握手+snapshot W 7/7） | 产品 host 真实 Broker/Dispatcher + SDK GuestClient 握手/snapshot 已验证；subscribe/断连/慢包/超时 queryResult 未做 |

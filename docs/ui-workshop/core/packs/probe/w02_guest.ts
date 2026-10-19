@@ -45,6 +45,14 @@ window.addEventListener('message', (e: MessageEvent) => {
         out.setTitleError = String((e as Error)?.message ?? e)
       }
       try {
+        out.setTags = await client.request('command.invoke', {
+          name: 'article.set-tags',
+          args: { relPath: 'Articles/a.md', tags: ['w02', '交接'] },
+        })
+      } catch (e) {
+        out.setTagsError = String((e as Error)?.message ?? e)
+      }
+      try {
         out.forbidden = await client.request('command.invoke', {
           name: 'article.delete',
           args: { relPath: 'Articles/a.md' },

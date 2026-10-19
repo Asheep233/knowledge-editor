@@ -191,6 +191,10 @@ def main() -> int:
         check("W-T26-W02-4 宿主后端原子写生效（frontmatter title 已更新）",
               "W02 交接标题" in article_text and "原标题" not in article_text.split("---")[1] if article_text.count("---") >= 2 else False,
               {"head": article_text[:160]})
+        set_tags = (results or {}).get("setTags") or {}
+        check("W-T26-W02-4b guest 提交 tags 成功且后端落盘",
+              isinstance(set_tags, dict) and set_tags.get("ok") is True and "w02" in article.read_text(encoding="utf-8", errors="replace"),
+              set_tags)
         check("W-T26-W02-5 未知命令被拒绝（E_COMMAND_NOT_ALLOWED）",
               "E_COMMAND_NOT_ALLOWED" in str((results or {}).get("forbiddenError") or ""),
               (results or {}).get("forbiddenError"))

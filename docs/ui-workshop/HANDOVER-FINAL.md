@@ -80,7 +80,7 @@
 
 ## 追加证据（2026-10-19 会话后段）
 
-- W02 产品 title 交接 **W 7/7**（`P5-T26-W02-form.md`）：guest → Broker command.invoke → 宿主
+- W02 产品 title/tags 交接 **W 8/8**（`P5-T26-W02-form.md`）：guest → Broker command.invoke → 宿主
   后端原子写 frontmatter；未知命令拒绝；命令名须符合 manifest 小写 schema（`article.set-title`）。
 - W05 协议线 W 7/7（握手/snapshot）、W06 边界 W 8/8、W07 无限循环 W 8/8、W09 工坊口径 W 6/6、
   W01 ZIP W 8/8；回归基线见 `P6-final-verification`。

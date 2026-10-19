@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T08:22:16+0800",
+  "generated_at": "2026-10-19T08:22:51+0800",
   "scenario": "T26 W02 表单交接产品 W（command.invoke title + 未知命令拒绝）",
   "checks": [
     {
@@ -10,7 +10,7 @@
         "value": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368429339395348 }"
+          "updatedAt": "SystemTime { intervals: 134368429686255046 }"
         }
       }
     },
@@ -40,7 +40,22 @@
       "name": "W-T26-W02-4 宿主后端原子写生效（frontmatter title 已更新）",
       "pass": true,
       "detail": {
-        "head": "---\ntitle: W02 交接标题\n---\n\nW02 form\n"
+        "head": "---\ntitle: W02 交接标题\ntags:\n  - w02\n  - 交接\n---\n\nW02 form\n"
+      }
+    },
+    {
+      "name": "W-T26-W02-4b guest 提交 tags 成功且后端落盘",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "relPath": "Articles/a.md",
+          "title": "W02 交接标题",
+          "tags": [
+            "w02",
+            "交接"
+          ]
+        }
       }
     },
     {
@@ -61,7 +76,7 @@
           "lastError": null,
           "packId": "com.probe.t26w02",
           "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368429342325635 }"
+          "updatedAt": "SystemTime { intervals: 134368429689141085 }"
         }
       }
     },
@@ -73,6 +88,6 @@
       }
     }
   ],
-  "pass_count": 7,
-  "total": 7
+  "pass_count": 8,
+  "total": 8
 }

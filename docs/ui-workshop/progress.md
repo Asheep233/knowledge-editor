@@ -858,3 +858,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   `/api/articles/{rel}/meta` 原子写；guest SDK 经 Broker command.invoke 提交 title，未知命令
   E_COMMAND_NOT_ALLOWED；产品 W **7/7 PASS**。证据：`evidence/P5-T26-W02-form.md`。
 - W02 剩余：tags/公式/重命名草稿、迟到命令、候选启动失败、提交后编辑器 UI 同步、IME 组字交接。
+
+## P6/T26 进度（W02 title+tags 交接 W 8/8，2026-10-19）
+
+- guest 经 Broker command.invoke 提交 title 与 tags，宿主后端 `/meta` 原子写，frontmatter 同时更新
+  （`title: W02 交接标题` + `tags: [w02, 交接]`）；未知命令拒绝；产品 W **8/8 PASS**。
+  证据：`evidence/P5-T26-W02-form.md`（guest 源码/探针已更新）。

@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-10-19T14:00:54+0800",
-  "task": "task-10 + task-12 / W07 扩展：桥接超时 + sidecar 故障 + 原生 Rust 恢复（修复后复测，隔离产品构建 W 证据）",
+  "generated_at": "2026-10-19T14:29:42+0800",
+  "task": "task-10 + task-12 + task-14 / W07 扩展：桥接超时 + sidecar 故障 + 原生 Rust 恢复（多轮修复后复测，隔离产品构建 W 证据）",
   "evidence_type": "W（真实产品隔离构建进程/协议/数据行为；故障注入方式见各场景 metrics）",
   "environment": {
-    "generated_at": "2026-10-19T14:00:54+0800",
+    "generated_at": "2026-10-19T14:29:42+0800",
     "platform": "Windows-11-10.0.26200-SP0",
     "windows_version": "10.0.26200",
     "python": "3.14.7",
     "repo": "F:\\Work\\KE Project\\knowledge-editor",
     "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-    "exe_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-    "exe_mtime": "2026-10-19T13:59:24",
-    "exe_size": 15891968,
+    "exe_sha256": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4",
+    "exe_mtime": "2026-10-19T14:28:21",
+    "exe_size": 15907328,
     "isolated_identifier": "com.astranota.uiws.e2e",
     "pack_root": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs",
     "cdp_port": 10418,
@@ -27,7 +27,7 @@
       "8001": "free",
       "8002": "free"
     },
-    "git_head": "443e0a69cc90e7ba13a2d2f9d4683bde46261e6a",
+    "git_head": "deed2a7f4bc04632046070961684a9b8001a4664",
     "git_branch": "feat/ui-workshop"
   },
   "build_history": [
@@ -35,6 +35,12 @@
       "exe_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
       "exe_mtime": "2026-10-19T10:33:12",
       "exe_size": 15892480,
+      "note": "上一轮证据所用测试构建（已被新构建替换；旧场景 checks 保留其历史值）"
+    },
+    {
+      "exe_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
+      "exe_mtime": "2026-10-19T13:59:24",
+      "exe_size": 15891968,
       "note": "上一轮证据所用测试构建（已被新构建替换；旧场景 checks 保留其历史值）"
     }
   ],
@@ -61,29 +67,47 @@
         "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe"
       },
       {
-        "window": "v3（task-12 修复后复测，Lead GO）",
+        "window": "v3（task-12 B-6/A-10 修复后复测）",
         "when": "2026-10-19T14:00–14:04",
         "scenarios": [
           "B",
           "A"
         ],
         "build_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-        "note": "task-11 修复（commit 443e0a6）后由 Lead 重建测试 exe；首次 B 复测因探针侧 CDP 导航竞态丢失 guest 消息收集器导致 B-10 误判，修正探针（enable_guest 前重装收集器）后重跑 B；A 复测一次通过"
+        "note": "task-11（443e0a6）修复后 Lead 重建；B-6/A-10 FAIL→PASS；B 首测因探针收集器竞态误判后修正重跑"
+      },
+      {
+        "window": "v4（task-14 B-4/B-5/B-8 修复后复测）",
+        "when": "2026-10-19T14:29–14:31",
+        "scenarios": [
+          "B"
+        ],
+        "build_sha256": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4",
+        "note": "task-13（deed2a7，含 sidecar.rs + RuntimeHealthBanner + 会话挂起/恢复）修复后 Lead 重建；B-4/B-5/B-8 FAIL→PASS；首次运行 B-9 因探针侧文案子串断言过严误判 FAIL（banner 实际文案为「崩溃且自动重启次数已耗尽」），修正断言后重跑全绿"
       }
     ],
     "builds": {
-      "v1_v2_evidence": {
+      "v1_v2": {
         "exe_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
         "exe_mtime": "2026-10-19T10:33:12",
         "exe_size": 15892480
       },
-      "retest_build": {
+      "v3": {
         "exe_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
         "exe_mtime": "2026-10-19T13:59:24",
         "exe_size": 15891968
+      },
+      "v4_current": {
+        "exe_sha256": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4",
+        "exe_mtime": "2026-10-19T14:28:21",
+        "exe_size": 15907328
       }
     },
-    "retest_scope": "task-12 仅复跑 B 与 A（修复相关路径）；C1/C2/C3 为修复前构建（764f…）的证据，task-11 改动仅涉及 guest 桥接上下文重试/超时映射，不影响 pack recover 路径，未复跑（原 checks/metrics 保留，未混写为新构建结果）。",
+    "scenario_builds": {
+      "A": "ef1e4bfc…（task-12 复测构建）",
+      "B": "8867595b…（task-14 复测构建）",
+      "C1/C2/C3": "764f191b…（修复前构建；task-11/13 不涉及 recover 路径，未复跑，原 checks 保留）"
+    },
     "user_app_impact": {
       "user_app_pids_before": "",
       "user_app_pids_after": "",
@@ -98,30 +122,30 @@
       "main_ready": {
         "cdp": true,
         "internals": true,
-        "body_ready_s": 2.745,
+        "body_ready_s": 2.323,
         "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊"
       },
       "kill1": {
         "pids": [
-          28308,
-          46096
+          14816,
+          4188
         ],
         "kill": [
           {
-            "pid": 28308,
+            "pid": 14816,
             "ok": true
           },
           {
-            "pid": 46096,
+            "pid": 4188,
             "ok": true
           }
         ],
         "paths": {
-          "28308": {
+          "14816": {
             "path": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor-backend.exe",
             "whitelisted": true
           },
-          "46096": {
+          "4188": {
             "path": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor-backend.exe",
             "whitelisted": true
           }
@@ -129,25 +153,63 @@
         "log": [
           "[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 1/3 次）"
         ],
-        "t": 4.791
+        "t": 4.2
       },
       "restart1": {
-        "s": 2.224,
-        "pid": 44984,
+        "s": 2.628,
+        "pid": 42352,
         "port": 8000,
         "runtime": {
           "backend": {
-            "pid": 44984,
+            "pid": 42352,
             "port": 8000,
-            "started_at": "2026-10-19T06:03:28.244156+00:00",
+            "started_at": "2026-10-19T06:30:27.197771+00:00",
             "version": "1.2.18"
           },
           "frontend": null,
           "project_version": "1.2.18",
-          "started_at": "2026-10-19T06:03:28.244156+00:00"
+          "started_at": "2026-10-19T06:30:27.197771+00:00"
         }
       },
-      "session_at_kill": {
+      "banner1": {
+        "restarting": {
+          "phase": "restarting",
+          "text": "后端重连中后端连接中断，正在自动恢复（第 1/3 次）",
+          "status": "status",
+          "health": {
+            "phase": "restarting",
+            "message": "后端连接中断，正在自动恢复（第 1/3 次）",
+            "attempt": 1,
+            "maxRestarts": 3,
+            "updatedAt": 1792391424951
+          }
+        },
+        "recovered": {
+          "phase": "recovered",
+          "text": "后端已恢复后端已恢复",
+          "status": "status",
+          "health": {
+            "phase": "recovered",
+            "message": "后端已恢复",
+            "attempt": null,
+            "maxRestarts": null,
+            "updatedAt": 1792391427483
+          }
+        }
+      },
+      "session_fault": {
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "context.write",
+          "print.request"
+        ],
+        "lastError": "E_HOST_UNAVAILABLE: 后端连接中断，正在自动恢复（第 1/3 次）",
+        "packId": "com.probe.t26bridge",
+        "state": "suspended",
+        "updatedAt": "SystemTime { intervals: 134368650249518457 }"
+      },
+      "session_restored": {
         "capabilities": [
           "ui.shell",
           "context.read",
@@ -157,14 +219,45 @@
         "lastError": null,
         "packId": "com.probe.t26bridge",
         "state": "active",
-        "updatedAt": "SystemTime { intervals: 134368634045751671 }"
+        "updatedAt": "SystemTime { intervals: 134368650274838143 }"
+      },
+      "terminal": {
+        "banner_degraded": {
+          "phase": "degraded",
+          "text": "后端已降级后端已降级：侧车崩溃且自动重启次数已耗尽（可尝试重启应用；日志见设置 → 打开日志目录）",
+          "status": "status",
+          "health": {
+            "phase": "degraded",
+            "message": "后端已降级：侧车崩溃且自动重启次数已耗尽",
+            "attempt": 3,
+            "maxRestarts": 3,
+            "updatedAt": 1792391433729
+          }
+        },
+        "session_terminal": {
+          "capabilities": [
+            "ui.shell",
+            "context.read",
+            "context.write",
+            "print.request"
+          ],
+          "lastError": "E_HOST_UNAVAILABLE: 后端连接已断开（侧车已停止）",
+          "packId": "com.probe.t26bridge",
+          "state": "suspended",
+          "updatedAt": "SystemTime { intervals: 134368650337300465 }"
+        },
+        "absent_final": true,
+        "info_final": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        }
       },
       "outage_guest": {
         "phase": "cmd-result",
         "seq": 3,
         "cmd": "snapshot",
         "ok": false,
-        "elapsedMs": 3,
+        "elapsedMs": 2,
         "errorCode": "E_INTERNAL",
         "error": "Failed to fetch",
         "errorName": "Error",
@@ -178,25 +271,25 @@
         },
         "exit_code": 0,
         "orphans": [],
-        "log_tail": "[sidecar] INFO:     127.0.0.1:58119 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"OPTIONS /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"OPTIONS /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"OPTIONS /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55456 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59536 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 1/3 次）\n[sidecar] INFO:     Started server process [48792]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:64009 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:61844 - \"POST /api/context/snapshot HTTP/1.1\" 404 Not Found\n[sidecar] INFO:     127.0.0.1:61844 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 2/3 次）\n[sidecar] INFO:     Started server process [40680]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:53759 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 3/3 次）\n[sidecar] INFO:     Started server process [31412]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:55826 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 崩溃重启次数耗尽（3 次），不再自动拉起\n[sidecar] 退出清理：PID 50684 已不存在，无需强杀"
+        "log_tail": "[sidecar] INFO:     127.0.0.1:55206 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"OPTIONS /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"OPTIONS /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"OPTIONS /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50064 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55206 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 1/3 次）\n[sidecar] INFO:     Started server process [52264]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:61229 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     127.0.0.1:52708 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:61229 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"POST /api/context/snapshot HTTP/1.1\" 404 Not Found\n[sidecar] INFO:     127.0.0.1:61229 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 2/3 次）\n[sidecar] INFO:     Started server process [27576]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:59243 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     127.0.0.1:51440 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 3/3 次）\n[sidecar] INFO:     Started server process [27092]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:50659 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     127.0.0.1:64393 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 崩溃重启次数耗尽（3 次），不再自动拉起"
       },
       "recover_restart": {
         "obs": {
           "cdp": true,
           "internals": true,
-          "body_ready_s": 2.203,
+          "body_ready_s": 2.612,
           "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbridge.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace\n创意工坊"
         },
         "runtime": {
           "backend": {
-            "pid": 20212,
+            "pid": 31916,
             "port": 8000,
-            "started_at": "2026-10-19T06:03:46.149468+00:00",
+            "started_at": "2026-10-19T06:30:43.780095+00:00",
             "version": "1.2.18"
           },
           "frontend": null,
           "project_version": "1.2.18",
-          "started_at": "2026-10-19T06:03:46.149468+00:00"
+          "started_at": "2026-10-19T06:30:43.780095+00:00"
         }
       },
       "stop2": {
@@ -207,7 +300,7 @@
         },
         "exit_code": 0,
         "orphans": [],
-        "log_tail": "[sidecar] INFO:     Started server process [51396]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:62466 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:57545 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54860 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52282 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50973 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56570 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57545 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54860 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56570 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57545 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50973 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54860 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52282 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57545 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56570 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52282 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54860 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56570 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57545 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52282 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56571 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"OPTIONS /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"OPTIONS /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"OPTIONS /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56361 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+        "log_tail": "[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:51549 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:65487 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50196 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60534 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54821 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65487 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50196 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65487 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50196 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65487 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60534 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54821 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65487 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54821 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60534 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65487 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58958 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"OPTIONS /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"OPTIONS /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"OPTIONS /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59964 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
       }
     },
     "C1": {
@@ -396,37 +489,40 @@
         "C2",
         "C3"
       ],
-      "build_changed": false,
       "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
-      "note": "v1 第一窗口正式运行（B+C；之前一轮交错作废、一轮探针缺陷已修正）"
+      "note": "v1 第一窗口正式运行（B+C；之前一轮与 F 探针交错作废、一轮探针缺陷已修正）"
     },
     {
       "run_at": "2026-10-19T13:34:40+0800",
       "scenarios": [
         "A"
       ],
-      "merged_into_existing": true,
       "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
-      "note": "v2 第二窗口 A 增量（--scenarios A --merge；当时 A-10 仍 E_INTERNAL，为缺口）"
+      "note": "v2 第二窗口 A 增量（--scenarios A --merge；A-10 当时仍为缺口）"
     },
     {
       "run_at": "2026-10-19T14:03:19+0800",
       "scenarios": [
         "B"
       ],
-      "merged_into_existing": true,
-      "build_changed": true,
       "build_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-      "note": "task-12 修复后复测 B：B-6 PASS（上下文重建重试生效）；B-10 首次因探针收集器竞态误判，修正后 PASS"
+      "note": "v3 task-12 复测 B：B-6 PASS；B-10 探针收集器竞态修正后 PASS"
     },
     {
       "run_at": "2026-10-19T14:04:00+0800",
       "scenarios": [
         "A"
       ],
-      "merged_into_existing": true,
       "build_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-      "note": "task-12 修复后复测 A：A-10 PASS（E_TIMEOUT/retryable=true）"
+      "note": "v3 task-12 复测 A：A-10 PASS（E_TIMEOUT/retryable=true）"
+    },
+    {
+      "run_at": "2026-10-19T14:30:20+0800",
+      "scenarios": [
+        "B"
+      ],
+      "build_sha256": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4",
+      "note": "v4 task-14 复测 B（最终证据）：B-4/B-5/B-5b/B-8/B-9 PASS；首次运行 B-9 因探针文案子串断言过严误判，修正后重跑"
     }
   ],
   "checks": [
@@ -720,381 +816,6 @@
       }
     },
     {
-      "id": "W07B-B-1",
-      "scenario": "B",
-      "name": "基线：隔离实例 + guest 启用 + sidecar healthy（/api/health ok）+ context.snapshot 可用",
-      "pass": true,
-      "detail": {
-        "install": {
-          "ok": true,
-          "value": {
-            "active": "1.0.0",
-            "previous": null,
-            "updatedAt": "SystemTime { intervals: 134368634037255937 }"
-          }
-        },
-        "enable": {
-          "trusted": "already-trusted-or-disabled",
-          "trusted_wait": true,
-          "enabled": true,
-          "ready": {
-            "phase": "ready",
-            "acceptedFeatures": [
-              "ui.shell",
-              "context.read",
-              "context.write",
-              "print.request"
-            ],
-            "hostVersion": "product-guest-host",
-            "contextId": "ke-default",
-            "epoch": 1
-          },
-          "ok": true,
-          "error": null
-        },
-        "session": {
-          "capabilities": [
-            "ui.shell",
-            "context.read",
-            "context.write",
-            "print.request"
-          ],
-          "lastError": null,
-          "packId": "com.probe.t26bridge",
-          "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368634045751671 }"
-        },
-        "port": 8000,
-        "health": {
-          "ok": true,
-          "elapsed": 0.012,
-          "status": 200,
-          "body": {
-            "status": "ok",
-            "app": "knowledgeeditor",
-            "version": "1.2.18",
-            "started_at": "2026-10-19T06:03:23.079273+00:00",
-            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
-            "python_ready": true
-          }
-        },
-        "snapshot_ok": true
-      }
-    },
-    {
-      "id": "W07B-B-2",
-      "scenario": "B",
-      "name": "运行中按 PID/路径白名单杀测试 sidecar（主进程存活；Rust 日志记录异常退出 + 1s 后自动拉起第 1/3 次）",
-      "pass": true,
-      "detail": {
-        "backend_pids": [
-          28308,
-          46096
-        ],
-        "paths": {
-          "28308": {
-            "path": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor-backend.exe",
-            "whitelisted": true
-          },
-          "46096": {
-            "path": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor-backend.exe",
-            "whitelisted": true
-          }
-        },
-        "kill": [
-          {
-            "pid": 28308,
-            "ok": true
-          },
-          {
-            "pid": 46096,
-            "ok": true
-          }
-        ],
-        "main_alive": true,
-        "rust_log": [
-          "[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 1/3 次）"
-        ],
-        "kill_t": 4.791
-      }
-    },
-    {
-      "id": "W07B-B-3",
-      "scenario": "B",
-      "name": "Rust 自动重启 sidecar 可观测：runtime.json 重写为新 pid/端口且进程存活（≤15s），UI 状态栏恢复「后端 v…」",
-      "pass": true,
-      "detail": {
-        "restart": {
-          "s": 2.224,
-          "pid": 44984,
-          "port": 8000,
-          "runtime": {
-            "backend": {
-              "pid": 44984,
-              "port": 8000,
-              "started_at": "2026-10-19T06:03:28.244156+00:00",
-              "version": "1.2.18"
-            },
-            "frontend": null,
-            "project_version": "1.2.18",
-            "started_at": "2026-10-19T06:03:28.244156+00:00"
-          }
-        },
-        "ui_recovered": true,
-        "ui_recovered_at_s": 2.747
-      }
-    },
-    {
-      "id": "W07B-B-4",
-      "scenario": "B",
-      "name": "[缺口观测] 崩溃瞬间 UI 有可见错误提示（实测预期 FAIL：前端未监听 ke:sidecar-exited/ke:runtime-error，仅 10s 健康轮询可能变化 → 崩溃→重启窗口内 UI 无感）",
-      "pass": false,
-      "detail": {
-        "body_at_kill_snippet": "1.2.18\nC:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已安装包\nT26 W07 Bridge Probe Pack com.probe.t26bridge\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell, context.read, context.write, print.request\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
-        "pre_status_bar_error": false,
-        "source_ref": "frontend/src/main.tsx 仅监听 ke:runtime-ready；App.tsx 10s 健康轮询"
-      }
-    },
-    {
-      "id": "W07B-B-5",
-      "scenario": "B",
-      "name": "[缺口观测] sidecar 故障期间会话状态反映后端异常（实测预期 FAIL：guest 心跳走宿主→state 仍 active，后端故障不进入 failed/suspended）",
-      "pass": false,
-      "detail": {
-        "session_at_kill": {
-          "capabilities": [
-            "ui.shell",
-            "context.read",
-            "context.write",
-            "print.request"
-          ],
-          "lastError": null,
-          "packId": "com.probe.t26bridge",
-          "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368634045751671 }"
-        },
-        "pre_state": "active"
-      }
-    },
-    {
-      "id": "W07B-B-6",
-      "scenario": "B",
-      "name": "自动重启后 guest 桥接恢复：context.snapshot 再次成功且正文等于磁盘",
-      "pass": true,
-      "detail": {
-        "recovery_snapshot": {
-          "phase": "cmd-result",
-          "seq": 2,
-          "cmd": "snapshot",
-          "ok": true,
-          "elapsedMs": 42,
-          "snapshot": {
-            "relPath": "Articles/bridge.md",
-            "revision": 0,
-            "hasContent": true,
-            "contentLen": 73,
-            "content": "---\ntitle: bridge\n---\n\n# T26 W07 bridge probe\n\n桥接超时/sidecar 故障/原生恢复测试文档。\n"
-          }
-        }
-      }
-    },
-    {
-      "id": "W07B-B-7",
-      "scenario": "B",
-      "name": "连续杀 sidecar 触发「崩溃重启次数耗尽」（设计上限 3 次）：日志明确、不再自动拉起、主进程存活",
-      "pass": true,
-      "detail": {
-        "extra_kills": [
-          {
-            "round": 2,
-            "pids": [
-              44984,
-              48792
-            ],
-            "kill": [
-              {
-                "pid": 44984,
-                "ok": true
-              },
-              {
-                "pid": 48792,
-                "ok": true
-              }
-            ],
-            "t_s": 2.97,
-            "restart": {
-              "s": 2.626,
-              "pid": 6464,
-              "port": 8000,
-              "runtime": {
-                "backend": {
-                  "pid": 6464,
-                  "port": 8000,
-                  "started_at": "2026-10-19T06:03:31.123288+00:00",
-                  "version": "1.2.18"
-                },
-                "frontend": null,
-                "project_version": "1.2.18",
-                "started_at": "2026-10-19T06:03:31.123288+00:00"
-              }
-            }
-          },
-          {
-            "round": 3,
-            "pids": [
-              6464,
-              40680
-            ],
-            "kill": [
-              {
-                "pid": 6464,
-                "ok": true
-              },
-              {
-                "pid": 40680,
-                "ok": true
-              }
-            ],
-            "t_s": 5.61,
-            "restart": {
-              "s": 2.627,
-              "pid": 50684,
-              "port": 8000,
-              "runtime": {
-                "backend": {
-                  "pid": 50684,
-                  "port": 8000,
-                  "started_at": "2026-10-19T06:03:33.842214+00:00",
-                  "version": "1.2.18"
-                },
-                "frontend": null,
-                "project_version": "1.2.18",
-                "started_at": "2026-10-19T06:03:33.842214+00:00"
-              }
-            }
-          },
-          {
-            "round": 4,
-            "pids": [
-              50684,
-              31412
-            ],
-            "kill": [
-              {
-                "pid": 50684,
-                "ok": true
-              },
-              {
-                "pid": 31412,
-                "ok": true
-              }
-            ],
-            "t_s": 8.25
-          }
-        ],
-        "exhaust_logged": true,
-        "backend_pids_after": [],
-        "main_alive": true,
-        "log_tail": "[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:61844 - \"POST /api/context/snapshot HTTP/1.1\" 404 Not Found\n[sidecar] INFO:     127.0.0.1:61844 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61844 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 2/3 次）\n[sidecar] INFO:     Started server process [40680]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:53759 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 3/3 次）\n[sidecar] INFO:     Started server process [31412]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:55826 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 崩溃重启次数耗尽（3 次），不再自动拉起"
-      }
-    },
-    {
-      "id": "W07B-B-8",
-      "scenario": "B",
-      "name": "[缺口观测] 崩溃耗尽后 get_runtime_info 不返回陈旧死 pid（实测预期 FAIL：SidecarState.info 未清空 → Rust 命令返回已死进程信息）",
-      "pass": false,
-      "detail": {
-        "get_runtime_info": {
-          "ok": true,
-          "value": {
-            "api_base": "http://127.0.0.1:8000",
-            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
-            "version": "1.2.18",
-            "pid": 50684,
-            "port": 8000
-          }
-        },
-        "stale_pid": 50684,
-        "runtime_json": {
-          "backend": {
-            "pid": 50684,
-            "port": 8000,
-            "started_at": "2026-10-19T06:03:33.842214+00:00",
-            "version": "1.2.18"
-          },
-          "frontend": null,
-          "project_version": "1.2.18",
-          "started_at": "2026-10-19T06:03:33.842214+00:00"
-        }
-      }
-    },
-    {
-      "id": "W07B-B-9",
-      "scenario": "B",
-      "name": "崩溃耗尽后 UI 最终降级可见（≤25s：10s 健康轮询后出现「后端未连接」/「后端服务未连接」）",
-      "pass": true,
-      "detail": {
-        "degraded": true,
-        "body_tail": "K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbridge.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端未连接\nC:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已安装包\nT26 W07 Bridge Probe Pack com.probe.t26bridge\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell, context.read, context.write, print.request\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
-      }
-    },
-    {
-      "id": "W07B-B-10",
-      "scenario": "B",
-      "name": "恢复路径：用户重启应用后启动成功（runtime/sidecar healthy + 工坊包在列 + 重新启用 guest active + context.snapshot 成功）",
-      "pass": true,
-      "detail": {
-        "new_pid": 20212,
-        "health": {
-          "ok": true,
-          "elapsed": 0.014,
-          "status": 200,
-          "body": {
-            "status": "ok",
-            "app": "knowledgeeditor",
-            "version": "1.2.18",
-            "started_at": "2026-10-19T06:03:46.149468+00:00",
-            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
-            "python_ready": true
-          }
-        },
-        "pack_listed": true,
-        "enable": {
-          "trusted": "already-trusted-or-disabled",
-          "trusted_wait": true,
-          "enabled": true,
-          "ready": {
-            "phase": "ready",
-            "acceptedFeatures": [
-              "ui.shell",
-              "context.read",
-              "context.write",
-              "print.request"
-            ],
-            "hostVersion": "product-guest-host",
-            "contextId": "ke-default",
-            "epoch": 1
-          },
-          "ok": true,
-          "error": null
-        },
-        "snapshot": {
-          "phase": "cmd-result",
-          "seq": 4,
-          "cmd": "snapshot",
-          "ok": true,
-          "elapsedMs": 28,
-          "snapshot": {
-            "relPath": "Articles/bridge.md",
-            "revision": 0,
-            "hasContent": true,
-            "contentLen": 73,
-            "content": "---\ntitle: bridge\n---\n\n# T26 W07 bridge probe\n\n桥接超时/sidecar 故障/原生恢复测试文档。\n"
-          }
-        }
-      }
-    },
-    {
       "id": "W07B-A-1",
       "scenario": "A",
       "name": "隔离实例启动 + 签名 guest 包安装/trusted/启用/握手（能力协商含 context.read/context.write/print.request）",
@@ -1374,6 +1095,462 @@
       }
     },
     {
+      "id": "W07B-B-1",
+      "scenario": "B",
+      "name": "基线：隔离实例 + guest 启用 + sidecar healthy（/api/health ok）+ context.snapshot 可用",
+      "pass": true,
+      "detail": {
+        "install": {
+          "ok": true,
+          "value": {
+            "active": "1.0.0",
+            "previous": null,
+            "updatedAt": "SystemTime { intervals: 134368650230780055 }"
+          }
+        },
+        "enable": {
+          "trusted": "already-trusted-or-disabled",
+          "trusted_wait": true,
+          "enabled": true,
+          "ready": {
+            "phase": "ready",
+            "acceptedFeatures": [
+              "ui.shell",
+              "context.read",
+              "context.write",
+              "print.request"
+            ],
+            "hostVersion": "product-guest-host",
+            "contextId": "ke-default",
+            "epoch": 1
+          },
+          "ok": true,
+          "error": null
+        },
+        "session": {
+          "capabilities": [
+            "ui.shell",
+            "context.read",
+            "context.write",
+            "print.request"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26bridge",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368650239106173 }"
+        },
+        "port": 8000,
+        "health": {
+          "ok": true,
+          "elapsed": 0.018,
+          "status": 200,
+          "body": {
+            "status": "ok",
+            "app": "knowledgeeditor",
+            "version": "1.2.18",
+            "started_at": "2026-10-19T06:30:22.727496+00:00",
+            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
+            "python_ready": true
+          }
+        },
+        "snapshot_ok": true
+      }
+    },
+    {
+      "id": "W07B-B-2",
+      "scenario": "B",
+      "name": "运行中按 PID/路径白名单杀测试 sidecar（主进程存活；Rust 日志记录异常退出 + 1s 后自动拉起第 1/3 次）",
+      "pass": true,
+      "detail": {
+        "backend_pids": [
+          14816,
+          4188
+        ],
+        "paths": {
+          "14816": {
+            "path": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor-backend.exe",
+            "whitelisted": true
+          },
+          "4188": {
+            "path": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor-backend.exe",
+            "whitelisted": true
+          }
+        },
+        "kill": [
+          {
+            "pid": 14816,
+            "ok": true
+          },
+          {
+            "pid": 4188,
+            "ok": true
+          }
+        ],
+        "main_alive": true,
+        "rust_log": [
+          "[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 1/3 次）"
+        ],
+        "kill_t": 4.2
+      }
+    },
+    {
+      "id": "W07B-B-3",
+      "scenario": "B",
+      "name": "Rust 自动重启 sidecar 可观测：runtime.json 重写为新 pid/端口且进程存活（≤15s），UI 状态栏正常",
+      "pass": true,
+      "detail": {
+        "restart": {
+          "s": 2.628,
+          "pid": 42352,
+          "port": 8000,
+          "runtime": {
+            "backend": {
+              "pid": 42352,
+              "port": 8000,
+              "started_at": "2026-10-19T06:30:27.197771+00:00",
+              "version": "1.2.18"
+            },
+            "frontend": null,
+            "project_version": "1.2.18",
+            "started_at": "2026-10-19T06:30:27.197771+00:00"
+          }
+        },
+        "ui_ok": true,
+        "get_runtime_info": {
+          "ok": true,
+          "value": {
+            "api_base": "http://127.0.0.1:8000",
+            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
+            "version": "1.2.18",
+            "pid": 42352,
+            "port": 8000
+          }
+        }
+      }
+    },
+    {
+      "id": "W07B-B-4",
+      "scenario": "B",
+      "name": "崩溃瞬间 UI 可见错误提示：App 级 runtime-health-banner（data-phase=restarting，含自动恢复第 N/M 次）→ 恢复后 data-phase=recovered（后端已恢复）",
+      "pass": true,
+      "detail": {
+        "banner_restarting": {
+          "phase": "restarting",
+          "text": "后端重连中后端连接中断，正在自动恢复（第 1/3 次）",
+          "status": "status",
+          "health": {
+            "phase": "restarting",
+            "message": "后端连接中断，正在自动恢复（第 1/3 次）",
+            "attempt": 1,
+            "maxRestarts": 3,
+            "updatedAt": 1792391424951
+          }
+        },
+        "banner_recovered": {
+          "phase": "recovered",
+          "text": "后端已恢复后端已恢复",
+          "status": "status",
+          "health": {
+            "phase": "recovered",
+            "message": "后端已恢复",
+            "attempt": null,
+            "maxRestarts": null,
+            "updatedAt": 1792391427483
+          }
+        },
+        "window_health": {
+          "phase": "restarting",
+          "message": "后端连接中断，正在自动恢复（第 1/3 次）",
+          "attempt": 1,
+          "maxRestarts": 3,
+          "updatedAt": 1792391424951
+        }
+      }
+    },
+    {
+      "id": "W07B-B-5",
+      "scenario": "B",
+      "name": "sidecar 故障期间 guest 会话如实挂起：workshop_pack_session_status → state=suspended、lastError 含 E_HOST_UNAVAILABLE（不计 guest 崩溃/不进 safeMode）",
+      "pass": true,
+      "detail": {
+        "session_fault": {
+          "capabilities": [
+            "ui.shell",
+            "context.read",
+            "context.write",
+            "print.request"
+          ],
+          "lastError": "E_HOST_UNAVAILABLE: 后端连接中断，正在自动恢复（第 1/3 次）",
+          "packId": "com.probe.t26bridge",
+          "state": "suspended",
+          "updatedAt": "SystemTime { intervals: 134368650249518457 }"
+        },
+        "session_file": {
+          "capabilities": [
+            "ui.shell",
+            "context.read",
+            "context.write",
+            "print.request"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26bridge",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368650274838143 }"
+        }
+      }
+    },
+    {
+      "id": "W07B-B-5b",
+      "scenario": "B",
+      "name": "sidecar 恢复（ke:runtime-ready）后 guest 会话恢复 active 且 lastError 清空",
+      "pass": true,
+      "detail": {
+        "session_restored": {
+          "capabilities": [
+            "ui.shell",
+            "context.read",
+            "context.write",
+            "print.request"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26bridge",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368650274838143 }"
+        },
+        "session_file": {
+          "capabilities": [
+            "ui.shell",
+            "context.read",
+            "context.write",
+            "print.request"
+          ],
+          "lastError": null,
+          "packId": "com.probe.t26bridge",
+          "state": "active",
+          "updatedAt": "SystemTime { intervals: 134368650274838143 }"
+        }
+      }
+    },
+    {
+      "id": "W07B-B-6",
+      "scenario": "B",
+      "name": "自动重启后 guest 桥接恢复：context.snapshot 再次成功且正文等于磁盘",
+      "pass": true,
+      "detail": {
+        "recovery_snapshot": {
+          "phase": "cmd-result",
+          "seq": 2,
+          "cmd": "snapshot",
+          "ok": true,
+          "elapsedMs": 22,
+          "snapshot": {
+            "relPath": "Articles/bridge.md",
+            "revision": 0,
+            "hasContent": true,
+            "contentLen": 73,
+            "content": "---\ntitle: bridge\n---\n\n# T26 W07 bridge probe\n\n桥接超时/sidecar 故障/原生恢复测试文档。\n"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07B-B-7",
+      "scenario": "B",
+      "name": "连续杀 sidecar 触发「崩溃重启次数耗尽」（设计上限 3 次）：日志明确、不再自动拉起、主进程存活",
+      "pass": true,
+      "detail": {
+        "extra_kills": [
+          {
+            "round": 2,
+            "pids": [
+              42352,
+              52264
+            ],
+            "kill": [
+              {
+                "pid": 42352,
+                "ok": true
+              },
+              {
+                "pid": 52264,
+                "ok": true
+              }
+            ],
+            "t_s": 3.49,
+            "restart": {
+              "s": 2.629,
+              "pid": 28384,
+              "port": 8000,
+              "runtime": {
+                "backend": {
+                  "pid": 28384,
+                  "port": 8000,
+                  "started_at": "2026-10-19T06:30:30.704949+00:00",
+                  "version": "1.2.18"
+                },
+                "frontend": null,
+                "project_version": "1.2.18",
+                "started_at": "2026-10-19T06:30:30.704949+00:00"
+              }
+            }
+          },
+          {
+            "round": 3,
+            "pids": [
+              28384,
+              27576
+            ],
+            "kill": [
+              {
+                "pid": 28384,
+                "ok": true
+              },
+              {
+                "pid": 27576,
+                "ok": true
+              }
+            ],
+            "t_s": 6.14,
+            "restart": {
+              "s": 2.631,
+              "pid": 5612,
+              "port": 8000,
+              "runtime": {
+                "backend": {
+                  "pid": 5612,
+                  "port": 8000,
+                  "started_at": "2026-10-19T06:30:33.300845+00:00",
+                  "version": "1.2.18"
+                },
+                "frontend": null,
+                "project_version": "1.2.18",
+                "started_at": "2026-10-19T06:30:33.300845+00:00"
+              }
+            }
+          },
+          {
+            "round": 4,
+            "pids": [
+              5612,
+              27092
+            ],
+            "kill": [
+              {
+                "pid": 5612,
+                "ok": true
+              },
+              {
+                "pid": 27092,
+                "ok": true
+              }
+            ],
+            "t_s": 8.79
+          }
+        ],
+        "exhaust_logged": true,
+        "backend_pids_after": [],
+        "main_alive": true,
+        "log_tail": "[sidecar] INFO:     127.0.0.1:61229 - \"POST /api/context/snapshot HTTP/1.1\" 404 Not Found\n[sidecar] INFO:     127.0.0.1:61229 - \"GET /api/workspace/info HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"POST /api/context/open HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"POST /api/context/snapshot HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61229 - \"GET /api/articles/Articles/bridge.md HTTP/1.1\" 200 OK\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 2/3 次）\n[sidecar] INFO:     Started server process [27576]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:59243 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     127.0.0.1:51440 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 进程异常退出（code=Some(1) signal=None），1s 后自动拉起（第 3/3 次）\n[sidecar] INFO:     Started server process [27092]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:50659 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     127.0.0.1:64393 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] 崩溃重启次数耗尽（3 次），不再自动拉起"
+      }
+    },
+    {
+      "id": "W07B-B-8",
+      "scenario": "B",
+      "name": "崩溃重启耗尽后 runtime 状态无陈旧死 pid：runtime.json 不存在、get_runtime_info 返回 Err（退出瞬间也立即清理，重启成功后重写）",
+      "pass": true,
+      "detail": {
+        "absent_after_kill": true,
+        "info_after_kill": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "absent_final": true,
+        "info_final": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "runtime_json_final": null
+      }
+    },
+    {
+      "id": "W07B-B-9",
+      "scenario": "B",
+      "name": "崩溃耗尽后 UI 降级可见：banner data-phase=degraded 且文案含真实原因（自动重启次数已耗尽）",
+      "pass": true,
+      "detail": {
+        "banner_degraded": {
+          "phase": "degraded",
+          "text": "后端已降级后端已降级：侧车崩溃且自动重启次数已耗尽（可尝试重启应用；日志见设置 → 打开日志目录）",
+          "status": "status",
+          "health": {
+            "phase": "degraded",
+            "message": "后端已降级：侧车崩溃且自动重启次数已耗尽",
+            "attempt": 3,
+            "maxRestarts": 3,
+            "updatedAt": 1792391433729
+          }
+        },
+        "body_tail": "地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端未连接\nC:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已安装包\nT26 W07 Bridge Probe Pack com.probe.t26bridge\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：suspended\n协议线已连接\n能力：ui.shell, context.read, context.write, print.request\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+      }
+    },
+    {
+      "id": "W07B-B-10",
+      "scenario": "B",
+      "name": "恢复路径：用户重启应用后启动成功（runtime/sidecar healthy + 工坊包在列 + 重新启用 guest + snapshot 成功 + 无异常时 banner 不误报）",
+      "pass": true,
+      "detail": {
+        "new_pid": 31916,
+        "health": {
+          "ok": true,
+          "elapsed": 0.019,
+          "status": 200,
+          "body": {
+            "status": "ok",
+            "app": "knowledgeeditor",
+            "version": "1.2.18",
+            "started_at": "2026-10-19T06:30:43.780095+00:00",
+            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
+            "python_ready": true
+          }
+        },
+        "pack_listed": true,
+        "enable": {
+          "trusted": "already-trusted-or-disabled",
+          "trusted_wait": true,
+          "enabled": true,
+          "ready": {
+            "phase": "ready",
+            "acceptedFeatures": [
+              "ui.shell",
+              "context.read",
+              "context.write",
+              "print.request"
+            ],
+            "hostVersion": "product-guest-host",
+            "contextId": "ke-default",
+            "epoch": 1
+          },
+          "ok": true,
+          "error": null
+        },
+        "snapshot": {
+          "phase": "cmd-result",
+          "seq": 4,
+          "cmd": "snapshot",
+          "ok": true,
+          "elapsedMs": 27,
+          "snapshot": {
+            "relPath": "Articles/bridge.md",
+            "revision": 0,
+            "hasContent": true,
+            "contentLen": 73,
+            "content": "---\ntitle: bridge\n---\n\n# T26 W07 bridge probe\n\n桥接超时/sidecar 故障/原生恢复测试文档。\n"
+          }
+        },
+        "banner_absent_on_normal_start": true
+      }
+    },
+    {
       "id": "W07B-S-1",
       "scenario": "SAFE",
       "name": "测试进程按路径白名单清理无残留（knowledgeeditor/-backend；未使用 taskkill /IM）",
@@ -1416,9 +1593,9 @@
       }
     }
   ],
-  "pass_count": 32,
-  "total": 39,
-  "fail_count": 7,
+  "pass_count": 36,
+  "total": 40,
+  "fail_count": 4,
   "gaps": [
     {
       "id": "W07B-C1-4",
@@ -1450,62 +1627,6 @@
         "silent": true,
         "body_snippet": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbridge.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n打开失败：404 文章不存在\n重试\n×\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07bridge\\c\\workspace\n创意工坊"
       }
-    },
-    {
-      "id": "W07B-B-4",
-      "name": "[缺口观测] 崩溃瞬间 UI 有可见错误提示（实测预期 FAIL：前端未监听 ke:sidecar-exited/ke:runtime-error，仅 10s 健康轮询可能变化 → 崩溃→重启窗口内 UI 无感）",
-      "detail": {
-        "body_at_kill_snippet": "1.2.18\nC:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已安装包\nT26 W07 Bridge Probe Pack com.probe.t26bridge\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell, context.read, context.write, print.request\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载",
-        "pre_status_bar_error": false,
-        "source_ref": "frontend/src/main.tsx 仅监听 ke:runtime-ready；App.tsx 10s 健康轮询"
-      }
-    },
-    {
-      "id": "W07B-B-5",
-      "name": "[缺口观测] sidecar 故障期间会话状态反映后端异常（实测预期 FAIL：guest 心跳走宿主→state 仍 active，后端故障不进入 failed/suspended）",
-      "detail": {
-        "session_at_kill": {
-          "capabilities": [
-            "ui.shell",
-            "context.read",
-            "context.write",
-            "print.request"
-          ],
-          "lastError": null,
-          "packId": "com.probe.t26bridge",
-          "state": "active",
-          "updatedAt": "SystemTime { intervals: 134368634045751671 }"
-        },
-        "pre_state": "active"
-      }
-    },
-    {
-      "id": "W07B-B-8",
-      "name": "[缺口观测] 崩溃耗尽后 get_runtime_info 不返回陈旧死 pid（实测预期 FAIL：SidecarState.info 未清空 → Rust 命令返回已死进程信息）",
-      "detail": {
-        "get_runtime_info": {
-          "ok": true,
-          "value": {
-            "api_base": "http://127.0.0.1:8000",
-            "workspace": "C:\\ke-tmp\\uiws-t26-w07bridge\\b\\workspace",
-            "version": "1.2.18",
-            "pid": 50684,
-            "port": 8000
-          }
-        },
-        "stale_pid": 50684,
-        "runtime_json": {
-          "backend": {
-            "pid": 50684,
-            "port": 8000,
-            "started_at": "2026-10-19T06:03:33.842214+00:00",
-            "version": "1.2.18"
-          },
-          "frontend": null,
-          "project_version": "1.2.18",
-          "started_at": "2026-10-19T06:03:33.842214+00:00"
-        }
-      }
     }
   ],
   "raw_notes": [
@@ -1513,66 +1634,134 @@
     "全部故障注入只作用于隔离测试构建自建实例（自身 Popen 进程树/路径白名单）；用户 App 未运行 → N/A",
     "原生恢复 pack 为文件系统直写隔离 workshop-packs 自有 id（启动 recover 读取），非用户数据",
     "共享 workshop-packs 中其它探针/历史遗留包的损坏状态会先审计（audit_other_packs），safeMode 期望值取「本包预期 OR 其它包已损坏」",
-    "【task-12 修复后复测】新构建 sha256 ef1e4bfc…（mtime 2026-10-19T13:59:24，size 15891968，含 task-11 commit 443e0a6）；B-6 由 FAIL（E_INTERNAL/E_SNAPSHOT HTTP 404）转为 PASS（sidecar 自动重启后 guest context.snapshot 42ms 成功、正文=磁盘）；A-10 由 FAIL（E_INTERNAL/signal is aborted without reason/retryable=false）转为 PASS（E_TIMEOUT/retryable=true/message=宿主请求超时（POST /api/context/snapshot，15000ms））。",
-    "【复测后统计】39 checks / 32 PASS / 7 FAIL；已闭环缺口：W07B-B-6、W07B-A-10；剩余 7 缺口：B-4/B-5/B-8（sidecar 故障可观测性）、C1-4/C2-2/C3-5（启动 recover 无 UI 提示）、C2-5（no-fallback 不可自动修复）。",
-    "【构建混用说明】environment 为修复后构建（ef1e…）；B、A 场景为修复后复测结果；C1/C2/C3 保留修复前构建（764f…）的原始 checks/metrics，未把旧结果混写为新构建结果；build_history 记录旧构建。",
-    "【B-10 复测中的探针侧问题】首次复测 B-10 因 CDP 早连接 + 页面导航导致 guest 消息收集器丢失 → ready 未收集被判 FAIL；guest 实际已激活（guest_start.hasSession=true/session=active）。修正探针（启用前重装收集器）后重跑 PASS；不属产品缺陷。"
+    "【task-13 修复后复测（构建 8867595b…，task-13 commit deed2a7）】B-4 由 FAIL→PASS：App 级 runtime-health-banner data-phase=restarting（文案「后端重连中后端连接中断，正在自动恢复（第 1/3 次）」）→ recovered（「后端已恢复」）；B-5 由 FAIL→PASS：故障期间 workshop_pack_session_status state=suspended、lastError=E_HOST_UNAVAILABLE: 后端连接中断，正在自动恢复（第 1/3 次）；B-5b PASS：ke:runtime-ready 后 state=active、lastError=null；B-8 由 FAIL→PASS：sidecar 退出瞬间 runtime.json 即不存在、get_runtime_info ok=false（后端尚未就绪），崩溃耗尽后同样无 stale pid；B-9 升级 PASS：崩溃耗尽后 banner data-phase=degraded，文案含真实原因「侧车崩溃且自动重启次数已耗尽」。",
+    "【最终统计（v4）】40 checks / 36 PASS / 4 FAIL；B 场景 11/11 PASS（B-4/B-5/B-5b/B-6/B-8/B-9 复测通过）；剩余 4 缺口全部在 C 场景（修复后构建未复跑）：C1-4/C2-2/C3-5 启动 recover 无 UI 提示、C2-5 无回退损坏包不可自动修复；另有 boot crash 4 缺口见 P5-T26-W07-fault-boot.md。",
+    "【构建混用说明】environment=8867595b…（v4，B 复测构建）；A 场景=ef1e4bfc…（v3）；C1–C3=764f191b…（v1/v2，未复跑）；build_history/run_conditions.scenario_builds 已记录，未把旧结果混写为新构建结果。",
+    "【B 首测探针侧误判（如实保留）】task-14 首轮 B-9 FAIL 原因为探针断言过严（期望子串「崩溃重启次数耗尽」，实际 banner 文案为「崩溃且自动重启次数已耗尽」），非产品失败；修正探针后重跑 PASS。"
   ],
   "retest": {
-    "task": "task-12",
-    "fix_commit": "443e0a6",
-    "fix_build": {
-      "exe_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-      "exe_mtime": "2026-10-19T13:59:24",
-      "exe_size": 15891968
+    "task-12": {
+      "fix_commit": "443e0a6",
+      "fix_build": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
+      "results": {
+        "W07B-B-6": {
+          "before": {
+            "ok": false,
+            "errorCode": "E_INTERNAL",
+            "error": "E_SNAPSHOT: HTTP 404",
+            "elapsedMs": 14
+          },
+          "after": {
+            "ok": true,
+            "elapsedMs": 42,
+            "contentLen": 73,
+            "contentMatchesDisk": true
+          },
+          "verdict": "PASS（缺口闭环）"
+        },
+        "W07B-A-10": {
+          "before": {
+            "errorCode": "E_INTERNAL",
+            "retryable": false,
+            "error": "signal is aborted without reason",
+            "elapsedMs": 15002
+          },
+          "after": {
+            "errorCode": "E_TIMEOUT",
+            "retryable": true,
+            "error": "宿主请求超时（POST /api/context/snapshot，15000ms）",
+            "elapsedMs": 15002
+          },
+          "verdict": "PASS（缺口闭环）"
+        }
+      }
     },
-    "results": {
-      "W07B-B-6": {
-        "before": {
-          "build": "764f…",
-          "ok": false,
-          "errorCode": "E_INTERNAL",
-          "error": "E_SNAPSHOT: HTTP 404",
-          "elapsedMs": 14,
-          "note": "sidecar 自动重启后新后端上下文丢失，guest 桥接不自动恢复"
+    "task-13": {
+      "fix_commit": "deed2a7",
+      "fix_build": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4",
+      "results": {
+        "W07B-B-4": {
+          "before": {
+            "visible": false,
+            "note": "崩溃瞬间 body 无错误提示，仅后端日志"
+          },
+          "after": {
+            "banner_restarting": {
+              "data_phase": "restarting",
+              "text": "后端重连中后端连接中断，正在自动恢复（第 1/3 次）",
+              "attempt": 1,
+              "maxRestarts": 3
+            },
+            "banner_recovered": {
+              "data_phase": "recovered",
+              "text": "后端已恢复后端已恢复"
+            }
+          },
+          "verdict": "PASS（缺口闭环）"
         },
-        "after": {
-          "build": "ef1e…",
-          "ok": true,
-          "elapsedMs": 42,
-          "contentLen": 73,
-          "contentMatchesDisk": true,
-          "note": "withGuestContext 在 404/409/E_STALE_CONTEXT 时丢弃缓存绑定 + ensureContext 重建后重试一次生效"
+        "W07B-B-5": {
+          "before": {
+            "state": "active",
+            "lastError": null
+          },
+          "after": {
+            "state": "suspended",
+            "lastError": "E_HOST_UNAVAILABLE: 后端连接中断，正在自动恢复（第 1/3 次）"
+          },
+          "verdict": "PASS（缺口闭环）"
         },
-        "verdict": "PASS（缺口闭环）"
-      },
-      "W07B-A-10": {
-        "before": {
-          "build": "764f…",
-          "errorCode": "E_INTERNAL",
-          "retryable": false,
-          "error": "signal is aborted without reason",
-          "elapsedMs": 15002
+        "W07B-B-5b": {
+          "before": {
+            "note": "无恢复后 active 语义（修复前会话不反映宿主故障）"
+          },
+          "after": {
+            "state": "active",
+            "lastError": null
+          },
+          "verdict": "PASS（缺口闭环）"
         },
-        "after": {
-          "build": "ef1e…",
-          "errorCode": "E_TIMEOUT",
-          "retryable": true,
-          "error": "宿主请求超时（POST /api/context/snapshot，15000ms）",
-          "elapsedMs": 15002
+        "W07B-B-8": {
+          "before": {
+            "get_runtime_info": {
+              "ok": true,
+              "pid": "已死进程"
+            },
+            "runtime_json": "保留死 pid"
+          },
+          "after": {
+            "absent_after_kill": true,
+            "info_after_kill": {
+              "ok": false,
+              "error": "后端尚未就绪"
+            },
+            "absent_final": true,
+            "info_final": {
+              "ok": false,
+              "error": "后端尚未就绪"
+            },
+            "runtime_json_final": null
+          },
+          "verdict": "PASS（缺口闭环）"
         },
-        "verdict": "PASS（缺口闭环）"
+        "W07B-B-9": {
+          "before": {
+            "degraded": false,
+            "note": "崩溃耗尽后仅 10s 健康轮询后状态栏「后端未连接」"
+          },
+          "after": {
+            "data_phase": "degraded",
+            "text": "后端已降级后端已降级：侧车崩溃且自动重启次数已耗尽（可尝试重启应用；日志见设置 → 打开日志目录）"
+          },
+          "verdict": "PASS（升级为带真实原因的降级 banner）"
+        }
       }
     },
     "remaining_gaps": [
-      "W07B-B-4",
-      "W07B-B-5",
-      "W07B-B-8",
       "W07B-C1-4",
       "W07B-C2-2",
       "W07B-C2-5",
       "W07B-C3-5"
     ],
-    "probe_side_note": "复测中发现的探针侧问题（不属产品缺陷）：CDP 在页面导航完成前连接时，guest 消息收集器随导航丢失 → B-10 首次复测误判 FAIL；已在 enable_guest 内于启用前重装收集器后重跑 PASS。"
+    "probe_side_note": "复测中的探针侧修正（不属产品缺陷）：(1) task-12 B 首测 B-10 因 CDP 导航竞态丢失 guest 消息收集器误判，已修；(2) task-14 B 首测 B-9 断言子串「崩溃重启次数耗尽」与实际文案「崩溃且自动重启次数已耗尽」不匹配误判，已修。"
   }
 }

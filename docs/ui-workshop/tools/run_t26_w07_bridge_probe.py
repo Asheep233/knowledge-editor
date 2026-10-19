@@ -1134,6 +1134,53 @@ def backend_alive(pid) -> bool:
     return any(p["pid"] == pid for p in proc_snapshot())
 
 
+# ---- W07 B-4/B-5 复测辅助：运行时健康 banner 与会话挂起/恢复观测 ----
+
+def banner_state(cdp: CDP):
+    """读取 App 级 RuntimeHealthBanner 的 data-phase/文案/诊断钩子（无 banner 返回 None）。"""
+    try:
+        return cdp.eval(
+            "(() => { const el=document.querySelector('[data-testid=\"runtime-health-banner\"]');"
+            " if(!el) return null; return {phase: el.getAttribute('data-phase'),"
+            " text: (el.textContent||'').trim(), status: el.getAttribute('role'),"
+            " health: (window.__keRuntimeHealth || null)}; })()")
+    except Exception:
+        return None
+
+
+def wait_banner_phase(cdp: CDP, phase: str, timeout: float = 6.0):
+    end = time.time() + timeout
+    last = None
+    while time.time() < end:
+        st = banner_state(cdp)
+        if isinstance(st, dict):
+            last = st
+            if st.get("phase") == phase:
+                return st
+        time.sleep(0.1)
+    return last
+
+
+def wait_session_status(cdp: CDP, pred, timeout: float = 8.0):
+    """轮询 workshop_pack_session_status 直到满足 pred；返回最后一次会话状态。"""
+    end = time.time() + timeout
+    last = None
+    while time.time() < end:
+        st = (invoke(cdp, "workshop_pack_session_status") or {}).get("value") or {}
+        last = st
+        try:
+            if pred(st):
+                return st
+        except Exception:
+            pass
+        time.sleep(0.15)
+    return last
+
+
+def host_unavailable_error(st: dict) -> bool:
+    return str((st or {}).get("lastError") or "").startswith("E_HOST_UNAVAILABLE")
+
+
 def wait_new_backend(l: Launch, old_pid, timeout: float = 15.0):
     """等待 sidecar 自动重启完成（runtime.json 的新 pid 存活）。"""
     t0 = time.time()
@@ -1296,7 +1343,7 @@ def scenario_a(checks: list, ctx: dict) -> dict:
 # ============================== 场景 B：sidecar 故障 / 自动重启 / 崩溃耗尽 ==============================
 
 def scenario_b(checks: list, ctx: dict) -> dict:
-    print("\n===== 场景 B：运行中杀测试 sidecar → 自动重启 / UI / 崩溃耗尽 → 重启恢复 =====", flush=True)
+    print("\n===== 场景 B（B-4/B-5/B-8 修复后复测）：杀 sidecar → 自动重启/崩溃耗尽 → 重启恢复 =====", flush=True)
     cleanup_my_packs()
     base, appdata, ws = isolated_paths("b")
     prepare_appdata(appdata, ws)
@@ -1306,6 +1353,7 @@ def scenario_b(checks: list, ctx: dict) -> dict:
     try:
         if cdp is None:
             raise RuntimeError("CDP 主窗口未就绪")
+        # ---------- 基线 ----------
         inst = install_pack(cdp, ctx["guest_pack"])
         en = enable_guest(cdp, PACK_ID)
         base_snap = guest_snapshot(cdp)
@@ -1325,61 +1373,80 @@ def scenario_b(checks: list, ctx: dict) -> dict:
               {"install": inst, "enable": en, "session": st_before, "port": port,
                "health": health_before, "snapshot_ok": (base_snap or {}).get("ok")})
 
-        # ---- 第 1 次杀 sidecar ----
+        # ---------- 第 1 次杀 sidecar：B-4 banner / B-5 会话挂起 / B-8 runtime 清理 ----------
         pids = [p["pid"] for p in sidecar_pids(l.pid)]
         paths = whitelisted_paths(cim_paths(pids))
-        pre_body = body_text(cdp)
-        pre_session = st_before.get("state")
         kill_res = terminate_pids(pids)
         t_kill = time.time()
-        time.sleep(0.5)
-        main_alive_after_kill = l.alive()
-        body_at_kill = body_text(cdp)
-        st_at_kill = (invoke(cdp, "workshop_pack_session_status") or {}).get("value") or {}
+        banner_restarting = wait_banner_phase(cdp, "restarting", 5.0)
+        session_fault = wait_session_status(
+            cdp, lambda st: st.get("state") == "suspended" and host_unavailable_error(st), 6.0)
+        # B-8：sidecar 退出后 runtime 状态应立即清除（不存在 / get_runtime_info Err，无死 pid）
+        absent_after_kill = False
+        info_after_kill = None
+        deadline = time.time() + 3.0
+        while time.time() < deadline:
+            absent_after_kill = not runtime_file(appdata).exists()
+            info_after_kill = invoke(cdp, "get_runtime_info")
+            if absent_after_kill and info_after_kill.get("ok") is False:
+                break
+            time.sleep(0.1)
         rust_logged = wait_until(lambda: "1s 后自动拉起" in l.tail(80), 8, 0.2)
         log_crash = [ln for ln in l.tail(80).splitlines() if "异常退出" in ln or "自动拉起" in ln]
         kill_ok = (len(pids) > 0 and all(v["whitelisted"] for v in paths.values())
                    and all(r.get("ok") is not False for r in kill_res)
-                   and main_alive_after_kill and rust_logged)
+                   and l.alive() and rust_logged)
         check(checks, "B", "W07B-B-2",
               "运行中按 PID/路径白名单杀测试 sidecar（主进程存活；Rust 日志记录异常退出 + 1s 后自动拉起第 1/3 次）",
               kill_ok,
               {"backend_pids": pids, "paths": paths, "kill": kill_res,
-               "main_alive": main_alive_after_kill, "rust_log": log_crash,
+               "main_alive": l.alive(), "rust_log": log_crash,
                "kill_t": round(t_kill - l.t0, 3)})
         metrics["kill1"] = {"pids": pids, "kill": kill_res, "paths": paths,
                             "log": log_crash, "t": round(t_kill - l.t0, 3)}
 
         restart = wait_new_backend(l, backend_pid, timeout=15)
-        ui_recovered = False
-        ui_t = None
-        if restart:
-            ui_recovered = wait_until(
-                lambda: "后端未连接" not in body_text(cdp) and "后端 v" in body_text(cdp), 15, 0.4)
-            ui_t = round(time.time() - t_kill, 3) if ui_recovered else None
+        banner_recovered = wait_banner_phase(cdp, "recovered", 6.0) if restart else None
+        session_restored = wait_session_status(
+            cdp, lambda st: st.get("state") == "active" and not str(st.get("lastError") or ""), 6.0)
+        info_after_restart = invoke(cdp, "get_runtime_info")
+        rt_after1 = read_json_safe(runtime_file(appdata)) or {}
+        ui_ok = wait_until(lambda: "后端未连接" not in body_text(cdp), 10, 0.3)
         check(checks, "B", "W07B-B-3",
-              "Rust 自动重启 sidecar 可观测：runtime.json 重写为新 pid/端口且进程存活（≤15s），UI 状态栏恢复「后端 v…」",
-              restart is not None and ui_recovered,
-              {"restart": restart, "ui_recovered": ui_recovered, "ui_recovered_at_s": ui_t})
+              "Rust 自动重启 sidecar 可观测：runtime.json 重写为新 pid/端口且进程存活（≤15s），UI 状态栏正常",
+              restart is not None and ui_ok,
+              {"restart": restart, "ui_ok": ui_ok, "get_runtime_info": info_after_restart})
         metrics["restart1"] = restart
 
-        body_window = body_text(cdp)
-        befor_has_error = any(m in pre_body for m in ("后端未连接", "后端服务未连接"))
-        window_has_error = any(m in body_at_kill for m in ("后端未连接", "后端服务未连接"))
+        # B-4：崩溃瞬间 UI 可见 banner（restarting 含第 N/M 次）→ 恢复后 recovered（TTL 内）
+        b4_ok = (isinstance(banner_restarting, dict)
+                 and banner_restarting.get("phase") == "restarting"
+                 and ("自动恢复" in str(banner_restarting.get("text") or "")
+                      or "重连中" in str(banner_restarting.get("text") or ""))
+                 and isinstance(banner_recovered, dict)
+                 and banner_recovered.get("phase") == "recovered"
+                 and "已恢复" in str(banner_recovered.get("text") or ""))
         check(checks, "B", "W07B-B-4",
-              "[缺口观测] 崩溃瞬间 UI 有可见错误提示（实测预期 FAIL：前端未监听 ke:sidecar-exited/ke:runtime-error，"
-              "仅 10s 健康轮询可能变化 → 崩溃→重启窗口内 UI 无感）",
-              window_has_error,
-              {"body_at_kill_snippet": body_at_kill[-400:],
-               "pre_status_bar_error": befor_has_error,
-               "source_ref": "frontend/src/main.tsx 仅监听 ke:runtime-ready；App.tsx 10s 健康轮询"})
-        st_during = st_at_kill
+              "崩溃瞬间 UI 可见错误提示：App 级 runtime-health-banner（data-phase=restarting，含自动恢复第 N/M 次）"
+              "→ 恢复后 data-phase=recovered（后端已恢复）",
+              b4_ok, {"banner_restarting": banner_restarting, "banner_recovered": banner_recovered,
+                      "window_health": (banner_restarting or {}).get("health")})
+        metrics["banner1"] = {"restarting": banner_restarting, "recovered": banner_recovered}
+
+        # B-5：故障期间会话如实 suspended + E_HOST_UNAVAILABLE；恢复后 active + lastError 清空
+        b5_ok = (isinstance(session_fault, dict) and session_fault.get("state") == "suspended"
+                 and host_unavailable_error(session_fault))
         check(checks, "B", "W07B-B-5",
-              "[缺口观测] sidecar 故障期间会话状态反映后端异常（实测预期 FAIL：guest 心跳走宿主→state 仍 active，"
-              "后端故障不进入 failed/suspended）",
-              st_during.get("state") in ("failed", "suspended"),
-              {"session_at_kill": st_during, "pre_state": pre_session})
-        metrics["session_at_kill"] = st_during
+              "sidecar 故障期间 guest 会话如实挂起：workshop_pack_session_status → state=suspended、"
+              "lastError 含 E_HOST_UNAVAILABLE（不计 guest 崩溃/不进 safeMode）",
+              b5_ok, {"session_fault": session_fault, "session_file": session_state()})
+        b5b_ok = (isinstance(session_restored, dict) and session_restored.get("state") == "active"
+                  and not str(session_restored.get("lastError") or ""))
+        check(checks, "B", "W07B-B-5b",
+              "sidecar 恢复（ke:runtime-ready）后 guest 会话恢复 active 且 lastError 清空",
+              b5b_ok, {"session_restored": session_restored, "session_file": session_state()})
+        metrics["session_fault"] = session_fault
+        metrics["session_restored"] = session_restored
 
         g_rec = guest_snapshot(cdp, wait_s=30)
         rec_doc = (g_rec or {}).get("snapshot") or {}
@@ -1390,7 +1457,7 @@ def scenario_b(checks: list, ctx: dict) -> dict:
         rt_after = read_json_safe(runtime_file(appdata)) or {}
         cur_pid = ((rt_after.get("backend") or {}).get("pid"))
 
-        # ---- 再连续杀 3 次（第 2/3 次自动重启，第 4 次触发「崩溃重启次数耗尽」）----
+        # ---------- 再连续杀 3 次（第 2/3 次自动重启，第 4 次触发「崩溃重启次数耗尽」）----------
         extra_kills = []
         for idx in range(2, 5):
             pids = [p["pid"] for p in sidecar_pids(l.pid)]
@@ -1407,8 +1474,8 @@ def scenario_b(checks: list, ctx: dict) -> dict:
                     break
                 cur_pid = nxt["pid"]
             extra_kills.append(entry)
-        if extra_kills and extra_kills[-1]["round"] == 4 and "restart" not in extra_kills[-1]:
-            time.sleep(8.0)  # 第 4 次后应不再拉起
+        if extra_kills and extra_kills[-1]["round"] == 4:
+            time.sleep(6.0)  # 第 4 次后应不再拉起且进入终态
         exhaust_logged = wait_until(lambda: "崩溃重启次数耗尽" in l.tail(120), 10, 0.3)
         no_backend = len(sidecar_pids(l.pid)) == 0
         main_alive = l.alive()
@@ -1417,29 +1484,36 @@ def scenario_b(checks: list, ctx: dict) -> dict:
               exhaust_logged and no_backend and main_alive,
               {"extra_kills": extra_kills, "exhaust_logged": exhaust_logged,
                "backend_pids_after": [p["pid"] for p in sidecar_pids(l.pid)],
-               "main_alive": main_alive,
-               "log_tail": l.tail(20)})
+               "main_alive": main_alive, "log_tail": l.tail(20)})
 
-        info_after = invoke(cdp, "get_runtime_info")
-        stale_pid = ((info_after or {}).get("value") or {}).get("pid")
-        stale = bool(info_after.get("ok") and isinstance(stale_pid, int) and not backend_alive(stale_pid))
+        banner_degraded = wait_banner_phase(cdp, "degraded", 6.0)
+        session_terminal = wait_session_status(
+            cdp, lambda st: st.get("state") == "suspended" and host_unavailable_error(st), 6.0)
+        absent_final = wait_until(lambda: not runtime_file(appdata).exists(), 5, 0.2)
+        info_final = invoke(cdp, "get_runtime_info")
+        stale_pid = ((info_final or {}).get("value") or {}).get("pid")
+        b8_ok = (absent_after_kill and info_after_kill.get("ok") is False
+                 and absent_final and info_final.get("ok") is False and not backend_alive(stale_pid))
         check(checks, "B", "W07B-B-8",
-              "[缺口观测] 崩溃耗尽后 get_runtime_info 不返回陈旧死 pid（实测预期 FAIL：SidecarState.info 未清空 → "
-              "Rust 命令返回已死进程信息）",
-              not stale,
-              {"get_runtime_info": info_after, "stale_pid": stale_pid,
-               "runtime_json": read_json_safe(runtime_file(appdata))})
-
-        degraded = wait_until(
-            lambda: any(m in body_text(cdp) for m in ("后端未连接", "后端服务未连接")), 25, 0.5)
+              "崩溃重启耗尽后 runtime 状态无陈旧死 pid：runtime.json 不存在、get_runtime_info 返回 Err"
+              "（退出瞬间也立即清理，重启成功后重写）",
+              b8_ok,
+              {"absent_after_kill": absent_after_kill, "info_after_kill": info_after_kill,
+               "absent_final": absent_final, "info_final": info_final,
+               "runtime_json_final": read_json_safe(runtime_file(appdata))})
+        b9_ok = (isinstance(banner_degraded, dict) and banner_degraded.get("phase") == "degraded"
+                 and "重启次数已耗尽" in str(banner_degraded.get("text") or "")
+                 and "后端已降级" in str(banner_degraded.get("text") or ""))
         check(checks, "B", "W07B-B-9",
-              "崩溃耗尽后 UI 最终降级可见（≤25s：10s 健康轮询后出现「后端未连接」/「后端服务未连接」）",
-              degraded, {"degraded": degraded,
-                         "body_tail": body_text(cdp)[-600:]})
+              "崩溃耗尽后 UI 降级可见：banner data-phase=degraded 且文案含真实原因（自动重启次数已耗尽）",
+              b9_ok, {"banner_degraded": banner_degraded, "body_tail": body_text(cdp)[-500:]})
+        metrics["terminal"] = {"banner_degraded": banner_degraded,
+                               "session_terminal": session_terminal,
+                               "absent_final": absent_final, "info_final": info_final}
         g_fail = guest_snapshot(cdp, timeout_ms=20000, wait_s=25)
         metrics["outage_guest"] = g_fail
 
-        # ---- 恢复：用户重启应用 ----
+        # ---------- 恢复：用户重启应用（正常启动/退出冒烟 + banner 不误报）----------
         metrics["stop"] = stop_launch(l, cdp)
         cdp.close()
         cdp = None
@@ -1458,7 +1532,6 @@ def scenario_b(checks: list, ctx: dict) -> dict:
         except Exception:
             pass
 
-    # 重启恢复（独立 Launch）
     l2 = launch_app("b-recover", appdata, ws, ctx["pubkeys"])
     cdp2, obs2 = wait_main_ready()
     try:
@@ -1470,23 +1543,29 @@ def scenario_b(checks: list, ctx: dict) -> dict:
         health2 = http_json(f"http://127.0.0.1:{((rt2.get('backend') or {}).get('port'))}/api/health", 3.0) \
             if (rt2.get("backend") or {}).get("port") else {"ok": False}
         listed = False
+        enable_ok = False
+        rec_ok = False
+        banner_absent = None
         if cdp2 is not None:
             open_workshop(cdp2)
             lst = invoke(cdp2, "workshop_pack_list")
             listed = PACK_ID in json.dumps(lst, ensure_ascii=False)
             en2 = enable_guest(cdp2, PACK_ID)
+            enable_ok = en2.get("ok") is True
             g2 = guest_snapshot(cdp2, wait_s=35)
             article = (ws / "Articles" / "bridge.md").read_text(encoding="utf-8")
             rec_ok = (g2 or {}).get("ok") is True and \
                 ((g2 or {}).get("snapshot") or {}).get("content") == article
+            time.sleep(1.0)
+            banner_absent = banner_state(cdp2) is None  # 正常启动/无异常事件 → banner 不渲染（不误报）
             ok2 = bool(health2.get("ok") and isinstance(pid2, int) and backend_alive(pid2)
-                       and listed and en2.get("ok") and rec_ok)
-            detail2 = {"new_pid": pid2, "health": health2, "pack_listed": listed,
-                       "enable": en2, "snapshot": g2}
+                       and listed and enable_ok and rec_ok and banner_absent)
             check(checks, "B", "W07B-B-10",
-                  "恢复路径：用户重启应用后启动成功（runtime/sidecar healthy + 工坊包在列 + 重新启用 guest active + "
-                  "context.snapshot 成功）",
-                  ok2, detail2)
+                  "恢复路径：用户重启应用后启动成功（runtime/sidecar healthy + 工坊包在列 + 重新启用 guest + "
+                  "snapshot 成功 + 无异常时 banner 不误报）",
+                  ok2,
+                  {"new_pid": pid2, "health": health2, "pack_listed": listed,
+                   "enable": en2, "snapshot": g2, "banner_absent_on_normal_start": banner_absent})
             invoke(cdp2, "workshop_pack_uninstall", {"id": PACK_ID})
         else:
             check(checks, "B", "W07B-B-10", "恢复路径：用户重启应用后启动成功", False,

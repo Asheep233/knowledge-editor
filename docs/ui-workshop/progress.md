@@ -968,3 +968,10 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   能力面 NOT_RUN）。v1 3 项失败根因=探针误关工坊面板（非产品失败），修复后事件三项 PASS 并标注方法。
 - 未覆盖：F14 导出落盘、F16 原生菜单、F03 其余 35 行；**不宣称 F01–F16 整体达成**。
   证据：`evidence/P5-T26-F-ledger.md`（v2）。
+
+## P6 进度（W07 B-6/A-10 修复+复测，2026-10-19）
+
+- 443e0a6 修复：B-6 上下文重建重试；A-10 超时 → E_TIMEOUT/retryable；单测+32、tsc 0。
+- 4780319 产品 W 复测：B-6、A-10 均 FAIL→PASS（snapshot 42ms 恢复；超时 E_TIMEOUT）；W07 bridge
+  最终 32/39，剩 7 缺口（崩溃 UI/session/stale pid、启动 recover 无提示、no-fallback 不可修）。
+  仍 PASS-with-gaps，不宣称全通过。

@@ -255,3 +255,12 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   pack B 4 PASS/23 NOT_RUN）；未完成：全量批次被打断、pack A 事件/主题/停用 3 项待第二轮、
   F16 原生菜单/导出落盘未测；**不宣称 F01–F16 覆盖达成**。
 - 矩阵：新增 W07 bridge 与 F ledger 行（`PASS_WITH_FINDINGS` 显式标注缺口数），`--check` 待本轮刷新。
+
+## 追加（2026-10-19 后段 · W07 B-6/A-10 修复 + 复测）
+
+- `443e0a6` **B-6/A-10 修复**：snapshot/write/print 读取统一 `withGuestContext`（上下文失效 404/409 →
+  重建绑定重试一次；write 幂等复用 requestId）；`requestJson` AbortController 超时 → 协议
+  `E_TIMEOUT(retryable=true)`（不再是 E_INTERNAL/signal aborted）。单测 +32、tsc 0。
+- `4780319` **修复后产品 W 复测**：B-6 FAIL→**PASS**（sidecar 自动重启后 snapshot 42ms 成功、
+  正文=磁盘）；A-10 FAIL→**PASS**（超时返回 E_TIMEOUT/retryable=true，print 无假 token；阻塞期间
+  UI 0.4ms 响应）；W07 bridge 最终 **39 checks 32 PASS / 7 缺口**（PASS-with-gaps，未宣称全通过）。

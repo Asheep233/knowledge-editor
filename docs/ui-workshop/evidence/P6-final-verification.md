@@ -95,3 +95,10 @@
 - backend：847 collected / exit 0（未改）；
 - 产品 cargo：**67 passed**（+6 spawn registry/settings 修复单测）；
 - 验证矩阵：**59 行**，--check PASS（bridge 45/46、boot 43/45 显式标注剩余缺口）。
+
+## blockquote 修复后最终回归（2026-10-19）
+
+- frontend：**143 files / 1931 passed** + 1 skipped、tsc 0（+KeBlockJoin 4 例）；
+- backend：847 collected / exit 0（未改）；
+- 产品 cargo：67 passed（未改 Rust）；
+- 验证矩阵：**59 行**，--check PASS（F 台账 v6：F03 42/42 全 PASS）。

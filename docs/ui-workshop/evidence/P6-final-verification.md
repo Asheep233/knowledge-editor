@@ -88,3 +88,10 @@
 - backend：847 collected / exit 0（未改）；
 - 产品 cargo：**61 passed**（+4 startup status 命令单测）；
 - 验证矩阵：**59 行**，--check PASS（W07 bridge 43/45、F ledger v3 60/63 显式标注记录）。
+
+## W07 C2-3 + boot 三缺口修复后最终回归（2026-10-19）
+
+- frontend：**142 files / 1927 passed** + 1 skipped、tsc 0；
+- backend：847 collected / exit 0（未改）；
+- 产品 cargo：**67 passed**（+6 spawn registry/settings 修复单测）；
+- 验证矩阵：**59 行**，--check PASS（bridge 45/46、boot 43/45 显式标注剩余缺口）。

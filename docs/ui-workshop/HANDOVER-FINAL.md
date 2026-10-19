@@ -199,7 +199,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 **一致性修正记录**（交付整理/最终收敛时发现并修正）：
 1. `reports/T26-acceptance-status.md` 旧第 4 节「项目级 P0_READY、不得使用 EXPERIMENTAL_TRUSTED_PACKS」
    与里程碑评估/ACCEPTANCE A 节冲突 → 已按证据修正为 `EXPERIMENTAL_TRUSTED_PACKS`；
-2. 旧 A7 隔离核对数字 5/5 → 证据为 **6/6**（`P5-T26-A7-isolation-results.json`），已更正；
+2. 旧 A7 隔离核对数字 5/5 → 证据为 **6/6**（`T26-A7-isolation-results.json`），已更正；
 3. 矩阵基线 cargo 38 → **50 → 67**、工坊 UI 单测 18 → **63**（最新回归证据 + 本地复跑核对）；
 4. W09 三份大文档性能结果保持 **KNOWN_FAIL（已知限制）**，未改写为通过；
 5. 矩阵 51 → **59 行**：W07 boot/bridge 与 F 台账改为 `PASS_WITH_FINDINGS` 显式缺口口径（2/1/5），

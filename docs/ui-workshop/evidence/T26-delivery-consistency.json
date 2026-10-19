@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-10-19T17:24:08+0800",
+  "head": "4116b7f",
+  "branch": "feat/ui-workshop",
+  "checks": [
+    {
+      "name": "DC-1 验证矩阵 --check PASS",
+      "pass": true,
+      "detail": "MATRIX GATE: PASS（无 FAIL 行；PASS_WITH_FINDINGS 已显式标注）"
+    },
+    {
+      "name": "DC-2 所有 results JSON 已被矩阵脚本收录",
+      "pass": true,
+      "detail": {
+        "count": 44,
+        "missing": []
+      }
+    },
+    {
+      "name": "DC-3 交付文档 evidence 引用文件存在",
+      "pass": false,
+      "detail": {
+        "refs": 32,
+        "missing": [
+          "P5-T26-A7-isolation-results.json"
+        ]
+      }
+    },
+    {
+      "name": "DC-4 仓库无测试私钥/PEM 入仓",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "DC-5 分支本地未推送（无 upstream）",
+      "pass": true,
+      "detail": {
+        "branch": "feat/ui-workshop",
+        "head": "4116b7f",
+        "upstream": null
+      }
+    },
+    {
+      "name": "DC-6 工作树干净",
+      "pass": false,
+      "detail": [
+        "?? docs/ui-workshop/tools/verify_delivery_consistency.py"
+      ]
+    },
+    {
+      "name": "DC-7 台账 CSV 可解析且含行",
+      "pass": true,
+      "detail": {
+        "rows": 130,
+        "officialPass": 60,
+        "officialFail": 0,
+        "officialNotRun": 58,
+        "packAPass": 4,
+        "packBPass": 4
+      }
+    },
+    {
+      "name": "DC-8 最终状态声明 EXPERIMENTAL_TRUSTED_PACKS 且不声明更高",
+      "pass": true,
+      "detail": null
+    }
+  ],
+  "passCount": 6,
+  "total": 8,
+  "featureBaselineStats": {
+    "rows": 130,
+    "officialPass": 60,
+    "officialFail": 0,
+    "officialNotRun": 58,
+    "packAPass": 4,
+    "packBPass": 4
+  }
+}

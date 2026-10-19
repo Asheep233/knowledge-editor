@@ -109,5 +109,5 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check   # Windows + 原型�
 | G1/G2 guest 内容读 + 真实写通道 | **W 14/14 PASS**（context.write 能力 trusted/builtin，假桩删除） | `P5-T26-G1G2-content-io.md` |
 | W02 停用后迟到请求/旧连接失效 | **W 12/12 PASS**（重放验证，不落盘；如实标注注入方式） | `P5-T26-W02-form.md` |
 | W07 boot crash/连续启动失败 | **PASS_WITH_FINDINGS 40/44**（4 真实缺口已记录） | `P5-T26-W07-fault-boot.md` |
-| T27 I 门禁 | 就绪检查 NOT_READY(6/8)；**云端执行交接单已给**（VM 由主理人安排） | `T27-CLOUD-EXECUTION-HANDOFF.md` |
+| T27 I 门禁 | 就绪检查 NOT_READY(6/8)；**云端执行交接单 + 安装包 sha256 清单已给**（VM 由主理人安排） | `T27-CLOUD-EXECUTION-HANDOFF.md`、`T27-ARTIFACTS.md` |
 | F01–F16 覆盖审计 | 已实现 0 / 部分 3 / 未实现 13；G1/G2 已闭环结构阻塞 | `F01-F16-COVERAGE.md` |

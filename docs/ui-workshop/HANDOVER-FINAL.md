@@ -216,3 +216,9 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - `fdac4ea` **F01–F16 审计**：0 已实现/3 部分/13 未实现（G1/G2 已闭环其中结构阻塞，仍不改变统计）。
 - `582f386` **T27 云端执行交接单**（VM 由主理人让云端 Codex 执行；证据按 U1–U6 回传登记）。
 - 矩阵：**53 行** --check PASS（新增 G1/G2、W07 boot 行；W07 boot 标 PASS_WITH_FINDINGS(4 缺口)）。
+
+## 追加（2026-10-19 后段 · T27 云端交接）
+
+- `reports/T27-CLOUD-EXECUTION-HANDOFF.md`：云端 Codex 执行单（环境/构建安装包/U1–U6/证据格式/红线）；
+- `reports/T27-ARTIFACTS.md`：本地 28 个安装包文件名/大小/sha256（含候选 `AstraNota_1.2.18_x64-setup.exe`）；
+- `reports/T27-I-GATE-RUNBOOK.md`：逐步执行手册。I 门禁仍为 **NOT_RUN**，待云端 VM 执行后由 Lead 登记。

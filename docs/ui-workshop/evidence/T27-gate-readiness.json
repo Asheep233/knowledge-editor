@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-10-19T08:41:32+0800",
+  "mode": "dry-run（只读，不安装）",
+  "candidate_version": "1.2.18",
+  "installers_available": [
+    "AstraNota_1.1.8_x64-setup.exe",
+    "AstraNota_1.1.9_x64-setup.exe",
+    "AstraNota_1.2.0-pre.1_x64-setup.exe",
+    "AstraNota_1.2.0-pre.2_x64-setup.exe",
+    "AstraNota_1.2.0-pre.3_x64-setup.exe",
+    "AstraNota_1.2.0_x64-setup.exe",
+    "AstraNota_1.2.10_x64-setup.exe",
+    "AstraNota_1.2.11_x64-setup.exe",
+    "AstraNota_1.2.12-dev.1_x64-setup.exe",
+    "AstraNota_1.2.12_x64-setup.exe",
+    "AstraNota_1.2.13-dev.1_x64-setup.exe",
+    "AstraNota_1.2.13_x64-setup.exe",
+    "AstraNota_1.2.14_x64-setup.exe",
+    "AstraNota_1.2.15_x64-setup.exe",
+    "AstraNota_1.2.16-dev.1_x64-setup.exe",
+    "AstraNota_1.2.16_x64-setup.exe",
+    "AstraNota_1.2.17_x64-setup.exe",
+    "AstraNota_1.2.18_x64-setup.exe",
+    "AstraNota_1.2.1_x64-setup.exe",
+    "AstraNota_1.2.2_x64-setup.exe",
+    "AstraNota_1.2.3_x64-setup.exe",
+    "AstraNota_1.2.4_x64-setup.exe",
+    "AstraNota_1.2.5_x64-setup.exe",
+    "AstraNota_1.2.6_x64-setup.exe",
+    "AstraNota_1.2.7_x64-setup.exe",
+    "AstraNota_1.2.8_x64-setup.exe",
+    "AstraNota_1.2.9-dev.1_x64-setup.exe",
+    "AstraNota_1.2.9_x64-setup.exe"
+  ],
+  "checks": [
+    {
+      "name": "T27-1 计划文档存在",
+      "ok": true,
+      "detail": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\reports\\T27-installer-upgrade-plan.md"
+    },
+    {
+      "name": "T27-2 打包目标包含 nsis",
+      "ok": true,
+      "detail": [
+        "nsis"
+      ]
+    },
+    {
+      "name": "T27-3 版本号可识别",
+      "ok": true,
+      "detail": "1.2.18"
+    },
+    {
+      "name": "T27-4 历史安装包可用（覆盖升级的旧版本）",
+      "ok": true,
+      "detail": {
+        "count": 28,
+        "versions": [
+          "1.2.5",
+          "1.2.6",
+          "1.2.7",
+          "1.2.8",
+          "1.2.9"
+        ]
+      }
+    },
+    {
+      "name": "T27-5 候选版本安装包存在",
+      "ok": true,
+      "detail": {
+        "expected": "F:\\Work\\Dev\\cargo-target\\release\\bundle\\nsis\\AstraNota_1.2.18_x64-setup.exe"
+      }
+    },
+    {
+      "name": "T27-6 主理人授权标志（KE_T27_AUTHORIZED=1）",
+      "ok": false,
+      "detail": {
+        "env": "KE_T27_AUTHORIZED"
+      }
+    },
+    {
+      "name": "T27-7 专用隔离环境声明（KE_T27_ISOLATED_ENV）",
+      "ok": false,
+      "detail": {
+        "env": "(unset)"
+      }
+    },
+    {
+      "name": "T27-8 用户实例未运行（I 门禁禁止在用户机器直接执行）",
+      "ok": true,
+      "detail": {
+        "user_pid": "(not running)"
+      }
+    }
+  ],
+  "ready": false,
+  "note": "I 门禁执行需主理人明确授权 + 专用隔离环境；本脚本绝不执行安装。"
+}

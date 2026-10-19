@@ -330,3 +330,13 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   `KeBlockJoin.ts:104/131` 的 `KeBlockquote.addKeyboardShortcuts()` 丢弃上游 `Mod-Shift-b`（+editor/index.ts:158
   blockquote:false）→ Ctrl+Shift+B 引用快捷键失效（工具栏可用）。F03 变为 **41 PASS / 1 FAIL**；
   证据 `P5-T26-F03-fail-audit.md`（含修复建议，未改产品代码）。后续：修复该快捷键并复测。
+
+## 追加（2026-10-19 后段 · blockquote FINDING 修复 + F03 全 PASS）
+
+- `f4759a2` **真实产品缺陷修复**：`KeBlockJoin.ts` 的 `KeBlockquote.addKeyboardShortcuts()` 改为继承上游
+  `{...this.parent?.()}` 并只覆盖自定义 `Backspace`，恢复被丢弃的 `Mod-Shift-b`（Ctrl+Shift+B 引用）；
+  新增 4 例单测（快捷键表/keydown toggle/Backspace 不回归/自定义 Backspace 优先），tsc 0、全量 1931 passed。
+- `5289d6e` **修复后产品 W 复测 6/6 PASS**：折叠光标与选中文本 Ctrl+Shift+B 均真实 toggle（DOM bq 0→1→0）、
+  工具栏「引用」不变、引用块内 atom 后空行 Backspace 不回归、Ctrl+B/I 与撤销重做正常。
+- **F03 台账 42/42 全 PASS（0 FAIL）**；官方 UI 累计 60 PASS / 0 FAIL / 70 NOT_RUN；原 v5 唯一
+  PRODUCT_FINDING 闭环。证据 `P5-T26-F03-fail-audit.md`（修后复测段）、F 报告附录 I。

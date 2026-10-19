@@ -109,7 +109,7 @@ ACCEPTANCE A 节：
 - `feature-baseline.csv`：**72/130 行**已登记（v4）；**F03 42/42 全量登记（37 PASS / 5 FAIL：链接/模块插入
   2 行 v4 新 FAIL + Ctrl+Shift+8 无序列表/Ctrl+Shift+B 引用/工具栏保存 3 行既有 FAIL，如实保留）**；
   F16 11/11 行：原生菜单为 **结构性审计证据（U/静态）**、W/DOM 未覆盖 → NOT_RUN；官方 UI 累计
-  59 PASS / 1 FAIL / 70 NOT_RUN（其余未执行行保持 NOT_RUN）。
+  60 PASS / 0 FAIL / 70 NOT_RUN（其余未执行行保持 NOT_RUN）。
 - F16 原生菜单审计：`menu.rs` 11 个 MenuItem（含 `ke-menu:*` ID/标签/加速键/handle_event 分发）→
   `evidence/P5-T26-F16-native-menu-audit.md`；CDP 无法点击原生菜单，不伪造 W。
 - F14 官方导出：对话框入口 PASS；**最终 export_pdf 落 Documents 未执行（NOT_RUN，USERPROFILE 覆盖会禁用

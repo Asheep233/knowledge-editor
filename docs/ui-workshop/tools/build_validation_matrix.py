@@ -20,7 +20,7 @@ OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 PARTIAL_EVIDENCE = {
     "T26-W07-boot-results.json": 2,
     "T26-W07-bridge-results.json": 1,
-    "T26-F-ledger-results.json": 5,
+    "T26-F-ledger-results.json": 5,  # 历史 v4 checks 的 5 项失败已经 v5 审计改判(PASS)/v6 修复(blockquote)，保留原始 checks 历史
 }
 
 KNOWN_FAILURES = {

@@ -1010,3 +1010,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 4784980：F03 42 行中 4 项 FAIL 归因自动化限制（改判 PASS），1 项真实产品 FINDING（Ctrl+Shift+B 引用
   快捷键被 KeBlockJoin 覆盖失效）；F03 41 PASS/1 FAIL；证据 `P5-T26-F03-fail-audit.md`。
 - 后续：修复 blockquote 快捷键（task-22/23）→ 复测。
+
+## P6 进度（blockquote 修复 + F03 全 PASS，2026-10-19）
+
+- f4759a2：修复 Ctrl+Shift+B 引用快捷键（KeBlockJoin 继承上游快捷键表，保留自定义 Backspace）；单测 4 例。
+- 5289d6e：修复后产品 W 6/6 PASS；F03 台账 42/42 全 PASS（官方 UI 60 PASS/0 FAIL）；产品 FINDING 闭环。

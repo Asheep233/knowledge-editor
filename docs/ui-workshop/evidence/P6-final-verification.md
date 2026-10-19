@@ -67,4 +67,4 @@
 
 - frontend：**140 files / 1879 passed** + 1 skipped、tsc 0（新增 print/事件/探针相关单测）；
 - backend：847 collected / exit 0（未改）；产品 cargo：51 passed（未改 Rust）；
-- 验证矩阵：**54 行**，--check PASS（G3/G4 真实打印+事件证据纳入）。
+- 验证矩阵：**55 行**，--check PASS（G3/G4 真实打印+事件证据纳入）。

@@ -14,6 +14,7 @@
 | `ui-workshop.bundle` | `git bundle`（range `4c71233..feat/ui-workshop`，需基础提交 4c71233 已存在） |
 | `cloud_build.ps1` | 构建脚本：checkout 基础/分支、构建 sidecar+前端、产出 NSIS 安装包（默认/workshop-enabled） |
 | `cloud_verify_installed.py` | 安装态 CDP 冒烟（入口可见性/安装包/启用 guest/会话 active） |
+| `cloud_t27_gate.py` | **可选自动化**：U1–U6 安装/升级/回滚/卸载/重启 + 截图 + `T27-I-results.json`（默认 dry-run；仅 VM 加 `--execute`） |
 | `T27-I-results.schema.json` | I 门禁证据 JSON 结构（回传时按此填写） |
 | `README.md` | 快速步骤与回传格式 |
 
@@ -51,6 +52,15 @@ cd ..\frontend; npm run build; cd ..\desktop; npm run build
 基线旧版（U1 用）：`git checkout v1.2.9` → 同样构建（默认生产包即可）。
 
 ## 4. A. T27 I 门禁（U1–U6）
+
+> 可手工执行，也可用自动化（先 dry-run 核对版本，再在专用 VM 执行）：
+> ```powershell
+> set KE_CLOUD_VM=1
+> python C:\ke-cloud\cloud_t27_gate.py --baseline C:\ke-cloud\installers\baseline-v1.2.9-default_x64-setup.exe ^
+>   --candidate C:\ke-cloud\installers\candidate-default_x64-setup.exe --workdir C:\ke-cloud\t27 --execute
+> # 产出 C:\ke-cloud\t27\evidence\T27-I-results.json + U1..U6 截图 + logs
+> ```
+> 安全：默认 dry-run 只读；未设置 `KE_CLOUD_VM=1` 时 `--execute` 会被拒绝。
 
 | 步骤 | 操作 | 记录 |
 | --- | --- | --- |

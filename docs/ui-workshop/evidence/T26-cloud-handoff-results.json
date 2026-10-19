@@ -38,10 +38,18 @@
     {
       "name": "zip 完整",
       "pass": true
+    },
+    {
+      "name": "cloud_t27_gate.py dry-run（只读版本识别）",
+      "pass": true,
+      "detail": {
+        "baseline": "1.2.9",
+        "candidate": "1.2.18"
+      }
     }
   ],
-  "passCount": 8,
-  "total": 8,
+  "passCount": 9,
+  "total": 9,
   "notes": [
     "初版 bundle 仅记录 HEAD ref 无法按分支 fetch，已修复",
     "cloud_build.ps1 已改为按 frontend/desktop 分别 npm ci"

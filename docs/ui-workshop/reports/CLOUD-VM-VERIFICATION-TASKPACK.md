@@ -12,6 +12,7 @@
 | `cloud-handoff/README.md` | 最短路径命令 |
 | `cloud-handoff/cloud_build.ps1` | 构建候选（默认 + workshop-enabled）与基线 v1.2.9 NSIS 安装包 |
 | `cloud-handoff/cloud_verify_installed.py` | 安装态 CDP 冒烟（入口可见性/安装签名包/信任/启用 guest/会话 active） |
+| `cloud-handoff/cloud_t27_gate.py` | **可选自动化 U1–U6**：安装/升级/回滚/卸载/重启 + 截图 + `T27-I-results.json`（默认 dry-run，仅 `KE_CLOUD_VM=1` 可执行） |
 | `cloud-handoff/T27-I-results.schema.json` | I 门禁证据 JSON 结构（U1–U6 + verdict） |
 | `cloud-handoff/ui-workshop.bundle` | `git bundle`（range `4c71233..refs/heads/feat/ui-workshop`，HEAD `689575b`，约 4.9MB） |
 
@@ -21,6 +22,7 @@
 cd C:\ke-cloud\repo; git checkout 4c71233
 git fetch C:\ke-cloud\ui-workshop.bundle 'refs/heads/feat/ui-workshop:feat/ui-workshop'; git checkout feat/ui-workshop
 powershell -ExecutionPolicy Bypass -File C:\ke-cloud\cloud_build.ps1
+python C:\ke-cloud\cloud_t27_gate.py --baseline <baseline安装包> --candidate <candidate安装包> --workdir C:\ke-cloud\t27   # 先 dry-run 核对
 python C:\ke-cloud\cloud_verify_installed.py --exe "<安装目录>\knowledgeeditor.exe" --expect-entry yes --pack-dir C:\ke-cloud\pack --pubkeys <json>
 ```
 

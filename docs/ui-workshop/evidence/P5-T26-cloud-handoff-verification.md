@@ -16,7 +16,8 @@
 | 5 | 关键文件存在（scripts/build.ps1、tauri.conf.json、frontend/package.json、TASKS.md） | PASS |
 | 6 | `cloud_build.ps1` PowerShell 语法解析（ScriptBlock::Create） | PASS |
 | 7 | `cloud_verify_installed.py --help` 可运行（py_compile + help） | PASS |
-| 8 | 一键 zip 完整（TASKS/README/schema/build/verify/bundle，约 4.9MB） | PASS |
+| 8 | 一键 zip 完整（TASKS/README/schema/build/verify/t27_gate/bundle，约 4.9MB） | PASS |
+| 9 | `cloud_t27_gate.py --dry-run`（本地真实安装包，只读）→ 版本识别 1.2.9 / 1.2.18、计划 JSON 输出 | PASS |
 
 ## 关键修正（本轮发现并修好）
 

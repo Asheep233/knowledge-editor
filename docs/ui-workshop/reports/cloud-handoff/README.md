@@ -12,7 +12,9 @@ git fetch C:\ke-cloud\ui-workshop.bundle 'refs/heads/feat/ui-workshop:feat/ui-wo
 git checkout feat/ui-workshop
 # 2) 构建（见 cloud_build.ps1）
 powershell -ExecutionPolicy Bypass -File C:\ke-cloud\cloud_build.ps1
-# 3) T27 I 门禁（U1–U6，见 TASKS.md §4）→ 填 evidence/T27-I-results.json
+# 3) T27 I 门禁（U1–U6，见 TASKS.md §4）：
+#    a) 自动化（推荐，先 dry-run 再 --execute）：python cloud_t27_gate.py --baseline <旧包> --candidate <候选包> --workdir C:\ke-cloud\t27
+#    b) 或手工按 TASKS.md §4 执行 → 填 evidence/T27-I-results.json
 # 4) 安装态冒烟（workshop-enabled 包；见 TASKS.md §5）
 python C:\ke-cloud\cloud_verify_installed.py --exe "<install>\knowledgeeditor.exe" --expect-entry yes
 # 5) 打包 C:\ke-cloud\evidence 回传

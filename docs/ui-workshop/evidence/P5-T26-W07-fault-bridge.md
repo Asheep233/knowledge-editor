@@ -1,9 +1,9 @@
-# P5-T26 W07 扩展证据（v5，C1-4/C2-2/C3-5 修复后复测）：桥接超时 / sidecar 故障 / 原生 Rust 恢复 — 隔离产品 W 43/45（2 个未闭环缺口）
+# P5-T26 W07 扩展证据（v6，C2-3 修复后复测）：桥接超时 / sidecar 故障 / 原生 Rust 恢复 — 隔离产品 W 45/46（1 个未闭环缺口）
 
 - 日期：2026-10-19 · 平台：Windows 11 + WebView2（隔离产品构建）
-- 任务：task-10（W07 扩展）+ task-12（B-6/A-10 复测）+ task-14（B-4/B-5/B-8 复测）+ task-16（C1-4/C2-2/C3-5 复测）
+- 任务：task-10（W07 扩展）+ task-12（B-6/A-10 复测）+ task-14（B-4/B-5/B-8 复测）+ task-16（C1-4/C2-2/C3-5 复测）+ task-19（C2-3 复测）
 - 工具：`docs/ui-workshop/tools/run_t26_w07_bridge_probe.py`（可复跑；`--scenarios A,B,C1,C2,C3` / `--scenarios B --merge` / `--scenarios C1,C2,C3 --merge` / `--dry-run`）
-- 原始结果：`evidence/T26-W07-bridge-results.json`（45 条 checks + 全量 metrics/resp；含 `build_history`/`merged_runs`/`retest` 记录）
+- 原始结果：`evidence/T26-W07-bridge-results.json`（46 条 checks + 全量 metrics/resp；含 `build_history`/`merged_runs`/`retest` 记录）
 - 证据类型：**W（真实产品隔离构建进程/协议/数据行为）**
 
 ## 0. 构建与修复历史（本文件为「多轮修复后复测」最终版本）
@@ -13,9 +13,10 @@
 | v1/v2（修复前基线） | `764f191b…`，15892480，10:33:12 | — | B+C（v1 21/29）+ A 增量（v2） |
 | v3（task-12 复测） | `ef1e4bfc…`，15891968，13:59:24 | task-11 `443e0a6` | B-6（上下文重建重试）、A-10（超时 → E_TIMEOUT）复测 |
 | v4（task-14 复测） | `8867595b…`，15907328，14:28:21 | task-13 `deed2a7` | B-4（RuntimeHealthBanner）、B-5（会话挂起/恢复）、B-8（stale runtime 清理）复测 |
-| **v5（task-16 复测；本文件统计）** | `983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e`，size **15900672**，mtime **14:49:57** | task-15 `a41d449` | C1-4/C2-2/C3-5：面板启动恢复 notice + safeMode 即时可见（只读命令 `workshop_pack_startup_status`）复测 |
+| v5（task-16 复测） | `983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e`，size 15900672，mtime 14:49:57 | task-15 `a41d449` | C1-4/C2-2/C3-5：面板启动恢复 notice + safeMode 即时可见复测 |
+| **v6（task-19 复测；本文件统计）** | `faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789`，size **15919616**，mtime **15:29:02** | task-18 `a80ec8b`/`b030b25` | C2-3：工坊入口 `workshop-startup-badge` 冷启动角标（只读 startupStatus）；仅复跑 C2，C1/C3 保留 v5 构建证据 |
 
-- 运行期 repo HEAD：v5 复测时含 `a41d449`（branch `feat/ui-workshop`）；Python 3.14.7；用户 App 未运行 → **N/A**。
+- 运行期 repo HEAD：v6 复测时含 `a80ec8b`/`b030b25`（branch `feat/ui-workshop`）；Python 3.14.7；用户 App 未运行 → **N/A**。
 - 复现（WSL，严格串行独占）：
   ```bash
   powershell.exe -NoProfile -Command "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; \
@@ -26,30 +27,23 @@
   ... --scenarios A --merge
   ```
 
-## 1. 结论（如实口径，v5 修复后）
+## 1. 结论（如实口径，v6 修复后）
 
-- **C1-4 已闭环（FAIL → PASS）**：rollback-corrupt-active 启动后打开工坊面板即显示
-  `[data-testid="startup-recover-notice"]`：文案「启动恢复：已自动恢复 1 个包 com.probe.t26bridge.c1：**已回滚到上一版本**
-  共检查 1 个包」，**无需先点「检查/修复全部包」**；notice 只读（读取前后 `workshop-recover-status.json`
-  mtime/sha256 不变 → 未触发 recover_all）、可关闭（点「关闭启动恢复提示」后消失）。
-- **C2-2 已闭环（FAIL → PASS，面板级）**：corrupt-no-fallback + safeMode=true 启动后打开工坊面板即显示
-  「有包无法自动恢复（safe mode）：请检查版本完整性/回滚或重新安装。」横幅 + notice
-  「启动恢复：存在无法自动恢复的包（safe mode） com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）」，无需先点检查；
-  notice 只读、可关闭。**残余缺口 C2-3**：未打开面板时工坊入口的「safe mode」角标仍不可见（入口仍依赖 Rust setup
-  早期 emit 的 `workshop://recover-status`，前端挂载前丢失）——面板级提示已修复，入口角标口径保留为残余缺口（如实）。
-- **C3-5 已闭环（FAIL → PASS）**：cleanup-journal 启动后打开面板即显示 notice
-  「启动恢复：已自动恢复 1 个包 com.probe.t26bridge.c3：**已清理中断安装残留** 共检查 1 个包」；只读、可关闭。
-- **无状态不误报（C2-9 PASS）**：恢复完成（clean 状态）后重开面板 → notice 不显示。
-- **场景 C（原生 Rust 恢复）：C1 6/6、C2 7/9、C3 6/6 = 19/21 PASS**；除上述 2 缺口外全部通过。
-- **场景 A（桥接超时）10/10 PASS、场景 B（sidecar 故障）11/11 PASS**（分别来自 v3/v4 复测构建）。
+- **C2-3 已闭环（FAIL → PASS）**：corrupt-no-fallback + safeMode=true 冷启动时，**未打开工坊面板**入口按钮即显示
+  `[data-testid="workshop-startup-badge"]`：文本「启动恢复告警」，`title`/`aria-label`=「启动恢复：存在无法自动恢复的包
+  （safe mode）」，入口既有 safe mode 徽标同步；恢复为 clean 状态后重新启动应用 → badge **不显示**（C2-10，不误报）。
+- **场景 C2：9/10 PASS**（C2-1…C2-6、C2-8…C2-10 PASS；仅 **C2-7** 无回退损坏包不可自动修复仍为缺口）。
+- **场景 A（桥接超时）10/10 PASS、场景 B（sidecar 故障）11/11 PASS**（v3/v4 构建证据）。
+- **场景 C1（6/6）、C3（6/6）PASS**（v5 构建证据，本轮未复跑）。
 - **安全/隔离 3/3 PASS。**
-- **最终统计：45 checks，43 PASS / 2 FAIL**；已闭环历史缺口 8 个（task-11：B-6/A-10；task-13：B-4/B-5/B-8；
-  task-15：C1-4/C2-2/C3-5），**剩余 2 个未闭环缺口**：C2-3（入口 safeMode 角标冷启动仍不可见）、
-  C2-7（corrupt-no-fallback 无自动修复能力，唯一路径=用户卸载/重装）。
-- **W07 判定**：A/B 类别全通过；C 类 19/21（2 个可观测性/恢复能力残余缺口）+ boot crash 既有 4 缺口
-  （见 `P5-T26-W07-fault-boot.md`）→ **W07 记为 PASS-with-gaps（部分通过）**，不宣称全通过。
+- **最终统计：46 checks，45 PASS / 1 FAIL**；已闭环历史缺口 9 个（task-11：B-6/A-10；task-13：B-4/B-5/B-8；
+  task-15：C1-4/C2-2/C3-5；task-18：C2-3），**剩余 1 个未闭环缺口**：C2-7（corrupt-no-fallback 无自动修复能力，
+  唯一恢复路径=用户卸载/重装）。
+- **W07 判定**：桥接超时/sidecar 故障全通过；原生恢复类 C1/C3 全通过、C2 9/10（仅 C2-7 恢复能力限制）；
+  叠加 boot 类剩余 2 缺口（B1-6/B2-5，见 `P5-T26-W07-fault-boot.md`）→ **W07 记为 PASS-with-gaps（部分通过）**，
+  不宣称全通过。
 
-## 2. 修复前 → 修复后（跨三轮修复复测）
+## 2. 修复前 → 修复后（跨四轮修复复测）
 
 ### 2.1 task-11（构建 `ef1e…`）：B-6 / A-10
 
@@ -74,6 +68,17 @@
 | **C2-2** 启动 safeMode UI 提示 | FAIL：入口无标记、面板需先点「检查/修复全部包」才显示 | **PASS（面板级）**：打开面板即显示「有包无法自动恢复（safe mode）」横幅 + notice「启动恢复：存在无法自动恢复的包（safe mode） com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）」；只读、可关闭。**入口角标仍不可见 → 残余缺口 C2-3** | 缺口闭环（面板级） |
 | **C3-5** 启动 cleanup-journal UI 提示 | FAIL：启动后 body 无提示 | **PASS**：打开面板即显示 notice「启动恢复：已自动恢复 1 个包 com.probe.t26bridge.c3：**已清理中断安装残留** 共检查 1 个包」；只读、可关闭 | 缺口闭环 |
 | （新增）无状态不显示 | — | **PASS**：恢复为 clean 状态后重开面板 → notice 不显示（不误报） | 新增验证 |
+
+### 2.4 task-18（构建 `faa71dfb…`）：C2-3
+
+| 检查 | 修复前（v5 `983688db…`） | 修复后（v6 实测原始值） | 结论 |
+| --- | --- | --- | --- |
+| **C2-3** 冷启动入口 safeMode 角标 | FAIL（残余缺口）：未打开面板时入口无角标（依赖 Rust setup 早期 emit 的 `workshop://recover-status`，前端挂载前丢失） | **PASS**：入口按钮即显示 `workshop-startup-badge`（文本「启动恢复告警」、`title`/`aria-label`「启动恢复：存在无法自动恢复的包（safe mode）」），无需打开面板；入口 safe mode 徽标同步 | 缺口闭环 |
+| **C2-10**（新增）clean 启动不误报 | — | **PASS**：恢复为 clean 状态后重新启动应用 → 入口 badge 不显示 | 新增验证通过 |
+
+复测附加说明（如实）：v6 首轮 **C2 出现探针侧连锁误判**——入口新增 startup badge 后按钮含子元素，
+探针 `open_workshop` 的 leaf 文本点击找不到入口按钮 → 面板未打开，C2-2/C2-5/C2-6/C2-8/C2-10 连锁 FAIL；
+修正点击 helper（优先 `aria-label`/按钮文本命中）后重跑：仅 C2-7 为真实缺口。
 
 复测附加说明（如实）：v5 首轮 **C2 行操作（修复/恢复、卸载）出现探针侧误判**——探针的行按钮选择器把
 startup-notice 中「含包 id 的 `<li>`（无按钮）」误当包行 → C2-6/C2-8/C2-9 误判；已改为「含目标按钮的包行 `<li>`」
@@ -121,19 +126,20 @@ startup-notice 中「含包 id 的 `<li>`（无按钮）」误当包行 → C2-6
 | **C1-5 notice 只读 + 可关闭（修复后）** | **PASS** | recover-status 文件 mtime/sha256 前后不变；点「关闭启动恢复提示」后 notice 消失 |
 | C1-6 UI「检查/修复全部包」可观测且一致 | PASS | 「已检查 1 个包」；本包 clean；safeMode 与其它包审计一致 |
 
-## 6. 场景 C2：corrupt-no-fallback + safeMode → 面板即时提示 / 恢复路径（7/9 PASS；构建 v5 `983688db…`）
+## 6. 场景 C2：corrupt-no-fallback + safeMode → 入口/面板即时提示 / 恢复路径（9/10 PASS；构建 v6 `faa71dfb…`）
 
 | 检查 | 结果 | 实测 |
 | --- | --- | --- |
 | C2-1 启动 recover：corrupt-no-fallback + safeMode=true | PASS | action=corrupt-no-fallback、recovered=false；safeMode=true |
-| **C2-2 启动 safeMode UI 提示（修复后，面板级）** | **PASS** | 打开面板即显示「有包无法自动恢复（safe mode）」横幅 + notice（含 safe mode），无需先点检查 |
-| **C2-3 [残余缺口] 冷启动入口「safe mode」角标** | **FAIL（残余缺口）** | 未打开面板时入口角标不可见（入口仍依赖 Rust setup 早期 emit 的 `workshop://recover-status`，前端挂载前丢失）；面板级提示已修复 |
+| C2-2 启动 safeMode UI 提示（面板级） | PASS | 打开面板即显示「有包无法自动恢复（safe mode）」横幅 + notice（含 safe mode），无需先点检查 |
+| **C2-3 冷启动入口 safeMode 角标（修复后）** | **PASS** | 未打开面板即显示 workshop-startup-badge「启动恢复告警」（title/aria 含「无法自动恢复」）；入口 safe mode 徽标同步 |
 | C2-4 启动 notice 只读（未触发 recover_all） | PASS | recover-status 文件 mtime/sha256 前后不变 |
 | C2-5 主动「检查/修复全部包」后 UI 横幅仍可观测 | PASS | 「已检查 1 个包（存在无法自动恢复的包）」+ 横幅 |
 | C2-6 单包「修复/恢复」如实返回（不假修复） | PASS | 「无需恢复（corrupt-no-fallback）」；磁盘仍损坏 |
 | **C2-7 [缺口] 无回退损坏包可自动修复** | **FAIL（缺口）** | recover 无修复能力；唯一恢复路径=用户卸载/重装 |
 | C2-8 恢复路径：UI 卸载 + 重装有效包 + 检查 | PASS | 「已卸载 …c2」；安装 ok；「已检查 1 个包」；safeMode=false、verify=true、横幅消失 |
 | C2-9 无恢复动作/无 safeMode 时 notice 不显示 | PASS | 恢复后重开面板 → notice 为 null（不误报） |
+| **C2-10 clean 启动入口 badge 不显示（新增）** | **PASS** | 恢复后重新启动应用 → 入口 startup badge 为 null（不误报） |
 
 ## 7. 场景 C3：cleanup-journal → 启动 notice / IPC/UI 一致（6/6 PASS；构建 v5 `983688db…`）
 
@@ -146,7 +152,7 @@ startup-notice 中「含包 id 的 `<li>`（无按钮）」误当包行 → C2-6
 | **C3-5 notice 只读 + 可关闭（修复后）** | **PASS** | recover-status 文件 mtime/sha256 前后不变；点「关闭」后 notice 消失 |
 | C3-6 UI「检查/修复全部包」可观测且一致 | PASS | 「已检查 1 个包」；本包 clean；safeMode=false |
 
-## 8. 缺口清单（v5：2 个未闭环 + 8 个已闭环）
+## 8. 缺口清单（v6：1 个未闭环 + 9 个已闭环）
 
 **已闭环（修复 + 产品 W 复测 PASS）**
 
@@ -160,14 +166,14 @@ startup-notice 中「含包 id 的 `<li>`（无按钮）」误当包行 → C2-6
 | C1-4 启动回滚无提示 | task-15 `a41d449` | 面板 notice「已回滚到上一版本」（只读、可关闭） |
 | C2-2 启动 safeMode 提示 | task-15 `a41d449` | 面板横幅 + notice 即时可见（无需点检查） |
 | C3-5 启动 cleanup-journal 无提示 | task-15 `a41d449` | 面板 notice「已清理中断安装残留」 |
+| C2-3 冷启动入口 safeMode 角标 | task-18 `a80ec8b` | 入口 `workshop-startup-badge` 冷启动可见；clean 启动不误报（C2-10） |
 
-**未闭环（2 项）**
+**未闭环（1 项）**
 
 | # | 缺口 | 场景 | 影响 | 建议（不在本任务改动范围） |
 | --- | --- | --- | --- | --- |
-| 1 | 冷启动未打开面板时入口「safe mode」角标不可见（面板级提示已修复；入口仍依赖启动早于前端挂载的 `workshop://recover-status` 事件） | C2-3 | 用户需打开工坊面板才能看到 safeMode 提示；入口角标缺失属残余可观测性缺口 | 入口同样通过只读命令 `workshop_pack_startup_status` 初始化 safeMode 标记（与 Panel 一致） |
-| 2 | 无回退损坏包不可自动修复（corrupt-no-fallback） | C2-7 | 只能用户卸载/重装；UI 已提供该路径，行为诚实 | 可考虑 UI 直接引导「卸载/重装」（产品增强，非缺陷修复） |
-| 3 | （引用既有证据）boot crash 4 缺口：孤儿 sidecar / 端口耗尽静默 / 无运行期自愈×2 | boot crash | 见 `P5-T26-W07-fault-boot.md` | — |
+| 1 | 无回退损坏包不可自动修复（corrupt-no-fallback） | C2-7 | 只能用户卸载/重装；UI 已提供该路径，行为诚实 | 可考虑 UI 直接引导「卸载/重装」（产品增强，非缺陷修复） |
+| 2 | （引用 boot 证据）boot 类剩余 2 缺口：B1-6 端口耗尽后无运行期自愈、B2-5 数据目录解除后无运行期自愈 | boot | 见 `P5-T26-W07-fault-boot.md`（v2 复测后 43/45，2 缺口） | 运行期自愈为已知设计限制 |
 
 ## 9. 覆盖边界 / 未覆盖 / 运行披露（不夸大）
 
@@ -182,9 +188,12 @@ startup-notice 中「含包 id 的 `<li>`（无按钮）」误当包行 → C2-6
    - v3（task-12 复测，`ef1e…`）：B/A 复测；B-6/A-10 PASS；B 首测 B-10 探针 CDP 收集器竞态修正后重跑。
    - v4（task-14 复测，`88675…`）：B 复测；B-4/B-5/B-5b/B-8/B-9 PASS；首轮 B-9 探针文案子串断言过严修正后重跑。
    - v5（task-16 复测，`983688db…`）：C1/C2/C3 复测；C1-4/C2-2/C3-5 PASS；C2 首轮探针行选择器误选 notice `<li>` 修正后重跑。
-   本文件统计为 v5 复测后的最终值（45 checks / 43 PASS / 2 FAIL）。
-6. **构建混用说明**：environment=`983688db…`（v5，C 复测构建）；A=`ef1e…`（v3）、B=`8867595b…`（v4）、C=`983688db…`（v5）；
-   JSON `build_history`/`run_conditions.scenario_builds` 均已记录，未把旧结果混写为新构建结果。
+   - v6（task-19 复测，`faa71dfb…`）：仅 C2 复测；C2-3 PASS（入口 badge）+ C2-10（clean 不误报）PASS；
+     首轮因入口 badge 改变按钮 DOM 导致探针 open_workshop 点击失效 → 修正点击 helper 后重跑。
+   本文件统计为 v6 复测后的最终值（46 checks / 45 PASS / 1 FAIL）。
+6. **构建混用说明**：environment=`faa71dfb…`（v6，C2 复测构建）；A=`ef1e…`（v3）、B=`8867595b…`（v4）、
+   C1/C3=`983688db…`（v5，本轮未复跑）、C2=`faa71dfb…`（v6）；JSON `build_history`/`run_conditions.scenario_builds`
+   均已记录，未把旧结果混写为新构建结果。
 7. **共享资源**：共享 `%APPDATA%\Roaming\com.astranota.uiws.e2e\workshop-packs` 中其它探针包（F 台账等）
    本探针未卸载/修改/删除；自有 pack id `com.probe.t26bridge*` 运行后已清理。
 8. **红线合规**：只启动隔离测试构建；APPDATA/KE_WORKSPACE/KE_APP_CONFIG_LEGACY 隔离；CDP 端口 10410+ 每次 launch 轮换；
@@ -192,10 +201,12 @@ startup-notice 中「含包 id 的 `<li>`（无按钮）」误当包行 → C2-6
    `C:\ke-tmp\uiws-t26\bin\*` / `F:\Work\Dev\cargo-target\*` 白名单；**无 taskkill /IM**；
    未触碰 `D:\AstraNota*` 用户实例（用户 App 未运行，N/A）。
 
-## 10. 判定（v5 修复后）
+## 10. 判定（v6 修复后）
 
-- **task-11（B-6/A-10）、task-13（B-4/B-5/B-8）、task-15（C1-4/C2-2/C3-5）：修复验证通过（产品 W 复测）** → 8 个历史缺口闭环。
+- **task-11（B-6/A-10）、task-13（B-4/B-5/B-8）、task-15（C1-4/C2-2/C3-5）、task-18（C2-3）：修复验证通过（产品 W 复测）**
+  → 9 个历史缺口闭环。
 - **场景 A（桥接超时）**：10/10 PASS；**场景 B（sidecar 故障）**：11/11 PASS。
-- **场景 C（原生 Rust 恢复）**：**19/21 PASS**（C1 6/6、C2 7/9、C3 6/6）；剩余 2 缺口：C2-3（入口角标残余）、C2-7（no-fallback 无自动修复）。
-- **W07 整体**：A/B/C + boot crash 类别均已覆盖；**PASS-with-gaps（部分通过）**，剩余 C 类 2 + boot crash 4 缺口如实保留、
-  不宣称全通过；不改变 `EXPERIMENTAL_TRUSTED_PACKS` 里程碑结论。缺口交由 Lead/docs-consolidator 汇总。
+- **场景 C（原生 Rust 恢复）**：C1 6/6、C2 9/10、C3 6/6；剩余 1 缺口：C2-7（no-fallback 无自动修复能力）。
+- **W07 整体**：桥接超时/sidecar 故障/原生恢复/boot crash 类别均已覆盖；**PASS-with-gaps（部分通过）**，
+  剩余 C 类 1 + boot 类 2 缺口如实保留、不宣称全通过；不改变 `EXPERIMENTAL_TRUSTED_PACKS` 里程碑结论。
+  缺口交由 Lead/docs-consolidator 汇总。

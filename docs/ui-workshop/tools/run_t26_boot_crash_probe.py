@@ -896,6 +896,9 @@ def scenario_a2(checks: list, metrics: dict) -> dict:
         str(iso.workspace).lower() == str(x).lower()
         for x in (app_cfg_after.get("recent_workspaces") or []))
     backends_before_stop = backend_pids()
+    restart_log_tail = lr.tail(200)  # W07 A2-10：重启启动日志（孤儿清理结构化行）
+    spawn_registry_path = iso.ke_cfg / "runtime" / "sidecar-spawn.json"
+    spawn_registry_after = read_json_safe(spawn_registry_path)
     end_info = stop_launch(lr, cdp_r, graceful=True)
     cdp_close(cdp_r)
     # stop_launch 内 cleanup_test_procs 已按路径白名单清理孤儿；记录清理动作
@@ -939,19 +942,26 @@ def scenario_a2(checks: list, metrics: dict) -> dict:
           fixture_hashes_after == fixture_hashes_before,
           {"app_config": app_cfg_after, "settings": settings_after,
            "fixtures_before": fixture_hashes_before, "fixtures_after": fixture_hashes_after})
-    # 孤儿 sidecar 缺口判定：runtime.json 未写 → 下次启动 cleanup_stale() 看不到孤儿
+    # A2-10（修复后）：早期强杀遗留的孤儿 sidecar 由 spawn registry 在下次启动时保守自愈清理
     orphan_handled = not orphans_alive_after_restart
+    cleanup_logged = "W07 A2-10: 发现上次启动遗留的孤儿 sidecar" in restart_log_tail
+    cleanup_log_lines = [ln for ln in restart_log_tail.splitlines() if "W07 A2-10" in ln]
     check(checks, "A2", "BOOT-A2-10",
-          "[缺口观测] 早期崩溃遗留孤儿 sidecar 被下次启动清理（Rust cleanup_stale 依赖 runtime.json）",
-          orphan_handled,
+          "早期崩溃遗留孤儿 sidecar 被下次启动清理（修复后：spawn registry 保守判定 → 整树停止、释放端口；"
+          "重启正常启动且使用默认端口）",
+          orphan_handled and cleanup_logged and new_port == 8000 and restart_ok,
           {"orphans_at_kill": ks["sidecar"], "orphans_alive_after_restart": orphans_alive_after_restart,
+           "cleanup_logged": cleanup_logged, "cleanup_log_lines": cleanup_log_lines[-6:],
            "new_backend_pid": new_backend_pid, "new_port": new_port,
-           "note": "若为 FAIL：早期崩溃时 runtime.json 未写出 → 下次启动 cleanup_stale() 无从发现孤儿，"
-                   "孤儿占默认端口，应用自动换端口（8001）仍可启动（数据未损坏）"})
+           "kill_runtime_json_exists": ks["runtime_json_exists"],
+           "spawn_registry_after_restart": spawn_registry_after,
+           "restart_log_tail": restart_log_tail[-2500:]})
     check(checks, "A2", "BOOT-A2-11",
-          "孤儿占用默认端口时应用自动换端口启动（runtime.backend.port 记录，仍在前端 CSP 白名单 8000-8002 内）",
-          new_port in (8000, 8001, 8002),
-          {"new_port": new_port, "orphans_alive_after_restart": orphans_alive_after_restart})
+          "孤儿已清理后重启使用默认端口 8000（不再出现孤儿占 8000 → 应用换 8001 的端口偏移；"
+          "仍在前端 CSP 白名单 8000-8002 内）",
+          new_port == 8000 or (orphan_handled is False and new_port in (8001, 8002)),
+          {"new_port": new_port, "orphans_alive_after_restart": orphans_alive_after_restart,
+           "orphan_handled": orphan_handled})
 
     return {
         "description": "已有数据目录（工作区+签名包）→ 优雅退出 → ~800ms 早期强杀 → 重启",
@@ -1146,9 +1156,11 @@ def scenario_b1(checks: list, metrics: dict) -> dict:
                 "backend_spawned": len(backend_pids()) > 0,
                 "fail_seen": fail_seen,
                 "stderr_bytes": l.log_path.stat().st_size if l.log_path.exists() else 0,
-                "log": l.tail(30),
+                "log": l.tail(80),
                 "get_runtime_info": invoke(cdp, "get_runtime_info") if cdp is not None else None,
             }
+            info["port_error_lines"] = [ln for ln in (info["log"] or "").splitlines()
+                                        if "E_SIDECAR_PORT:" in ln or "E_SIDECAR_START:" in ln]
             launches.append(info)
             if i < 2:
                 stop = stop_launch(l, cdp, graceful=False)
@@ -1160,15 +1172,32 @@ def scenario_b1(checks: list, metrics: dict) -> dict:
                 for sk in hold:
                     sk.close()
                 hold = []
+                health_samples: list = []
                 if cdp is not None:
                     end = time.time() + 45
                     while time.time() < end:
                         b = body_text(cdp, 600)
-                        if any(m in b for m in BANNER_BACKEND_DOWN):
-                            ui_banner = {"t_s": l.elapsed(), "body": b[:400],
-                                         "boot_timings": boot_timings(cdp)}
-                            break
+                        st = cdp.eval(
+                            "(() => { const el=document.querySelector('[data-testid=\"runtime-health-banner\"]');"
+                            " return {banner: el ? {phase: el.getAttribute('data-phase'),"
+                            " text: (el.textContent||'').trim()} : null,"
+                            " health: (window.__keRuntimeHealth || null)}; })()")
+                        if isinstance(st, dict):
+                            health_samples.append({"t_s": round(l.elapsed(), 1),
+                                                   "banner": st.get("banner"),
+                                                   "health": st.get("health")})
+                            banner_text = str(((st.get("banner") or {})).get("text") or "")
+                            cause_visible = any(k in banner_text for k in ("E_SIDECAR_PORT", "端口", "启动失败"))
+                            if any(m in b for m in BANNER_BACKEND_DOWN) or \
+                                    (((st.get("banner") or {}).get("phase")) == "degraded" and cause_visible):
+                                ui_banner = {"t_s": l.elapsed(), "body": b[:500],
+                                             "banner": st.get("banner"), "health": st.get("health"),
+                                             "cause_visible": bool(cause_visible),
+                                             "boot_timings": boot_timings(cdp)}
+                                break
                         time.sleep(1.0)
+                if ui_banner:
+                    ui_banner["health_samples"] = health_samples[-12:]
                 no_retry_obs = {
                     "released_at_s": l.elapsed(),
                     "runtime_exists_after_release": iso.runtime_file.exists(),
@@ -1209,16 +1238,22 @@ def scenario_b1(checks: list, metrics: dict) -> dict:
                "stderr_bytes": info["stderr_bytes"],
                "log": info["log"][-300:]})
     stderr_observed = any((info["stderr_bytes"] or 0) > 0 for info in launches)
+    port_log_observed = any(bool(info.get("port_error_lines")) for info in launches)
     check(checks, "B1", "BOOT-B1-4",
-          "[缺口观测] 端口耗尽失败原因有 stderr/日志可观测（实测应为 FAIL：Rust find_free_port 全失败分支"
-          "静默 continue，无 eprintln，只 emit ke:runtime-error；前端未监听该事件 → 具体原因不可见）",
-          stderr_observed,
-          {"launches": [{"launch": info["launch"], "stderr_bytes": info["stderr_bytes"]} for info in launches],
-           "ui_visible_error": "仅 ~32s 后通用「后端服务未连接」横幅（见 B1-5），无具体原因",
-           "source_ref": "desktop/src-tauri/src/sidecar.rs start(); frontend/src/main.tsx 仅监听 ke:runtime-ready"})
-    banner_ok = bool(ui_banner) and any(m in ui_banner.get("body", "") for m in BANNER_BACKEND_DOWN)
+          "端口耗尽失败原因有结构化 stderr/日志可观测（修复后）：stderr 非空且含 `E_SIDECAR_PORT:` / "
+          "`E_SIDECAR_START:`（第 N/3 次尝试）与最终「不再重试」失败行",
+          stderr_observed and port_log_observed,
+          {"launches": [{"launch": info["launch"], "stderr_bytes": info["stderr_bytes"],
+                         "port_error_lines": info.get("port_error_lines")} for info in launches],
+           "ui_reason_observation": {"banner_or_hook": ui_banner or None,
+                                     "note": "terminal runtime-error 在窗口/前端挂载前发出时 UI 可能错过（早期事件限制，如实记录）"},
+           "source_ref": "desktop/src-tauri/src/sidecar.rs start()：E_SIDECAR_PORT/ E_SIDECAR_START + "
+                         "ke:runtime-error{terminal:true}"})
+    banner_ok = bool(ui_banner) and (
+        any(m in ui_banner.get("body", "") for m in BANNER_BACKEND_DOWN)
+        or bool(ui_banner.get("cause_visible")))
     check(checks, "B1", "BOOT-B1-5",
-          "UI 错误最终可见：启动失败约 30s 后显示通用「后端服务未连接」横幅（无具体原因）",
+          "UI 错误最终可见（通用「后端未连接」横幅或带具体原因的 degraded banner；早期事件丢失时回退通用横幅）",
           banner_ok, ui_banner or {"observed": "45s 内未出现横幅"})
     retried = bool(no_retry_obs.get("runtime_exists_after_release") or
                    no_retry_obs.get("backend_spawned_after_release") or
@@ -1418,12 +1453,33 @@ def scenario_b3(checks: list, metrics: dict) -> dict:
         after = {"settings": sha256_file(settings_path), "app_config": sha256_file(config_path)}
         bak_files = sorted([p.name for p in iso.ke_cfg.glob("*.bak*")] +
                            [p.name for p in iso.ke_cfg.glob("*.tmp")])
+        log_tail = l.tail(250)
+        repair_lines = [ln for ln in log_tail.splitlines() if "W07 B3-4" in ln]
+        bak_details = [{"name": bp.name, "sha256": sha256_file(bp),
+                        "size": bp.stat().st_size if bp.exists() else 0}
+                       for bp in sorted(iso.ke_cfg.glob("*.corrupt-*.bak"))]
+        health_obs = None
+        banner_obs = None
+        if cdp is not None:
+            try:
+                health_obs = cdp.eval("window.__keRuntimeHealth || null")
+                banner_obs = cdp.eval(
+                    "(() => { const el=document.querySelector('[data-testid=\"runtime-health-banner\"]');"
+                    " return el ? {phase: el.getAttribute('data-phase'),"
+                    " text: (el.textContent||'').trim()} : null; })()")
+            except Exception:
+                pass
         results.append({
             "launch": i + 1, "obs": {k: obs[k] for k in ("alive", "runtime_ready_s",
                                                          "body_ready_s", "body")},
             "settings_invoke": settings_inv, "api": api_obs, "body": body,
             "files_after": after, "bad_hashes": bad_hashes,
             "repaired": after != bad_hashes, "bak_files": bak_files,
+            "bak_details": bak_details, "repair_lines": repair_lines,
+            "log_tail": log_tail[-2500:],
+            "settings_parsed": read_json_safe(settings_path),
+            "app_config_parsed": read_json_safe(config_path),
+            "runtime_health_observed": health_obs, "banner_observed": banner_obs,
             "banner_absent": not any(m in body for m in BANNER_BACKEND_DOWN),
             "picker_shown": "选择已有 workspace" in body or "选择一个工作区" in body,
         })
@@ -1440,6 +1496,28 @@ def scenario_b3(checks: list, metrics: dict) -> dict:
         (r["settings_invoke"]["value"].get("schemaVersion") == 1) and
         ((r["settings_invoke"]["value"].get("ui") or {}).get("theme") == "system")
         for r in results)
+    # ---- 修复后判定：备份（原始字节）+ 默认重置 + 幂等 ----
+    def _files_valid(r) -> bool:
+        st = r.get("settings_parsed")
+        cfg = r.get("app_config_parsed")
+        return (isinstance(st, dict) and st.get("schemaVersion") == 1
+                and ((st.get("ui") or {}).get("theme") == "system")
+                and isinstance(cfg, dict) and isinstance(cfg.get("recent_workspaces"), list)
+                and not cfg.get("recent_workspaces"))
+
+    def _backup_ok(r) -> bool:
+        names = [b["name"] for b in (r.get("bak_details") or [])]
+        settings_bak = [b for b in (r.get("bak_details") or []) if b["name"].startswith("settings.json.corrupt-")]
+        config_bak = [b for b in (r.get("bak_details") or []) if b["name"].startswith("app_config.json.corrupt-")]
+        return (len(settings_bak) == 1 and len(config_bak) == 1
+                and all(b["sha256"] == bad_hashes["settings"] for b in settings_bak + config_bak)
+                and all(n.endswith(".bak") for n in names))
+
+    first = results[0] if results else {}
+    second = results[1] if len(results) > 1 else {}
+    idempotent = (len(first.get("bak_details") or []) == 2
+                  and len(second.get("bak_details") or []) == 2
+                  and not second.get("repair_lines"))
     no_repair = all(not r["repaired"] for r in results)
     no_bak = all(not r["bak_files"] for r in results)
     silent_no_banner = all(r["banner_absent"] for r in results)
@@ -1475,12 +1553,30 @@ def scenario_b3(checks: list, metrics: dict) -> dict:
            "api": [r.get("api") for r in results],
            "body": [(r["obs"].get("body") or "")[:140] for r in results]})
     check(checks, "B3", "BOOT-B3-4",
-          "[缺口观测] 损坏状态文件无自动修复/备份/用户提示（静默回退默认值；无 .bak/.tmp；UI 无告警横幅）",
-          no_repair and no_bak and silent_no_banner,
-          {"repaired": not no_repair, "bak_files": [r["bak_files"] for r in results],
-           "banner_absent": silent_no_banner, "file_hashes_after": [r["files_after"] for r in results],
-           "bad_hashes": bad_hashes})
-    return {"description": "损坏 settings/app_config JSON → 连续 2 次启动均成功降级默认，无自动修复/备份/提示（缺口）",
+          "损坏状态文件自动修复（修复后）：settings.json/app_config.json 均生成 `.corrupt-<ts>.bak`（原始损坏字节可恢复）"
+          "+ 主文件重置为合法默认 JSON；连续两次启动幂等（不重复备份、不阻断启动）",
+          len(results) == 2 and all(_startup_ok(r) for r in results)
+          and _backup_ok(first) and _files_valid(first) and _files_valid(second) and idempotent,
+          {"backup_ok": _backup_ok(first), "files_valid_first": _files_valid(first),
+           "files_valid_second": _files_valid(second), "idempotent": idempotent,
+           "bak_details": [r.get("bak_details") for r in results],
+           "file_hashes_after": [r["files_after"] for r in results],
+           "bad_hashes": bad_hashes,
+           "settings_parsed": [r.get("settings_parsed") for r in results],
+           "app_config_parsed": [r.get("app_config_parsed") for r in results]})
+    repair_hint_ok = (len(first.get("repair_lines") or []) >= 2
+                      and all(("备份到" in ln and "重置为默认配置" in ln)
+                              for ln in (first.get("repair_lines") or [])))
+    check(checks, "B3", "BOOT-B3-5",
+          "损坏修复提示可观测（修复后）：启动/读取设置日志含结构化 `[settings] W07 B3-4:` 行，"
+          "说明已备份到 .corrupt-*.bak 并重置默认（不静默丢设置；UI 事件若在挂载后到达则记录）",
+          repair_hint_ok,
+          {"repair_lines": first.get("repair_lines"),
+           "runtime_health_observed": first.get("runtime_health_observed"),
+           "banner_observed": first.get("banner_observed"),
+           "note": "recoverable runtime-error 在窗口挂载前发出时 UI 可能错过（早期事件限制，如实记录）"})
+    return {"description": "损坏 settings/app_config JSON → 连续 2 次启动均成功；"
+                          "修复前：静默回退默认无备份/无提示；修复后：`.corrupt-<ts>.bak` 备份 + 默认重置 + 结构化日志提示",
             "bad_hashes": bad_hashes, "results": results}
 
 
@@ -1679,6 +1775,46 @@ def main() -> int:
         ],
     }
     out = EVID / "T26-W07-boot-results.json"
+    # --merge：把本次选中场景合并进既有证据（保留其历史场景/checks 与构建历史）
+    if "--merge" in argv and out.exists():
+        try:
+            prev = json.loads(out.read_text(encoding="utf-8"))
+        except Exception:
+            prev = None
+        if isinstance(prev, dict):
+            prev_scen = dict(prev.get("scenarios") or {})
+            for key in selected:
+                if key in scenarios:
+                    prev_scen[key] = scenarios[key]
+            keep_checks = [c for c in (prev.get("checks") or [])
+                           if c.get("scenario") not in set(selected)
+                           and c.get("scenario") != "SAFE"]
+            all_checks = keep_checks + checks
+            pass_count = sum(1 for c in all_checks if c.get("pass"))
+            total = len(all_checks)
+            gaps = [{"id": c["id"], "name": c["name"], "detail": c["detail"]}
+                    for c in all_checks if not c.get("pass")]
+            prev_env = prev.get("environment") or {}
+            build_history = list(prev.get("build_history") or [])
+            record = {"run_at": env_meta["generated_at"], "scenarios": list(selected),
+                      "cdp_port": CDP_PORT, "merged_into_existing": True}
+            if prev_env.get("exe_sha256") and prev_env.get("exe_sha256") != env_meta.get("exe_sha256"):
+                build_history.append({"exe_sha256": prev_env.get("exe_sha256"),
+                                      "exe_mtime": prev_env.get("exe_mtime"),
+                                      "exe_size": prev_env.get("exe_size"),
+                                      "note": "上一轮证据所用测试构建（已被新构建替换）"})
+                record["build_changed"] = True
+                summary["environment"] = env_meta
+            else:
+                summary["environment"] = prev_env or env_meta
+            summary.update({"checks": all_checks, "scenarios": prev_scen,
+                            "pass_count": pass_count, "total": total,
+                            "fail_count": total - pass_count, "gaps": gaps,
+                            "build_history": build_history,
+                            "merged_runs": list(prev.get("merged_runs") or []) + [record],
+                            "retest_windows": list(prev.get("retest_windows") or []) + [record],
+                            "run_conditions": prev.get("run_conditions") or summary["run_conditions"]})
+            print(f"[merge] 合并 {selected} 到既有证据（保留 {len(keep_checks)} 条旧 checks）", flush=True)
     out.write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     print(f"\nSUMMARY {pass_count}/{total} checks PASS, {total - pass_count} FAIL "
           f"(gaps={[g['id'] for g in gaps]}) -> {out}", flush=True)

@@ -1,24 +1,24 @@
 {
-  "generated_at": "2026-10-19T09:39:27+0800",
-  "task": "task-4 / W07 扩展：boot crash + 连续启动失败（隔离产品构建 W 证据）",
+  "generated_at": "2026-10-19T15:36:47+0800",
+  "task": "task-4 + task-19 / W07 扩展：boot crash + 连续启动失败（修复后复测，隔离产品构建 W 证据）",
   "evidence_type": "W（真实产品隔离构建进程/数据行为；故障注入方式见各场景 metrics）",
   "environment": {
-    "generated_at": "2026-10-19T09:39:27+0800",
+    "generated_at": "2026-10-19T15:36:47+0800",
     "platform": "Windows-11-10.0.26200-SP0",
     "windows_version": "10.0.26200",
     "python": "3.14.7",
     "repo": "F:\\Work\\KE Project\\knowledge-editor",
     "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-    "exe_sha256": "be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a",
-    "exe_mtime": "2026-10-19T09:27:26",
-    "exe_size": 15888384,
+    "exe_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+    "exe_mtime": "2026-10-19T15:29:02",
+    "exe_size": 15919616,
     "isolated_identifier": "com.astranota.uiws.e2e",
     "pack_root": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs",
     "my_pack_id": "com.probe.t26w07boot",
-    "cdp_port": 10318,
-    "ke_port_b1": 18648,
+    "cdp_port": 10346,
+    "ke_port_b1": 18656,
     "appdata_isolation": "C:\\ke-tmp\\uiws-t26-w07boot\\*\\appdata",
-    "git_head": "d502d9db1e22f50ee0ab4932122bd8b2004321c5",
+    "git_head": "b030b25b2bd03d8bba0c2257aed38ead1143a6b2",
     "git_branch": "feat/ui-workshop",
     "ports_8000_8002_before": {
       "8000": "free",
@@ -38,7 +38,53 @@
       "n_a": true
     },
     "cleanup_policy": "自身 Popen PID；sidecar 仅路径白名单；无 taskkill /IM；不触碰 D:\\AstraNota*",
-    "pack_scope": "仅自有 pack id com.probe.t26w07boot；不删共享 C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs"
+    "pack_scope": "仅自有 pack id com.probe.t26w07boot；不删共享 C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs",
+    "retest_windows": [
+      {
+        "window": "v2（task-19 A2/B1/B3 修复后复测）",
+        "when": "2026-10-19T15:36–15:42",
+        "scenarios": [
+          "A2",
+          "B1",
+          "B3"
+        ],
+        "build_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+        "fix_commits": [
+          "a80ec8b",
+          "b030b25"
+        ],
+        "note": "task-18 修复后 Lead 重建测试 exe；A2-10/B1-4/B3-4 FAIL→PASS；A1/A3/B2 未复跑（保留原构建 be2582ad 证据）"
+      }
+    ],
+    "builds": {
+      "v1": {
+        "exe_sha256": "be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a",
+        "exe_mtime": "2026-10-19T09:27:26",
+        "exe_size": 15888384,
+        "scenarios": [
+          "A1",
+          "A2",
+          "A3",
+          "B1",
+          "B2",
+          "B3（修复前基线）"
+        ]
+      },
+      "v2_current": {
+        "exe_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+        "exe_mtime": "2026-10-19T15:29:02",
+        "exe_size": 15919616,
+        "scenarios": [
+          "A2",
+          "B1",
+          "B3（修复后复测）"
+        ]
+      }
+    },
+    "scenario_builds": {
+      "A1/A3/B2": "be2582ad…（v1，本轮未复跑）",
+      "A2/B1/B3": "faa71dfb…（v2 本轮复测）"
+    }
   },
   "scenarios": {
     "A1": {
@@ -160,8 +206,8 @@
       "baseline": {
         "obs": {
           "alive": true,
-          "runtime_ready_s": 2.103,
-          "body_ready_s": 2.107,
+          "runtime_ready_s": 2.058,
+          "body_ready_s": 2.059,
           "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊"
         },
         "install": {
@@ -169,26 +215,13 @@
           "value": {
             "active": "1.0.0",
             "previous": null,
-            "updatedAt": "SystemTime { intervals: 134368475811717347 }"
+            "updatedAt": "SystemTime { intervals: 134368690103939907 }"
           }
         },
         "pack_list": {
           "ok": true,
           "value": {
             "packs": [
-              {
-                "active": "1.0.0",
-                "activeVersion": "1.0.0",
-                "capabilities": [
-                  "ui.shell",
-                  "context.read"
-                ],
-                "id": "com.probe.t26w02",
-                "name": "T26 W02 Pack",
-                "previous": null,
-                "signatureReason": "E_SIGNATURE: 验签失败",
-                "signatureStatus": "invalid"
-              },
               {
                 "active": "1.0.0",
                 "activeVersion": "1.0.0",
@@ -207,7 +240,7 @@
         "pack_disk_state": {
           "active": "1.0.0",
           "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368475811717347 }"
+          "updatedAt": "SystemTime { intervals: 134368690103939907 }"
         },
         "installed_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
         "expected_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
@@ -218,21 +251,12 @@
           "recent_documents": []
         },
         "status_before_kill": {
-          "checked": 1,
-          "generatedAt": "SystemTime { intervals: 134368475788817889 }",
-          "results": [
-            {
-              "action": "clean",
-              "active": "1.0.0",
-              "id": "com.probe.t26w02",
-              "previous": null,
-              "recovered": false,
-              "updatedAt": "SystemTime { intervals: 134368469819555338 }"
-            }
-          ],
+          "checked": 0,
+          "generatedAt": "SystemTime { intervals: 134368690082399154 }",
+          "results": [],
           "safeMode": false,
-          "generatedAtLocal": "2026-10-19T09:39:38+0800",
-          "mtime": "2026-10-19T09:39:38+0800",
+          "generatedAtLocal": "2026-10-19T15:36:48+0800",
+          "mtime": "2026-10-19T15:36:48+0800",
           "_path": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs\\workshop-recover-status.json"
         },
         "stop": {
@@ -246,12 +270,12 @@
         }
       },
       "kill_state": {
-        "kill_at_s": 0.801,
+        "kill_at_s": 0.805,
         "main_alive": true,
         "runtime_json_exists": false,
         "sidecar": [
           {
-            "pid": 38636,
+            "pid": 14128,
             "name": "knowledgeeditor-backend.exe"
           }
         ],
@@ -268,52 +292,49 @@
         },
         "orphans_after_kill": [
           {
-            "pid": 38636,
+            "pid": 14128,
             "name": "knowledgeeditor-backend.exe"
           },
           {
-            "pid": 29184,
+            "pid": 32264,
             "name": "conhost.exe"
           },
           {
-            "pid": 26920,
+            "pid": 38744,
             "name": "knowledgeeditor-backend.exe"
           }
         ],
         "orphan_backend_pids": [
-          26920,
-          38636
+          14128,
+          38744
         ],
         "log_tail": ""
       },
       "restart": {
         "obs": {
           "alive": true,
-          "runtime_ready_s": 2.239,
-          "body_ready_s": 2.24,
-          "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊",
+          "runtime_ready_s": 3.795,
+          "body_ready_s": 3.802,
+          "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\n创意工坊",
           "runtime": {
             "backend": {
-              "pid": 33088,
-              "port": 8001,
-              "started_at": "2026-10-19T01:39:50.348359+00:00",
+              "pid": 50300,
+              "port": 8000,
+              "started_at": "2026-10-19T07:37:00.470856+00:00",
               "version": "1.2.18"
             },
             "frontend": null,
             "project_version": "1.2.18",
-            "started_at": "2026-10-19T01:39:50.348359+00:00"
+            "started_at": "2026-10-19T07:37:00.470856+00:00"
           }
         },
-        "orphans_alive_after_restart": [
-          26920,
-          38636
-        ],
-        "new_backend_pid": 33088,
-        "new_port": 8001,
+        "orphans_alive_after_restart": [],
+        "new_backend_pid": 50300,
+        "new_port": 8000,
         "recover_status": {
-          "checked": 2,
+          "checked": 1,
           "safeMode": false,
-          "generatedAtLocal": "2026-10-19T09:39:48+0800"
+          "generatedAtLocal": "2026-10-19T15:36:57+0800"
         },
         "pack_result": {
           "action": "clean",
@@ -321,7 +342,7 @@
           "id": "com.probe.t26w07boot",
           "previous": null,
           "recovered": false,
-          "updatedAt": "SystemTime { intervals: 134368475811717347 }"
+          "updatedAt": "SystemTime { intervals: 134368690103939907 }"
         },
         "fixtures_after": {
           "Articles/boot-crash.md": "74c1a5b6949d24e1371335d1f370fb9d919862d6950912bb09b7972d0b3e071a",
@@ -350,9 +371,7 @@
         },
         "orphan_cleanup": {
           "orphans_cleaned_by_whitelist": [
-            26920,
-            29772,
-            38636
+            40376
           ],
           "backends_after_cleanup": []
         }
@@ -507,15 +526,15 @@
     "B1": {
       "description": "sidecar 端口耗尽（KE_PORT 隔离端口族 3 个端口被独占占用）→ 连续 3 次启动失败 → 释放端口无运行期自愈（UI 仅 30s 后通用横幅）→ 默认端口重启恢复",
       "ports": [
-        18648,
-        18649,
-        18650
+        18656,
+        18657,
+        18658
       ],
       "ports_free_before_hold": true,
       "ports_occupied_verified": {
-        "18648": true,
-        "18649": true,
-        "18650": true
+        "18656": true,
+        "18657": true,
+        "18658": true
       },
       "launches": [
         {
@@ -524,18 +543,24 @@
           "runtime_exists": false,
           "backend_spawned": false,
           "fail_seen": {
-            "first_signal_s": 0.752,
+            "first_signal_s": 0.509,
             "get_runtime_info": {
               "ok": false,
               "error": "后端尚未就绪"
             },
-            "confirmed_s": 3.804
+            "confirmed_s": 3.574
           },
-          "stderr_bytes": 0,
+          "stderr_bytes": 517,
           "get_runtime_info": {
             "ok": false,
             "error": "后端尚未就绪"
           },
+          "port_error_lines": [
+            "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+            "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+            "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+            "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+          ],
           "stop": {
             "mode": "kill",
             "exit_code": 1,
@@ -548,18 +573,24 @@
           "runtime_exists": false,
           "backend_spawned": false,
           "fail_seen": {
-            "first_signal_s": 0.655,
+            "first_signal_s": 0.543,
             "get_runtime_info": {
               "ok": false,
               "error": "后端尚未就绪"
             },
-            "confirmed_s": 3.708
+            "confirmed_s": 3.611
           },
-          "stderr_bytes": 0,
+          "stderr_bytes": 517,
           "get_runtime_info": {
             "ok": false,
             "error": "后端尚未就绪"
           },
+          "port_error_lines": [
+            "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+            "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+            "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+            "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+          ],
           "stop": {
             "mode": "kill",
             "exit_code": 1,
@@ -572,18 +603,24 @@
           "runtime_exists": false,
           "backend_spawned": false,
           "fail_seen": {
-            "first_signal_s": 0.537,
+            "first_signal_s": 0.517,
             "get_runtime_info": {
               "ok": false,
               "error": "后端尚未就绪"
             },
-            "confirmed_s": 3.59
+            "confirmed_s": 3.575
           },
-          "stderr_bytes": 0,
+          "stderr_bytes": 517,
           "get_runtime_info": {
             "ok": false,
             "error": "后端尚未就绪"
           },
+          "port_error_lines": [
+            "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+            "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+            "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+            "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+          ],
           "stop": {
             "mode": "kill",
             "exit_code": 1,
@@ -591,44 +628,109 @@
           }
         }
       ],
-      "stderr_observed_in_failures": false,
+      "stderr_observed_in_failures": true,
       "ui_banner": {
-        "t_s": 36.82,
+        "t_s": 36.665,
         "body": "KE\nAstraNota\n\nAlpha\n\n选择已有 workspace 文件夹，或在指定位置初始化空白知识库\n\n打开已有工作区\n选择已有 workspace 文件夹继续写作\n创建新工作区\n在指定位置初始化空白知识库\n程序与数据分离 · 卸载软件不删除数据\nv1.2.18 · Markdown 为唯一事实源 · 索引可整体重建\n后端服务未连接，请启动 backend（uvicorn app.main:app）",
+        "banner": null,
+        "health": null,
+        "cause_visible": false,
         "boot_timings": {
           "t0": 0,
-          "settings": 35294,
-          "startup": 35324
-        }
+          "settings": 35172,
+          "startup": 35176
+        },
+        "health_samples": [
+          {
+            "t_s": 25.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 26.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 27.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 28.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 29.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 30.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 31.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 32.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 33.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 34.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 35.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 36.7,
+            "banner": null,
+            "health": null
+          }
+        ]
       },
       "no_retry": {
-        "released_at_s": 36.821,
+        "released_at_s": 36.665,
         "runtime_exists_after_release": false,
         "backend_spawned_after_release": false,
         "get_runtime_info_after_release": {
           "ok": false,
           "error": "后端尚未就绪"
         },
-        "stderr_bytes_after_release": 0,
+        "stderr_bytes_after_release": 517,
         "attempt_fail_lines_before_release": 0,
         "attempt_fail_lines_after_release": 0
       },
       "recover": {
         "obs": {
           "alive": true,
-          "runtime_ready_s": 2.687,
-          "body_ready_s": 2.689,
+          "runtime_ready_s": 2.052,
+          "body_ready_s": 2.054,
           "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊",
           "runtime": {
             "backend": {
-              "pid": 29600,
+              "pid": 15856,
               "port": 8000,
-              "started_at": "2026-10-19T01:41:09.980453+00:00",
+              "started_at": "2026-10-19T07:38:00.274251+00:00",
               "version": "1.2.18"
             },
             "frontend": null,
             "project_version": "1.2.18",
-            "started_at": "2026-10-19T01:41:09.980453+00:00"
+            "started_at": "2026-10-19T07:38:00.274251+00:00"
           }
         },
         "port": 8000
@@ -761,7 +863,7 @@
       }
     },
     "B3": {
-      "description": "损坏 settings/app_config JSON → 连续 2 次启动均成功降级默认，无自动修复/备份/提示（缺口）",
+      "description": "损坏 settings/app_config JSON → 连续 2 次启动均成功；修复前：静默回退默认无备份/无提示；修复后：`.corrupt-<ts>.bak` 备份 + 默认重置 + 结构化日志提示",
       "bad_hashes": {
         "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
         "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
@@ -771,9 +873,9 @@
           "launch": 1,
           "obs": {
             "alive": true,
-            "runtime_ready_s": 2.075,
-            "body_ready_s": 2.085,
-            "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊"
+            "runtime_ready_s": 2.059,
+            "body_ready_s": 2.062,
+            "body": "正在打开工作区…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07boot\\b3\\workspace\n创意工坊"
           },
           "settings_invoke": {
             "ok": true,
@@ -818,15 +920,65 @@
           },
           "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07boot\\b3\\workspace\n创意工坊",
           "files_after": {
-            "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
-            "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
+            "settings": "e9c0f03d006b138a6f05374c4bf56dd47fb0faf5b56c12d47253d3ec5680ca71",
+            "app_config": "cb5fa1e723567a4db9cfa22389c70dc9b5511c2d9b1bc5c4a610a2ca6a2c03dc"
           },
           "bad_hashes": {
             "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
             "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
           },
-          "repaired": false,
-          "bak_files": [],
+          "repaired": true,
+          "bak_files": [
+            "app_config.json.corrupt-1792395484722.bak",
+            "settings.json.corrupt-1792395484722.bak"
+          ],
+          "bak_details": [
+            {
+              "name": "app_config.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            },
+            {
+              "name": "settings.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            }
+          ],
+          "repair_lines": [
+            "[settings] W07 B3-4: settings.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\settings.json.corrupt-1792395484722.bak 并重置为默认配置",
+            "[settings] W07 B3-4: app_config.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\app_config.json.corrupt-1792395484722.bak 并重置为默认配置",
+            "[settings] W07 B3-4: settings.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\settings.json.corrupt-1792395484722.bak 并重置为默认配置",
+            "[settings] W07 B3-4: app_config.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\app_config.json.corrupt-1792395484722.bak 并重置为默认配置"
+          ],
+          "log_tail": "\n[sidecar] INFO:     Started server process [18144]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:58958 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:63194 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54667 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61012 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:51236 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57928 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:62791 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63194 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54667 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57928 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:51236 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:62791 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61012 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57928 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:51236 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63194 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54667 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:51236 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61012 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54667 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63194 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57928 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:51236 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61012 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60042 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60042 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60042 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60042 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+          "settings_parsed": {
+            "editor": {
+              "autosaveIntervalMs": 3000,
+              "display": {},
+              "historyRetentionCount": 30,
+              "mathAutocomplete": null,
+              "noteBgOpacity": null,
+              "quoteBgOpacity": null,
+              "shortcuts": {}
+            },
+            "maintenance": {},
+            "schemaVersion": 1,
+            "startup": {
+              "autoOpenRecentWorkspace": true,
+              "restoreLastState": true
+            },
+            "ui": {
+              "accentColor": null,
+              "displayPreference": {},
+              "theme": "system"
+            }
+          },
+          "app_config_parsed": {
+            "recent_documents": [],
+            "recent_workspaces": []
+          },
+          "runtime_health_observed": null,
+          "banner_observed": null,
           "banner_absent": true,
           "picker_shown": false,
           "stop": {
@@ -842,8 +994,8 @@
           "launch": 2,
           "obs": {
             "alive": true,
-            "runtime_ready_s": 2.077,
-            "body_ready_s": 2.079,
+            "runtime_ready_s": 1.961,
+            "body_ready_s": 2.017,
             "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊"
           },
           "settings_invoke": {
@@ -889,15 +1041,60 @@
           },
           "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07boot\\b3\\workspace\n创意工坊",
           "files_after": {
-            "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
-            "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
+            "settings": "e9c0f03d006b138a6f05374c4bf56dd47fb0faf5b56c12d47253d3ec5680ca71",
+            "app_config": "cb5fa1e723567a4db9cfa22389c70dc9b5511c2d9b1bc5c4a610a2ca6a2c03dc"
           },
           "bad_hashes": {
             "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
             "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
           },
-          "repaired": false,
-          "bak_files": [],
+          "repaired": true,
+          "bak_files": [
+            "app_config.json.corrupt-1792395484722.bak",
+            "settings.json.corrupt-1792395484722.bak"
+          ],
+          "bak_details": [
+            {
+              "name": "app_config.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            },
+            {
+              "name": "settings.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            }
+          ],
+          "repair_lines": [],
+          "log_tail": "[sidecar] INFO:     Started server process [46008]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:53199 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:52923 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63546 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54354 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55076 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61434 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50265 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52923 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63546 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61434 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50265 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55076 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63546 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61434 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50265 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52923 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54354 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61434 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63546 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54354 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52923 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50265 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50265 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:63546 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58957 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+          "settings_parsed": {
+            "editor": {
+              "autosaveIntervalMs": 3000,
+              "display": {},
+              "historyRetentionCount": 30,
+              "mathAutocomplete": null,
+              "noteBgOpacity": null,
+              "quoteBgOpacity": null,
+              "shortcuts": {}
+            },
+            "maintenance": {},
+            "schemaVersion": 1,
+            "startup": {
+              "autoOpenRecentWorkspace": true,
+              "restoreLastState": true
+            },
+            "ui": {
+              "accentColor": null,
+              "displayPreference": {},
+              "theme": "system"
+            }
+          },
+          "app_config_parsed": {
+            "recent_documents": [],
+            "recent_workspaces": []
+          },
+          "runtime_health_observed": null,
+          "banner_observed": null,
           "banner_absent": true,
           "picker_shown": false,
           "stop": {
@@ -1043,222 +1240,6 @@
         "exists": false,
         "legacy_user_docs_migrated": 0,
         "legacy_env": "C:\\ke-tmp\\uiws-t26-w07boot\\a1\\legacy-app-config.json"
-      }
-    },
-    {
-      "id": "BOOT-A2-1",
-      "scenario": "A2",
-      "name": "已有数据目录基线：正常启动 + 工作区自动打开（首帧含工作区外壳）",
-      "pass": true,
-      "detail": {
-        "alive": true,
-        "runtime_ready_s": 2.103,
-        "body_ready_s": 2.107,
-        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题"
-      }
-    },
-    {
-      "id": "BOOT-A2-2",
-      "scenario": "A2",
-      "name": "签名探针包安装并持久化（install ok + state.json active=1.0.0 + 资产 sha256 一致 + pack_list 含本包）",
-      "pass": true,
-      "detail": {
-        "install": {
-          "ok": true,
-          "value": {
-            "active": "1.0.0",
-            "previous": null,
-            "updatedAt": "SystemTime { intervals: 134368475811717347 }"
-          }
-        },
-        "disk_state": {
-          "active": "1.0.0",
-          "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368475811717347 }"
-        },
-        "installed_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
-        "expected_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
-        "pack_list_contains": true
-      }
-    },
-    {
-      "id": "BOOT-A2-3",
-      "scenario": "A2",
-      "name": "正常退出清理（app_request_exit → 进程退出 + runtime.json 移除）",
-      "pass": true,
-      "detail": {
-        "stop": {
-          "mode": "graceful",
-          "invoke": {
-            "ok": true,
-            "value": null
-          },
-          "exit_code": 0,
-          "orphans": []
-        },
-        "runtime_removed": true
-      }
-    },
-    {
-      "id": "BOOT-A2-4",
-      "scenario": "A2",
-      "name": "早期强杀时主窗口未就绪（runtime.json 未生成 + bootTimings 无 settings/workspace 里程碑）",
-      "pass": true,
-      "detail": {
-        "kill_at_s": 0.801,
-        "runtime": false,
-        "boot": {
-          "t0": 0
-        },
-        "body": ""
-      }
-    },
-    {
-      "id": "BOOT-A2-5",
-      "scenario": "A2",
-      "name": "强杀时 sidecar 已 spawn（记录早期崩溃窗口内孤儿进程，供 A2-10 判定）",
-      "pass": true,
-      "detail": {
-        "sidecar_at_kill": [
-          {
-            "pid": 38636,
-            "name": "knowledgeeditor-backend.exe"
-          }
-        ],
-        "orphans_after_kill": [
-          {
-            "pid": 38636,
-            "name": "knowledgeeditor-backend.exe"
-          },
-          {
-            "pid": 29184,
-            "name": "conhost.exe"
-          },
-          {
-            "pid": 26920,
-            "name": "knowledgeeditor-backend.exe"
-          }
-        ]
-      }
-    },
-    {
-      "id": "BOOT-A2-6",
-      "scenario": "A2",
-      "name": "强杀后重启：启动成功 + 工作区自动打开（恢复路径可用）",
-      "pass": true,
-      "detail": {
-        "alive": true,
-        "runtime_ready_s": 2.239,
-        "body_ready_s": 2.24,
-        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体",
-        "runtime": {
-          "backend": {
-            "pid": 33088,
-            "port": 8001,
-            "started_at": "2026-10-19T01:39:50.348359+00:00",
-            "version": "1.2.18"
-          },
-          "frontend": null,
-          "project_version": "1.2.18",
-          "started_at": "2026-10-19T01:39:50.348359+00:00"
-        }
-      }
-    },
-    {
-      "id": "BOOT-A2-7",
-      "scenario": "A2",
-      "name": "启动 recover 状态可观测且本包 action=clean（本次启动新写，safeMode=false）",
-      "pass": true,
-      "detail": {
-        "checked": 2,
-        "safeMode": false,
-        "pack_result": {
-          "action": "clean",
-          "active": "1.0.0",
-          "id": "com.probe.t26w07boot",
-          "previous": null,
-          "recovered": false,
-          "updatedAt": "SystemTime { intervals: 134368475811717347 }"
-        },
-        "generatedAtLocal": "2026-10-19T09:39:48+0800"
-      }
-    },
-    {
-      "id": "BOOT-A2-8",
-      "scenario": "A2",
-      "name": "包数据无损坏（重启后 state.json active=1.0.0 + 资产 sha256 与安装前一致）",
-      "pass": true,
-      "detail": {
-        "active": "1.0.0",
-        "html_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
-        "expected": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
-        "state_before_cleanup": {
-          "active": "1.0.0",
-          "previous": null,
-          "updatedAt": "SystemTime { intervals: 134368475811717347 }"
-        }
-      }
-    },
-    {
-      "id": "BOOT-A2-9",
-      "scenario": "A2",
-      "name": "配置/工作区夹具无损坏（app_config.json 可解析且 recent_workspaces 含隔离工作区；settings.json 可解析；夹具 sha256 一致）",
-      "pass": true,
-      "detail": {
-        "app_config": {
-          "recent_workspaces": [
-            "C:\\ke-tmp\\uiws-t26-w07boot\\a2\\workspace"
-          ],
-          "recent_documents": []
-        },
-        "settings": {
-          "schemaVersion": 1,
-          "startup": {
-            "autoOpenRecentWorkspace": true
-          }
-        },
-        "fixtures_before": {
-          "Articles/boot-crash.md": "74c1a5b6949d24e1371335d1f370fb9d919862d6950912bb09b7972d0b3e071a",
-          "Articles/keep-me.md": "da54cd8f5dc52a16f7285b3f74587144672c433291210a4582e16ad837cebd44"
-        },
-        "fixtures_after": {
-          "Articles/boot-crash.md": "74c1a5b6949d24e1371335d1f370fb9d919862d6950912bb09b7972d0b3e071a",
-          "Articles/keep-me.md": "da54cd8f5dc52a16f7285b3f74587144672c433291210a4582e16ad837cebd44"
-        }
-      }
-    },
-    {
-      "id": "BOOT-A2-10",
-      "scenario": "A2",
-      "name": "[缺口观测] 早期崩溃遗留孤儿 sidecar 被下次启动清理（Rust cleanup_stale 依赖 runtime.json）",
-      "pass": false,
-      "detail": {
-        "orphans_at_kill": [
-          {
-            "pid": 38636,
-            "name": "knowledgeeditor-backend.exe"
-          }
-        ],
-        "orphans_alive_after_restart": [
-          26920,
-          38636
-        ],
-        "new_backend_pid": 33088,
-        "new_port": 8001,
-        "note": "若为 FAIL：早期崩溃时 runtime.json 未写出 → 下次启动 cleanup_stale() 无从发现孤儿，孤儿占默认端口，应用自动换端口（8001）仍可启动（数据未损坏）"
-      }
-    },
-    {
-      "id": "BOOT-A2-11",
-      "scenario": "A2",
-      "name": "孤儿占用默认端口时应用自动换端口启动（runtime.backend.port 记录，仍在前端 CSP 白名单 8000-8002 内）",
-      "pass": true,
-      "detail": {
-        "new_port": 8001,
-        "orphans_alive_after_restart": [
-          26920,
-          38636
-        ]
       }
     },
     {
@@ -1420,165 +1401,6 @@
       }
     },
     {
-      "id": "BOOT-B1-1",
-      "scenario": "B1",
-      "name": "第 1 次启动失败（进程存活、runtime.json 未生成、sidecar 未拉起、get_runtime_info 报「后端尚未就绪」）",
-      "pass": true,
-      "detail": {
-        "launch": 1,
-        "fail_seen": {
-          "first_signal_s": 0.752,
-          "get_runtime_info": {
-            "ok": false,
-            "error": "后端尚未就绪"
-          },
-          "confirmed_s": 3.804
-        },
-        "runtime_exists": false,
-        "backend_spawned": false,
-        "get_runtime_info": {
-          "ok": false,
-          "error": "后端尚未就绪"
-        },
-        "stderr_bytes": 0,
-        "log": ""
-      }
-    },
-    {
-      "id": "BOOT-B1-2",
-      "scenario": "B1",
-      "name": "第 2 次启动失败（进程存活、runtime.json 未生成、sidecar 未拉起、get_runtime_info 报「后端尚未就绪」）",
-      "pass": true,
-      "detail": {
-        "launch": 2,
-        "fail_seen": {
-          "first_signal_s": 0.655,
-          "get_runtime_info": {
-            "ok": false,
-            "error": "后端尚未就绪"
-          },
-          "confirmed_s": 3.708
-        },
-        "runtime_exists": false,
-        "backend_spawned": false,
-        "get_runtime_info": {
-          "ok": false,
-          "error": "后端尚未就绪"
-        },
-        "stderr_bytes": 0,
-        "log": ""
-      }
-    },
-    {
-      "id": "BOOT-B1-3",
-      "scenario": "B1",
-      "name": "第 3 次启动失败（进程存活、runtime.json 未生成、sidecar 未拉起、get_runtime_info 报「后端尚未就绪」）",
-      "pass": true,
-      "detail": {
-        "launch": 3,
-        "fail_seen": {
-          "first_signal_s": 0.537,
-          "get_runtime_info": {
-            "ok": false,
-            "error": "后端尚未就绪"
-          },
-          "confirmed_s": 3.59
-        },
-        "runtime_exists": false,
-        "backend_spawned": false,
-        "get_runtime_info": {
-          "ok": false,
-          "error": "后端尚未就绪"
-        },
-        "stderr_bytes": 0,
-        "log": ""
-      }
-    },
-    {
-      "id": "BOOT-B1-4",
-      "scenario": "B1",
-      "name": "[缺口观测] 端口耗尽失败原因有 stderr/日志可观测（实测应为 FAIL：Rust find_free_port 全失败分支静默 continue，无 eprintln，只 emit ke:runtime-error；前端未监听该事件 → 具体原因不可见）",
-      "pass": false,
-      "detail": {
-        "launches": [
-          {
-            "launch": 1,
-            "stderr_bytes": 0
-          },
-          {
-            "launch": 2,
-            "stderr_bytes": 0
-          },
-          {
-            "launch": 3,
-            "stderr_bytes": 0
-          }
-        ],
-        "ui_visible_error": "仅 ~32s 后通用「后端服务未连接」横幅（见 B1-5），无具体原因",
-        "source_ref": "desktop/src-tauri/src/sidecar.rs start(); frontend/src/main.tsx 仅监听 ke:runtime-ready"
-      }
-    },
-    {
-      "id": "BOOT-B1-5",
-      "scenario": "B1",
-      "name": "UI 错误最终可见：启动失败约 30s 后显示通用「后端服务未连接」横幅（无具体原因）",
-      "pass": true,
-      "detail": {
-        "t_s": 36.82,
-        "body": "KE\nAstraNota\n\nAlpha\n\n选择已有 workspace 文件夹，或在指定位置初始化空白知识库\n\n打开已有工作区\n选择已有 workspace 文件夹继续写作\n创建新工作区\n在指定位置初始化空白知识库\n程序与数据分离 · 卸载软件不删除数据\nv1.2.18 · Markdown 为唯一事实源 · 索引可整体重建\n后端服务未连接，请启动 backend（uvicorn app.main:app）",
-        "boot_timings": {
-          "t0": 0,
-          "settings": 35294,
-          "startup": 35324
-        }
-      }
-    },
-    {
-      "id": "BOOT-B1-6",
-      "scenario": "B1",
-      "name": "[缺口观测] 端口释放后运行中实例自动重试恢复（运行期自愈）",
-      "pass": false,
-      "detail": {
-        "released_at_s": 36.821,
-        "runtime_exists_after_release": false,
-        "backend_spawned_after_release": false,
-        "get_runtime_info_after_release": {
-          "ok": false,
-          "error": "后端尚未就绪"
-        },
-        "stderr_bytes_after_release": 0,
-        "attempt_fail_lines_before_release": 0,
-        "attempt_fail_lines_after_release": 0,
-        "note": "FAIL = 无运行期自愈：Rust 侧 3 次尝试后仅 emit runtime-error，需用户重启（B1-7 证明重启可恢复）"
-      }
-    },
-    {
-      "id": "BOOT-B1-7",
-      "scenario": "B1",
-      "name": "重启（默认端口）后启动成功恢复（runtime 就绪 + 工作区首帧；端口在前端 CSP 白名单 8000-8002 内）",
-      "pass": true,
-      "detail": {
-        "alive": true,
-        "runtime_ready_s": 2.687,
-        "body_ready_s": 2.689,
-        "port": 8000,
-        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题",
-        "ports_default_free_before_recover": {
-          "8000": true,
-          "8001": true,
-          "8002": true
-        },
-        "stop": {
-          "mode": "graceful",
-          "invoke": {
-            "ok": true,
-            "value": null
-          },
-          "exit_code": 0
-        }
-      }
-    },
-    {
       "id": "BOOT-B2-1",
       "scenario": "B2",
       "name": "第 1 次启动失败且错误可观测（进程存活、runtime.json 未生成、sidecar 未拉起、日志「创建应用数据目录失败」+3 次尝试失败）",
@@ -1702,6 +1524,546 @@
       }
     },
     {
+      "id": "BOOT-A2-1",
+      "scenario": "A2",
+      "name": "已有数据目录基线：正常启动 + 工作区自动打开（首帧含工作区外壳）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "runtime_ready_s": 2.058,
+        "body_ready_s": 2.059,
+        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题"
+      }
+    },
+    {
+      "id": "BOOT-A2-2",
+      "scenario": "A2",
+      "name": "签名探针包安装并持久化（install ok + state.json active=1.0.0 + 资产 sha256 一致 + pack_list 含本包）",
+      "pass": true,
+      "detail": {
+        "install": {
+          "ok": true,
+          "value": {
+            "active": "1.0.0",
+            "previous": null,
+            "updatedAt": "SystemTime { intervals: 134368690103939907 }"
+          }
+        },
+        "disk_state": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368690103939907 }"
+        },
+        "installed_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
+        "expected_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
+        "pack_list_contains": true
+      }
+    },
+    {
+      "id": "BOOT-A2-3",
+      "scenario": "A2",
+      "name": "正常退出清理（app_request_exit → 进程退出 + runtime.json 移除）",
+      "pass": true,
+      "detail": {
+        "stop": {
+          "mode": "graceful",
+          "invoke": {
+            "ok": true,
+            "value": null
+          },
+          "exit_code": 0,
+          "orphans": []
+        },
+        "runtime_removed": true
+      }
+    },
+    {
+      "id": "BOOT-A2-4",
+      "scenario": "A2",
+      "name": "早期强杀时主窗口未就绪（runtime.json 未生成 + bootTimings 无 settings/workspace 里程碑）",
+      "pass": true,
+      "detail": {
+        "kill_at_s": 0.805,
+        "runtime": false,
+        "boot": {
+          "t0": 0
+        },
+        "body": ""
+      }
+    },
+    {
+      "id": "BOOT-A2-5",
+      "scenario": "A2",
+      "name": "强杀时 sidecar 已 spawn（记录早期崩溃窗口内孤儿进程，供 A2-10 判定）",
+      "pass": true,
+      "detail": {
+        "sidecar_at_kill": [
+          {
+            "pid": 14128,
+            "name": "knowledgeeditor-backend.exe"
+          }
+        ],
+        "orphans_after_kill": [
+          {
+            "pid": 14128,
+            "name": "knowledgeeditor-backend.exe"
+          },
+          {
+            "pid": 32264,
+            "name": "conhost.exe"
+          },
+          {
+            "pid": 38744,
+            "name": "knowledgeeditor-backend.exe"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BOOT-A2-6",
+      "scenario": "A2",
+      "name": "强杀后重启：启动成功 + 工作区自动打开（恢复路径可用）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "runtime_ready_s": 3.795,
+        "body_ready_s": 3.802,
+        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nM",
+        "runtime": {
+          "backend": {
+            "pid": 50300,
+            "port": 8000,
+            "started_at": "2026-10-19T07:37:00.470856+00:00",
+            "version": "1.2.18"
+          },
+          "frontend": null,
+          "project_version": "1.2.18",
+          "started_at": "2026-10-19T07:37:00.470856+00:00"
+        }
+      }
+    },
+    {
+      "id": "BOOT-A2-7",
+      "scenario": "A2",
+      "name": "启动 recover 状态可观测且本包 action=clean（本次启动新写，safeMode=false）",
+      "pass": true,
+      "detail": {
+        "checked": 1,
+        "safeMode": false,
+        "pack_result": {
+          "action": "clean",
+          "active": "1.0.0",
+          "id": "com.probe.t26w07boot",
+          "previous": null,
+          "recovered": false,
+          "updatedAt": "SystemTime { intervals: 134368690103939907 }"
+        },
+        "generatedAtLocal": "2026-10-19T15:36:57+0800"
+      }
+    },
+    {
+      "id": "BOOT-A2-8",
+      "scenario": "A2",
+      "name": "包数据无损坏（重启后 state.json active=1.0.0 + 资产 sha256 与安装前一致）",
+      "pass": true,
+      "detail": {
+        "active": "1.0.0",
+        "html_sha256": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
+        "expected": "5a40b131e5c94693a142af74ce43b247fd0cdd0dc13919df0331ebb0e2208059",
+        "state_before_cleanup": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368690103939907 }"
+        }
+      }
+    },
+    {
+      "id": "BOOT-A2-9",
+      "scenario": "A2",
+      "name": "配置/工作区夹具无损坏（app_config.json 可解析且 recent_workspaces 含隔离工作区；settings.json 可解析；夹具 sha256 一致）",
+      "pass": true,
+      "detail": {
+        "app_config": {
+          "recent_workspaces": [
+            "C:\\ke-tmp\\uiws-t26-w07boot\\a2\\workspace"
+          ],
+          "recent_documents": []
+        },
+        "settings": {
+          "schemaVersion": 1,
+          "startup": {
+            "autoOpenRecentWorkspace": true
+          }
+        },
+        "fixtures_before": {
+          "Articles/boot-crash.md": "74c1a5b6949d24e1371335d1f370fb9d919862d6950912bb09b7972d0b3e071a",
+          "Articles/keep-me.md": "da54cd8f5dc52a16f7285b3f74587144672c433291210a4582e16ad837cebd44"
+        },
+        "fixtures_after": {
+          "Articles/boot-crash.md": "74c1a5b6949d24e1371335d1f370fb9d919862d6950912bb09b7972d0b3e071a",
+          "Articles/keep-me.md": "da54cd8f5dc52a16f7285b3f74587144672c433291210a4582e16ad837cebd44"
+        }
+      }
+    },
+    {
+      "id": "BOOT-A2-10",
+      "scenario": "A2",
+      "name": "早期崩溃遗留孤儿 sidecar 被下次启动清理（修复后：spawn registry 保守判定 → 整树停止、释放端口；重启正常启动且使用默认端口）",
+      "pass": true,
+      "detail": {
+        "orphans_at_kill": [
+          {
+            "pid": 14128,
+            "name": "knowledgeeditor-backend.exe"
+          }
+        ],
+        "orphans_alive_after_restart": [],
+        "cleanup_logged": true,
+        "cleanup_log_lines": [
+          "[sidecar] W07 A2-10: 发现上次启动遗留的孤儿 sidecar（pid=14128），整树停止以释放端口"
+        ],
+        "new_backend_pid": 50300,
+        "new_port": 8000,
+        "kill_runtime_json_exists": false,
+        "spawn_registry_after_restart": {
+          "appPid": 28908,
+          "pid": 50300,
+          "port": 8000,
+          "spawnedAtMs": 1792395419234
+        },
+        "restart_log_tail": "\n[sidecar] INFO:     Started server process [40376]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:54872 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:53942 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50779 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54952 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50657 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50060 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53942 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50779 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50060 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50657 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54952 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50060 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50779 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50657 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53942 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53942 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50657 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50779 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50060 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:50657 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:58164 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+      }
+    },
+    {
+      "id": "BOOT-A2-11",
+      "scenario": "A2",
+      "name": "孤儿已清理后重启使用默认端口 8000（不再出现孤儿占 8000 → 应用换 8001 的端口偏移；仍在前端 CSP 白名单 8000-8002 内）",
+      "pass": true,
+      "detail": {
+        "new_port": 8000,
+        "orphans_alive_after_restart": [],
+        "orphan_handled": true
+      }
+    },
+    {
+      "id": "BOOT-B1-1",
+      "scenario": "B1",
+      "name": "第 1 次启动失败（进程存活、runtime.json 未生成、sidecar 未拉起、get_runtime_info 报「后端尚未就绪」）",
+      "pass": true,
+      "detail": {
+        "launch": 1,
+        "fail_seen": {
+          "first_signal_s": 0.509,
+          "get_runtime_info": {
+            "ok": false,
+            "error": "后端尚未就绪"
+          },
+          "confirmed_s": 3.574
+        },
+        "runtime_exists": false,
+        "backend_spawned": false,
+        "get_runtime_info": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "stderr_bytes": 517,
+        "log": "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）\n[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）\n[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）\n[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+      }
+    },
+    {
+      "id": "BOOT-B1-2",
+      "scenario": "B1",
+      "name": "第 2 次启动失败（进程存活、runtime.json 未生成、sidecar 未拉起、get_runtime_info 报「后端尚未就绪」）",
+      "pass": true,
+      "detail": {
+        "launch": 2,
+        "fail_seen": {
+          "first_signal_s": 0.543,
+          "get_runtime_info": {
+            "ok": false,
+            "error": "后端尚未就绪"
+          },
+          "confirmed_s": 3.611
+        },
+        "runtime_exists": false,
+        "backend_spawned": false,
+        "get_runtime_info": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "stderr_bytes": 517,
+        "log": "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）\n[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）\n[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）\n[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+      }
+    },
+    {
+      "id": "BOOT-B1-3",
+      "scenario": "B1",
+      "name": "第 3 次启动失败（进程存活、runtime.json 未生成、sidecar 未拉起、get_runtime_info 报「后端尚未就绪」）",
+      "pass": true,
+      "detail": {
+        "launch": 3,
+        "fail_seen": {
+          "first_signal_s": 0.517,
+          "get_runtime_info": {
+            "ok": false,
+            "error": "后端尚未就绪"
+          },
+          "confirmed_s": 3.575
+        },
+        "runtime_exists": false,
+        "backend_spawned": false,
+        "get_runtime_info": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "stderr_bytes": 517,
+        "log": "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）\n[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）\n[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）\n[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+      }
+    },
+    {
+      "id": "BOOT-B1-4",
+      "scenario": "B1",
+      "name": "端口耗尽失败原因有结构化 stderr/日志可观测（修复后）：stderr 非空且含 `E_SIDECAR_PORT:` / `E_SIDECAR_START:`（第 N/3 次尝试）与最终「不再重试」失败行",
+      "pass": true,
+      "detail": {
+        "launches": [
+          {
+            "launch": 1,
+            "stderr_bytes": 517,
+            "port_error_lines": [
+              "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+              "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+              "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+              "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+            ]
+          },
+          {
+            "launch": 2,
+            "stderr_bytes": 517,
+            "port_error_lines": [
+              "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+              "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+              "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+              "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+            ]
+          },
+          {
+            "launch": 3,
+            "stderr_bytes": 517,
+            "port_error_lines": [
+              "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+              "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+              "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+              "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）"
+            ]
+          }
+        ],
+        "ui_reason_observation": {
+          "banner_or_hook": {
+            "t_s": 36.665,
+            "body": "KE\nAstraNota\n\nAlpha\n\n选择已有 workspace 文件夹，或在指定位置初始化空白知识库\n\n打开已有工作区\n选择已有 workspace 文件夹继续写作\n创建新工作区\n在指定位置初始化空白知识库\n程序与数据分离 · 卸载软件不删除数据\nv1.2.18 · Markdown 为唯一事实源 · 索引可整体重建\n后端服务未连接，请启动 backend（uvicorn app.main:app）",
+            "banner": null,
+            "health": null,
+            "cause_visible": false,
+            "boot_timings": {
+              "t0": 0,
+              "settings": 35172,
+              "startup": 35176
+            },
+            "health_samples": [
+              {
+                "t_s": 25.6,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 26.6,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 27.6,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 28.6,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 29.6,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 30.6,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 31.7,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 32.7,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 33.7,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 34.7,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 35.7,
+                "banner": null,
+                "health": null
+              },
+              {
+                "t_s": 36.7,
+                "banner": null,
+                "health": null
+              }
+            ]
+          },
+          "note": "terminal runtime-error 在窗口/前端挂载前发出时 UI 可能错过（早期事件限制，如实记录）"
+        },
+        "source_ref": "desktop/src-tauri/src/sidecar.rs start()：E_SIDECAR_PORT/ E_SIDECAR_START + ke:runtime-error{terminal:true}"
+      }
+    },
+    {
+      "id": "BOOT-B1-5",
+      "scenario": "B1",
+      "name": "UI 错误最终可见（通用「后端未连接」横幅或带具体原因的 degraded banner；早期事件丢失时回退通用横幅）",
+      "pass": true,
+      "detail": {
+        "t_s": 36.665,
+        "body": "KE\nAstraNota\n\nAlpha\n\n选择已有 workspace 文件夹，或在指定位置初始化空白知识库\n\n打开已有工作区\n选择已有 workspace 文件夹继续写作\n创建新工作区\n在指定位置初始化空白知识库\n程序与数据分离 · 卸载软件不删除数据\nv1.2.18 · Markdown 为唯一事实源 · 索引可整体重建\n后端服务未连接，请启动 backend（uvicorn app.main:app）",
+        "banner": null,
+        "health": null,
+        "cause_visible": false,
+        "boot_timings": {
+          "t0": 0,
+          "settings": 35172,
+          "startup": 35176
+        },
+        "health_samples": [
+          {
+            "t_s": 25.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 26.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 27.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 28.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 29.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 30.6,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 31.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 32.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 33.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 34.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 35.7,
+            "banner": null,
+            "health": null
+          },
+          {
+            "t_s": 36.7,
+            "banner": null,
+            "health": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "BOOT-B1-6",
+      "scenario": "B1",
+      "name": "[缺口观测] 端口释放后运行中实例自动重试恢复（运行期自愈）",
+      "pass": false,
+      "detail": {
+        "released_at_s": 36.665,
+        "runtime_exists_after_release": false,
+        "backend_spawned_after_release": false,
+        "get_runtime_info_after_release": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "stderr_bytes_after_release": 517,
+        "attempt_fail_lines_before_release": 0,
+        "attempt_fail_lines_after_release": 0,
+        "note": "FAIL = 无运行期自愈：Rust 侧 3 次尝试后仅 emit runtime-error，需用户重启（B1-7 证明重启可恢复）"
+      }
+    },
+    {
+      "id": "BOOT-B1-7",
+      "scenario": "B1",
+      "name": "重启（默认端口）后启动成功恢复（runtime 就绪 + 工作区首帧；端口在前端 CSP 白名单 8000-8002 内）",
+      "pass": true,
+      "detail": {
+        "alive": true,
+        "runtime_ready_s": 2.052,
+        "body_ready_s": 2.054,
+        "port": 8000,
+        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题",
+        "ports_default_free_before_recover": {
+          "8000": true,
+          "8001": true,
+          "8002": true
+        },
+        "stop": {
+          "mode": "graceful",
+          "invoke": {
+            "ok": true,
+            "value": null
+          },
+          "exit_code": 0
+        }
+      }
+    },
+    {
       "id": "BOOT-B3-1",
       "scenario": "B3",
       "name": "损坏 settings/app_config（非法 JSON）不阻断启动（连续 2 次均启动成功，宿主无崩溃）",
@@ -1711,15 +2073,15 @@
           {
             "launch": 1,
             "alive": true,
-            "runtime_ready_s": 2.075,
-            "body_ready_s": 2.085,
-            "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题"
+            "runtime_ready_s": 2.059,
+            "body_ready_s": 2.062,
+            "body": "正在打开工作区…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n"
           },
           {
             "launch": 2,
             "alive": true,
-            "runtime_ready_s": 2.077,
-            "body_ready_s": 2.079,
+            "runtime_ready_s": 1.961,
+            "body_ready_s": 2.017,
             "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题"
           }
         ]
@@ -1828,7 +2190,7 @@
           }
         ],
         "body": [
-          "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文",
+          "正在打开工作区…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nboot-crash.md\nkeep-me.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事",
           "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文"
         ]
       }
@@ -1836,29 +2198,126 @@
     {
       "id": "BOOT-B3-4",
       "scenario": "B3",
-      "name": "[缺口观测] 损坏状态文件无自动修复/备份/用户提示（静默回退默认值；无 .bak/.tmp；UI 无告警横幅）",
+      "name": "损坏状态文件自动修复（修复后）：settings.json/app_config.json 均生成 `.corrupt-<ts>.bak`（原始损坏字节可恢复）+ 主文件重置为合法默认 JSON；连续两次启动幂等（不重复备份、不阻断启动）",
       "pass": true,
       "detail": {
-        "repaired": false,
-        "bak_files": [
-          [],
-          []
+        "backup_ok": true,
+        "files_valid_first": true,
+        "files_valid_second": true,
+        "idempotent": true,
+        "bak_details": [
+          [
+            {
+              "name": "app_config.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            },
+            {
+              "name": "settings.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            }
+          ],
+          [
+            {
+              "name": "app_config.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            },
+            {
+              "name": "settings.json.corrupt-1792395484722.bak",
+              "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+              "size": 29
+            }
+          ]
         ],
-        "banner_absent": true,
         "file_hashes_after": [
           {
-            "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
-            "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
+            "settings": "e9c0f03d006b138a6f05374c4bf56dd47fb0faf5b56c12d47253d3ec5680ca71",
+            "app_config": "cb5fa1e723567a4db9cfa22389c70dc9b5511c2d9b1bc5c4a610a2ca6a2c03dc"
           },
           {
-            "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
-            "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
+            "settings": "e9c0f03d006b138a6f05374c4bf56dd47fb0faf5b56c12d47253d3ec5680ca71",
+            "app_config": "cb5fa1e723567a4db9cfa22389c70dc9b5511c2d9b1bc5c4a610a2ca6a2c03dc"
           }
         ],
         "bad_hashes": {
           "settings": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
           "app_config": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b"
-        }
+        },
+        "settings_parsed": [
+          {
+            "editor": {
+              "autosaveIntervalMs": 3000,
+              "display": {},
+              "historyRetentionCount": 30,
+              "mathAutocomplete": null,
+              "noteBgOpacity": null,
+              "quoteBgOpacity": null,
+              "shortcuts": {}
+            },
+            "maintenance": {},
+            "schemaVersion": 1,
+            "startup": {
+              "autoOpenRecentWorkspace": true,
+              "restoreLastState": true
+            },
+            "ui": {
+              "accentColor": null,
+              "displayPreference": {},
+              "theme": "system"
+            }
+          },
+          {
+            "editor": {
+              "autosaveIntervalMs": 3000,
+              "display": {},
+              "historyRetentionCount": 30,
+              "mathAutocomplete": null,
+              "noteBgOpacity": null,
+              "quoteBgOpacity": null,
+              "shortcuts": {}
+            },
+            "maintenance": {},
+            "schemaVersion": 1,
+            "startup": {
+              "autoOpenRecentWorkspace": true,
+              "restoreLastState": true
+            },
+            "ui": {
+              "accentColor": null,
+              "displayPreference": {},
+              "theme": "system"
+            }
+          }
+        ],
+        "app_config_parsed": [
+          {
+            "recent_documents": [],
+            "recent_workspaces": []
+          },
+          {
+            "recent_documents": [],
+            "recent_workspaces": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "BOOT-B3-5",
+      "scenario": "B3",
+      "name": "损坏修复提示可观测（修复后）：启动/读取设置日志含结构化 `[settings] W07 B3-4:` 行，说明已备份到 .corrupt-*.bak 并重置默认（不静默丢设置；UI 事件若在挂载后到达则记录）",
+      "pass": true,
+      "detail": {
+        "repair_lines": [
+          "[settings] W07 B3-4: settings.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\settings.json.corrupt-1792395484722.bak 并重置为默认配置",
+          "[settings] W07 B3-4: app_config.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\app_config.json.corrupt-1792395484722.bak 并重置为默认配置",
+          "[settings] W07 B3-4: settings.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\settings.json.corrupt-1792395484722.bak 并重置为默认配置",
+          "[settings] W07 B3-4: app_config.json 损坏（JSON 解析失败），已备份到 C:\\ke-tmp\\uiws-t26-w07boot\\b3\\appdata\\KnowledgeEditor\\app_config.json.corrupt-1792395484722.bak 并重置为默认配置"
+        ],
+        "runtime_health_observed": null,
+        "banner_observed": null,
+        "note": "recoverable runtime-error 在窗口挂载前发出时 UI 可能错过（早期事件限制，如实记录）"
       }
     },
     {
@@ -1899,68 +2358,10 @@
       }
     }
   ],
-  "pass_count": 40,
-  "total": 44,
-  "fail_count": 4,
+  "pass_count": 43,
+  "total": 45,
+  "fail_count": 2,
   "gaps": [
-    {
-      "id": "BOOT-A2-10",
-      "name": "[缺口观测] 早期崩溃遗留孤儿 sidecar 被下次启动清理（Rust cleanup_stale 依赖 runtime.json）",
-      "detail": {
-        "orphans_at_kill": [
-          {
-            "pid": 38636,
-            "name": "knowledgeeditor-backend.exe"
-          }
-        ],
-        "orphans_alive_after_restart": [
-          26920,
-          38636
-        ],
-        "new_backend_pid": 33088,
-        "new_port": 8001,
-        "note": "若为 FAIL：早期崩溃时 runtime.json 未写出 → 下次启动 cleanup_stale() 无从发现孤儿，孤儿占默认端口，应用自动换端口（8001）仍可启动（数据未损坏）"
-      }
-    },
-    {
-      "id": "BOOT-B1-4",
-      "name": "[缺口观测] 端口耗尽失败原因有 stderr/日志可观测（实测应为 FAIL：Rust find_free_port 全失败分支静默 continue，无 eprintln，只 emit ke:runtime-error；前端未监听该事件 → 具体原因不可见）",
-      "detail": {
-        "launches": [
-          {
-            "launch": 1,
-            "stderr_bytes": 0
-          },
-          {
-            "launch": 2,
-            "stderr_bytes": 0
-          },
-          {
-            "launch": 3,
-            "stderr_bytes": 0
-          }
-        ],
-        "ui_visible_error": "仅 ~32s 后通用「后端服务未连接」横幅（见 B1-5），无具体原因",
-        "source_ref": "desktop/src-tauri/src/sidecar.rs start(); frontend/src/main.tsx 仅监听 ke:runtime-ready"
-      }
-    },
-    {
-      "id": "BOOT-B1-6",
-      "name": "[缺口观测] 端口释放后运行中实例自动重试恢复（运行期自愈）",
-      "detail": {
-        "released_at_s": 36.821,
-        "runtime_exists_after_release": false,
-        "backend_spawned_after_release": false,
-        "get_runtime_info_after_release": {
-          "ok": false,
-          "error": "后端尚未就绪"
-        },
-        "stderr_bytes_after_release": 0,
-        "attempt_fail_lines_before_release": 0,
-        "attempt_fail_lines_after_release": 0,
-        "note": "FAIL = 无运行期自愈：Rust 侧 3 次尝试后仅 emit runtime-error，需用户重启（B1-7 证明重启可恢复）"
-      }
-    },
     {
       "id": "BOOT-B2-5",
       "name": "[缺口观测] 数据目录解除阻塞后运行中实例自动重试恢复（运行期自愈）",
@@ -1977,6 +2378,23 @@
         "log": "[sidecar] 第 1 次尝试失败: 创建应用数据目录失败: 当文件已存在时，无法创建该文件。 (os error 183)\n[sidecar] 第 2 次尝试失败: 创建应用数据目录失败: 当文件已存在时，无法创建该文件。 (os error 183)\n[sidecar] 第 3 次尝试失败: 创建应用数据目录失败: 当文件已存在时，无法创建该文件。 (os error 183)",
         "note": "FAIL = 无运行期自愈：Rust 侧 3 次尝试后仅 emit runtime-error，需用户重启（B2-6 证明重启可恢复）"
       }
+    },
+    {
+      "id": "BOOT-B1-6",
+      "name": "[缺口观测] 端口释放后运行中实例自动重试恢复（运行期自愈）",
+      "detail": {
+        "released_at_s": 36.665,
+        "runtime_exists_after_release": false,
+        "backend_spawned_after_release": false,
+        "get_runtime_info_after_release": {
+          "ok": false,
+          "error": "后端尚未就绪"
+        },
+        "stderr_bytes_after_release": 517,
+        "attempt_fail_lines_before_release": 0,
+        "attempt_fail_lines_after_release": 0,
+        "note": "FAIL = 无运行期自愈：Rust 侧 3 次尝试后仅 emit runtime-error，需用户重启（B1-7 证明重启可恢复）"
+      }
     }
   ],
   "raw_notes": [
@@ -1985,6 +2403,162 @@
     "早期强杀均按 Popen 自身 PID（proc.kill），未使用 taskkill /IM",
     "平台数据目录：APPDATA env 只隔离产品 data_dir（%APPDATA%\\KnowledgeEditor）；包/恢复状态在 app_data_dir（KnownFolder\\<identifier>\\workshop-packs），本探针只写/清自有 pack id",
     "B1 失败注入使用 KE_PORT 隔离端口族（与默认 8000-8002 同一 find_free_port 失败代码路径），恢复验证用默认端口（前端 CSP 仅白名单 8000-8002）",
-    "用户 App 未运行 → 用户影响 N/A（只读确认）"
-  ]
+    "用户 App 未运行 → 用户影响 N/A（只读确认）",
+    "【task-18 修复后复测（构建 faa71dfb…，commits a80ec8b/b030b25）】A2-10 FAIL→PASS：早期强杀遗留孤儿 sidecar（pid=14128）被下次启动经 spawn registry 保守判定整树停止（日志「W07 A2-10: 发现上次启动遗留的孤儿 sidecar」），重启使用默认端口 8000（A2-11 PASS，不再端口偏移）；B1-4 FAIL→PASS：端口耗尽失败 stderr 非空（517B）且含结构化 E_SIDECAR_PORT / E_SIDECAR_START（第 N/3 次尝试）与最终失败行；B3-4 FAIL→PASS：损坏 settings.json/app_config.json 生成 .corrupt-<ts>.bak（保留原始损坏字节 sha256 一致）+ 主文件重置合法默认 JSON + 两轮启动幂等；B3-5 PASS：日志含 [settings] W07 B3-4 修复提示。",
+    "【boot 最终统计（v2）】45 checks / 43 PASS / 2 FAIL；剩余 2 缺口：BOOT-B1-6（端口耗尽后运行期无自愈，需重启）、BOOT-B2-5（数据目录被文件占位后运行期无自愈）——二者为已知设计限制（task-18 未改动运行期自愈）。",
+    "【构建混用说明】environment=faa71dfb…（v2 复测构建）；A2/B1/B3 为修复后复测结果；A1/A3/B2 保留原构建 be2582ad…（09:27）证据，未把旧结果混写为新构建结果；build_history/run_conditions 已记录。",
+    "【UI 具体原因限制（如实）】B1-4 修复后日志可观测已闭环；terminal runtime-error 在窗口/前端挂载前发出 → UI 仍只显示 30s 后通用「后端服务未连接」横幅（早期事件限制），如实记录不冒充 UI 可见具体原因。"
+  ],
+  "build_history": [
+    {
+      "exe_sha256": "be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a",
+      "exe_mtime": "2026-10-19T09:27:26",
+      "exe_size": 15888384,
+      "note": "上一轮证据所用测试构建（已被新构建替换）"
+    }
+  ],
+  "merged_runs": [
+    {
+      "run_at": "2026-10-19T09:27:26",
+      "scenarios": [
+        "A1",
+        "A2",
+        "A3",
+        "B1",
+        "B2",
+        "B3"
+      ],
+      "build_sha256": "be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a",
+      "note": "v1 原始 boot crash 证据（40/44，4 缺口：A2-10/B1-4/B1-6/B2-5）"
+    },
+    {
+      "run_at": "2026-10-19T15:42:00+0800",
+      "scenarios": [
+        "A2",
+        "B1",
+        "B3"
+      ],
+      "build_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+      "note": "v2 task-19 修复后复测 A2/B1/B3（A2-10/B1-4/B3-4 PASS；首轮因新增 B3-5 check 与探针断言更新，见 raw_notes）"
+    }
+  ],
+  "retest_windows": [
+    {
+      "run_at": "2026-10-19T15:36:47+0800",
+      "scenarios": [
+        "A2",
+        "B1",
+        "B3"
+      ],
+      "cdp_port": 10346,
+      "merged_into_existing": true,
+      "build_changed": true
+    }
+  ],
+  "retest": {
+    "task-18": {
+      "fix_commits": [
+        "a80ec8b",
+        "b030b25"
+      ],
+      "fix_build": {
+        "exe_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+        "exe_mtime": "2026-10-19T15:29:02",
+        "exe_size": 15919616
+      },
+      "results": {
+        "BOOT-A2-10": {
+          "before": {
+            "orphans_alive_after_restart": [
+              48172
+            ],
+            "new_port": 8001,
+            "note": "孤儿 sidecar 占 8000，重启换 8001 且孤儿未清理"
+          },
+          "after": {
+            "orphans_alive_after_restart": [],
+            "cleanup_logged": true,
+            "cleanup_log_line": "[sidecar] W07 A2-10: 发现上次启动遗留的孤儿 sidecar（pid=14128），整树停止以释放端口",
+            "new_port": 8000,
+            "note": "spawn registry 保守判定 → 整树停止孤儿；重启正常、默认端口 8000"
+          },
+          "verdict": "PASS（缺口闭环）"
+        },
+        "BOOT-A2-11": {
+          "before": {
+            "new_port": 8001
+          },
+          "after": {
+            "new_port": 8000
+          },
+          "verdict": "PASS（不再端口偏移）"
+        },
+        "BOOT-B1-4": {
+          "before": {
+            "stderr_bytes": 0,
+            "note": "端口耗尽失败原因静默不可观测"
+          },
+          "after": {
+            "stderr_bytes": 517,
+            "port_error_lines": [
+              "[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）",
+              "[sidecar] 启动失败（第 2/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 2/3）",
+              "[sidecar] 启动失败（第 3/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 3/3）",
+              "[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: …"
+            ],
+            "note": "结构化 E_SIDECAR_PORT/ E_SIDECAR_START 行 + 最终失败行；terminal runtime-error 在窗口挂载前发出，UI 未显示具体原因（早期事件限制，B1-5 回退通用横幅）"
+          },
+          "verdict": "PASS（日志可观测闭环；UI 具体原因受早期事件限制，如实记录）"
+        },
+        "BOOT-B1-5": {
+          "after": {
+            "banner_t_s": 36.665,
+            "cause_visible": false,
+            "note": "通用「后端未连接」横幅最终可见（30s 回退），具体原因事件早于前端挂载"
+          },
+          "verdict": "PASS（UI 最终可见，原因回退如实记录）"
+        },
+        "BOOT-B3-4": {
+          "before": {
+            "repair": false,
+            "bak_files": [],
+            "note": "静默回退默认，无备份/提示"
+          },
+          "after": {
+            "bak_details": [
+              {
+                "name": "app_config.json.corrupt-1792395484722.bak",
+                "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+                "size": 29
+              },
+              {
+                "name": "settings.json.corrupt-1792395484722.bak",
+                "sha256": "acbc60bf4e30d63b7bfa20a2273e485aebedeb4e4f51c5305bd9233ef8c97f9b",
+                "size": 29
+              }
+            ],
+            "files_valid_first": true,
+            "files_valid_second": true,
+            "idempotent": true,
+            "note": "备份保留原始损坏字节（sha256 与原始一致）+ 主文件重置合法默认 JSON；两轮启动幂等"
+          },
+          "verdict": "PASS（缺口闭环）"
+        },
+        "BOOT-B3-5": {
+          "after": {
+            "repair_lines": [
+              "[settings] W07 B3-4: settings.json 损坏（JSON 解析失败），已备份到 …settings.json.corrupt-….bak 并重置为默认配置",
+              "[settings] W07 B3-4: app_config.json 损坏（JSON 解析失败），已备份到 …app_config.json.corrupt-….bak 并重置为默认配置"
+            ]
+          },
+          "verdict": "PASS（可恢复提示日志闭环）"
+        }
+      },
+      "remaining_gaps": [
+        "BOOT-B1-6",
+        "BOOT-B2-5"
+      ],
+      "probe_side_note": "B1-4：terminal runtime-error 在窗口挂载前发出 → UI 未能显示具体原因（早期事件限制，如实记录；日志已可观测）；B1-5 回退通用「后端未连接」横幅（36.7s）。B3 新增 B3-5 check（修复提示日志）。A1/A3/B2 未复跑（保留原构建 be2582ad 证据）。"
+    }
+  }
 }

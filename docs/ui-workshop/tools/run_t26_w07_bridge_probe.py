@@ -462,8 +462,14 @@ def eval_latency(cdp: CDP) -> float:
 
 
 def click_text(cdp: CDP, text: str) -> bool:
-    expr = ("(() => { const els=[...document.querySelectorAll('body *')].filter(x =>"
-            f" (x.textContent||'').includes({json.dumps(text)}) && x.children.length===0);"
+    # 优先按「按钮文本或 aria-label」命中（入口按钮含子元素/badge 时 leaf 匹配会失效），
+    # 回退到 leaf 文本 + closest button。
+    expr = ("(() => { const tx=" + json.dumps(text) + ";"
+            " const cands=[...document.querySelectorAll('button,a,[role=button]')].filter(x=>"
+            " !x.disabled && (((x.textContent||'').includes(tx)) || ((x.getAttribute('aria-label')||'').includes(tx))));"
+            " if (cands.length) { cands[0].click(); return true; }"
+            " const els=[...document.querySelectorAll('body *')].filter(x =>"
+            " (x.textContent||'').includes(tx) && x.children.length===0);"
             " if(!els.length) return false; const el=els[0];"
             " const t=el.closest('button,a,[role=button]') || el;"
             " t.click(); return true; })()")
@@ -523,7 +529,14 @@ def open_workshop(cdp: CDP, timeout: float = 20.0) -> bool:
     if "已安装包" in body_text(cdp):
         return True
     for _ in range(4):
-        click_text(cdp, "创意工坊")
+        # 显式入口按钮（aria-label=打开创意工坊）优先，回退按文本
+        try:
+            cdp.eval("(() => { const b=document.querySelector('button[aria-label=\"打开创意工坊\"]');"
+                     " if(b){b.click(); return true;} return false; })()")
+        except Exception:
+            pass
+        if "已安装包" not in body_text(cdp):
+            click_text(cdp, "创意工坊")
         if wait_until(lambda: "已安装包" in body_text(cdp), timeout / 4):
             return True
     return "已安装包" in body_text(cdp)
@@ -1679,6 +1692,31 @@ def click_panel_close(cdp: CDP) -> bool:
         return False
 
 
+def startup_badge_state(cdp: CDP):
+    """读取工坊入口按钮的 workshop-startup-badge（无需打开面板）；无则 None。"""
+    try:
+        return cdp.eval(
+            "(() => { const el=document.querySelector('[data-testid=\"workshop-startup-badge\"]');"
+            " if(!el) return null; return {text: (el.textContent||'').trim(),"
+            " title: el.getAttribute('title'), aria: el.getAttribute('aria-label'),"
+            " role: el.getAttribute('role')}; })()")
+    except Exception:
+        return None
+
+
+def wait_startup_badge(cdp: CDP, timeout: float = 10.0):
+    end = time.time() + timeout
+    last = None
+    while time.time() < end:
+        st = startup_badge_state(cdp)
+        if isinstance(st, dict):
+            last = st
+            if st.get("text"):
+                return st
+        time.sleep(0.1)
+    return last
+
+
 def status_file_fingerprint() -> dict:
     refresh_pack_root()
     try:
@@ -1820,6 +1858,8 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
                "generatedAtLocal": (status or {}).get("generatedAtLocal")})
         # C2-2（修复后）：打开面板即显示 safeMode 横幅 + notice（无需先点检查）
         entry_badge = entry_safe_mode_badge(cdp)
+        # C2-3（修复后）：打开面板**之前**先采样入口 startup badge（冷启动、未打开面板的可见性）
+        badge = wait_startup_badge(cdp, 12)
         fp_before = status_file_fingerprint()
         open_workshop(cdp)
         notice = wait_startup_notice(cdp, 15)
@@ -1830,11 +1870,16 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
               "启动 safeMode UI 提示（修复后，面板级）：打开工坊面板即显示「有包无法自动恢复（safe mode）」横幅 + "
               "startup-recover-notice（含 safe mode），无需先点「检查/修复全部包」",
               c22_ok, {"notice": notice, "safe_mode_alert": alert_text})
-        # C2-3（残余缺口）：入口角标（未打开面板时）是否立即可见 —— 原 C2-2 的入口口径
+        # C2-3（修复后）：冷启动未打开面板时，入口按钮即显示 workshop-startup-badge（safeMode 告警）
+        badge_text = str((badge or {}).get("text") or "")
+        badge_aria = str((badge or {}).get("aria") or "")
+        badge_title = str((badge or {}).get("title") or "")
+        c23_ok = (isinstance(badge, dict) and "启动恢复告警" in badge_text
+                  and "无法自动恢复" in badge_aria and "无法自动恢复" in badge_title)
         check(checks, "C2", "W07B-C2-3",
-              "[残余缺口] 冷启动未打开面板时工坊入口「safe mode」角标是否立即可见（原检查口径；"
-              "入口仍依赖 Rust setup 早期 emit 的 workshop://recover-status，前端挂载前会丢失）",
-              entry_badge, {"entry_safe_mode_badge": entry_badge})
+              "冷启动未打开面板时入口按钮显示 workshop-startup-badge（修复后；文本「启动恢复告警」，"
+              "title/aria-label 含「无法自动恢复」），无需打开面板；同时入口既有 safe mode 徽标同步",
+              c23_ok, {"startup_badge": badge, "entry_safe_mode_badge": entry_safe_mode_badge(cdp)})
         # C2-4（修复后）：读取 notice 只读（不触发 recover_all）
         fp_after = status_file_fingerprint()
         check(checks, "C2", "W07B-C2-4",
@@ -1893,14 +1938,48 @@ def scenario_c2(checks: list, ctx: dict) -> dict:
         check(checks, "C2", "W07B-C2-9",
               "无恢复动作/无 safeMode 时 notice 不显示（修复后重开面板读取到 clean 状态 → 不误报）",
               no_notice, {"notice_after_reopen": startup_notice(cdp)})
+        # C2-10（修复后）：恢复为 clean 状态后**重新启动应用** → 入口 startup badge 不显示（不误报）
+        click_panel_close(cdp)
+        metrics["stop_clean_prep"] = stop_launch(l, cdp)
+        cdp.close()
+        cdp = None
+        l2 = launch_app("c2-clean", appdata, ws, ctx["pubkeys"])
+        cdp_l2, obs_l2 = wait_main_ready()
+        try:
+            badge_clean = None
+            if cdp_l2 is not None:
+                time.sleep(2.0)  # 等入口挂载 + startupStatus 只读读取完成
+                badge_clean = startup_badge_state(cdp_l2)
+                clean_body = body_text(cdp_l2)
+            else:
+                clean_body = ""
+            check(checks, "C2", "W07B-C2-10",
+                  "clean 启动（恢复后无 safeMode/无恢复动作）入口 startup badge 不显示（不误报）",
+                  cdp_l2 is not None and badge_clean is None,
+                  {"startup_badge_on_clean_start": badge_clean,
+                   "body_snippet": clean_body[:300], "obs": obs_l2})
+            metrics["stop_clean"] = stop_launch(l2, cdp_l2)
+            try:
+                if cdp_l2 is not None:
+                    cdp_l2.close()
+            except Exception:
+                pass
+        finally:
+            if l2.alive():
+                try:
+                    l2.proc.kill()
+                    l2.proc.wait(timeout=5)
+                except Exception:
+                    pass
+            cleanup_test_procs()
+            l2.close_log()
+            cleanup_my_packs()
         metrics["entry_badge"] = entry_badge
         metrics["notice"] = notice
         metrics["status"] = {k: (status or {}).get(k) for k in ("checked", "safeMode", "generatedAtLocal")}
         metrics["status_after_recovery"] = {k: (status3 or {}).get(k) for k in
                                             ("checked", "safeMode", "generatedAtLocal")}
-        metrics["stop"] = stop_launch(l, cdp)
-        cdp.close()
-        cdp = None
+        metrics["stop"] = metrics.get("stop_clean_prep")  # 已在 C2-10 clean 启动前优雅退出
     finally:
         if l.alive():
             try:

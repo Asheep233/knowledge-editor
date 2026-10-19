@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-10-19T14:51:21+0800",
-  "task": "task-10 + task-12 + task-14 + task-16 / W07 扩展：桥接超时 + sidecar 故障 + 原生 Rust 恢复（多轮修复后复测，隔离产品构建 W 证据）",
+  "generated_at": "2026-10-19T15:31:54+0800",
+  "task": "task-10 + task-12 + task-14 + task-16 + task-19 / W07 扩展：桥接超时 + sidecar 故障 + 原生 Rust 恢复（多轮修复后复测，隔离产品构建 W 证据）",
   "evidence_type": "W（真实产品隔离构建进程/协议/数据行为；故障注入方式见各场景 metrics）",
   "environment": {
-    "generated_at": "2026-10-19T14:51:21+0800",
+    "generated_at": "2026-10-19T15:31:54+0800",
     "platform": "Windows-11-10.0.26200-SP0",
     "windows_version": "10.0.26200",
     "python": "3.14.7",
     "repo": "F:\\Work\\KE Project\\knowledge-editor",
     "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
-    "exe_sha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e",
-    "exe_mtime": "2026-10-19T14:49:57",
-    "exe_size": 15900672,
+    "exe_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+    "exe_mtime": "2026-10-19T15:29:02",
+    "exe_size": 15919616,
     "isolated_identifier": "com.astranota.uiws.e2e",
     "pack_root": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\workshop-packs",
-    "cdp_port": 10426,
+    "cdp_port": 10438,
     "my_pack_ids": [
       "com.probe.t26bridge",
       "com.probe.t26bridge.c1",
@@ -27,7 +27,7 @@
       "8001": "free",
       "8002": "free"
     },
-    "git_head": "a41d449b450618fb2651ea10e4a3f7dc397872c4",
+    "git_head": "b030b25b2bd03d8bba0c2257aed38ead1143a6b2",
     "git_branch": "feat/ui-workshop"
   },
   "build_history": [
@@ -48,6 +48,12 @@
       "exe_mtime": "2026-10-19T14:28:21",
       "exe_size": 15907328,
       "note": "上一轮证据所用测试构建（已被新构建替换；旧场景 checks 保留其历史值）"
+    },
+    {
+      "exe_sha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e",
+      "exe_mtime": "2026-10-19T14:49:57",
+      "exe_size": 15900672,
+      "note": "上一轮证据所用测试构建（已被新构建替换；旧场景 checks 保留其历史值）"
     }
   ],
   "run_conditions": {
@@ -65,7 +71,7 @@
         "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe"
       },
       {
-        "window": "v2（A 桥接超时增量）",
+        "window": "v2（A 增量）",
         "when": "2026-10-19T13:34–13:35",
         "scenarios": [
           "A"
@@ -73,7 +79,7 @@
         "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe"
       },
       {
-        "window": "v3（task-12 B-6/A-10 修复后复测）",
+        "window": "v3（task-12 B-6/A-10 复测）",
         "when": "2026-10-19T14:00–14:04",
         "scenarios": [
           "B",
@@ -82,7 +88,7 @@
         "build_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f"
       },
       {
-        "window": "v4（task-14 B-4/B-5/B-8 修复后复测）",
+        "window": "v4（task-14 B-4/B-5/B-8 复测）",
         "when": "2026-10-19T14:29–14:31",
         "scenarios": [
           "B"
@@ -90,15 +96,23 @@
         "build_sha256": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4"
       },
       {
-        "window": "v5（task-16 C1-4/C2-2/C3-5 修复后复测）",
+        "window": "v5（task-16 C1-4/C2-2/C3-5 复测）",
         "when": "2026-10-19T14:51–14:55",
         "scenarios": [
           "C1",
           "C2",
           "C3"
         ],
-        "build_sha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e",
-        "note": "task-15（a41d449）修复后 Lead 重建；C1-4/C2-2/C3-5 由 FAIL→PASS（面板 notice/safeMode 即时可见）；C2 首轮因探针行选择器误把 startup-notice 的 <li> 当包行导致后续行操作误判，修正探针后重跑"
+        "build_sha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e"
+      },
+      {
+        "window": "v6（task-19 C2-3 复测）",
+        "when": "2026-10-19T15:31–15:37",
+        "scenarios": [
+          "C2"
+        ],
+        "build_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+        "note": "task-18（a80ec8b 入口 startup badge）修复后 Lead 重建；C2-3 FAIL→PASS（入口角标冷启动可见、clean 启动不误报）；C1/C3 未复跑（保留 v5 构建 983688db 证据）"
       }
     ],
     "builds": {
@@ -117,17 +131,24 @@
         "exe_mtime": "2026-10-19T14:28:21",
         "exe_size": 15907328
       },
-      "v5_current": {
+      "v5": {
         "exe_sha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e",
         "exe_mtime": "2026-10-19T14:49:57",
         "exe_size": 15900672
+      },
+      "v6_current": {
+        "exe_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+        "exe_mtime": "2026-10-19T15:29:02",
+        "exe_size": 15919616
       }
     },
     "scenario_builds": {
-      "A": "ef1e4bfc…（task-12 复测构建）",
-      "B": "8867595b…（task-14 复测构建）",
-      "C1/C2/C3": "983688db…（task-16 复测构建，v5；C 场景已复跑）"
+      "A": "ef1e4bfc…（v3）",
+      "B": "8867595b…（v4）",
+      "C1/C3": "983688db…（v5，本轮未复跑）",
+      "C2": "faa71dfb…（v6，本轮复测）"
     },
+    "retest_scope": "task-19 仅复跑 C2（C2-3 入口角标）；C1/C3 未复跑（保留 v5 构建 983688db 证据）；A/B 为 v3/v4 构建证据。各场景测试构建见 scenario_builds，未把旧结果混写为新构建结果。",
     "user_app_impact": {
       "user_app_pids_before": "",
       "user_app_pids_after": "",
@@ -135,7 +156,7 @@
     },
     "cleanup_policy": "自身 Popen PID；sidecar 仅路径白名单；无 taskkill /IM；不触碰 D:\\AstraNota*",
     "pack_scope": "仅自有 pack id com.probe.t26bridge*（跑后清理）；不删共享 workshop-packs；其它探针包未触碰",
-    "bridge_timeout_injection": "NtSuspendProcess 挂起本探针主进程的子进程（knowledgeeditor-backend 进程树，路径白名单校验）；Resume 后验证桥接恢复"
+    "bridge_timeout_injection": "NtSuspendProcess 挂起本探针主进程的子进程（knowledgeeditor-backend 进程树，路径白名单校验）"
   },
   "scenarios": {
     "B": {
@@ -375,12 +396,32 @@
       "main_ready": {
         "cdp": true,
         "internals": true,
-        "body_ready_s": 2.061,
-        "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbridge.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07bridge\\c\\workspace\n创意工坊"
+        "body_ready_s": 2.041,
+        "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊启动恢复告警safe mode"
       },
-      "entry_badge": false,
+      "stop_clean_prep": {
+        "tag": "c2",
+        "invoke": {
+          "ok": true,
+          "value": null
+        },
+        "exit_code": 0,
+        "orphans": [],
+        "log_tail": "[sidecar] INFO:     Started server process [46076]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:51978 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:57279 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57230 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57279 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57230 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57279 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57279 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+      },
+      "stop_clean": {
+        "tag": "c2-clean",
+        "invoke": {
+          "ok": true,
+          "value": null
+        },
+        "exit_code": 0,
+        "orphans": [],
+        "log_tail": "[sidecar] INFO:     Started server process [40556]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:63708 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:59105 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53195 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55004 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56238 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65066 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54431 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59105 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53195 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65066 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55004 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:56238 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53195 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65066 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55004 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59105 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54431 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59105 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55004 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:53195 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54431 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65066 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:59105 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55004 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55004 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65165 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65165 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65165 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65165 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+      },
+      "entry_badge": true,
       "notice": {
-        "text": "启动恢复：存在无法自动恢复的包（safe mode）com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）共检查 1 个包 · SystemTime { intervals: 134368665029318606 }关闭",
+        "text": "启动恢复：存在无法自动恢复的包（safe mode）com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）共检查 1 个包 · SystemTime { intervals: 134368689851979905 }关闭",
         "role": "status",
         "buttons": [
           {
@@ -392,12 +433,12 @@
       "status": {
         "checked": 1,
         "safeMode": true,
-        "generatedAtLocal": "2026-10-19T14:55:02+0800"
+        "generatedAtLocal": "2026-10-19T15:36:25+0800"
       },
       "status_after_recovery": {
         "checked": 1,
         "safeMode": false,
-        "generatedAtLocal": "2026-10-19T14:55:06+0800"
+        "generatedAtLocal": "2026-10-19T15:36:28+0800"
       },
       "stop": {
         "tag": "c2",
@@ -407,7 +448,7 @@
         },
         "exit_code": 0,
         "orphans": [],
-        "log_tail": "[sidecar] INFO:     Started server process [52800]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:58144 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:55469 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54221 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61545 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:62043 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54454 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55469 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54454 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:62043 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61545 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54221 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54454 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:62043 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55469 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54221 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54454 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:55469 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:62043 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54221 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:65332 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
+        "log_tail": "[sidecar] INFO:     Started server process [46076]\n[sidecar] INFO:     Waiting for application startup.\n[sidecar] INFO:     127.0.0.1:51978 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     Application startup complete.\n[sidecar] INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)\n[sidecar] INFO:     127.0.0.1:57279 - \"OPTIONS /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"OPTIONS /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"OPTIONS /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"OPTIONS /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57230 - \"OPTIONS /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"OPTIONS /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57279 - \"OPTIONS /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"OPTIONS /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57230 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"GET /api/tree HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57279 - \"GET /api/attachments/list HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"GET /api/health HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"GET /api/workspace/current HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"GET /api/attachments/orphans HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"OPTIONS /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"OPTIONS /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:64506 - \"GET /api/workspace/recent-documents HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:57279 - \"GET /api/tags HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:52850 - \"GET /api/modules HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:54653 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"GET /api/drafts/recovery HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:60865 - \"GET /api/workspace/recent HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"OPTIONS /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK\n[sidecar] INFO:     127.0.0.1:61540 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK"
       }
     },
     "C3": {
@@ -532,7 +573,7 @@
         "C3"
       ],
       "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
-      "note": "v1 第一窗口正式运行（B+C；之前一轮与 F 探针交错作废、一轮探针缺陷已修正）"
+      "note": "v1 第一窗口正式运行（修复前基线）"
     },
     {
       "run_at": "2026-10-19T13:34:40+0800",
@@ -540,7 +581,7 @@
         "A"
       ],
       "build_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
-      "note": "v2 第二窗口 A 增量（--scenarios A --merge；A-10 当时仍为缺口）"
+      "note": "v2 A 增量"
     },
     {
       "run_at": "2026-10-19T14:03:19+0800",
@@ -548,7 +589,7 @@
         "B"
       ],
       "build_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-      "note": "v3 task-12 复测 B：B-6 PASS；B-10 探针收集器竞态修正后 PASS"
+      "note": "v3 task-12 B-6/A-10 复测"
     },
     {
       "run_at": "2026-10-19T14:04:00+0800",
@@ -556,7 +597,7 @@
         "A"
       ],
       "build_sha256": "ef1e4bfc06f0ddfaa2a2f767392a708595312d154b7b31e7864e51b0e2cac89f",
-      "note": "v3 task-12 复测 A：A-10 PASS（E_TIMEOUT/retryable=true）"
+      "note": "v3 task-12 A 复测"
     },
     {
       "run_at": "2026-10-19T14:30:20+0800",
@@ -564,7 +605,7 @@
         "B"
       ],
       "build_sha256": "8867595b618ecedcf62ab843bb5e3b489b364e3d544ee94ce173674b2d5dffd4",
-      "note": "v4 task-14 复测 B（B-4/B-5/B-5b/B-8/B-9 PASS；首轮 B-9 探针断言过严已修正）"
+      "note": "v4 task-14 B-4/B-5/B-8 复测"
     },
     {
       "run_at": "2026-10-19T14:51:22+0800",
@@ -574,7 +615,15 @@
         "C3"
       ],
       "build_sha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e",
-      "note": "v5 task-16 复测 C：C1-4/C2-2/C3-5 PASS（面板 startup notice/safeMode 即时可见）；C2 行操作首轮因探针行选择器误选 notice <li> 误判，修正后 C2 重跑"
+      "note": "v5 task-16 C1-4/C2-2/C3-5 复测"
+    },
+    {
+      "run_at": "2026-10-19T15:36:25+0800",
+      "scenarios": [
+        "C2"
+      ],
+      "build_sha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789",
+      "note": "v6 task-19 C2-3 入口角标复测（C2-3/C2-10 PASS；首轮因入口 badge 改变 DOM 导致探针 open_workshop leaf 文本点击失效 → 修正点击 helper 后重跑）"
     }
   ],
   "checks": [
@@ -1570,12 +1619,12 @@
           "state": {
             "active": "1.0.0",
             "previous": null,
-            "updatedAt": "1792392902.2673225"
+            "updatedAt": "1792395384.5322146"
           }
         },
         "safeMode": true,
         "checked": 1,
-        "generatedAtLocal": "2026-10-19T14:55:02+0800"
+        "generatedAtLocal": "2026-10-19T15:36:25+0800"
       }
     },
     {
@@ -1585,7 +1634,7 @@
       "pass": true,
       "detail": {
         "notice": {
-          "text": "启动恢复：存在无法自动恢复的包（safe mode）com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）共检查 1 个包 · SystemTime { intervals: 134368665029318606 }关闭",
+          "text": "启动恢复：存在无法自动恢复的包（safe mode）com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）共检查 1 个包 · SystemTime { intervals: 134368689851979905 }关闭",
           "role": "status",
           "buttons": [
             {
@@ -1600,10 +1649,16 @@
     {
       "id": "W07B-C2-3",
       "scenario": "C2",
-      "name": "[残余缺口] 冷启动未打开面板时工坊入口「safe mode」角标是否立即可见（原检查口径；入口仍依赖 Rust setup 早期 emit 的 workshop://recover-status，前端挂载前会丢失）",
-      "pass": false,
+      "name": "冷启动未打开面板时入口按钮显示 workshop-startup-badge（修复后；文本「启动恢复告警」，title/aria-label 含「无法自动恢复」），无需打开面板；同时入口既有 safe mode 徽标同步",
+      "pass": true,
       "detail": {
-        "entry_safe_mode_badge": false
+        "startup_badge": {
+          "text": "启动恢复告警",
+          "title": "启动恢复：存在无法自动恢复的包（safe mode）",
+          "aria": "启动恢复：存在无法自动恢复的包（safe mode）",
+          "role": "status"
+        },
+        "entry_safe_mode_badge": true
       }
     },
     {
@@ -1614,15 +1669,15 @@
       "detail": {
         "before": {
           "exists": true,
-          "mtime": 1792392902.92,
+          "mtime": 1792395385.197,
           "size": 358,
-          "sha256": "467df64e635f8eb3f48d8abaae6d17b46658edcc72b250d949c64c280d74f8a1"
+          "sha256": "b9f9070d1b2a8e657014ecf3115a1d719b9fefa963b3876fb435c3c741e19397"
         },
         "after": {
           "exists": true,
-          "mtime": 1792392902.92,
+          "mtime": 1792395385.197,
           "size": 358,
-          "sha256": "467df64e635f8eb3f48d8abaae6d17b46658edcc72b250d949c64c280d74f8a1"
+          "sha256": "b9f9070d1b2a8e657014ecf3115a1d719b9fefa963b3876fb435c3c741e19397"
         }
       }
     },
@@ -1668,7 +1723,7 @@
           "value": {
             "active": "1.0.0",
             "previous": null,
-            "updatedAt": "SystemTime { intervals: 134368665066248584 }"
+            "updatedAt": "SystemTime { intervals: 134368689888714331 }"
           }
         },
         "verify_ok": true,
@@ -1680,7 +1735,7 @@
           "id": "com.probe.t26bridge.c2",
           "previous": null,
           "recovered": false,
-          "updatedAt": "SystemTime { intervals: 134368665066248584 }"
+          "updatedAt": "SystemTime { intervals: 134368689888714331 }"
         },
         "banner_gone": true,
         "ui_message": "已检查 1 个包"
@@ -1693,6 +1748,22 @@
       "pass": true,
       "detail": {
         "notice_after_reopen": null
+      }
+    },
+    {
+      "id": "W07B-C2-10",
+      "scenario": "C2",
+      "name": "clean 启动（恢复后无 safeMode/无恢复动作）入口 startup badge 不显示（不误报）",
+      "pass": true,
+      "detail": {
+        "startup_badge_on_clean_start": null,
+        "body_snippet": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbridge.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-w07bridge\\c\\workspace\n创意工坊",
+        "obs": {
+          "cdp": true,
+          "internals": true,
+          "body_ready_s": 2.022,
+          "body": "正在启动服务…\nAstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\n暂无文章\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v\n创意工坊"
+        }
       }
     },
     {
@@ -1738,17 +1809,10 @@
       }
     }
   ],
-  "pass_count": 43,
-  "total": 45,
-  "fail_count": 2,
+  "pass_count": 45,
+  "total": 46,
+  "fail_count": 1,
   "gaps": [
-    {
-      "id": "W07B-C2-3",
-      "name": "[残余缺口] 冷启动未打开面板时工坊入口「safe mode」角标是否立即可见（原检查口径；入口仍依赖 Rust setup 早期 emit 的 workshop://recover-status，前端挂载前会丢失）",
-      "detail": {
-        "entry_safe_mode_badge": false
-      }
-    },
     {
       "id": "W07B-C2-7",
       "name": "[缺口观测] 无回退损坏包可自动修复（recover 无修复能力，唯一恢复路径=用户卸载/重装）",
@@ -1762,138 +1826,49 @@
     "全部故障注入只作用于隔离测试构建自建实例（自身 Popen 进程树/路径白名单）；用户 App 未运行 → N/A",
     "原生恢复 pack 为文件系统直写隔离 workshop-packs 自有 id（启动 recover 读取），非用户数据",
     "共享 workshop-packs 中其它探针/历史遗留包的损坏状态会先审计（audit_other_packs），safeMode 期望值取「本包预期 OR 其它包已损坏」",
-    "【task-15 修复后复测（构建 983688db…，commit a41d449）】C1-4 FAIL→PASS：打开工坊面板即显示 startup-recover-notice「已自动恢复 1 个包 …：已回滚到上一版本 共检查 1 个包」，无需先点检查；C2-2 FAIL→PASS（面板级）：打开面板即显示「有包无法自动恢复（safe mode）」横幅 + notice「存在无法自动恢复的包（safe mode）」，无需先点检查；C3-5（复测项 W07B-C3-4/C3-5）FAIL→PASS：notice「已清理中断安装残留」；另验证 notice 只读（三场景 recover-status 文件 mtime/sha256 前后不变 → 未触发 recover_all）、可关闭、无恢复动作时重开面板不显示（C2-9 PASS）。",
-    "【最终统计（v5）】45 checks / 43 PASS / 2 FAIL；B 11/11、A 10/10、C1 6/6、C3 6/6、C2 7/9、SAFE 3/3。剩余 2 缺口：W07B-C2-3（冷启动入口 safeMode 角标仍依赖 Rust setup 早期 emit 的事件，前端挂载前丢失 → 未打开面板时不可见；面板级提示已修复）、W07B-C2-7（corrupt-no-fallback 无自动修复能力，唯一路径=用户卸载/重装）。另有 boot crash 4 缺口见 P5-T26-W07-fault-boot.md。",
-    "【构建混用说明】environment=983688db…（v5，C 复测构建）；A=ef1e4bfc…（v3）、B=8867595b…（v4）、C=983688db…（v5）；build_history/run_conditions.scenario_builds 已记录，未把旧结果混写为新构建结果。",
-    "【C2 探针侧误判（如实保留）】task-16 首轮 C2-6/C2-7/C2-8/C2-9 因探针行选择器误选 startup-notice 内 <li>（含包 id 但无按钮）而 FAIL；修正后 C2 重跑：C2-6/C2-8/C2-9 PASS，C2-7 为真实缺口。"
+    "【task-18 修复后复测（构建 faa71dfb…，commits a80ec8b/b030b25）】C2-3 FAIL→PASS：冷启动未打开面板时入口按钮即显示 workshop-startup-badge（文本「启动恢复告警」，title/aria-label「启动恢复：存在无法自动恢复的包（safe mode）」），入口既有 safe mode 徽标同步；恢复为 clean 状态后重新启动 → badge 不显示（C2-10 PASS，不误报）。",
+    "【桥接最终统计（v6）】46 checks / 45 PASS / 1 FAIL；A 10/10、B 11/11、C1 6/6、C2 9/10、C3 6/6、SAFE 3/3；剩余 1 缺口：W07B-C2-7（corrupt-no-fallback 无自动修复能力，唯一路径=用户卸载/重装）。",
+    "【C2 首测探针侧误判（如实保留）】入口新增 startup badge 后按钮含子元素 → 探针 leaf 文本点击找不到入口按钮 → 面板未打开，C2-2/C2-5/C2-6/C2-8/C2-10 连锁 FAIL；修正 click_text/open_workshop（优先 aria-label/按钮文本命中）后重跑通过（C2-7 为真实缺口）。"
   ],
   "retest": {
-    "task-12": {
-      "fix_commit": "443e0a6",
-      "fix_build": "ef1e4bfc…",
+    "task-18": {
+      "fix_commits": [
+        "a80ec8b",
+        "b030b25"
+      ],
+      "fix_build": "faa71dfb…",
       "results": {
-        "W07B-B-6": {
+        "W07B-C2-3": {
           "before": {
-            "ok": false,
-            "errorCode": "E_INTERNAL",
-            "error": "E_SNAPSHOT: HTTP 404",
-            "elapsedMs": 14
+            "entry_badge": null,
+            "panel_badge_requires_open": true,
+            "note": "入口 safeMode 角标冷启动不可见（依赖启动早期丢失事件）"
           },
           "after": {
-            "ok": true,
-            "elapsedMs": 42,
-            "contentLen": 73,
-            "contentMatchesDisk": true
+            "entry_badge": {
+              "text": "启动恢复告警",
+              "title": "启动恢复：存在无法自动恢复的包（safe mode）",
+              "aria": "启动恢复：存在无法自动恢复的包（safe mode）"
+            },
+            "entry_safe_mode_badge": true,
+            "note": "未打开面板即见；clean 启动不显示（W07B-C2-10）"
           },
           "verdict": "PASS（缺口闭环）"
         },
-        "W07B-A-10": {
+        "W07B-C2-10": {
           "before": {
-            "errorCode": "E_INTERNAL",
-            "retryable": false,
-            "elapsedMs": 15002
+            "note": "无此验证"
           },
           "after": {
-            "errorCode": "E_TIMEOUT",
-            "retryable": true,
-            "error": "宿主请求超时（POST /api/context/snapshot，15000ms）",
-            "elapsedMs": 15002
+            "startup_badge_on_clean_start": null
           },
-          "verdict": "PASS（缺口闭环）"
+          "verdict": "PASS（不误报）"
         }
-      }
-    },
-    "task-13": {
-      "fix_commit": "deed2a7",
-      "fix_build": "8867595b…",
-      "results": {
-        "W07B-B-4": {
-          "before": {
-            "visible": false
-          },
-          "after": {
-            "data_phase": "restarting",
-            "text": "后端重连中后端连接中断，正在自动恢复（第 1/3 次）"
-          },
-          "verdict": "PASS（缺口闭环）"
-        },
-        "W07B-B-5": {
-          "before": {
-            "state": "active",
-            "lastError": null
-          },
-          "after": {
-            "state": "suspended",
-            "lastError": "E_HOST_UNAVAILABLE: 后端连接中断，正在自动恢复（第 1/3 次）"
-          },
-          "verdict": "PASS（缺口闭环）"
-        },
-        "W07B-B-8": {
-          "before": {
-            "get_runtime_info_ok": true,
-            "stale_pid": true
-          },
-          "after": {
-            "absent_after_kill": true,
-            "info_final_ok": false,
-            "runtime_json_final": null
-          },
-          "verdict": "PASS（缺口闭环）"
-        }
-      }
-    },
-    "task-15": {
-      "fix_commit": "a41d449",
-      "fix_build": "983688db…",
-      "results": {
-        "W07B-C1-4": {
-          "before": {
-            "notice": null,
-            "silent": true
-          },
-          "after": {
-            "notice_text": "启动恢复：已自动恢复 1 个包 com.probe.t26bridge.c1：已回滚到上一版本 共检查 1 个包",
-            "data_testid": "startup-recover-notice"
-          },
-          "verdict": "PASS（缺口闭环）"
-        },
-        "W07B-C2-2": {
-          "before": {
-            "entry_marker": false,
-            "panel_banner_requires_click": true
-          },
-          "after": {
-            "panel_safe_mode_alert": "有包无法自动恢复（safe mode）：请检查版本完整性/回滚或重新安装。",
-            "notice_text": "启动恢复：存在无法自动恢复的包（safe mode） com.probe.t26bridge.c2：损坏且无可用回退（需手动处理）",
-            "note": "面板级即时可见 PASS；入口角标残余见 W07B-C2-3"
-          },
-          "verdict": "PASS（缺口闭环，面板级）"
-        },
-        "W07B-C3-4/W07B-C3-5": {
-          "before": {
-            "notice": null,
-            "silent": true
-          },
-          "after": {
-            "notice_text": "启动恢复：已自动恢复 1 个包 com.probe.t26bridge.c3：已清理中断安装残留 共检查 1 个包"
-          },
-          "verdict": "PASS（缺口闭环）"
-        },
-        "readonly": {
-          "W07B-C1-5": "recover-status 文件 mtime/sha256 前后不变（未触发 recover_all）",
-          "W07B-C2-4": "同上",
-          "W07B-C3-5": "同上",
-          "notice_close": "三场景「关闭启动恢复提示」点击后 notice 消失"
-        },
-        "no_state_no_notice": {
-          "W07B-C2-9": "恢复后（clean 状态）重开面板 → notice 不显示（不误报）"
-        }
-      }
-    },
-    "remaining_gaps": [
-      "W07B-C2-3",
-      "W07B-C2-7"
-    ],
-    "probe_side_note": "复测中的探针侧修正（不属产品缺陷）：(1) task-12 B 首测 B-10 因 CDP 导航竞态丢失 guest 消息收集器误判，已修；(2) task-14 B 首测 B-9 断言子串过严误判，已修；(3) task-16 C2 首测行按钮误判——探针 click_row_button 误把 startup-notice 内含包 id 的 <li> 当包行（该 li 无按钮），导致「修复/恢复/卸载」未命中；已改为「含目标按钮的 li」选择器后 C2 重跑通过。"
+      },
+      "remaining_gaps": [
+        "W07B-C2-7"
+      ],
+      "probe_side_note": "task-19 C2 首测因入口新增 startup badge 后，探针 open_workshop 的 leaf 文本点击失效（按钮含子元素）→ 面板未打开、C2-2/C2-5/C2-6/C2-8/C2-10 连锁误判；修正 click_text/open_workshop（优先 aria-label/按钮文本）后重跑：仅 C2-7 为真实缺口。"
+    }
   }
 }

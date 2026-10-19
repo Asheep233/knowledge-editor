@@ -1,15 +1,18 @@
-# P5-T26 W07 扩展证据：boot crash / 连续启动失败 — 隔离产品构建 W 40/44（4 个真实缺口）
+# P5-T26 W07 扩展证据（v2，修复后复测）：boot crash / 连续启动失败 — 隔离产品构建 W 43/45（2 个未闭环缺口）
 
 - 日期：2026-10-19 · 平台：Windows 11 + WebView2（隔离产品构建）
-- 任务：task-4 / W07 扩展（boot crash + 连续启动失败）
+- 任务：task-4（W07 扩展）+ task-19（A2-10/B1-4/B3-4 修复后产品 W 复测）
 - 工具：`docs/ui-workshop/tools/run_t26_boot_crash_probe.py`（新增，可复跑）
-- 原始结果：`evidence/T26-W07-boot-results.json`（44 条 checks + 全量场景原始 metrics）
+- 原始结果：`evidence/T26-W07-boot-results.json`（45 条 checks + 全量场景原始 metrics；含 `build_history`/`merged_runs`/`retest`）
 - 证据类型：**W（真实产品隔离构建进程/数据行为）**
 - 环境：测试 exe `C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`
   （sha256 `be2582adbaedafa98581a2262393f6430c4ded13ea0a5fba191751f9bb49861a`，size 15888384，
   mtime 2026-10-19 09:27，Lead 统一重建；identifier `com.astranota.uiws.e2e` 未变）；
-  运行期 repo HEAD `d502d9d`（branch `feat/ui-workshop`）；Python 3.14.7；
+  运行期 repo HEAD `d502d9d`（v1 基线；branch `feat/ui-workshop`）；Python 3.14.7；
   用户 App 未运行 → 用户影响 **N/A**（运行前后只读查询均为空）。
+- **修复后复测构建（v2，本文件 §8）**：sha256 `faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789`，
+  size **15919616**，mtime **2026-10-19 15:29:02**（含 task-18 commits `a80ec8b`/`b030b25`；运行期 repo HEAD 见 JSON environment）；
+  `A2/B1/B3` 场景已在此构建复测，`A1/A3/B2` 保留原构建 `be2582ad…` 证据（未混写）。
 - 复现（WSL，串行独占窗口）：
   ```bash
   powershell.exe -NoProfile -Command "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; \
@@ -18,7 +21,7 @@
   ```
   （`--scenarios B1` 可单场景复跑；`--dry-run` 只做环境自检、不启动 exe。）
 
-## 1. 结论（如实口径）
+## 1. 结论（v1 修复前基线；v2 修复后见 §8 与 §10）
 
 - **场景 A（启动早期强杀 → 重启恢复/数据完整性）：A1 9/9、A2 10/11、A3 4/4 PASS（含 A3 补充崩溃循环）。**
   首次运行与已有数据目录在「主窗口未就绪」窗口（350–800ms）被按 Popen 自身 PID 强杀后，重启均能
@@ -39,6 +42,9 @@
 - **W07 判定口径**：boot crash / 连续启动失败两个故障类别的**核心恢复路径可用**（重启可恢复、
   数据不损坏、失败可复现），但存在 4 个恢复/可观测性缺口未闭环 → 记为 **PASS-with-gaps**，
   不宣称 W07 整体全通过（W07 其余子项见既有证据）。
+- **v2 修复后复测摘要（task-19，构建 `faa71dfb…`）**：A2-10（孤儿 sidecar 启动自愈）、B1-4（失败原因结构化日志）、
+  B3-4（损坏 settings/app_config 备份 + 默认重置 + 日志提示）均 **FAIL→PASS**；最终 **45 checks / 43 PASS / 2 FAIL**，
+  剩余 2 缺口：B1-6、B2-5（均为「运行期无自愈，需重启」的已知设计限制，task-18 未改动）。详见 §8。
 
 ## 2. 场景 A1：首次运行 + 启动早期强杀（~420ms）→ 重启（9/9 PASS）
 
@@ -57,7 +63,7 @@
 | A1-8 工作区自建夹具未被改动 | PASS | 两个夹具 sha256 前后一致 |
 | A1-9 配置目录可读写、不迁移真实用户 legacy 配置 | PASS | app_config 缺失（合法）；`KE_APP_CONFIG_LEGACY` 隔离后 legacy 用户文档迁移数 **0** |
 
-## 3. 场景 A2：已有数据目录 + 签名包 + 启动早期强杀（~800ms）→ 重启（10/11 PASS，1 缺口）
+## 3. 场景 A2：已有数据目录 + 签名包 + 启动早期强杀（~800ms）→ 重启（v1 基线 10/11 PASS，1 缺口；v2 复测见 §8）
 
 基线：正常启动（工作区自动打开）→ CDP 安装自建签名包 `com.probe.t26w07boot`（active=1.0.0、
 资产 sha256 一致）→ 优雅退出（`app_request_exit`，退出码 0、runtime.json 移除）→ 启动 ~800ms
@@ -89,7 +95,7 @@
 第 4 次启动恢复：runtime 就绪 3.892s、工作区自动打开、recover 状态可观测（checked=1、safeMode=false）、
 app_config/settings 合法、夹具 sha256 一致。
 
-## 5. 场景 B1：sidecar 端口耗尽（连续 3 次启动失败）→ 恢复（5/7 PASS，2 缺口）
+## 5. 场景 B1：sidecar 端口耗尽（连续 3 次启动失败）→ 恢复（v1 基线 5/7 PASS，2 缺口；v2 复测见 §8）
 
 注入：`KE_PORT=18648`（隔离端口族 18648–18650 由探针独占占用，`SO_EXCLUSIVEADDRUSE`，占用语义自检
 3/3 通过）。**注意**：前端 CSP `connect-src` 只白名单 8000-8002，故失败注入用隔离端口族
@@ -115,7 +121,7 @@ app_config/settings 合法、夹具 sha256 一致。
 | **B2-5 [缺口] 数据目录解除阻塞后运行中实例自动重试恢复** | **FAIL（真实缺口）** | 移除占位文件后观察 10s：runtime 仍缺失、sidecar 未拉起、尝试失败日志数不变（3→3）→ 需用户重启 |
 | B2-6 解除阻塞后重启恢复 | PASS | runtime 就绪 2.178s、首帧 2.204s |
 
-## 7. 场景 B3：损坏 settings.json / app_config.json（非法 JSON）（4/4 PASS，含缺口）
+## 7. 场景 B3：损坏 settings.json / app_config.json（非法 JSON）（v1 基线 4/4 PASS，含 1 缺口；v2 复测见 §8）
 
 | 检查 | 结果 | 实测 |
 | --- | --- | --- |
@@ -124,7 +130,26 @@ app_config/settings 合法、夹具 sha256 一致。
 | B3-3 app_config 损坏回退默认 | PASS | 后端 `/api/workspace/recent` → `workspaces: []`；`/api/workspace/current` 仍 open（KE_WORKSPACE 默认工作区可用） |
 | **B3-4 [缺口] 无自动修复/备份/用户提示** | **FAIL（真实缺口）** | 两次启动后两文件字节未变（sha256 与注入非法内容一致）、无 .bak/.tmp、UI 无告警横幅 → 静默回退、用户配置在无提示下丢失（recent 列表） |
 
-## 8. 覆盖边界 / 未覆盖 / 探针侧修正（不夸大）
+## 8. 修复后复测（v2，task-19：A2-10 / B1-4 / B3-4）
+
+构建：sha256 `faa71dfb…`（见头部），含 task-18 修复 commits `a80ec8b`（C2-3/B1-4）、`b030b25`（A2-10/B3-4）。
+复测仅跑 A2/B1/B3（`--scenarios A2,B1,B3 --merge`），A1/A3/B2 保留 v1 构建证据。
+
+| 检查 | 修复前（v1 `be2582ad…`） | 修复后（v2 `faa71dfb…`） | 结论 |
+| --- | --- | --- | --- |
+| **BOOT-A2-10** 早期崩溃孤儿 sidecar 启动自愈 | FAIL：孤儿 pids 26920/38636 重启后仍存活；新后端 port **8001** | **PASS**：spawn registry 保守判定 → 整树停止孤儿 pid **14128**；日志 `[sidecar] W07 A2-10: 发现上次启动遗留的孤儿 sidecar（pid=14128），整树停止以释放端口`；重启 runtime 就绪 3.795s、新 pid 50300 / **port 8000**，孤儿清零 | 缺口闭环 |
+| **BOOT-A2-11** 端口不再偏移 | PASS（8001，但属缺口表现） | **PASS**：新后端 port **8000**（孤儿已释放默认端口） | 复核通过 |
+| **BOOT-B1-4** 端口耗尽失败原因可观测 | FAIL：3 次启动 stderr 均 **0 字节**（静默） | **PASS**：stderr **517B**，含结构化行：
+`[sidecar] 启动失败（第 1/3 次尝试）: E_SIDECAR_PORT: 端口 18656 被占用且后续端口不可用（尝试 1/3）`（第 2/3、3/3 同）+ 最终 `[sidecar] 启动失败（已尝试 3 次，不再重试）: E_SIDECAR_PORT: …` | 缺口闭环（日志侧） |
+| **BOOT-B1-5** UI 错误最终可见 | PASS（36.82s 通用横幅） | **PASS**：36.67s 通用横幅「后端服务未连接」（terminal runtime-error 在窗口挂载前发出 → UI 未显示具体原因；**早期事件限制如实记录**） | 复核通过 |
+| **BOOT-B3-4** 损坏状态文件备份 + 默认重置 | FAIL：两文件字节未变、无 .bak/.tmp、无提示（静默丢设置） | **PASS**：生成 `settings.json.corrupt-1792395484722.bak`、`app_config.json.corrupt-1792395484722.bak`（size 29，sha256 与注入原始损坏字节一致）；主文件重置为合法默认 JSON（settings schemaVersion=1/ui.theme=system、app_config recent_workspaces=[]）；连续两轮启动**幂等**（不重复备份） | 缺口闭环 |
+| **BOOT-B3-5**（新增）修复提示可观测 | — | **PASS**：日志含 `[settings] W07 B3-4: settings.json 损坏（JSON 解析失败），已备份到 …settings.json.corrupt-….bak 并重置为默认配置`（app_config 同） | 新增验证通过 |
+
+复测后统计：**45 checks / 43 PASS / 2 FAIL**；剩余 2 缺口：**BOOT-B1-6**（端口耗尽后运行期无自愈，需重启）、
+**BOOT-B2-5**（数据目录占位解除后运行期无自愈）——两者为已知设计限制（task-18 未改动运行期自愈），如实保留。
+`A1/A3/B2` 未复跑（保留 v1 构建 `be2582ad…` 证据，未混写）。v2 首轮运行无探针侧缺陷（B3 新增 B3-5 check 属本次断言扩展）。
+
+## 9. 覆盖边界 / 未覆盖 / 探针侧修正（不夸大）
 
 1. **早期强杀窗口**仅覆盖「主窗口未就绪」阶段（实测 0.42–0.80s 目标、实际 kill_at 0.55–0.80s；均
    runtime.json 未写、bootTimings 无 settings/workspace 里程碑）。窗口就绪后的崩溃/关闭握手不在本轮
@@ -138,10 +163,13 @@ app_config/settings 合法、夹具 sha256 一致。
 4. **B2 数据目录占位/B3 非法 JSON 为测试构造**（可重复、可清理、隔离路径），非真实磁盘满/断电；
    真实磁盘故障场景未覆盖。
 5. **UI 错误可观测性**与前端的 30s 等待窗口耦合（实测横幅在 36.6–36.8s 出现）；Tauri/前端升级后需复跑。
-6. **窗口内运行记录（如实披露）**：GO 窗口内共 1 次完整探针（首轮 36/42，暴露**探针侧缺陷 3 处**：
+6. **窗口内运行记录（如实披露）**：v1 GO 窗口内共 1 次完整探针（首轮 36/42，暴露**探针侧缺陷 3 处**：
    A2-8 读取顺序、B1 日志假设错误、B2 CDP 连接时序）+ 1 次 B1 定向诊断（修正端口占用注入语义）+
-   1 次完整重跑（本证据 40/44）。首轮探针侧缺陷已在重跑前修正；真实缺口在两轮中一致复现
+   1 次完整重跑（v1 证据 40/44）。首轮探针侧缺陷已在重跑前修正；真实缺口在两轮中一致复现
    （A2 孤儿 sidecar；B1 静默失败；无运行期自愈）。
+   **v2（task-19）复测窗口**：串行独占，`--scenarios A2,B1,B3 --merge` 一次通过；A2-10/B1-4/B3-4 PASS；
+   B1-4 的 UI 具体原因仍受「terminal runtime-error 早于前端挂载」限制（日志侧已闭环，UI 回退通用横幅如实记录）；
+   B3 新增 B3-5 check（修复提示日志）。
 7. **测试数据/进程隔离与红线**：APPDATA 指向 `C:\ke-tmp\uiws-t26-w07boot\*\appdata`（产品 data_dir 由
    env 决定）；`KE_APP_CONFIG_LEGACY` 重定向到隔离路径（不读/不迁移真实用户 legacy 配置）；
    包/恢复状态位于真实 `%APPDATA%\Roaming\com.astranota.uiws.e2e\workshop-packs`（隔离 identifier），
@@ -151,12 +179,13 @@ app_config/settings 合法、夹具 sha256 一致。
 8. **未覆盖**：真实掉电/磁盘故障、窗口就绪后崩溃、运行期自愈（产品当前无此能力，见 B1-6/B2-5）、
    多实例/单实例互斥在本场景下的额外影响（A1–A3 重启均成功，说明强杀后单实例互斥锁无残留）。
 
-## 9. 判定
+## 10. 判定（v2 修复后）
 
-- **boot crash（启动早期强杀 / 崩溃循环）**：产品重启恢复路径 **通过**（A1 9/9、A2 10/11、A3 4/4），
-  数据完整性成立；**1 个缺口**：早期崩溃孤儿 sidecar 无启动自愈清理（A2-10）。
-- **连续启动失败**：失败可稳定复现、重启可恢复 **通过**（B1-1/2/3、B1-7、B2-1/2/3、B2-6、B3 全 PASS）；
-  **3 个缺口**：端口耗尽失败原因不可观测（B1-4）、端口恢复后无运行期自愈（B1-6）、数据目录解除后
-  无运行期自愈（B2-5）。
-- 合计 **40/44 PASS，4 个真实缺口如实记录**（不夸大、不掩盖）。以上不改变 `EXPERIMENTAL_TRUSTED_PACKS`
-  里程碑结论；缺口已列入交付文档的待办候选（由 Lead/docs-consolidator 汇总）。
+- **boot crash（启动早期强杀 / 崩溃循环）**：产品重启恢复路径 **通过**（A1 9/9、A2 **11/11**、A3 4/4），
+  数据完整性成立；**A2-10 孤儿 sidecar 启动自愈已修复并复测 PASS**（spawn registry 保守判定 → 整树停止、默认端口 8000）。
+- **连续启动失败**：失败可稳定复现、重启可恢复 **通过**（B1 6/7、B2 5/6、B3 **5/5**）；
+  **B1-4 结构化日志可观测已修复并复测 PASS**（`E_SIDECAR_PORT:` / `E_SIDECAR_START:`；UI 具体原因受早期事件限制，如实记录）、
+  **B3-4 备份+重置+日志提示已修复并复测 PASS**（`.corrupt-<ts>.bak` 保留原始损坏字节、两轮幂等）；
+  **剩余 2 个缺口**：B1-6、B2-5（运行期无自愈，需重启；已知设计限制，task-18 未改动）。
+- 合计 **45 checks / 43 PASS / 2 FAIL（未闭环缺口）**，如实记录（不夸大、不掩盖）。以上不改变
+  `EXPERIMENTAL_TRUSTED_PACKS` 里程碑结论；剩余缺口交由 Lead/docs-consolidator 汇总。

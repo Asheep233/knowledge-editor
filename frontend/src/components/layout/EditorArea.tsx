@@ -53,6 +53,13 @@ import ExportPdfDialog, { exportPdfWithOverrides, type PdfExportOptions } from '
 // T26 G3/G4：打印渲染器注入（MD→HTML 同源 schema）+ 宿主事件源（保存/切档）
 import { setPrintEditorProvider } from '../../core/print/printEditorBridge'
 import { notifyWorkshopContextChanged, notifyWorkshopDocumentSaved } from '../workshop/workshopHostEvents'
+// T26 F03：受控 guest 编辑器命令桥（白名单执行器；不暴露任意命令）
+import {
+  WORKSHOP_EDITOR_COMMAND_WHITELIST,
+  type WorkshopEditorCommand,
+  type WorkshopEditorExecutor,
+  type WorkshopEditorExecutorResult,
+} from '../workshop/productBrokerBackend'
 // task-74：微分斜体 d → 正体 \mathrm{d}（差异预览 + 勾选 → 另存同目录新文件；原件绝不改动）
 import UprightDDialog from '../editor/UprightDDialog'
 import { type MathDocNode } from '../../editor/upright-d'
@@ -98,6 +105,53 @@ export function guardBodyCommands(handlers: Record<string, () => void>): Record<
  */
 export function normalizeForCompare(md: string): string {
   return applyDocTraits(md, DEFAULT_DOC_TRAITS)
+}
+
+// ---------------- T26 F03：guest 受控编辑器命令桥（白名单执行器） ----------------
+
+/**
+ * 每条白名单命令 → 编辑器操作。`Record<WorkshopEditorCommand, ...>` 编译期穷尽
+ * （白名单新增命令必须同步补映射，避免「白名单有、执行器没有」的漂移）。
+ * 全部走 `editor.chain().focus()`，与工具栏按钮同一命令语义。
+ */
+export const WORKSHOP_EDITOR_EXECUTORS: Record<WorkshopEditorCommand, (editor: Editor) => boolean> = {
+  bold: (editor) => editor.chain().focus().toggleBold().run(),
+  italic: (editor) => editor.chain().focus().toggleItalic().run(),
+  underline: (editor) => editor.chain().focus().toggleUnderline().run(),
+  strike: (editor) => editor.chain().focus().toggleStrike().run(),
+  code: (editor) => editor.chain().focus().toggleCode().run(),
+  heading1: (editor) => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+  heading2: (editor) => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+  heading3: (editor) => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+  bulletList: (editor) => editor.chain().focus().toggleBulletList().run(),
+  orderedList: (editor) => editor.chain().focus().toggleOrderedList().run(),
+  blockquote: (editor) => editor.chain().focus().toggleBlockquote().run(),
+  codeBlock: (editor) => editor.chain().focus().toggleCodeBlock().run(),
+  undo: (editor) => editor.chain().focus().undo().run(),
+  redo: (editor) => editor.chain().focus().redo().run(),
+}
+
+/**
+ * 创建 guest 可用的**受控执行器**（只认白名单，不支持任意命令/参数）。
+ * 错误符号名沿用任务约定（E_COMMAND_NOT_ALLOWED / E_EDITOR_NOT_READY / E_COMMAND_EXECUTION_FAILED）。
+ */
+export function createWorkshopEditorExecutor(getEditor: () => Editor | null): WorkshopEditorExecutor {
+  return {
+    execute(name: string): WorkshopEditorExecutorResult {
+      if (!(WORKSHOP_EDITOR_COMMAND_WHITELIST as readonly string[]).includes(name)) {
+        return { ok: false, error: 'E_COMMAND_NOT_ALLOWED' }
+      }
+      const editor = getEditor()
+      if (!editor || editor.isDestroyed) return { ok: false, error: 'E_EDITOR_NOT_READY' }
+      const run = WORKSHOP_EDITOR_EXECUTORS[name as WorkshopEditorCommand]
+      if (!run) return { ok: false, error: 'E_COMMAND_NOT_ALLOWED' }
+      try {
+        return run(editor) ? { ok: true } : { ok: false, error: 'E_COMMAND_EXECUTION_FAILED' }
+      } catch (e) {
+        return { ok: false, error: `E_COMMAND_EXECUTION_FAILED: ${String((e as Error)?.message ?? e)}` }
+      }
+    },
+  }
 }
 
 interface Props {
@@ -736,6 +790,21 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     setPrintEditorProvider(() => editorRef.current)
     return () => setPrintEditorProvider(null)
   }, [])
+
+  // T26 F03：向 guest 命令桥暴露**受控编辑器执行器**（仅主窗口、组件卸载清理）。
+  // guest 经协议 `command.invoke('editor.*')` → ProductBrokerBackend（白名单+能力校验）→ 本执行器；
+  // 执行器只认最小白名单，不暴露任意命令执行。
+  useEffect(() => {
+    if (!editor) return
+    const executor = createWorkshopEditorExecutor(() => editorRef.current)
+    const holder = window as unknown as { __KE_WORKSHOP_EDITOR__?: WorkshopEditorExecutor }
+    holder.__KE_WORKSHOP_EDITOR__ = executor
+    ;(window as unknown as { __keWorkshopEditorReady?: boolean }).__keWorkshopEditorReady = true
+    return () => {
+      if (holder.__KE_WORKSHOP_EDITOR__ === executor) delete holder.__KE_WORKSHOP_EDITOR__
+      ;(window as unknown as { __keWorkshopEditorReady?: boolean }).__keWorkshopEditorReady = false
+    }
+  }, [editor])
 
   // v1.1.7 M2：公式节点请求编辑 → 打开根级模态
   useEffect(() => {

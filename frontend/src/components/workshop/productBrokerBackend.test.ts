@@ -8,10 +8,14 @@ import { resetPrintTokensForTests, lookupPrintToken } from '../../core/print/pri
 import type { PrintRenderer, PrintTransport } from '../../core/print/printJob'
 import {
   ProductBrokerBackend,
+  WORKSHOP_EDITOR_COMMAND_WHITELIST,
+  getWorkshopEditorExecutor,
+  isWorkshopEditorInvokeName,
   normalizeGuestPrintRelPath,
   resetGuestContextBridgeForTests,
   type ProductBrokerBackendOptions,
 } from './productBrokerBackend'
+import { WORKSHOP_EDITOR_EXECUTORS, createWorkshopEditorExecutor } from '../layout/EditorArea'
 
 const REL = 'Articles/a.md'
 const CONTENT = '---\ntitle: a\n---\n\n# 标题\n\n正文段落\n'
@@ -448,5 +452,205 @@ describe('W07 A-10：超时 E_TIMEOUT 经 Broker/HostDispatcher 映射到 guest'
       guest.close()
       dispatcher.close()
     }
+  })
+})
+
+// ---------------- T26 F03：受控 guest 编辑器命令桥（editor.*） ----------------
+
+type FakeExecutor = { execute: ReturnType<typeof vi.fn> }
+
+function installExecutor(impl?: (name: string) => { ok: boolean; error?: string }): FakeExecutor {
+  const executor = { execute: vi.fn(impl ?? (() => ({ ok: true }))) }
+  ;(window as unknown as { __KE_WORKSHOP_EDITOR__?: FakeExecutor }).__KE_WORKSHOP_EDITOR__ = executor
+  return executor
+}
+
+function editorConn(capabilities: string[] = ['ui.shell', 'editor.commands.readonly']): BrokerConnection {
+  return { ...conn(capabilities) }
+}
+
+async function rejection(promise: Promise<unknown>): Promise<{ code?: string; message?: string }> {
+  return (await promise.catch((e) => e)) as { code?: string; message?: string }
+}
+
+describe('T26 F03 受控 guest 编辑器命令桥（command.invoke editor.*）', () => {
+  afterEach(() => {
+    delete (window as unknown as { __KE_WORKSHOP_EDITOR__?: FakeExecutor }).__KE_WORKSHOP_EDITOR__
+  })
+
+  it('白名单契约为 14 条最小集（不含任意命令）；协议名大小写敏感', () => {
+    expect([...WORKSHOP_EDITOR_COMMAND_WHITELIST]).toEqual([
+      'bold', 'italic', 'underline', 'strike', 'code',
+      'heading1', 'heading2', 'heading3',
+      'bulletList', 'orderedList', 'blockquote', 'codeBlock',
+      'undo', 'redo',
+    ])
+    expect(isWorkshopEditorInvokeName('editor.bold')).toBe(true)
+    expect(isWorkshopEditorInvokeName('editor.heading3')).toBe(true)
+    expect(isWorkshopEditorInvokeName('editor.BOLD')).toBe(false)
+    expect(isWorkshopEditorInvokeName('editor.clearContent')).toBe(false)
+    expect(isWorkshopEditorInvokeName('article.set-title')).toBe(false)
+    expect(isWorkshopEditorInvokeName(42)).toBe(false)
+  })
+
+  it('白名单内命令 → 调执行器并返回 {ok:true,value:{name,executed:true}}', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    for (const name of ['editor.bold', 'editor.heading1', 'editor.blockquote', 'editor.undo', 'editor.redo']) {
+      const result = await backend.invokeCommand({ name }, editorConn())
+      expect(result).toEqual({ ok: true, value: { name, executed: true } })
+    }
+    expect(executor.execute.mock.calls.map((call) => call[0])).toEqual(['bold', 'heading1', 'blockquote', 'undo', 'redo'])
+  })
+
+  it('白名单外 editor.* → E_COMMAND_NOT_ALLOWED（协议码 E_FORBIDDEN），执行器零调用', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    for (const name of ['editor.clearContent', 'editor.insertText', 'editor.BOLD', 'editor.deleteSelection', 'editor.bold.x']) {
+      const err = await rejection(backend.invokeCommand({ name }, editorConn()))
+      expect(err.code).toBe('E_FORBIDDEN')
+      expect(String(err.message)).toContain('E_COMMAND_NOT_ALLOWED')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('连接缺少 editor.commands.readonly 能力 → E_CAPABILITY，执行器零调用', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'editor.bold' }, editorConn(['ui.shell'])))
+    expect(err.code).toBe('E_CAPABILITY')
+    expect(String(err.message)).toContain('editor.commands.readonly')
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('执行器缺失（编辑器未挂载）→ E_INTERNAL + E_EDITOR_NOT_READY（不假成功）', async () => {
+    delete (window as unknown as { __KE_WORKSHOP_EDITOR__?: FakeExecutor }).__KE_WORKSHOP_EDITOR__
+    expect(getWorkshopEditorExecutor()).toBeNull()
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'editor.bold' }, editorConn()))
+    expect(err.code).toBe('E_INTERNAL')
+    expect(String(err.message)).toContain('E_EDITOR_NOT_READY')
+  })
+
+  it('执行器返回失败/抛错 → 如实 E_INTERNAL（E_COMMAND_EXECUTION_FAILED），不假成功', async () => {
+    installExecutor(() => ({ ok: false, error: 'E_EDITOR_NOT_READY' }))
+    const { backend } = makeBackend()
+    const reject = await rejection(backend.invokeCommand({ name: 'editor.bold' }, editorConn()))
+    expect(reject.code).toBe('E_INTERNAL')
+    expect(String(reject.message)).toContain('E_COMMAND_EXECUTION_FAILED')
+    expect(String(reject.message)).toContain('E_EDITOR_NOT_READY')
+
+    installExecutor(() => {
+      throw new Error('boom')
+    })
+    const thrown = await rejection(backend.invokeCommand({ name: 'editor.italic' }, editorConn()))
+    expect(thrown.code).toBe('E_INTERNAL')
+    expect(String(thrown.message)).toContain('boom')
+  })
+
+  it('真实 Broker 链路：manifest 未声明命令 → 声明式白名单先行拒绝（E_FORBIDDEN）', async () => {
+    installExecutor()
+    const { backend } = makeBackend()
+    const broker = new Broker(backend, {})
+    const connNoDeclare = { ...editorConn(), declaredCommands: [] as string[] }
+    const err = await rejection(broker.handle('command.invoke', { name: 'editor.bold' }, connNoDeclare))
+    expect(err.code).toBe('E_FORBIDDEN')
+  })
+
+  it('真实 Broker 链路：声明命令 + 能力 + 执行器齐备 → 成功返回', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const broker = new Broker(backend, {})
+    const declared = { ...editorConn(), declaredCommands: ['editor.bold'] }
+    const result = await broker.handle('command.invoke', { name: 'editor.bold' }, declared)
+    expect(result).toEqual({ ok: true, value: { name: 'editor.bold', executed: true } })
+    expect(executor.execute).toHaveBeenCalledWith('bold')
+  })
+
+  it('非 editor.* 名称仍走既有 article meta 白名单（未被编辑器桥截获）', async () => {
+    const executor = installExecutor()
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'article.unknown' }, editorConn()))
+    expect(String(err.message)).toMatch(/E_COMMAND_NOT_ALLOWED|未授权命令/)
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+})
+
+describe('T26 F03 EditorArea 受控执行器（白名单映射/边角）', () => {
+  function fakeEditor(runResult = true) {
+    const calls: string[] = []
+    const chain: Record<string, unknown> = {}
+    for (const method of [
+      'focus', 'toggleBold', 'toggleItalic', 'toggleUnderline', 'toggleStrike', 'toggleCode',
+      'toggleHeading', 'toggleBulletList', 'toggleOrderedList', 'toggleBlockquote', 'toggleCodeBlock',
+      'undo', 'redo',
+    ]) {
+      chain[method] = (...args: unknown[]) => {
+        calls.push(args.length > 0 ? `${method}:${JSON.stringify(args)}` : method)
+        return chain
+      }
+    }
+    chain.run = () => runResult
+    return { calls, editor: { isDestroyed: false, chain: () => chain } }
+  }
+
+  it('白名单 14 条与执行器映射键完全一致（编译期 Record 穷尽 + 运行期守卫）', () => {
+    expect(Object.keys(WORKSHOP_EDITOR_EXECUTORS).sort()).toEqual([...WORKSHOP_EDITOR_COMMAND_WHITELIST].sort())
+  })
+
+  it('每条白名单命令映射到正确 chain 方法（heading 带 level、含 focus）', () => {
+    const expectations: Array<[string, string]> = [
+      ['bold', 'toggleBold'],
+      ['italic', 'toggleItalic'],
+      ['underline', 'toggleUnderline'],
+      ['strike', 'toggleStrike'],
+      ['code', 'toggleCode'],
+      ['heading1', 'toggleHeading:[{"level":1}]'],
+      ['heading2', 'toggleHeading:[{"level":2}]'],
+      ['heading3', 'toggleHeading:[{"level":3}]'],
+      ['bulletList', 'toggleBulletList'],
+      ['orderedList', 'toggleOrderedList'],
+      ['blockquote', 'toggleBlockquote'],
+      ['codeBlock', 'toggleCodeBlock'],
+      ['undo', 'undo'],
+      ['redo', 'redo'],
+    ]
+    for (const [command, expectedCall] of expectations) {
+      const { calls, editor } = fakeEditor(true)
+      const executor = createWorkshopEditorExecutor(() => editor as never)
+      expect(executor.execute(command)).toEqual({ ok: true })
+      expect(calls, `${command} 应调用 ${expectedCall}`).toContain(expectedCall)
+      expect(calls[0], '命令必须经 chain().focus() 执行').toBe('focus')
+    }
+  })
+
+  it('未知命令 → E_COMMAND_NOT_ALLOWED 且不触发任何编辑器调用（不暴露任意命令）', () => {
+    const { calls, editor } = fakeEditor(true)
+    const executor = createWorkshopEditorExecutor(() => editor as never)
+    expect(executor.execute('clearContent')).toEqual({ ok: false, error: 'E_COMMAND_NOT_ALLOWED' })
+    expect(executor.execute('insertText')).toEqual({ ok: false, error: 'E_COMMAND_NOT_ALLOWED' })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('编辑器未就绪（getEditor 为 null / destroyed）→ E_EDITOR_NOT_READY（不假成功）', () => {
+    expect(createWorkshopEditorExecutor(() => null).execute('bold')).toEqual({
+      ok: false,
+      error: 'E_EDITOR_NOT_READY',
+    })
+    const { calls, editor } = fakeEditor(true)
+    ;(editor as { isDestroyed?: boolean }).isDestroyed = true
+    expect(createWorkshopEditorExecutor(() => editor as never).execute('bold')).toEqual({
+      ok: false,
+      error: 'E_EDITOR_NOT_READY',
+    })
+    expect(calls).toHaveLength(0)
+  })
+
+  it('chain.run 返回 false（命令未生效）→ E_COMMAND_EXECUTION_FAILED 如实失败', () => {
+    const { editor } = fakeEditor(false)
+    expect(createWorkshopEditorExecutor(() => editor as never).execute('undo')).toEqual({
+      ok: false,
+      error: 'E_COMMAND_EXECUTION_FAILED',
+    })
   })
 })

@@ -10,7 +10,10 @@
  * - W07 B-6：sidecar 崩溃自动重启后新后端内存上下文丢失（HTTP 404）→ 丢弃缓存绑定、
  *   重新 ensureContext（context/open）后**重试一次**（snapshot/write/print 读取路径共用）；
  * - W07 A-10：宿主 fetch 超时 → 协议错误 `E_TIMEOUT`（retryable=true），guest 可按 code 区分超时；
- * - W02：`command.invoke` 白名单命令（article.setTitle/setTags）。
+ * - W02：`command.invoke` 白名单命令（article.setTitle/setTags）；
+ * - T26 F03：`command.invoke` 新增 `editor.*` **受控编辑器命令桥**（14 条最小白名单，
+ *   需连接具备 `editor.commands.readonly`；真正执行由主窗口 EditorArea 注册的
+ *   `window.__KE_WORKSHOP_EDITOR__` 受控执行器完成，不暴露任意命令）。
  */
 import { connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
 import { createProductPrintRenderer } from '../../core/print/productPrintRenderer'
@@ -30,6 +33,60 @@ import { protocolError, type ProtocolMethods } from '../../core/protocol/types'
 import { CoreSaveBridge } from '../../core/session/coreSaveBridge'
 
 export const DEFAULT_CONTEXT_ID = 'ke-default'
+
+// ---------------- T26 F03：受控 guest 编辑器命令桥（最小白名单，不暴露任意命令） ----------------
+
+/**
+ * guest 可经 `command.invoke` 请求的编辑器命令（协议名 = `editor.<command>`，小写）。
+ * 白名单最小化：只含「切换类/历史类」命令，不含任何文本插入/删除/选区/自定义命令；
+ * 与 EditorArea 的执行器映射通过 TS `Record<WorkshopEditorCommand, ...>` 编译期对齐。
+ */
+export const WORKSHOP_EDITOR_COMMAND_WHITELIST = [
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'code',
+  'heading1',
+  'heading2',
+  'heading3',
+  'bulletList',
+  'orderedList',
+  'blockquote',
+  'codeBlock',
+  'undo',
+  'redo',
+] as const
+
+export type WorkshopEditorCommand = (typeof WORKSHOP_EDITOR_COMMAND_WHITELIST)[number]
+export type WorkshopEditorInvokeName = `editor.${WorkshopEditorCommand}`
+
+/** 受控执行器返回（`error` 为符号名，如 E_COMMAND_NOT_ALLOWED / E_EDITOR_NOT_READY）。 */
+export interface WorkshopEditorExecutorResult {
+  ok: boolean
+  error?: string
+}
+
+/** 主窗口 EditorArea 注册的受控执行器；不存在 = 编辑器未就绪（不得假成功）。 */
+export interface WorkshopEditorExecutor {
+  execute(name: string): WorkshopEditorExecutorResult
+}
+
+interface WorkshopEditorHolder {
+  __KE_WORKSHOP_EDITOR__?: WorkshopEditorExecutor
+}
+
+export function getWorkshopEditorExecutor(): WorkshopEditorExecutor | null {
+  const holder = (typeof window !== 'undefined' ? window : globalThis) as WorkshopEditorHolder
+  const executor = holder.__KE_WORKSHOP_EDITOR__
+  return executor && typeof executor.execute === 'function' ? executor : null
+}
+
+/** `editor.<command>` 且命令在白名单内（大小写敏感：只接受小写映射名）。 */
+export function isWorkshopEditorInvokeName(name: unknown): name is WorkshopEditorInvokeName {
+  if (typeof name !== 'string' || !name.startsWith('editor.')) return false
+  return (WORKSHOP_EDITOR_COMMAND_WHITELIST as readonly string[]).includes(name.slice('editor.'.length))
+}
 
 let sharedBridge: CoreSaveBridge | null = null
 function bridge(): CoreSaveBridge {
@@ -268,11 +325,55 @@ export class ProductBrokerBackend implements BrokerBackend {
 
   private commandHandler: ReturnType<typeof createArticleMetaCommandHandler> | null = null
 
-  async invokeCommand(params: ProtocolMethods['command.invoke']['params']) {
+  /**
+   * T26 F03：`editor.*` 受控编辑器命令桥。
+   * 顺序：协议名/白名单（未知 → E_COMMAND_NOT_ALLOWED）→ 连接能力 `editor.commands.readonly`
+   * （否则 E_CAPABILITY）→ 主窗口执行器（缺失 → E_EDITOR_NOT_READY）→ 执行结果如实映射
+   * （失败不返回假成功）。执行器本身也只认白名单（第二道防线，见 EditorArea）。
+   */
+  private async invokeEditorCommand(
+    name: WorkshopEditorInvokeName,
+    conn: BrokerConnection,
+  ): Promise<ProtocolMethods['command.invoke']['result']> {
+    if (!isWorkshopEditorInvokeName(name)) {
+      throw protocolError('E_FORBIDDEN', `E_COMMAND_NOT_ALLOWED: 未授权编辑命令 ${String(name)}`, {
+        name,
+        whitelist: [...WORKSHOP_EDITOR_COMMAND_WHITELIST],
+      })
+    }
+    if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
+      throw protocolError('E_CAPABILITY', '缺少能力: editor.commands.readonly', {
+        required: 'editor.commands.readonly',
+        granted: conn.capabilities,
+      })
+    }
+    const executor = getWorkshopEditorExecutor()
+    if (!executor) {
+      throw protocolError('E_INTERNAL', 'E_EDITOR_NOT_READY: 编辑器未就绪（主窗口 EditorArea 未挂载）', { name })
+    }
+    const command = name.slice('editor.'.length)
+    let result: WorkshopEditorExecutorResult
+    try {
+      result = executor.execute(command)
+    } catch (e) {
+      throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${String((e as Error)?.message ?? e)}`, { name })
+    }
+    if (!result || result.ok !== true) {
+      throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${result?.error ?? '执行器未返回成功'}`, { name })
+    }
+    return { ok: true, value: { name, executed: true } }
+  }
+
+  async invokeCommand(params: ProtocolMethods['command.invoke']['params'], conn: BrokerConnection) {
+    const name = params.name
+    // T26 F03：editor.* 走受控编辑器命令桥；其它名称仍走既有 W02 article meta 白名单
+    if (typeof name === 'string' && name.startsWith('editor.')) {
+      return await this.invokeEditorCommand(name as WorkshopEditorInvokeName, conn)
+    }
     // W02：白名单命令（article.set-title/set-tags）→ 宿主原子写后端 meta；其余命令拒绝
     if (!this.commandHandler) {
       this.commandHandler = createArticleMetaCommandHandler({ baseUrl: this.baseUrl() })
     }
-    return await this.commandHandler.invoke(params.name, params.args)
+    return await this.commandHandler.invoke(name, params.args)
   }
 }

@@ -228,3 +228,96 @@ describe('T23 创意工坊控制面 UI', () => {
     expect(container.querySelector('[role="alert"]')!.textContent).toContain('磁盘不可读')
   })
 })
+
+describe('W07 C1-4/C2-2/C3-5：启动恢复结果 UI 提示', () => {
+  const rollbackStatus = {
+    found: true,
+    checked: 2,
+    safeMode: false,
+    generatedAt: 'SystemTime { t: 1 }',
+    results: [
+      { id: 'com.demo.a', recovered: true, action: 'rollback-corrupt-active' },
+      { id: 'com.demo.b', recovered: true, action: 'cleanup-journal' },
+      { id: 'com.demo.c', recovered: false, action: 'clean' },
+    ],
+  }
+
+  it('有恢复动作 → 显示持久 notice（动作/详情/可关闭），不调用 recoverAll', async () => {
+    const adapter = makeAdapter({ startupStatus: vi.fn(async () => rollbackStatus) })
+    await mount(adapter)
+    await flush(2)
+    const notice = container.querySelector('[data-testid="startup-recover-notice"]')
+    expect(notice).toBeTruthy()
+    expect(notice!.textContent).toContain('已自动恢复 2 个包')
+    expect(notice!.textContent).toContain('已回滚到上一版本')
+    expect(notice!.textContent).toContain('已清理中断安装残留')
+    expect(notice!.textContent).not.toContain('无需恢复')
+    expect(notice!.textContent).toContain('共检查 2 个包')
+    expect(adapter.startupStatus).toHaveBeenCalledTimes(1)
+    expect(adapter.recoverAll).not.toHaveBeenCalled()
+    // 关闭后不再显示
+    await click(buttonByText('关闭'))
+    expect(container.querySelector('[data-testid="startup-recover-notice"]')).toBeNull()
+  })
+
+  it('safeMode → notice 提示 + 既有 safeMode 横幅立即显示（预置 recoverStatus）', async () => {
+    const adapter = makeAdapter({
+      startupStatus: vi.fn(async () => ({
+        found: true,
+        checked: 1,
+        safeMode: true,
+        results: [{ id: 'com.demo.bad', recovered: false, action: 'corrupt-no-fallback' }],
+      })),
+    })
+    await mount(adapter)
+    await flush(2)
+    expect(container.querySelector('[data-testid="startup-recover-notice"]')!.textContent).toContain('safe mode')
+    expect(text()).toContain('有包无法自动恢复（safe mode）')
+    expect(text()).toContain('损坏且无可用回退')
+    expect(adapter.recoverAll).not.toHaveBeenCalled()
+  })
+
+  it('无启动恢复文件/无动作/无 safeMode → 不显示（不误报）', async () => {
+    const notFound = makeAdapter({ startupStatus: vi.fn(async () => ({ found: false, checked: 0, safeMode: false, results: [] })) })
+    await mount(notFound)
+    await flush(2)
+    expect(container.querySelector('[data-testid="startup-recover-notice"]')).toBeNull()
+    expect(text()).not.toContain('有包无法自动恢复（safe mode）')
+
+    if (root) {
+      await act(async () => root!.unmount())
+      root = null
+    }
+    container.remove()
+    const cleanOnly = makeAdapter({
+      startupStatus: vi.fn(async () => ({
+        found: true,
+        checked: 1,
+        safeMode: false,
+        results: [{ id: 'com.demo.x', recovered: false, action: 'clean' }],
+      })),
+    })
+    await mount(cleanOnly)
+    await flush(2)
+    expect(container.querySelector('[data-testid="startup-recover-notice"]')).toBeNull()
+  })
+
+  it('旧构建无 startupStatus 能力 / 读取抛错 → 面板正常渲染、不误报', async () => {
+    const legacy = makeAdapter()
+    delete (legacy as { startupStatus?: unknown }).startupStatus
+    await mount(legacy)
+    expect(text()).toContain('已安装包')
+    expect(container.querySelector('[data-testid="startup-recover-notice"]')).toBeNull()
+
+    if (root) {
+      await act(async () => root!.unmount())
+      root = null
+    }
+    container.remove()
+    const failing = makeAdapter({ startupStatus: vi.fn(async () => { throw new Error('E_UNKNOWN_COMMAND') }) })
+    await mount(failing)
+    await flush(2)
+    expect(container.querySelector('[data-testid="startup-recover-notice"]')).toBeNull()
+    expect(text()).not.toContain('E_UNKNOWN_COMMAND')
+  })
+})

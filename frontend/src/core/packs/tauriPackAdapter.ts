@@ -8,7 +8,15 @@
 import { invoke } from '@tauri-apps/api/core'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
-import type { InstalledPackView, InstallPreviewView, RecoverAllView, RecoverResultView, WorkshopAdapter } from '../../components/workshop/WorkshopPanel'
+import type {
+  InstalledPackView,
+  InstallPreviewView,
+  RecoverAllView,
+  RecoverResultView,
+  StartupRecoverResultView,
+  StartupRecoverView,
+  WorkshopAdapter,
+} from '../../components/workshop/WorkshopPanel'
 import { capabilityRisk } from './installPolicy'
 import { LocalTrustStore, defaultTrustStorage } from './localTrustStore'
 import type { KeyValueStorage } from './localTrustStore'
@@ -195,6 +203,35 @@ export function createTauriPackAdapter(options: TauriPackAdapterOptions = {}): W
       try {
         const res = (await call('workshop_pack_recover_all')) as { checked?: number; safeMode?: boolean; results?: unknown }
         return { checked: Number(res.checked ?? 0), safeMode: !!res.safeMode, results: res.results }
+      } catch (e) {
+        throw err(e)
+      }
+    },
+
+    /**
+     * W07 C1-4/C2-2/C3-5：读取**启动时**恢复结果（只读命令，不触发 recover_all、不改包状态）。
+     * 字段缺失/类型异常一律容错为安全默认值（found:false/0/[]），不把脏数据当恢复动作。
+     */
+    async startupStatus(): Promise<StartupRecoverView> {
+      try {
+        const res = (await call('workshop_pack_startup_status')) as {
+          found?: unknown
+          checked?: unknown
+          results?: unknown
+          safeMode?: unknown
+          generatedAt?: unknown
+        } | null
+        const results = Array.isArray(res?.results)
+          ? (res!.results as StartupRecoverResultView[]).filter((r) => !!r && typeof r === 'object')
+          : []
+        const checked = Number(res?.checked)
+        return {
+          found: res?.found === true,
+          checked: Number.isFinite(checked) && checked >= 0 ? checked : 0,
+          safeMode: res?.safeMode === true,
+          results,
+          generatedAt: typeof res?.generatedAt === 'string' ? res.generatedAt : null,
+        }
       } catch (e) {
         throw err(e)
       }

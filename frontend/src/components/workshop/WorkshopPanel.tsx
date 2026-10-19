@@ -5,7 +5,7 @@
  * （产品实现 = Tauri Rust 包命令；测试 = 内存替身）。所有安装都必须先走预览 + 显式确认
  * （安全门禁在 Core `PendingInstallGate`，本组件不提供绕过入口）。
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { TrustTier } from '../../core/packs/trustPolicy'
 import type { ProductHostBackend } from '../../core/packs/productHostAdapter'
@@ -55,6 +55,45 @@ export interface RecoverAllView {
   results?: unknown
 }
 
+/** W07 C：启动恢复单包结果（Rust `recover_all` result 子集；字段缺失时容错展示）。 */
+export interface StartupRecoverResultView {
+  id?: string
+  recovered?: boolean
+  action?: string
+  state?: unknown
+  error?: string | null
+}
+
+/**
+ * W07 C1-4/C2-2/C3-5：启动时 recover 结果（Rust `workshop_pack_startup_status` 只读命令）。
+ * 面板打开时读取一次，展示自动回滚/清理/safeMode 结果（此前只有手动「检查/修复全部包」后才可见）。
+ */
+export interface StartupRecoverView {
+  found: boolean
+  checked: number
+  safeMode: boolean
+  results: StartupRecoverResultView[]
+  generatedAt?: string | null
+}
+
+/** 已知恢复动作 → 中文说明（未知动作原样展示，不臆造语义）。 */
+const RECOVER_ACTION_LABEL: Record<string, string> = {
+  'rollback-corrupt-active': '已回滚到上一版本',
+  'cleanup-journal': '已清理中断安装残留',
+  'corrupt-no-fallback': '损坏且无可用回退（需手动处理）',
+  clean: '无需恢复',
+}
+
+/** W07 C：从启动恢复结果中筛出「真实恢复动作」（clean/缺失不算，避免无状态误报）。 */
+export function startupRecoverActions(results: StartupRecoverResultView[] | undefined): StartupRecoverResultView[] {
+  if (!Array.isArray(results)) return []
+  return results.filter(
+    (r) =>
+      !!r &&
+      (r.recovered === true || (typeof r.action === 'string' && r.action.length > 0 && r.action !== 'clean')),
+  )
+}
+
 export interface WorkshopAdapter {
   listInstalled(): Promise<InstalledPackView[]>
   /** 用户选择本地包后返回预览（产品实现：扫描 manifest → 预览，不安装）。 */
@@ -65,6 +104,8 @@ export interface WorkshopAdapter {
   recover(packId: string): Promise<RecoverResultView>
   /** 全部包启动恢复（产品壳 workshop_pack_recover_all；可选能力） */
   recoverAll?(): Promise<RecoverAllView>
+  /** W07 C：读取启动恢复结果（产品壳 workshop_pack_startup_status，只读；可选能力） */
+  startupStatus?(): Promise<StartupRecoverView>
   /** 卸载包（可选能力） */
   uninstall?(packId: string): Promise<void>
   /** 信任等级读取/授予/撤销（可选能力；产品=T24 TrustStore） */
@@ -97,6 +138,10 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
   const [message, setMessage] = useState<string | null>(null)
   const [recoverStatus, setRecoverStatus] = useState<RecoverAllView | null>(null)
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null)
+  /** W07 C：启动恢复结果（只读读取；无动作/无文件 → null，不误报） */
+  const [startupStatus, setStartupStatus] = useState<StartupRecoverView | null>(null)
+  const [startupNoticeDismissed, setStartupNoticeDismissed] = useState(false)
+  const startupLoadedRef = useRef(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -122,6 +167,30 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
   useEffect(() => {
     if (autoLoad) void refresh()
   }, [autoLoad, refresh])
+
+  // W07 C1-4/C2-2/C3-5：面板打开时**只读**读取启动恢复结果（绝不调 recover_all）。
+  // Rust setup 的 `workshop://recover-status` 事件早于前端挂载会丢失 → 从持久状态文件补齐；
+  // 有真实恢复动作或 safeMode 才展示 notice，并预置 recoverStatus 让既有 safeMode 横幅立即显示。
+  useEffect(() => {
+    if (!autoLoad || startupLoadedRef.current) return
+    const readStartupStatus = adapter.startupStatus
+    if (!readStartupStatus) return
+    startupLoadedRef.current = true
+    let cancelled = false
+    void readStartupStatus
+      .call(adapter)
+      .then((status) => {
+        if (cancelled || !status?.found) return
+        const actions = startupRecoverActions(status.results)
+        if (!status.safeMode && actions.length === 0) return
+        setStartupStatus(status)
+        setRecoverStatus({ checked: status.checked, safeMode: status.safeMode, results: status.results })
+      })
+      .catch(() => undefined) // 旧构建/命令缺失 → 静默（不误报、不阻塞面板）
+    return () => {
+      cancelled = true
+    }
+  }, [adapter, autoLoad])
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true)
@@ -255,6 +324,45 @@ export function WorkshopPanel({ adapter, autoLoad = true }: WorkshopPanelProps) 
         </div>
       </header>
 
+      {startupStatus && !startupNoticeDismissed && (
+        <div
+          data-testid="startup-recover-notice"
+          role="status"
+          className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-medium">
+                {startupStatus.safeMode
+                  ? '启动恢复：存在无法自动恢复的包（safe mode）'
+                  : `启动恢复：已自动恢复 ${startupRecoverActions(startupStatus.results).length} 个包`}
+              </div>
+              {startupRecoverActions(startupStatus.results).length > 0 && (
+                <ul className="mt-1 list-disc pl-5">
+                  {startupRecoverActions(startupStatus.results).map((result, index) => (
+                    <li key={`${result.id ?? 'pack'}-${result.action ?? 'action'}-${index}`}>
+                      {result.id ?? '未知包'}：
+                      {RECOVER_ACTION_LABEL[result.action ?? ''] ?? result.action ?? '已处理'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-1 opacity-70">
+                共检查 {startupStatus.checked} 个包
+                {startupStatus.generatedAt ? ` · ${startupStatus.generatedAt}` : ''}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="关闭启动恢复提示"
+              className="shrink-0 rounded border border-amber-300 px-2 py-0.5"
+              onClick={() => setStartupNoticeDismissed(true)}
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
       {recoverStatus?.safeMode && (
         <div role="alert" className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-900">
           有包无法自动恢复（safe mode）：请检查版本完整性/回滚或重新安装。

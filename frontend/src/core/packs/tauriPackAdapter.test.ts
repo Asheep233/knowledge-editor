@@ -130,4 +130,47 @@ describe('T21/T23 TauriPackAdapter', () => {
   it('cancelPreview 恒为 true 且不调用后端', () => {
     expect(adapter().cancelPreview('tok')).toBe(true)
   })
+
+  it('W07 C：startupStatus 映射启动恢复结果（found/checked/results/safeMode/generatedAt）', async () => {
+    mockedInvoke.mockResolvedValueOnce({
+      found: true,
+      checked: 2,
+      results: [
+        { id: 'com.demo.a', recovered: true, action: 'rollback-corrupt-active', state: { active: '1.0.0' } },
+        { id: 'com.demo.b', recovered: false, action: 'corrupt-no-fallback' },
+      ],
+      safeMode: true,
+      generatedAt: 'SystemTime { t: 1 }',
+    })
+    const status = await adapter().startupStatus!()
+    expect(mockedInvoke).toHaveBeenCalledWith('workshop_pack_startup_status')
+    expect(status).toEqual({
+      found: true,
+      checked: 2,
+      safeMode: true,
+      generatedAt: 'SystemTime { t: 1 }',
+      results: [
+        { id: 'com.demo.a', recovered: true, action: 'rollback-corrupt-active', state: { active: '1.0.0' } },
+        { id: 'com.demo.b', recovered: false, action: 'corrupt-no-fallback' },
+      ],
+    })
+  })
+
+  it('W07 C：startupStatus 缺失/脏字段容错（found:false、results 非数组 → []、checked 非法 → 0）', async () => {
+    mockedInvoke.mockResolvedValueOnce({ found: false })
+    const missing = await adapter().startupStatus!()
+    expect(missing).toEqual({ found: false, checked: 0, safeMode: false, results: [], generatedAt: null })
+    mockedInvoke.mockResolvedValueOnce({ found: true, checked: 'NaN', results: 'oops', safeMode: 'no', generatedAt: 42 })
+    const dirty = await adapter().startupStatus!()
+    expect(dirty).toEqual({ found: true, checked: 0, safeMode: false, results: [], generatedAt: null })
+    mockedInvoke.mockResolvedValueOnce(null)
+    const nullRes = await adapter().startupStatus!()
+    expect(nullRes.found).toBe(false)
+    expect(nullRes.results).toEqual([])
+  })
+
+  it('W07 C：startupStatus 命令失败（旧构建/异常）→ 抛错由 Panel 静默处理', async () => {
+    mockedInvoke.mockRejectedValueOnce(new Error('E_UNKNOWN_COMMAND'))
+    await expect(adapter().startupStatus!()).rejects.toThrow(/E_UNKNOWN_COMMAND/)
+  })
 })

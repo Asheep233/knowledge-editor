@@ -678,11 +678,54 @@ pub fn write_session_status(root: &Path, status: &Value) -> Result<Value, String
     Ok(normalized)
 }
 
+/// W07 C1-4/C2-2/C3-5：启动恢复状态文件路径（app_data_root/workshop-recover-status.json）。
+fn recover_status_path(app_data_root: &Path) -> PathBuf {
+    app_data_root.join("workshop-recover-status.json")
+}
+
 /// 把启动恢复状态写入应用数据区（供 UI/诊断读取；写失败不阻断启动）。
 pub fn write_recover_status(app_data_root: &Path, status: &Value) -> Result<PathBuf, String> {
-    let path = app_data_root.join("workshop-recover-status.json");
+    let path = recover_status_path(app_data_root);
     write_json_atomic(&path, status)?;
     Ok(path)
+}
+
+/// W07 C：**只读**读取启动恢复状态（供前端展示启动 recover/safeMode/cleanup-journal 结果）。
+///
+/// 约束：不触发 `recover_all`、不修改状态文件/包状态；文件缺失/损坏返回 `found:false`（不报错）；
+/// 成功时返回稳定形状 `{found, checked, results, safeMode, generatedAt}`。
+pub fn read_startup_status(app_data_root: &Path) -> Value {
+    let text = match fs::read_to_string(recover_status_path(app_data_root)) {
+        Ok(text) => text,
+        Err(_) => {
+            return json!({
+                "found": false, "checked": 0, "results": [], "safeMode": false, "generatedAt": Value::Null
+            })
+        }
+    };
+    match serde_json::from_str::<Value>(&text) {
+        Ok(value) => {
+            let checked = value.get("checked").and_then(|v| v.as_u64()).unwrap_or(0);
+            let results = value
+                .get("results")
+                .cloned()
+                .filter(|v| v.is_array())
+                .unwrap_or_else(|| json!([]));
+            let safe_mode = value.get("safeMode").and_then(|v| v.as_bool()).unwrap_or(false);
+            let generated_at = value.get("generatedAt").cloned().unwrap_or(Value::Null);
+            json!({
+                "found": true,
+                "checked": checked,
+                "results": results,
+                "safeMode": safe_mode,
+                "generatedAt": generated_at,
+            })
+        }
+        Err(e) => json!({
+            "found": false, "checked": 0, "results": [], "safeMode": false, "generatedAt": Value::Null,
+            "error": format!("E_RECOVER_STATUS: 状态文件损坏: {e}"),
+        }),
+    }
 }
 
 // ---------------- Tauri commands（产品壳） ----------------
@@ -800,6 +843,14 @@ pub fn workshop_pack_recover_all(app: AppHandle) -> Result<Value, String> {
     let status = recover_all(&root);
     let _ = write_recover_status(&root, &status);
     Ok(status)
+}
+
+/// W07 C：读取**启动时**恢复结果（只读；不触发 recover_all、不改包状态）。
+/// 供工坊面板在打开时展示自动回滚/清理/safeMode 结果（此前只能在手动「检查/修复全部包」后看到）。
+#[tauri::command]
+pub fn workshop_pack_startup_status(app: AppHandle) -> Result<Value, String> {
+    let root = root_of(&app)?;
+    Ok(read_startup_status(&root))
 }
 
 #[cfg(test)]
@@ -1154,6 +1205,74 @@ mod tests {
         assert_eq!(chain_result["state"]["active"], "1.0.0");
         let path = write_recover_status(&root, &status).unwrap();
         assert!(path.exists());
+    }
+
+    /// W07 C1-4/C2-2/C3-5：启动恢复状态只读读取 —— 缺失 → found:false（不报错）。
+    #[test]
+    fn startup_status_missing_returns_found_false() {
+        let root = tmp_root("startup-missing");
+        let status = read_startup_status(&root);
+        assert_eq!(status["found"], serde_json::json!(false));
+        assert_eq!(status["checked"], serde_json::json!(0));
+        assert_eq!(status["results"], serde_json::json!([]));
+        assert_eq!(status["safeMode"], serde_json::json!(false));
+        assert_eq!(status["generatedAt"], Value::Null);
+        assert!(status.get("error").is_none(), "文件缺失是正常情况，不应带 error");
+        assert!(!recover_status_path(&root).exists(), "只读读取不得创建状态文件");
+    }
+
+    /// W07 C1-4/C2-2/C3-5：recover_all 写盘 → 只读读取镜像字段（checked/results/safeMode/generatedAt）。
+    #[test]
+    fn startup_status_reads_written_recover_result_without_mutation() {
+        let root = tmp_root("startup-read");
+        let src = root.join("src-v1");
+        make_pack(&src, "com.demo.startup", "1.0.0", false);
+        install_from_dir(&root, src.to_str().unwrap()).unwrap();
+        // 模拟「启动时 recover_all + write_recover_status」写的状态文件
+        let recovered = recover_all(&root);
+        write_recover_status(&root, &recovered).unwrap();
+        let path = recover_status_path(&root);
+        let before = fs::read(&path).unwrap();
+
+        let status = read_startup_status(&root);
+        assert_eq!(status["found"], serde_json::json!(true));
+        assert_eq!(status["checked"], recovered["checked"]);
+        assert_eq!(status["safeMode"], recovered["safeMode"]);
+        assert_eq!(status["results"], recovered["results"]);
+        assert_eq!(status["generatedAt"], recovered["generatedAt"]);
+        assert_eq!(fs::read(&path).unwrap(), before, "只读读取不得修改状态文件");
+    }
+
+    /// W07 C：状态文件损坏 → found:false + 可诊断 error（不 panic、不误报恢复动作）。
+    #[test]
+    fn startup_status_corrupt_file_returns_found_false_with_error() {
+        let root = tmp_root("startup-corrupt");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(recover_status_path(&root), b"{not-json").unwrap();
+        let status = read_startup_status(&root);
+        assert_eq!(status["found"], serde_json::json!(false));
+        assert_eq!(status["results"], serde_json::json!([]));
+        assert_eq!(status["safeMode"], serde_json::json!(false));
+        assert!(status["error"].as_str().unwrap_or("").contains("E_RECOVER_STATUS"));
+        // 损坏文件不被读取过程删除（只读）
+        assert!(recover_status_path(&root).exists());
+    }
+
+    /// W07 C：safeMode 状态（存在无法自动恢复的包）如实透传。
+    #[test]
+    fn startup_status_preserves_safe_mode() {
+        let root = tmp_root("startup-safemode");
+        let status = json!({
+            "checked": 1,
+            "results": [{"id": "com.demo.bad", "recovered": false, "action": "corrupt-no-fallback"}],
+            "safeMode": true,
+            "generatedAt": "now",
+        });
+        write_recover_status(&root, &status).unwrap();
+        let read = read_startup_status(&root);
+        assert_eq!(read["found"], serde_json::json!(true));
+        assert_eq!(read["safeMode"], serde_json::json!(true));
+        assert_eq!(read["results"][0]["action"], serde_json::json!("corrupt-no-fallback"));
     }
 
     #[test]

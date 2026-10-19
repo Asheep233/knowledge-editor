@@ -5,20 +5,55 @@
  * - `enabled=true` 时显示「创意工坊」按钮，打开控制面面板；适配器默认走产品 Tauri 包命令，
  *   测试/嵌入可注入替身。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
 
 import { createTauriPackAdapter } from '../../core/packs/tauriPackAdapter'
-import { WorkshopPanel, type WorkshopAdapter } from './WorkshopPanel'
+import { WorkshopPanel, startupRecoverActions, type WorkshopAdapter } from './WorkshopPanel'
 
 export interface WorkshopEntryProps {
   enabled: boolean
   adapter?: WorkshopAdapter
 }
 
+interface StartupBadge {
+  safeMode: boolean
+  /** 非 clean 的启动恢复动作数（回滚/清理 journal 等） */
+  actions: number
+}
+
 export function WorkshopEntry({ enabled, adapter }: WorkshopEntryProps) {
   const [open, setOpen] = useState(false)
   const [safeMode, setSafeMode] = useState(false)
+  /** W07 C2-3：冷启动恢复结果角标（面板未打开也可见；无状态不显示、不误报） */
+  const [startupBadge, setStartupBadge] = useState<StartupBadge | null>(null)
+  // 适配器只创建一次（原实现每次 render 新建 → startupStatus 会被重复调用）
+  const workshopAdapter = useMemo(() => adapter ?? createTauriPackAdapter(), [adapter])
+
+  // W07 C2-3：挂载时**只读**读取启动恢复结果（复用 workshop_pack_startup_status；
+  // Rust setup 的 workshop://recover-status 事件早于前端挂载会丢失，这里从持久状态文件补齐）。
+  // 非 Tauri/旧构建/命令失败 → 静默降级（无角标、不误报）。
+  useEffect(() => {
+    if (!enabled) return
+    const readStartupStatus = workshopAdapter.startupStatus
+    if (!readStartupStatus) return
+    let cancelled = false
+    void readStartupStatus
+      .call(workshopAdapter)
+      .then((status) => {
+        if (cancelled || !status?.found) return
+        const actions = startupRecoverActions(status.results)
+        if (!status.safeMode && actions.length === 0) return
+        setStartupBadge({ safeMode: status.safeMode, actions: actions.length })
+        // 冷启动 safeMode 事件可能已丢失 → 同步入口既有「safe mode」徽标
+        if (status.safeMode) setSafeMode(true)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, workshopAdapter])
+
   useEffect(() => {
     if (!enabled) return
     let unlisten: (() => void) | null = null
@@ -34,7 +69,11 @@ export function WorkshopEntry({ enabled, adapter }: WorkshopEntryProps) {
     return () => unlisten?.()
   }, [enabled])
   if (!enabled) return null
-  const workshopAdapter = adapter ?? createTauriPackAdapter()
+  const startupBadgeText = startupBadge
+    ? startupBadge.safeMode
+      ? '启动恢复：存在无法自动恢复的包（safe mode）'
+      : `启动恢复：已自动恢复 ${startupBadge.actions} 个包`
+    : ''
   return (
     <>
       <button
@@ -44,6 +83,17 @@ export function WorkshopEntry({ enabled, adapter }: WorkshopEntryProps) {
         onClick={() => setOpen(true)}
       >
         创意工坊
+        {startupBadge && (
+          <span
+            role="status"
+            data-testid="workshop-startup-badge"
+            title={startupBadgeText}
+            aria-label={startupBadgeText}
+            className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800"
+          >
+            {startupBadge.safeMode ? '启动恢复告警' : `启动恢复 ${startupBadge.actions}`}
+          </span>
+        )}
         {safeMode && (
           <span role="status" className="ml-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">
             safe mode

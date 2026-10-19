@@ -604,20 +604,30 @@ pub fn start(app: AppHandle) {
             .ok()
             .and_then(|p| p.parse::<u16>().ok())
             .unwrap_or(DEFAULT_PORT);
-        let mut last_err = String::from("未找到空闲端口");
+        // W07 B1-4：启动失败必须**可观测** —— 每次尝试写结构化 eprintln（release 也会进日志/父进程
+        // stderr），最终失败 emit `ke:runtime-error {message, terminal:true}`（前端 RuntimeHealthBanner
+        // 显示真实原因，而不是 30s 后仅剩通用「后端未连接」横幅）。
+        let mut last_err = String::from("E_SIDECAR_START: 未找到空闲端口");
         for attempt in 0..MAX_PORT_ATTEMPTS {
             let Some(port) = find_free_port(base + attempt as u16, 1) else {
-                last_err = format!("端口 {base} 被占用且无可重试端口");
+                last_err = format!(
+                    "E_SIDECAR_PORT: 端口 {base} 被占用且后续端口不可用（尝试 {}/{MAX_PORT_ATTEMPTS}）",
+                    attempt + 1
+                );
+                eprintln!("[sidecar] 启动失败（第 {}/{MAX_PORT_ATTEMPTS} 次尝试）: {last_err}", attempt + 1);
                 continue;
             };
             match watch_sidecar(app.clone(), port, 0) {
                 Ok(()) => return,
                 Err(e) => {
-                    eprintln!("[sidecar] 第 {} 次尝试失败: {e}", attempt + 1);
-                    last_err = e;
+                    last_err = format!("E_SIDECAR_START: {e}");
+                    eprintln!("[sidecar] 启动失败（第 {}/{MAX_PORT_ATTEMPTS} 次尝试）: {last_err}", attempt + 1);
                 }
             }
         }
+        eprintln!(
+            "[sidecar] 启动失败（已尝试 {MAX_PORT_ATTEMPTS} 次，不再重试）: {last_err}"
+        );
         // W07 B-8：全部启动尝试失败 = 终态 → 确保没有 stale 运行时状态对外暴露。
         clear_runtime_state(&app);
         let _ = app.emit(

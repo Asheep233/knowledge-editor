@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 import io
 import json
@@ -176,6 +177,76 @@ F3_SPECS = [
 ]
 F3_CHECK_PREFIX = "F-F3-"
 
+# 第三轮（task-20）：F03 剩余 12 行 —— 无默认快捷键，改用官方工具栏/菜单入口真实执行；
+# 只有真实节点/产物插入才 PASS（否则 FAIL/NOT_RUN 并写原因）。
+F3B_SPECS = [
+    {"row": "CMD.editor.heading.2", "kind": "heading", "level": 2, "label": "工具栏「样式/标题」选择器 → 标题2"},
+    {"row": "CMD.editor.heading.3", "kind": "heading", "level": 3, "label": "工具栏「样式/标题」选择器 → 标题3"},
+    {"row": "CMD.editor.link.insert", "kind": "link", "label": "工具栏插入链接 → 地址对话框输入 URL → 真实链接节点"},
+    {"row": "CMD.editor.image.insert", "kind": "image", "label": "工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点",
+     "check": "F-F3B-UI.toolbar.插入图片"},
+    {"row": "CMD.editor.math.block", "kind": "math_block", "label": "工具栏插入块级公式 → mathBlock 节点"},
+    {"row": "CMD.editor.module.insert", "kind": "module", "label": "工具栏插入模块 → 模块选择器 → 插入模块正文"},
+    {"row": "CMD.editor.footnote.insert", "kind": "footnote", "label": "工具栏注释（脚注）→ 对话框输入 → 脚注节点"},
+    {"row": "CMD.editor.note.insert", "kind": "note", "label": "工具栏信息块 → ke-note 节点"},
+    {"row": "CMD.editor.table.insert", "kind": "table", "label": "工具栏表格 → 2×2 表格节点"},
+    {"row": "UI.toolbar.插入图片", "kind": "image", "label": "工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点（与 CMD.editor.image.insert 同一次执行）"},
+    {"row": "UI.toolbar.撤销", "kind": "undo", "label": "工具栏撤销 → 编辑回退"},
+    {"row": "UI.toolbar.重做", "kind": "redo", "label": "工具栏重做 → 编辑恢复"},
+]
+F3B_CHECK_PREFIX = "F-F3B-"
+
+# F16 原生菜单：menu.rs MID_* ↔ feature-baseline.csv 的 UI.menu.* 行
+F16_MENU_ROWS = {
+    "MID_NEW": "UI.menu.mid_new",
+    "MID_OPEN_WS": "UI.menu.mid_open_ws",
+    "MID_NEW_WS": "UI.menu.mid_new_ws",
+    "MID_CLOSE_WS": "UI.menu.mid_close_ws",
+    "MID_RECOVERY": "UI.menu.mid_recovery",
+    "MID_SETTINGS": "UI.menu.mid_settings",
+    "MID_EXIT": "UI.menu.mid_exit",
+    "MID_RELOAD": "UI.menu.mid_reload",
+    "MID_DEVTOOLS": "UI.menu.mid_devtools",
+    "MID_RECENT": "UI.menu.mid_recent",
+}
+
+
+def audit_native_menu() -> dict:
+    """只读审计 desktop/src-tauri/src/menu.rs：菜单项 ID/标签/加速键/事件分发目标。
+    不做 DOM 断言、不做 W 执行 —— 原生菜单非 DOM，W 层未覆盖（CSV 如实 NOT_RUN）。"""
+    path = REPO / "desktop" / "src-tauri" / "src" / "menu.rs"
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:  # noqa: BLE001
+        return {"available": False, "error": str(e)[:300], "items": []}
+    consts = dict(re.findall(r'const (MID_[A-Z_]+): &str = "ke-menu:([a-z-]+)";', text))
+    items = []
+    for m in re.finditer(
+        r'MenuItem::with_id\(\s*app,\s*(MID_[A-Z_]+),\s*"([^"]+)",\s*(true|false),\s*(None::<&str>|Some\("([^"]+)"\))\)',
+        text,
+        re.S,
+    ):
+        mid, label, enabled, _, accel = m.groups()
+        items.append({"id": mid, "eventId": "ke-menu:" + consts.get(mid, ""), "label": label,
+                      "enabled": enabled == "true", "accelerator": accel or None})
+    handlers = {}
+    hm = re.search(r'pub fn handle_event\(app: &AppHandle, event: MenuEvent\) \{(.*?)\n\}', text, re.S)
+    if hm:
+        body = hm.group(1)
+        for m in re.finditer(r'(MID_[A-Z_]+) => \{?\s*(.*?)(?=\n\s*(?:MID_|_ =>|\}))', body, re.S):
+            handlers[m.group(1)] = " ".join(m.group(2).split())[:220]
+    for it in items:
+        it["handler"] = handlers.get(it["id"], "(未在 handle_event 匹配)")
+    return {
+        "available": True,
+        "source": "desktop/src-tauri/src/menu.rs",
+        "items": items,
+        "itemCount": len(items),
+        "domDriven": False,
+        "wCovered": False,
+        "note": "原生菜单不是 DOM，CDP 无法真实点击；本审计仅为结构性证据（U/静态）。CSV 对应行如实 NOT_RUN（W 未覆盖）。",
+    }
+
 # 本次要登记的行（featureId -> 说明）。只登记真实执行过的行；其余保持 NOT_RUN。
 SELECTED_ROWS = [
     "F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08",
@@ -215,6 +286,9 @@ def prepare_env() -> dict:
     ws = BASE / "workspace"
     (ws / "Articles").mkdir(parents=True, exist_ok=True)
     (ws / "Articles" / "fe-ledger.md").write_bytes(LEDGER_CONTENT.encode("utf-8"))
+    (ws / "Modules").mkdir(parents=True, exist_ok=True)
+    (ws / "Modules" / "示例模块.md").write_text(
+        "# 示例模块\n\nMODULE-FIXTURE-MARK 模块正文（task-20 插入模块动作使用）。\n", encoding="utf-8")
     shutil.copy(FIXTURES / "basic.md", ws / "Articles" / "basic.md")
     shutil.copy(FIXTURES / "large-256kb.md", ws / "Articles" / "large-256kb.md")
     att_src = FIXTURES / "Attachments"
@@ -900,6 +974,137 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
         for spec in F3_SPECS:
             run_task(checks, F3_CHECK_PREFIX + spec["row"], make_f3_task(spec))
 
+        # ================= 阶段 1c：F03 剩余 12 行（工具栏/菜单真实执行；task-20） =================
+        def make_f3b_task(spec: dict):
+            kind = spec["kind"]
+
+            def task():
+                detail = {"row": spec["row"], "kind": kind, "label": spec["label"]}
+                R.focus_editor_end(cdp)
+                time.sleep(0.15)
+                ok = False
+                if kind == "heading":
+                    lvl = spec["level"]
+                    before = cdp.eval(f"document.querySelectorAll('.ProseMirror h{lvl}').length")
+                    click_selector(cdp, 'button[title="样式 / 标题"]')
+                    time.sleep(0.35)
+                    click_contains_text(cdp, f"标题{lvl}")
+                    time.sleep(0.45)
+                    after = cdp.eval(f"document.querySelectorAll('.ProseMirror h{lvl}').length")
+                    detail.update({"before": before, "after": after})
+                    ok = before != after
+                elif kind == "link":
+                    before = cdp.eval("document.querySelectorAll('.ProseMirror a[href]').length")
+                    click_toolbar(cdp, "插入链接")
+                    opened = R.wait_until(lambda: bool(cdp.eval("!!document.querySelector('[role=dialog] input')")), 10, 0.2)
+                    if opened:
+                        set_input_value(cdp, "[role=dialog] input", "https://example.com/task20")
+                        click_exact_text(cdp, "确定")
+                    time.sleep(0.4)
+                    after = cdp.eval("document.querySelectorAll('.ProseMirror a[href]').length")
+                    hrefs = cdp.eval("[...document.querySelectorAll('.ProseMirror a[href]')].map(a=>a.getAttribute('href')).slice(-3)")
+                    detail.update({"dialogOpened": opened, "before": before, "after": after, "hrefs": hrefs})
+                    ok = opened and after > before
+                elif kind == "image":
+                    before = cdp.eval("document.querySelectorAll('.ProseMirror .ke-attach, .ProseMirror img').length")
+                    cdp.eval("(() => { window.__keFileInputClicks = 0; if (!window.__keFileClickHooked) { const orig = HTMLInputElement.prototype.click; window.__keFileClickHooked = true; HTMLInputElement.prototype.click = function () { if (this.type === 'file') { window.__keFileInputClicks++; window.__keLastFileInput = this; return; } return orig.call(this); }; } return true; })()")
+                    click_toolbar(cdp, "插入图片")
+                    time.sleep(0.5)
+                    input_ok = bool(cdp.eval("!!window.__keLastFileInput"))
+                    b64 = base64.b64encode((FIXTURES / "Attachments" / "images" / "sample.png").read_bytes()).decode()
+                    inject = cdp.eval(
+                        "(() => { const el = window.__keLastFileInput; if (!el) return {ok:false, reason:'no-file-input'};"
+                        " const bin = atob(" + json.dumps(b64) + "); const arr = new Uint8Array(bin.length);"
+                        " for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);"
+                        " const file = new File([arr], 't20-sample.png', {type:'image/png'});"
+                        " const dt = new DataTransfer(); dt.items.add(file); el.files = dt.files;"
+                        " el.dispatchEvent(new Event('change', {bubbles:true})); return {ok:true, size: arr.length}; })()")
+                    after = R.wait_until(lambda: int(cdp.eval("document.querySelectorAll('.ProseMirror .ke-attach, .ProseMirror img').length") or 0) > int(before or 0), 25, 0.3)
+                    after_n = cdp.eval("document.querySelectorAll('.ProseMirror .ke-attach, .ProseMirror img').length")
+                    detail.update({"fileInputHooked": input_ok, "fileInputClicks": cdp.eval("window.__keFileInputClicks || 0"),
+                                   "inject": inject, "before": before, "after": after_n})
+                    ok = input_ok and after
+                elif kind == "math_block":
+                    before = cdp.eval("document.querySelectorAll('.ProseMirror .ke-math--block').length")
+                    click_toolbar(cdp, "插入块级公式")
+                    opened = R.wait_until(lambda: "块级公式" in R.body_text(cdp), 10, 0.25)
+                    if opened:
+                        cdp.eval("(() => { const t = document.querySelector('.fixed.inset-0 textarea'); if (!t) return false; const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set; setter.call(t, 'x^2+1'); t.dispatchEvent(new Event('input', {bubbles:true})); return true; })()")
+                        time.sleep(0.25)
+                        press_esc(cdp)  # Esc = 保存（非空）
+                    time.sleep(0.6)
+                    after = cdp.eval("document.querySelectorAll('.ProseMirror .ke-math--block').length")
+                    detail.update({"modalOpened": opened, "before": before, "after": after})
+                    ok = opened and after > before
+                elif kind == "module":
+                    before_text = R.editor_text(cdp)
+                    click_selector(cdp, 'button[title^="插入模块"]')
+                    picked = R.wait_until(lambda: "示例模块" in R.body_text(cdp), 10, 0.25)
+                    if picked:
+                        click_contains_text(cdp, "示例模块")
+                    inserted = R.wait_until(lambda: "MODULE-FIXTURE-MARK" in R.editor_text(cdp), 15, 0.3)
+                    detail.update({"pickerOpened": picked, "inserted": inserted,
+                                   "preExisting": "MODULE-FIXTURE-MARK" in before_text})
+                    ok = picked and inserted
+                elif kind == "footnote":
+                    before = cdp.eval("document.querySelectorAll('.ProseMirror .ke-footnote-ref, .ProseMirror [data-ke-footnotes]').length")
+                    click_toolbar(cdp, "注释（脚注）")
+                    opened = R.wait_until(lambda: "插入注释" in R.body_text(cdp), 10, 0.25)
+                    if opened:
+                        cdp.eval("(() => { const t = document.querySelector('textarea'); if (!t) return false; const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set; setter.call(t, 'T20 脚注内容'); t.dispatchEvent(new Event('input', {bubbles:true})); return true; })()")
+                        click_exact_text(cdp, "插入")
+                    time.sleep(0.5)
+                    after = cdp.eval("document.querySelectorAll('.ProseMirror .ke-footnote-ref, .ProseMirror [data-ke-footnotes]').length")
+                    detail.update({"dialogOpened": opened, "before": before, "after": after})
+                    ok = opened and after > before
+                elif kind == "note":
+                    before = cdp.eval("document.querySelectorAll('[data-ke-note]').length")
+                    click_toolbar(cdp, "信息块（ke-note）")
+                    time.sleep(0.5)
+                    after = cdp.eval("document.querySelectorAll('[data-ke-note]').length")
+                    detail.update({"before": before, "after": after})
+                    ok = after > before
+                elif kind == "table":
+                    before = cdp.eval("document.querySelectorAll('.ProseMirror table').length")
+                    click_toolbar(cdp, "表格")
+                    picker = R.wait_until(lambda: "行 ×" in R.body_text(cdp), 8, 0.25)
+                    cell = bool(cdp.eval("(() => { const ov = document.querySelector('.fixed.inset-0.z-50'); if (!ov) return false; const bs = ov.querySelectorAll('button'); if (bs.length < 10) return false; bs[9].click(); return true; })()"))
+                    time.sleep(0.5)
+                    after = cdp.eval("document.querySelectorAll('.ProseMirror table').length")
+                    detail.update({"pickerOpened": picker, "cellClicked": cell, "before": before, "after": after})
+                    ok = picker and cell and after > before
+                elif kind in ("undo", "redo"):
+                    mark = "T20-UNDO-MARK"
+                    cdp.eval("(() => { const el = document.querySelector('.ProseMirror'); if (!el) return false; el.focus(); const sel = window.getSelection(); const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); document.execCommand('insertText', false, '" + mark + "'); return true; })()")
+                    present = R.wait_until(lambda: mark in R.editor_text(cdp), 5, 0.2)
+                    click_toolbar(cdp, "撤销")
+                    gone = R.wait_until(lambda: mark not in R.editor_text(cdp), 8, 0.2)
+                    if kind == "undo":
+                        detail.update({"markerPresent": present, "undone": gone})
+                        ok = present and gone
+                    else:
+                        click_toolbar(cdp, "重做")
+                        back = R.wait_until(lambda: mark in R.editor_text(cdp), 8, 0.2)
+                        detail.update({"markerPresent": present, "undone": gone, "redone": back})
+                        ok = present and gone and back
+                        click_toolbar(cdp, "撤销")  # 清理
+                if kind in ("heading", "link", "note", "table", "module", "math_block", "footnote"):
+                    press_esc(cdp)
+                    click_toolbar(cdp, "撤销")
+                    time.sleep(0.25)
+                return detail, ok
+            return task
+
+        for spec in F3B_SPECS:
+            run_task(checks, F3B_CHECK_PREFIX + spec["row"], make_f3b_task(spec))
+
+        # ---- F16 原生菜单：只读结构审计（无 DOM/W 断言） ----
+        menu_audit = audit_native_menu()
+        record(checks, "F-AUDIT-F16 原生菜单只读结构审计（menu.rs；DOM/W 未覆盖，CSV 记 NOT_RUN）",
+               bool(menu_audit.get("available")) and int(menu_audit.get("itemCount") or 0) >= 10,
+               {k: menu_audit.get(k) for k in ("itemCount", "domDriven", "wCovered", "source")})
+        obs = {"f16MenuAudit": menu_audit}
+
         # 官方阶段结束前确保编辑器稳定、无遗留确认弹窗
         settle_editor(cdp, article_ledger)
         dismiss_overlays(cdp)
@@ -1223,6 +1428,7 @@ def execute(checks: list[dict], dry: bool = False) -> dict:
             "packs": packs_info,
             "paths": {"workspace": str(ws), "appdata": str(appdata), "pdfOut": str(pdf_out)},
             "finalBodyTail": body_final[-1200:],
+            "f16MenuAudit": obs.get("f16MenuAudit"),
         }
     finally:
         if cdp is not None:
@@ -1291,9 +1497,9 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     perm = "能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）"
     rows: list[dict] = []
 
-    def add(fid: str, a: str, b: str, o: str, note: str = "") -> None:
+    def add(fid: str, a: str, b: str, o: str, note: str = "", force_fill: bool = False) -> None:
         rows.append({"featureId": fid, "domain": ROW_DOMAIN.get(fid, ""), "packAEntry": a, "packBEntry": b,
-                     "officialBaselineResult": o, "note": note})
+                     "officialBaselineResult": o, "note": note, "forceFill": force_fill})
 
     add("F01", _nr(perm), _nr(perm),
         pv(res("F-OFF-1 F01"), "官方 UI 文件树点击打开 fe-ledger.md + 页签渲染（CDP 真实 DOM）"),
@@ -1347,8 +1553,11 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
     add("F15", pv(res("F-PA-7"), "官方主题切换→theme-changed 事件到达 guest（只读同步切片；方法=" + (pa7_method or "未执行") + "）"),
         _nr("pack B 未订阅事件/无设置通道"),
         pv(res("F-OFF-16"), "官方 UI 设置面板：常规/外观/快捷键/维护 + 主题分组"))
-    add("F16", _nr("guest 无窗口/菜单通道（设计上不应开放）"), _nr("同左"),
-        _nr("原生菜单非 DOM，CDP 无法真实驱动；未执行"))
+    menu_audit = (obs or {}).get("f16MenuAudit") or {}
+    menu_items = menu_audit.get("items") or []
+    f16_reason = ("原生菜单非 DOM，CDP 无法真实驱动；已对 menu.rs 做只读结构审计（"
+                  + str(menu_audit.get("itemCount") or len(menu_items)) + " 项菜单项/加速键/事件分发，见证据 P5-T26-F16-native-menu-audit.md）；W/DOM 未覆盖")
+    add("F16", _nr("guest 无窗口/菜单通道（设计上不应开放）"), _nr("同左"), _nr(f16_reason), force_fill=True)
 
     add("CMD.editor.bold", _nr(perm), _nr(perm),
         pv(res("F-OFF-4"), "官方 UI Ctrl+B→strong 出现→撤销还原"))
@@ -1385,6 +1594,24 @@ def build_ledger(checks: list[dict], obs: dict, routes: dict) -> list[dict]:
                 "官方 UI 操作后 DOM 断言未通过",
                 "本轮未执行")
         add(sp["row"], _nr(perm), _nr("同左"), o3)
+    # 第三轮（task-20）：F03 剩余 12 行（工具栏/菜单入口真实执行；真实产物插入才 PASS）
+    for sp in F3B_SPECS:
+        cname = F3B_CHECK_PREFIX + sp["row"]
+        r3b = res(cname)
+        d3b = detail(cname)
+        o3b = pv(r3b, f"官方 UI {sp['label']}（CDP 真实操作 + DOM 断言 before={d3b.get('before')}→after={d3b.get('after')}）",
+                 "官方 UI 操作后未产生真实节点/产物（如实 FAIL）", "本轮未执行")
+        add(sp["row"], _nr(perm), _nr("同左"), o3b)
+
+    # F16 原生菜单 11 行：结构性证据（menu.rs 只读审计）已具备，但 DOM/W 断言未覆盖 → 如实 NOT_RUN
+    menu_by_id = {it.get("id"): it for it in menu_items}
+    for mid, fid in F16_MENU_ROWS.items():
+        it = menu_by_id.get(mid) or {}
+        reason = ("原生菜单非 DOM，CDP 无法驱动真实点击；结构性证据：menu.rs `" + mid + "`"
+                  + (f" 标签「{it.get('label')}」" if it.get("label") else "")
+                  + (f" 加速键 `{it.get('accelerator')}`" if it.get("accelerator") else " 无加速键")
+                  + f" → 事件 `{it.get('eventId')}`；W/DOM 未覆盖")
+        add(fid, _nr("guest 无窗口/菜单通道（设计上不应开放）"), _nr("同左"), _nr(reason), force_fill=True)
     return rows
 
 
@@ -1412,7 +1639,9 @@ def summary_stats(rows: list[dict]) -> dict:
 
 
 def update_csv(rows: list[dict]) -> int:
-    filled = [r for r in rows if not (r["packAEntry"].startswith("NOT_RUN") and r["packBEntry"].startswith("NOT_RUN") and r["officialBaselineResult"].startswith("NOT_RUN"))]
+    filled = [r for r in rows if r.get("forceFill") or not (
+        r["packAEntry"].startswith("NOT_RUN") and r["packBEntry"].startswith("NOT_RUN")
+        and r["officialBaselineResult"].startswith("NOT_RUN"))]
     raw = CSV_PATH.read_text(encoding="utf-8")
     lines = raw.splitlines(keepends=True)
     header = next(csv.reader([lines[0].rstrip("\n")]))
@@ -1545,6 +1774,65 @@ def append_coverage(result: dict, rows: list[dict], stats: dict) -> None:
         return
     original = COVERAGE.read_text(encoding="utf-8")
     have_d = "## 附录 D：台账登记进展" in original
+    if "## 附录 G" in original:
+        print("COVERAGE 已含附录 G，跳过追加", flush=True)
+        return
+    if "## 附录 F" in original:
+        def find_ck(prefix: str) -> dict:
+            for ck in result["checks"]:
+                if ck["name"].startswith(prefix):
+                    return ck
+            return {}
+
+        g_lines = ["| featureId | 结果 | 操作（官方 UI 工具栏/菜单入口） | DOM 断言（前→后） |",
+                   "| --- | --- | --- | --- |"]
+        for sp in F3B_SPECS:
+            ck = find_ck(F3B_CHECK_PREFIX + sp["row"])
+            det = ck.get("detail") if isinstance(ck.get("detail"), dict) else {}
+            g_lines.append("| `{}` | {} | {} | before={} → after={} |".format(
+                sp["row"], "PASS" if ck.get("pass") else "FAIL", sp["label"], det.get("before"), det.get("after")))
+        audit = (result.get("f16MenuAudit") or {})
+        items = audit.get("items") or []
+        audit_lines = ["| MID | 标签 | 加速键 | 事件 ID | 分发目标（handle_event） |",
+                       "| --- | --- | --- | --- | --- |"]
+        for it in items:
+            audit_lines.append("| `{}` | {} | {} | `{}` | {} |".format(
+                it.get("id"), it.get("label"), it.get("accelerator") or "（无）",
+                it.get("eventId") or "", (it.get("handler") or "")[:90].replace("|", "/")))
+        update = [
+            "", "---", "",
+            "## 附录 G：第三轮增量（v4，2026-10-19）",
+            "",
+            "> 本节为 task-20 第三轮增量（**F03 剩余 12 行** + **F16 原生菜单只读结构审计**），追加在附录 F 之后；不改上文结论。",
+            "",
+            "### G.1 F03 剩余 12 行（官方 UI 工具栏/菜单入口真实执行；真实节点/产物才 PASS）",
+            "",
+            "- 说明：这 12 行在 `state/shortcuts.ts` 中 `defaultKey=null`（无默认快捷键），改用官方工具栏/菜单入口真实执行；"
+            "每行真实 CDP 操作 + DOM 断言（前→后）；未产生真实节点/产物的行如实 FAIL/NOT_RUN。",
+            "",
+        ] + g_lines + [
+            "",
+            "### G.2 F16 原生菜单结构审计（只读 `desktop/src-tauri/src/menu.rs`；DOM/W 未覆盖）",
+            "",
+            f"- 审计结果：menu.rs 共 **{audit.get('itemCount', len(items))}** 个 `MenuItem`（文件/编辑/视图/帮助子菜单），"
+            "含 ID（`ke-menu:*`）、标签、加速键与 `handle_event` 分发目标。",
+            "- **原生菜单不是 DOM，CDP 无法真实点击** → 本节仅为结构性证据（U/静态）；"
+            "`feature-baseline.csv` 的 F16 菜单行（11 行含域行）如实记 `NOT_RUN` 并写原因，**不伪造 W/DOM**。",
+            "- 证据文件：`evidence/P5-T26-F16-native-menu-audit.md`。",
+            "",
+        ] + audit_lines + [
+            "",
+            "### G.3 覆盖统计（F 域已登记行 / 该域总行）",
+            "",
+            "| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |",
+            "| --- | ---: | ---: | ---: | --- |",
+        ]
+        for d in [f"F{i:02d}" for i in range(1, 17)]:
+            st4 = stats.get(d) or {"registered": 0, "packAPass": 0, "packBPass": 0, "officialPass": 0, "officialFail": 0, "officialNr": 0}
+            update.append(f"| {d} | {st4['registered']}/{F_DOMAIN_TOTAL[d]} | {st4['packAPass']} | {st4['packBPass']} | {st4['officialPass']}/{st4['officialFail']}/{st4['officialNr']} |")
+        update.append("")
+        COVERAGE.write_text(original.rstrip("\n") + "\n" + "\n".join(update), encoding="utf-8")
+        return
     if have_d and "### D.5" in original:
         print("COVERAGE 已含 D.5 第二窗口更新，跳过追加", flush=True)
         return
@@ -1763,6 +2051,7 @@ def main() -> int:
         "ledger": {"rows": rows, "registeredCount": len(registered), "selected": SELECTED_ROWS,
                    "domainTotals": F_DOMAIN_TOTAL, "stats": stats},
         "routes": result.get("routes"),
+        "f16MenuAudit": result.get("f16MenuAudit"),
         "raw": {k: result.get("raw", {}).get(k) for k in ("host_event_log", "alerts", "diag", "session_final", "log_routes")},
         "finalBodyTail": result.get("finalBodyTail"),
         "lastError": result["lastError"],
@@ -1787,6 +2076,36 @@ def main() -> int:
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     changed = update_csv(rows)
     write_evidence_md(result, rows, stats, changed)
+    audit = result.get("f16MenuAudit") or {}
+    if audit.get("available"):
+        lines = [
+            "# P5-T26 F16 原生菜单结构审计（只读；DOM/W 未覆盖）",
+            "",
+            f"- 生成时间：{time.strftime('%Y-%m-%dT%H:%M:%S%z')}",
+            "- 来源（只读）：`desktop/src-tauri/src/menu.rs`（**未修改 Rust 代码**）",
+            f"- 审计项数：{audit.get('itemCount')} 个 MenuItem（文件/编辑/视图/帮助子菜单）",
+            "- 结论：原生菜单**不是 DOM**，CDP 无法真实点击/断言 → 本文件仅为**结构性证据（U/静态）**；"
+            "`feature-baseline.csv` 的 `UI.menu.*` 10 行 + F16 域行共 11 行如实记 `NOT_RUN`（W 未覆盖），不伪造 DOM。",
+            "",
+            "| MID | 标签 | 加速键 | 事件 ID | 分发目标（handle_event 摘要） |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+        for it in audit.get("items") or []:
+            lines.append("| `{}` | {} | {} | `{}` | {} |".format(
+                it.get("id"), it.get("label"), it.get("accelerator") or "（无）",
+                it.get("eventId") or "", (it.get("handler") or "").replace("|", "/")))
+        lines += [
+            "",
+            "## 说明",
+            "",
+            "- 菜单项存在性/绑定关系：以 `menu.rs` 的 `MenuItem::with_id(...)` 与 `handle_event` 匹配为准（本审计提取）。",
+            "- 真实交互（菜单点击 → 前端事件 → 行为）需要非 DOM 的 OS 级 UI 自动化或 Rust 集成测试，本轮**未执行**；"
+            "因此 F16 不满足 W 证据要求，CSV 记 NOT_RUN。",
+            "- 菜单事件语义见 `menu.rs` 注释（退出/重载走 flush 握手 `begin_close_handshake`/`begin_reload_handshake`；"
+            "devtools 仅 debug 构建）。",
+            "",
+        ]
+        (EVID / "P5-T26-F16-native-menu-audit.md").write_text("\n".join(lines), encoding="utf-8")
     append_coverage(result, rows, stats)
     print(f"\nSUMMARY checks={payload['checks_pass']}/{payload['checks_total']} registered={len(registered)} csvFilled={changed} -> {out}", flush=True)
     order = ["F01", "F02", "F03", "F06", "F07", "F08", "F09", "F10", "F11", "F12", "F13", "F14", "F15", "F16"]

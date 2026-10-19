@@ -528,3 +528,69 @@
 | F14 | 1/1 | 1 | 0 | 0/0/1 |
 | F15 | 1/19 | 1 | 0 | 1/0/0 |
 | F16 | 1/11 | 0 | 0 | 0/0/1 |
+
+---
+
+## 附录 G：第三轮增量（v4，2026-10-19）
+
+> 本节为 task-20 第三轮增量（**F03 剩余 12 行** + **F16 原生菜单只读结构审计**），追加在附录 F 之后；不改上文结论。
+
+### G.1 F03 剩余 12 行（官方 UI 工具栏/菜单入口真实执行；真实节点/产物才 PASS）
+
+- 说明：这 12 行在 `state/shortcuts.ts` 中 `defaultKey=null`（无默认快捷键），改用官方工具栏/菜单入口真实执行；每行真实 CDP 操作 + DOM 断言（前→后）；未产生真实节点/产物的行如实 FAIL/NOT_RUN。
+
+| featureId | 结果 | 操作（官方 UI 工具栏/菜单入口） | DOM 断言（前→后） |
+| --- | --- | --- | --- |
+| `CMD.editor.heading.2` | PASS | 工具栏「样式/标题」选择器 → 标题2 | before=0 → after=1 |
+| `CMD.editor.heading.3` | PASS | 工具栏「样式/标题」选择器 → 标题3 | before=0 → after=1 |
+| `CMD.editor.link.insert` | FAIL | 工具栏插入链接 → 地址对话框输入 URL → 真实链接节点 | before=0 → after=0 |
+| `CMD.editor.image.insert` | PASS | 工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点 | before=0 → after=2 |
+| `CMD.editor.math.block` | PASS | 工具栏插入块级公式 → mathBlock 节点 | before=0 → after=1 |
+| `CMD.editor.module.insert` | FAIL | 工具栏插入模块 → 模块选择器 → 插入模块正文 | before=None → after=None |
+| `CMD.editor.footnote.insert` | PASS | 工具栏注释（脚注）→ 对话框输入 → 脚注节点 | before=0 → after=2 |
+| `CMD.editor.note.insert` | PASS | 工具栏信息块 → ke-note 节点 | before=0 → after=1 |
+| `CMD.editor.table.insert` | PASS | 工具栏表格 → 2×2 表格节点 | before=0 → after=1 |
+| `UI.toolbar.插入图片` | PASS | 工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点（与 CMD.editor.image.insert 同一次执行） | before=0 → after=2 |
+| `UI.toolbar.撤销` | PASS | 工具栏撤销 → 编辑回退 | before=None → after=None |
+| `UI.toolbar.重做` | PASS | 工具栏重做 → 编辑恢复 | before=None → after=None |
+
+### G.2 F16 原生菜单结构审计（只读 `desktop/src-tauri/src/menu.rs`；DOM/W 未覆盖）
+
+- 审计结果：menu.rs 共 **11** 个 `MenuItem`（文件/编辑/视图/帮助子菜单），含 ID（`ke-menu:*`）、标签、加速键与 `handle_event` 分发目标。
+- **原生菜单不是 DOM，CDP 无法真实点击** → 本节仅为结构性证据（U/静态）；`feature-baseline.csv` 的 F16 菜单行（11 行含域行）如实记 `NOT_RUN` 并写原因，**不伪造 W/DOM**。
+- 证据文件：`evidence/P5-T26-F16-native-menu-audit.md`。
+
+| MID | 标签 | 加速键 | 事件 ID | 分发目标（handle_event） |
+| --- | --- | --- | --- | --- |
+| `MID_NEW` | 新建文档 | Ctrl+N | `ke-menu:new-document` | let _ = app.emit(MID_NEW, ()); |
+| `MID_OPEN_WS` | 打开 Workspace… | Ctrl+O | `ke-menu:open-workspace` | let _ = app.emit(MID_OPEN_WS, ()); |
+| `MID_NEW_WS` | 新建工作区… | （无） | `ke-menu:new-workspace` | let _ = app.emit(MID_NEW_WS, ()); |
+| `MID_CLOSE_WS` | 关闭工作区 | （无） | `ke-menu:close-workspace` | let _ = app.emit(MID_CLOSE_WS, ()); |
+| `MID_RECOVERY` | 恢复检查… | （无） | `ke-menu:recovery-check` | let _ = app.emit(MID_RECOVERY, ()); |
+| `MID_SETTINGS` | 设置… | Ctrl+, | `ke-menu:settings` | let _ = app.emit(MID_SETTINGS, ()); |
+| `MID_EXIT` | 退出 | Ctrl+Q | `ke-menu:exit` | if !crate::begin_close_handshake(app) { request_exit(app); |
+| `MID_RELOAD` | 重新加载 | Ctrl+R | `ke-menu:reload` | crate::begin_reload_handshake(app), #[cfg(debug_assertions)] |
+| `MID_DEVTOOLS` | 开发者工具 | F12 | `ke-menu:devtools` | if let Some(w) = app.get_webview_window("main") { w.open_devtools(); |
+| `MID_RELOAD` | 重新加载 | Ctrl+R | `ke-menu:reload` | crate::begin_reload_handshake(app), #[cfg(debug_assertions)] |
+| `MID_RECENT` | 最近工作区… | （无） | `ke-menu:refresh-recent` | let _ = app.emit(MID_RECENT, ()); |
+
+### G.3 覆盖统计（F 域已登记行 / 该域总行）
+
+| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |
+| --- | ---: | ---: | ---: | --- |
+| F01 | 1/10 | 0 | 0 | 1/0/0 |
+| F02 | 2/6 | 0 | 1 | 2/0/0 |
+| F03 | 42/42 | 0 | 0 | 37/5/0 |
+| F04 | 1/1 | 0 | 0 | 1/0/0 |
+| F05 | 1/1 | 0 | 0 | 1/0/0 |
+| F06 | 1/3 | 1 | 1 | 1/0/0 |
+| F07 | 2/3 | 0 | 0 | 2/0/0 |
+| F08 | 1/4 | 0 | 0 | 1/0/0 |
+| F09 | 1/5 | 0 | 0 | 1/0/0 |
+| F10 | 2/5 | 0 | 1 | 2/0/0 |
+| F11 | 1/3 | 0 | 0 | 1/0/0 |
+| F12 | 1/1 | 1 | 1 | 1/0/0 |
+| F13 | 3/6 | 0 | 0 | 3/0/0 |
+| F14 | 1/1 | 1 | 0 | 0/0/1 |
+| F15 | 1/19 | 1 | 0 | 1/0/0 |
+| F16 | 11/11 | 0 | 0 | 0/0/11 |

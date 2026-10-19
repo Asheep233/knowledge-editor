@@ -1,16 +1,16 @@
 # P5-T26 F01–F16 逐项台账登记证据（pack A / pack B / 官方 UI 三路径）
 
-- 生成时间：2026-10-19T15:04:59+0800
+- 生成时间：2026-10-19T15:58:37+0800
 - 分支/环境：`feat/ui-workshop`（本地，未 push/Release）；Windows 11 + WebView2 隔离产品构建
-- 测试构建：`C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`（sha256=`983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e`，mtime=`2026-10-19T14:49:57`；本轮未重建 exe）
+- 测试构建：`C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`（sha256=`faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789`，mtime=`2026-10-19T15:29:02`；本轮未重建 exe）
 - 参考包：A=`com.astranota.examples.pack-a`（["ui.shell", "panel.sidebar", "context.read", "print.request"]）、B=`com.astranota.examples.pack-b`（["ui.shell", "panel.dock", "context.read"]，commands=["article.set-title", "article.set-tags"]）；构建来源=`rebuild`（测试自签密钥只在 `C:\ke-tmp`，不入仓）
 - 隔离环境：workspace=`C:\ke-tmp\uiws-t26-F\workspace`；APPDATA=`C:\ke-tmp\uiws-t26-F\appdata`；PDF out=`C:\ke-tmp\uiws-t26-F\pdf-out`
 - 驱动方式：CDP 主窗口（官方 UI：真实点击/输入/快捷键）+ 浏览器级 `Target.attachToTarget`(flatten) 附加 guest iframe（OOPIF，在 guest 真实 DOM 上操作）；结论读取 guest 状态镜像、宿主会话状态与磁盘文件
 
 ## 结论
 
-- 探针 checks：**60/63 PASS**（失败项如实列出；失败不等于台账行失败，见逐行结果）。
-- 本轮登记（真实执行）行数：**49 行**（写入 CSV 的 `packAEntry`/`packBEntry`/`officialBaselineResult` 共 49 行；其余行保持 `NOT_RUN`）。
+- 探针 checks：**71/76 PASS**（失败项如实列出；失败不等于台账行失败，见逐行结果）。
+- 本轮登记（真实执行）行数：**61 行**（写入 CSV 的 `packAEntry`/`packBEntry`/`officialBaselineResult` 共 72 行；其余行保持 `NOT_RUN`）。
 - 三路径口径：pack A/B = 参考包真实能力面；官方 UI = 产品官方 UI 真实 CDP 自动化。**未执行的操作不写成 PASS**；能力面不可达的 pack 路径记 `NOT_RUN:能力面...`（不是伪造 FAIL/PASS）。
 
 ## 逐项（F01–F16 域行）
@@ -19,7 +19,7 @@
 | --- | ---: | ---: | ---: | --- | --- |
 | F01 | 1/10 | 0 | 0 | 1/0/0 | PASS:官方 UI 文件树点击打开 fe-ledger.md + 页签渲染（CDP 真实 DOM） |
 | F02 | 2/6 | 0 | 1 | 2/0/0 | PASS:官方 UI 右栏标题→保存属性→frontmatter 落盘 |
-| F03 | 30/42 | 0 | 0 | 27/3/0 | PASS:官方 UI Ctrl+B/Ctrl+I/工具栏加粗+撤销+重做（真实 DOM 断言） |
+| F03 | 42/42 | 0 | 0 | 37/5/0 | PASS:官方 UI Ctrl+B/Ctrl+I/工具栏加粗+撤销+重做（真实 DOM 断言） |
 | F04 | 1/1 | 0 | 0 | 1/0/0 | PASS:官方 UI 插入公式→全屏公式编辑器打开（入口级） |
 | F05 | 1/1 | 0 | 0 | 1/0/0 | PASS:官方 UI 表格尺寸选择器→插入表格→撤销 |
 | F06 | 1/3 | 1 | 1 | 1/0/0 | PASS:官方 UI 打开 basic.md：ke-note/表格/KaTeX 真实渲染 |
@@ -30,9 +30,9 @@
 | F11 | 1/3 | 0 | 0 | 1/0/0 | PASS:官方 UI 回收站导航→回收站面板打开（入口级） |
 | F12 | 1/1 | 1 | 1 | 1/0/0 | PASS:官方 UI 源码模式 textarea 显示 Markdown 原文 |
 | F13 | 3/6 | 0 | 0 | 3/0/0 | PASS:官方 UI 导出菜单→导出 PDF 对话框（含 A4 预览）真实打开；最终落盘未执行（隔离限制） |
-| F14 | 1/1 | 1 | 0 | 0/0/1 | NOT_RUN:官方 UI 导出 PDF 对话框（含 A4 预览）已执行；export_pdf 落点 %USERPROFILE%/Docum |
+| F14 | 1/1 | 1 | 0 | 0/0/1 | NOT_RUN:官方 UI 导出 PDF 对话框（含 A4 预览）已执行；export_pdf 落点 %USERPROFILE%/Documents 无法安全隔离（覆盖 USERP |
 | F15 | 1/19 | 1 | 0 | 1/0/0 | PASS:官方 UI 设置面板：常规/外观/快捷键/维护 + 主题分组 |
-| F16 | 1/11 | 0 | 0 | 0/0/1 | NOT_RUN:原生菜单非 DOM，CDP 无法真实驱动；未执行 |
+| F16 | 11/11 | 0 | 0 | 0/0/11 | NOT_RUN:原生菜单非 DOM，CDP 无法真实驱动；已对 menu.rs 做只读结构审计（11 项菜单项/加速键/事件分发，见证据 P5-T26-F16-native-men |
 
 > 注：登记行包含域行（F01–F16 各 1 行）+ 本轮真实执行的细粒度行（快捷键/工具栏/导出/API 等），详见下方 CSV 登记清单；`F16` 三路径均 NOT_RUN（原生菜单非 DOM 可驱动、guest 不应触达窗口）。
 
@@ -53,7 +53,7 @@
 | `F11` | NOT_RUN:guest 无 trash 通道 | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | PASS:官方 UI 回收站导航→回收站面板打开（入口级） |
 | `F12` | PASS:snapshot 返回正文原字符串（含 frontmatter；256KB 大文档可读） | PASS:snapshot 读取正文（只读） | PASS:官方 UI 源码模式 textarea 显示 Markdown 原文 |
 | `F13` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | PASS:官方 UI 导出菜单→导出 PDF 对话框（含 A4 预览）真实打开；最终落盘未执行（隔离限制） |
-| `F14` | PASS:print.snapshot→真实 PDF（%PDF，隔离目录，>1000B） | NOT_RUN:pack B 未声明 print.request 能力（能力面） | NOT_RUN:官方 UI 导出 PDF 对话框（含 A4 预览）已执行；export_pdf 落点 %USERPROFILE%/Documents 无法安全隔离（覆盖 USERPROFILE 会破坏 WebView2 CDP）→ 未执行；另验证官方 Rust print 管线 preview_pdf 真实 PDF 落盘（隔离 TEMP，36541B/%PDF） |
+| `F14` | PASS:print.snapshot→真实 PDF（%PDF，隔离目录，>1000B） | NOT_RUN:pack B 未声明 print.request 能力（能力面） | NOT_RUN:官方 UI 导出 PDF 对话框（含 A4 预览）已执行；export_pdf 落点 %USERPROFILE%/Documents 无法安全隔离（覆盖 USERPROFILE 会破坏 WebView2 CDP）→ 未执行；另验证官方 Rust print 管线 preview_pdf 真实 PDF 落盘（隔离 TEMP，36662B/%PDF） |
 | `F15` | PASS:官方主题切换→theme-changed 事件到达 guest（只读同步切片；方法=real-theme-toggle） | NOT_RUN:pack B 未订阅事件/无设置通道 | PASS:官方 UI 设置面板：常规/外观/快捷键/维护 + 主题分组 |
 | `CMD.editor.bold` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | PASS:官方 UI Ctrl+B→strong 出现→撤销还原 |
 | `CMD.editor.italic` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | PASS:官方 UI Ctrl+I→em 出现→撤销还原 |
@@ -66,7 +66,7 @@
 | `UI.dialog.exportpdf` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | PASS:官方 UI 导出 PDF 对话框（含 A4 预览）真实打开；最终导出落盘不可隔离未执行 |
 | `API.documents.get._tree` | NOT_RUN:guest 无 /api/tree 等价受控协议方法 | NOT_RUN:同左 | PASS:官方 UI 文件树渲染（/api/tree 命中 3 次） |
 | `API.search.get.root` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 搜索触发 /api/search（命中 2 次）+ 结果渲染 |
-| `API.drafts.get._recovery` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 自动保存期间 /api/drafts/recovery 命中 26 次 |
+| `API.drafts.get._recovery` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 自动保存期间 /api/drafts/recovery 命中 31 次 |
 | `CMD.editor.underline` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI Ctrl+U 下划线（CDP 真实操作 + DOM 断言 before=False→after=True） |
 | `CMD.editor.strike` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI Ctrl+Shift+S 删除线（CDP 真实操作 + DOM 断言 before=False→after=True） |
 | `CMD.editor.heading.1` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI Ctrl+Alt+1 标题 1（CDP 真实操作 + DOM 断言 before=1→after=3） |
@@ -89,15 +89,27 @@
 | `UI.toolbar.保存-Ctrl-S` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | FAIL:官方 UI 操作后 DOM 断言未通过 |
 | `UI.toolbar.微分-d-转正体-另存为新文件` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏微分 d 转正体→预览对话框（CDP 真实操作 + DOM 断言 before=None→after=None） |
 | `UI.toolbar.历史快照` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏历史快照→历史版本面板（CDP 真实操作 + DOM 断言 before=None→after=None） |
+| `CMD.editor.heading.2` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏「样式/标题」选择器 → 标题2（CDP 真实操作 + DOM 断言 before=0→after=1） |
+| `CMD.editor.heading.3` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏「样式/标题」选择器 → 标题3（CDP 真实操作 + DOM 断言 before=0→after=1） |
+| `CMD.editor.link.insert` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | FAIL:官方 UI 操作后未产生真实节点/产物（如实 FAIL） |
+| `CMD.editor.image.insert` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点（CDP 真实操作 + DOM 断言 before=0→after=2） |
+| `CMD.editor.math.block` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏插入块级公式 → mathBlock 节点（CDP 真实操作 + DOM 断言 before=0→after=1） |
+| `CMD.editor.module.insert` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | FAIL:官方 UI 操作后未产生真实节点/产物（如实 FAIL） |
+| `CMD.editor.footnote.insert` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏注释（脚注）→ 对话框输入 → 脚注节点（CDP 真实操作 + DOM 断言 before=0→after=2） |
+| `CMD.editor.note.insert` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏信息块 → ke-note 节点（CDP 真实操作 + DOM 断言 before=0→after=1） |
+| `CMD.editor.table.insert` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏表格 → 2×2 表格节点（CDP 真实操作 + DOM 断言 before=0→after=1） |
+| `UI.toolbar.插入图片` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点（与 CMD.editor.image.insert 同一次执行）（CDP 真实操作 + DOM 断言 before=0→after=2） |
+| `UI.toolbar.撤销` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏撤销 → 编辑回退（CDP 真实操作 + DOM 断言 before=None→after=None） |
+| `UI.toolbar.重做` | NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造） | NOT_RUN:同左 | PASS:官方 UI 工具栏重做 → 编辑恢复（CDP 真实操作 + DOM 断言 before=None→after=None） |
 
 ## 探针 checks（真实执行明细）
 
 | # | check | 结果 | 关键值 |
 | --- | --- | --- | --- |
 | 1 | W-G7-1 构建工具产出两个签名参考包（A/B）：dist manifest assets sha256/size 与实际文件一致、签名为 ed25519/k1 128hex、zip 根含 manifest+资产 | PASS | `{"packs": {"com.astranota.examples.pack-a": {"distDir": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-a", "signature": {"alg": "ed25519", "keyId": "k1", "signatureLen": 128}, "assets": [{"path": "index.html", "declaredSha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff…` |
-| 2 | W-G7-2 构建幂等：`--check` 通过（源 manifest assets 哈希已回写、vendored SDK 已同步） | PASS | `{"exit": 0, "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=becd2058a3a3e9fb…（provided）\n"}` |
+| 2 | W-G7-2 构建幂等：`--check` 通过（源 manifest assets 哈希已回写、vendored SDK 已同步） | PASS | `{"exit": 0, "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=f0cfa21fd54c689f…（provided）\n"}` |
 | 3 | W-G7-3 源 manifest（入库）只含哈希/大小、不含签名，且与 dist 签名清单字段一致 | PASS | `{"com.astranota.examples.pack-a": {"sourceManifest": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\packs\\pack-a\\manifest.json", "signedInSource": false, "alignedWithDist": true}, "com.astranota.examples.pack-b": {"sourceManifest": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-wor…` |
-| 4 | F-PREP-1 隔离产品启动 + CDP 就绪（工坊入口已渲染） | PASS | `{"port": 9926, "exeSha256": "983688dbc703d6e9195d88f5ef1fd4e81546510bdbdcdcd77685dbd6c185a69e", "exeMtime": "2026-10-19T14:49:57", "packsMode": "rebuild"}` |
+| 4 | F-PREP-1 隔离产品启动 + CDP 就绪（工坊入口已渲染） | PASS | `{"port": 9926, "exeSha256": "faa71dfbf5222d63aa3c1b365961055d344ce09fa27cfcadc73e607c0ef75789", "exeMtime": "2026-10-19T15:29:02", "packsMode": "rebuild"}` |
 | 5 | F-PREP-2 安装参考包 A/B（Rust 安装 + 签名校验 valid） | PASS | `{"installA": true, "verifyA": true, "installB": true, "verifyB": true}` |
 | 6 | F-PREP-3 参考包 A/B 均授予 trusted 且签名 valid | PASS | `{"trustedA": true, "trustedB": true, "signatureValid": true}` |
 | 7 | F-OFF-1 F01 官方 UI：文件树打开文档 + 页签渲染 | PASS | `{"clicked": true, "opened": true, "tabVisible": true, "editorHead": "F 台账标题\n\nF-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。\n\n列表项一\n\n列表项二\n\n\n"}` |
@@ -116,7 +128,7 @@
 | 20 | F-OFF-13 F09 官方 UI 附件面板打开（内部 attachments API） | PASS | `{"toggled": true, "panelVisible": true, "apiAttachmentHits": 2}` |
 | 21 | F-OFF-14 F11 官方 UI 回收站导航项 → 回收站面板打开 | PASS | `{"navClicked": true, "trashPanelVisible": true}` |
 | 22 | F-OFF-15 F13 官方 UI 导出菜单 → 导出 PDF 对话框（含 A4 预览；不执行落盘） | PASS | `{"menuOpened": true, "menuItems": {"导出 Markdown（KE 格式）": true, "导出普通 Markdown (.md)": true, "导出文档包 (.zip)": true, "导出 PDF（打印为 PDF）": true}, "pdfDialogOpened": true, "a4Preview": true, "dismissed": true, "note": "官方 UI 导出对话框（含 A4 预览）真实打开；最终 export_pdf 落 Documents 不可隔离，未执行（不伪造）"}` |
-| 23 | F-OFF-19 F14 官方 print 管线 preview_pdf 真实 PDF 落盘（隔离 TEMP；export_pdf Documents 不可隔离未执行） | PASS | `{"invoke": {"ok": true, "error": null}, "pdfPath": "C:\\ke-tmp\\uiws-t26-F\\temp\\AstraNota-preview\\preview-30880-1792393011716655600.pdf", "exists": true, "size": 36541, "head": "%PDF", "underIsolatedTemp": true, "cleanedByOfficialCommand": true}` |
+| 23 | F-OFF-19 F14 官方 print 管线 preview_pdf 真实 PDF 落盘（隔离 TEMP；export_pdf Documents 不可隔离未执行） | PASS | `{"invoke": {"ok": true, "error": null}, "pdfPath": "C:\\ke-tmp\\uiws-t26-F\\temp\\AstraNota-preview\\preview-47696-1792396209601468600.pdf", "exists": true, "size": 36662, "head": "%PDF", "underIsolatedTemp": true, "cleanedByOfficialCommand": true}` |
 | 24 | F-OFF-16 F15 官方 UI 设置面板（常规/外观/快捷键/维护 + 主题分组） | PASS | `{"opened": true, "groups": {"常规": true, "外观": true, "快捷键": true, "维护": true}, "themeGroup": true}` |
 | 25 | F-F3-CMD.editor.underline | PASS | `{"row": "CMD.editor.underline", "label": "Ctrl+U 下划线", "before": false, "after": true}` |
 | 26 | F-F3-CMD.editor.strike | PASS | `{"row": "CMD.editor.strike", "label": "Ctrl+Shift+S 删除线", "before": false, "after": true}` |
@@ -140,23 +152,36 @@
 | 44 | F-F3-UI.toolbar.保存-Ctrl-S | FAIL | `{"row": "UI.toolbar.保存-Ctrl-S", "label": "工具栏保存按钮→磁盘落盘", "saveClicked": true, "diskSaved": false}` |
 | 45 | F-F3-UI.toolbar.微分-d-转正体-另存为新文件 | PASS | `{"row": "UI.toolbar.微分-d-转正体-另存为新文件", "label": "工具栏微分 d 转正体→预览对话框", "dialogOpened": true}` |
 | 46 | F-F3-UI.toolbar.历史快照 | PASS | `{"row": "UI.toolbar.历史快照", "label": "工具栏历史快照→历史版本面板", "dialogOpened": true, "dialogText": "历史版本"}` |
-| 47 | F-PA-0 pack A 启用：会话 active + guest iframe + 发布 SDK 握手 | PASS | `{"state": "active", "capabilities": ["ui.shell", "panel.sidebar", "context.read", "print.request"], "sid": true}` |
-| 48 | F-PA-1 F12 pack A：context.snapshot 读取正文原字符串（含 frontmatter） | PASS | `{"snapshot": {"relPath": "Articles/fe-ledger.md", "revision": 1, "hasContent": true, "contentLen": 153, "title": "F 台账标题-官方"}, "domTitle": "F 台账标题-官方", "expectedTitle": "F 台账标题-官方", "revision": 1}` |
-| 49 | F-PA-2 F06 pack A：读取 basic.md 的 KE 信息块/公式原文 | PASS | `{"relPath": "Articles/basic.md", "contentLen": 640, "hasKeNote": true, "hasMath": true, "domContentHead": "# 一级标题\n\n普通段落，包含 **加粗**、*斜体*、`行内代码` 与 [链接](Attachments/files/sample.pdf)。\n\n## 二级标题\n\n- 无序项 A\n- 无序项 B\n  - 嵌套项\n\n1. 有序项一\n2. 有"}` |
-| 50 | F-PA-3 F12 pack A：大文档（256KB）快照读取 | PASS | `{"relPath": "Articles/large-256kb.md", "contentLen": 117196, "expectedChars": 117196, "hasContent": true}` |
-| 51 | F-PA-4 F14 pack A：print.snapshot → 真实 PDF（%PDF，>1000B，隔离目录） | PASS | `{"printResult": {"pdfToken": "pdf-mvewjy3y-va808urf", "pages": null}, "pdfPath": "C:\\ke-tmp\\uiws-t26-F\\pdf-out\\print-fe-ledger-r1-mvewjxxd100x.pdf", "pdfSize": 68233, "pdfHead": "%PDF"}` |
-| 52 | F-PA-5 pack A：非法路径错误以类型化错误展示（不静默） | PASS | `{"lastError": {"code": "E_BAD_PAYLOAD", "message": "print.snapshot relPath 非法: ../escape.md"}, "errorText": "E_BAD_PAYLOAD: print.snapshot relPath 非法: ../escape.md"}` |
-| 53 | F-PA-6 F07/F08 pack A：官方保存 → document-saved 事件到达 guest 并自动刷新快照 | PASS | `{"event": {"type": "document-saved", "relPath": "Articles/fe-ledger.md", "revision": 2, "receivedAt": 1792393168252}, "autoRefreshed": true, "saved": false, "eventMethod": "bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)", "hostEventLog": ["document-saved"]}` |
-| 54 | F-PA-7 F15 pack A：官方主题切换 → theme-changed 事件到达 guest | PASS | `{"event": {"type": "theme-changed", "theme": "dark", "receivedAt": 1792393231457}, "eventMethod": "real-theme-toggle", "hostEventLog": ["document-saved", "theme-changed", "theme-changed"]}` |
-| 55 | F-PA-8 pack A 停用：会话 stopped + guest iframe 卸载 | PASS | `{"stopClicked": true, "state": "stopped", "guestIframes": 0}` |
-| 56 | F-PB-0 pack B 启用：会话 active + guest iframe + 发布 SDK 握手 | PASS | `{"state": "active", "capabilities": ["ui.shell", "panel.dock", "context.read"], "sid": true}` |
-| 57 | F-PB-1 F02 pack B：读取快照 + frontmatter 自动填充标题 | PASS | `{"snapshot": {"relPath": "Articles/fe-ledger.md", "revision": 1, "hasContent": true, "contentLen": 153}, "formTitle": "F 台账标题-官方", "titleInput": "F 台账标题-官方", "expectedTitle": "F 台账标题-官方"}` |
-| 58 | F-PB-2 F06 pack B：读取 basic.md 的 KE 信息块原文 | PASS | `{"relPath": "Articles/basic.md", "contentLen": 640, "hasKeNote": true}` |
-| 59 | F-PB-3 F02 pack B：command.invoke article.set-title → 后端 frontmatter 落盘 | PASS | `{"commandResult": {"name": "article.set-title", "ok": true, "value": {"ok": true, "value": {"relPath": "Articles/fe-ledger.md", "title": "F 台账标题", "tags": ["ledger"]}}, "at": 1792393435635}, "frontmatter": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n"}` |
-| 60 | F-PB-4 F10 pack B：command.invoke article.set-tags → 后端 frontmatter 落盘 | PASS | `{"commandResult": {"name": "article.set-tags", "ok": true, "value": {"ok": true, "value": {"relPath": "Articles/fe-ledger.md", "title": "F 台账标题", "tags": ["ledger", "probe"]}}, "at": 1792393458869}, "frontmatter": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n  - probe\n"}` |
-| 61 | F-PB-5 pack B：空标题被宿主拒绝（E_TITLE）且磁盘不被改 | PASS | `{"errorText": "E_INTERNAL: E_TITLE: 标题为空或过长", "lastError": {"code": "E_INTERNAL", "message": "E_TITLE: 标题为空或过长"}, "frontmatterAfterError": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n  - probe\n"}` |
-| 62 | F-PB-6 pack B 停用：会话 stopped | PASS | `{"stopClicked": true, "state": "stopped"}` |
-| 63 | F-FINAL-1 主进程存活 / 用户实例未受影响（未运行→N/A） / 会话已停用 | PASS | `{"procAlive": true, "userPid": "(not running)", "ourProcesses": 1, "finalSessionState": "stopped"}` |
+| 47 | F-F3B-CMD.editor.heading.2 | PASS | `{"row": "CMD.editor.heading.2", "kind": "heading", "label": "工具栏「样式/标题」选择器 → 标题2", "before": 0, "after": 1}` |
+| 48 | F-F3B-CMD.editor.heading.3 | PASS | `{"row": "CMD.editor.heading.3", "kind": "heading", "label": "工具栏「样式/标题」选择器 → 标题3", "before": 0, "after": 1}` |
+| 49 | F-F3B-CMD.editor.link.insert | FAIL | `{"row": "CMD.editor.link.insert", "kind": "link", "label": "工具栏插入链接 → 地址对话框输入 URL → 真实链接节点", "dialogOpened": true, "before": 0, "after": 0, "hrefs": []}` |
+| 50 | F-F3B-CMD.editor.image.insert | PASS | `{"row": "CMD.editor.image.insert", "kind": "image", "label": "工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点", "fileInputHooked": true, "fileInputClicks": 1, "inject": {"ok": true, "size": 70}, "before": 0, "after": 2}` |
+| 51 | F-F3B-CMD.editor.math.block | PASS | `{"row": "CMD.editor.math.block", "kind": "math_block", "label": "工具栏插入块级公式 → mathBlock 节点", "modalOpened": true, "before": 0, "after": 1}` |
+| 52 | F-F3B-CMD.editor.module.insert | FAIL | `{"row": "CMD.editor.module.insert", "kind": "module", "label": "工具栏插入模块 → 模块选择器 → 插入模块正文", "pickerOpened": true, "inserted": false, "preExisting": false}` |
+| 53 | F-F3B-CMD.editor.footnote.insert | PASS | `{"row": "CMD.editor.footnote.insert", "kind": "footnote", "label": "工具栏注释（脚注）→ 对话框输入 → 脚注节点", "dialogOpened": true, "before": 0, "after": 2}` |
+| 54 | F-F3B-CMD.editor.note.insert | PASS | `{"row": "CMD.editor.note.insert", "kind": "note", "label": "工具栏信息块 → ke-note 节点", "before": 0, "after": 1}` |
+| 55 | F-F3B-CMD.editor.table.insert | PASS | `{"row": "CMD.editor.table.insert", "kind": "table", "label": "工具栏表格 → 2×2 表格节点", "pickerOpened": true, "cellClicked": true, "before": 0, "after": 1}` |
+| 56 | F-F3B-UI.toolbar.插入图片 | PASS | `{"row": "UI.toolbar.插入图片", "kind": "image", "label": "工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点（与 CMD.editor.image.insert 同一次执行）", "fileInputHooked": true, "fileInputClicks": 1, "inject": {"ok": true, "size": 70}, "before": 0, "after": 2}` |
+| 57 | F-F3B-UI.toolbar.撤销 | PASS | `{"row": "UI.toolbar.撤销", "kind": "undo", "label": "工具栏撤销 → 编辑回退", "markerPresent": true, "undone": true}` |
+| 58 | F-F3B-UI.toolbar.重做 | PASS | `{"row": "UI.toolbar.重做", "kind": "redo", "label": "工具栏重做 → 编辑恢复", "markerPresent": true, "undone": true, "redone": true}` |
+| 59 | F-AUDIT-F16 原生菜单只读结构审计（menu.rs；DOM/W 未覆盖，CSV 记 NOT_RUN） | PASS | `{"itemCount": 11, "domDriven": false, "wCovered": false, "source": "desktop/src-tauri/src/menu.rs"}` |
+| 60 | F-PA-0 pack A 启用：会话 active + guest iframe + 发布 SDK 握手 | PASS | `{"state": "active", "capabilities": ["ui.shell", "panel.sidebar", "context.read", "print.request"], "sid": true}` |
+| 61 | F-PA-1 F12 pack A：context.snapshot 读取正文原字符串（含 frontmatter） | PASS | `{"snapshot": {"relPath": "Articles/fe-ledger.md", "revision": 1, "hasContent": true, "contentLen": 153, "title": "F 台账标题-官方"}, "domTitle": "F 台账标题-官方", "expectedTitle": "F 台账标题-官方", "revision": 1}` |
+| 62 | F-PA-2 F06 pack A：读取 basic.md 的 KE 信息块/公式原文 | PASS | `{"relPath": "Articles/basic.md", "contentLen": 640, "hasKeNote": true, "hasMath": true, "domContentHead": "# 一级标题\n\n普通段落，包含 **加粗**、*斜体*、`行内代码` 与 [链接](Attachments/files/sample.pdf)。\n\n## 二级标题\n\n- 无序项 A\n- 无序项 B\n  - 嵌套项\n\n1. 有序项一\n2. 有"}` |
+| 63 | F-PA-3 F12 pack A：大文档（256KB）快照读取 | PASS | `{"relPath": "Articles/large-256kb.md", "contentLen": 117196, "expectedChars": 117196, "hasContent": true}` |
+| 64 | F-PA-4 F14 pack A：print.snapshot → 真实 PDF（%PDF，>1000B，隔离目录） | PASS | `{"printResult": {"pdfToken": "pdf-mveyh16j-y348uo3v", "pages": null}, "pdfPath": "C:\\ke-tmp\\uiws-t26-F\\pdf-out\\print-fe-ledger-r1-mveyh0z21319.pdf", "pdfSize": 68233, "pdfHead": "%PDF"}` |
+| 65 | F-PA-5 pack A：非法路径错误以类型化错误展示（不静默） | PASS | `{"lastError": {"code": "E_BAD_PAYLOAD", "message": "print.snapshot relPath 非法: ../escape.md"}, "errorText": "E_BAD_PAYLOAD: print.snapshot relPath 非法: ../escape.md"}` |
+| 66 | F-PA-6 F07/F08 pack A：官方保存 → document-saved 事件到达 guest 并自动刷新快照 | PASS | `{"event": {"type": "document-saved", "relPath": "Articles/fe-ledger.md", "revision": 2, "receivedAt": 1792396390852}, "autoRefreshed": true, "saved": false, "eventMethod": "bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)", "hostEventLog": ["document-saved"]}` |
+| 67 | F-PA-7 F15 pack A：官方主题切换 → theme-changed 事件到达 guest | PASS | `{"event": {"type": "theme-changed", "theme": "dark", "receivedAt": 1792396453107}, "eventMethod": "real-theme-toggle", "hostEventLog": ["document-saved", "theme-changed", "theme-changed"]}` |
+| 68 | F-PA-8 pack A 停用：会话 stopped + guest iframe 卸载 | PASS | `{"stopClicked": true, "state": "stopped", "guestIframes": 0}` |
+| 69 | F-PB-0 pack B 启用：会话 active + guest iframe + 发布 SDK 握手 | PASS | `{"state": "active", "capabilities": ["ui.shell", "panel.dock", "context.read"], "sid": true}` |
+| 70 | F-PB-1 F02 pack B：读取快照 + frontmatter 自动填充标题 | PASS | `{"snapshot": {"relPath": "Articles/fe-ledger.md", "revision": 1, "hasContent": true, "contentLen": 153}, "formTitle": "F 台账标题-官方", "titleInput": "F 台账标题-官方", "expectedTitle": "F 台账标题-官方"}` |
+| 71 | F-PB-2 F06 pack B：读取 basic.md 的 KE 信息块原文 | PASS | `{"relPath": "Articles/basic.md", "contentLen": 640, "hasKeNote": true}` |
+| 72 | F-PB-3 F02 pack B：command.invoke article.set-title → 后端 frontmatter 落盘 | PASS | `{"commandResult": {"name": "article.set-title", "ok": true, "value": {"ok": true, "value": {"relPath": "Articles/fe-ledger.md", "title": "F 台账标题", "tags": ["ledger"]}}, "at": 1792396652747}, "frontmatter": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n"}` |
+| 73 | F-PB-4 F10 pack B：command.invoke article.set-tags → 后端 frontmatter 落盘 | PASS | `{"commandResult": {"name": "article.set-tags", "ok": true, "value": {"ok": true, "value": {"relPath": "Articles/fe-ledger.md", "title": "F 台账标题", "tags": ["ledger", "probe"]}}, "at": 1792396675996}, "frontmatter": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n  - probe\n"}` |
+| 74 | F-PB-5 pack B：空标题被宿主拒绝（E_TITLE）且磁盘不被改 | PASS | `{"errorText": "E_INTERNAL: E_TITLE: 标题为空或过长", "lastError": {"code": "E_INTERNAL", "message": "E_TITLE: 标题为空或过长"}, "frontmatterAfterError": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n  - probe\n"}` |
+| 75 | F-PB-6 pack B 停用：会话 stopped | PASS | `{"stopClicked": true, "state": "stopped"}` |
+| 76 | F-FINAL-1 主进程存活 / 用户实例未受影响（未运行→N/A） / 会话已停用 | PASS | `{"procAlive": true, "userPid": "(not running)", "ourProcesses": 1, "finalSessionState": "stopped"}` |
 
 ## 内部路由命中（官方 UI 真实调用证据，来自隔离实例 app.log）
 
@@ -164,7 +189,7 @@
 {
   "tree": 3,
   "search": 2,
-  "drafts_recovery": 26,
+  "drafts_recovery": 31,
   "history_list": 3,
   "attachments_list": 2,
   "workspace_current": 2,
@@ -193,47 +218,43 @@ py -X utf8 'F:\Work\KE Project\knowledge-editor\docs\ui-workshop\tools\run_featu
 
 原始 JSON：`docs/ui-workshop/evidence/T26-F-ledger-results.json`
 
-## v3 第二轮增量（task-17）：F03 批量 + F14 落盘尝试（2026-10-19）
+## v4 第三轮增量（task-20）：F03 剩余 12 行 + F16 原生菜单审计（2026-10-19）
 
-- 本轮 checks：**60/63 PASS**；F03 新增真实执行 **22 行**（19 PASS / 3 FAIL）；CSV 同步登记（全库 F 台账共 49 行已登记）。
-- 历史轮次：v1 `4528897`（27 行登记，pack A 事件三项因探针 dismiss_overlays 误关工坊失败）；v2 `cc322ca`（修复后 40/40，事件三项 PASS 并标注方法）。
+- 本轮 checks：**71/76 PASS**；F03 剩余 12 行真实执行 **12 行**（10 PASS / 2 FAIL）→ F03 累计 42/42 行登记。
+- 历史轮次：v1 `4528897`（27 行）/ v2 `cc322ca`（事件三项修复）/ v3 `78e5c25`（F03 批量 22 行 + F14 preview_pdf）。
 
-### F03 批量抽样（官方 UI 真实快捷键/工具栏 + DOM 断言；动作前→后比较）
+### F03 剩余 12 行（无默认快捷键；官方工具栏/菜单入口真实执行；真实节点/产物才 PASS）
 
-| featureId | 结果 | 操作 | DOM 断言 |
+| featureId | 结果 | 操作 | DOM 断言（前→后） |
 | --- | --- | --- | --- |
-| `CMD.editor.underline` | PASS | Ctrl+U 下划线 | before=False → after=True |
-| `CMD.editor.strike` | PASS | Ctrl+Shift+S 删除线 | before=False → after=True |
-| `CMD.editor.heading.1` | PASS | Ctrl+Alt+1 标题 1 | before=1 → after=3 |
-| `CMD.editor.list.bullet` | FAIL | Ctrl+Shift+8 无序列表 | before=1 → after=1 |
-| `CMD.editor.list.ordered` | PASS | Ctrl+Shift+7 有序列表 | before=0 → after=1 |
-| `CMD.editor.blockquote` | FAIL | Ctrl+Shift+B 引用 | before=0 → after=0 |
-| `CMD.editor.code.inline` | PASS | Ctrl+E 行内代码 | before=False → after=True |
-| `CMD.editor.codeBlock` | PASS | Ctrl+Alt+C 代码块 | before=0 → after=3 |
-| `UI.toolbar.斜体` | PASS | 工具栏斜体 | before=False → after=True |
-| `UI.toolbar.下划线` | PASS | 工具栏下划线 | before=False → after=True |
-| `UI.toolbar.删除线` | PASS | 工具栏删除线 | before=False → after=True |
-| `UI.toolbar.有序列表` | PASS | 工具栏有序列表 | before=0 → after=1 |
-| `UI.toolbar.引用` | PASS | 工具栏引用 | before=0 → after=1 |
-| `UI.toolbar.行内代码` | PASS | 工具栏行内代码 | before=False → after=True |
-| `UI.toolbar.代码块` | PASS | 工具栏代码块 | before=0 → after=3 |
-| `UI.toolbar.插入链接` | PASS | 工具栏插入链接→链接地址对话框 | before=None → after=None |
-| `UI.toolbar.插入公式` | PASS | 工具栏插入公式→行内公式编辑器 | before=None → after=None |
-| `UI.toolbar.插入块级公式` | PASS | 工具栏插入块级公式→块级公式编辑器 | before=None → after=None |
-| `UI.toolbar.注释-脚注` | PASS | 工具栏注释（脚注）→插入注释对话框 | before=None → after=None |
-| `UI.toolbar.保存-Ctrl-S` | FAIL | 工具栏保存按钮→磁盘落盘 | before=None → after=None |
-| `UI.toolbar.微分-d-转正体-另存为新文件` | PASS | 工具栏微分 d 转正体→预览对话框 | before=None → after=None |
-| `UI.toolbar.历史快照` | PASS | 工具栏历史快照→历史版本面板 | before=None → after=None |
+| `CMD.editor.heading.2` | PASS | 工具栏「样式/标题」选择器 → 标题2 | before=0 → after=1 |
+| `CMD.editor.heading.3` | PASS | 工具栏「样式/标题」选择器 → 标题3 | before=0 → after=1 |
+| `CMD.editor.link.insert` | FAIL | 工具栏插入链接 → 地址对话框输入 URL → 真实链接节点 | before=0 → after=0 |
+| `CMD.editor.image.insert` | PASS | 工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点 | before=0 → after=2 |
+| `CMD.editor.math.block` | PASS | 工具栏插入块级公式 → mathBlock 节点 | before=0 → after=1 |
+| `CMD.editor.module.insert` | FAIL | 工具栏插入模块 → 模块选择器 → 插入模块正文 | before=None → after=None |
+| `CMD.editor.footnote.insert` | PASS | 工具栏注释（脚注）→ 对话框输入 → 脚注节点 | before=0 → after=2 |
+| `CMD.editor.note.insert` | PASS | 工具栏信息块 → ke-note 节点 | before=0 → after=1 |
+| `CMD.editor.table.insert` | PASS | 工具栏表格 → 2×2 表格节点 | before=0 → after=1 |
+| `UI.toolbar.插入图片` | PASS | 工具栏插入图片 → 官方 file input 注入 fixture 图片 → 真实上传+图片节点（与 CMD.editor.image.insert 同一次执行） | before=0 → after=2 |
+| `UI.toolbar.撤销` | PASS | 工具栏撤销 → 编辑回退 | before=None → after=None |
+| `UI.toolbar.重做` | PASS | 工具栏重做 → 编辑恢复 | before=None → after=None |
 
-### F14 官方导出落盘尝试（如实：部分 + NOT_RUN）
+### F16 原生菜单结构审计（只读 menu.rs；DOM/W 未覆盖）
 
-- 官方 UI 导出菜单 →「导出 PDF（打印为 PDF）」→ 对话框（含 A4 DOM 预览）真实打开 → 取消。
-- **export_pdf 未执行**：Rust 落点 = USERPROFILE/Documents/AstraNota Exports；实测覆盖子进程 USERPROFILE 会让 WebView2 不开放 CDP 调试端口，无法在不触碰真实用户 Documents 的前提下执行 → 如实 NOT_RUN。
-- **官方 Rust print 管线 preview_pdf 真实落盘（补充证据）**：同一 render_pdf_to 渲染/打印设置，TEMP/TMP 指向隔离目录，官方 Tauri 命令生成真实 PDF：path=C:\ke-tmp\uiws-t26-F\temp\AstraNota-preview\preview-30880-1792393011716655600.pdf，size=36541，head=%PDF，underIsolatedTemp=True，官方 discard_preview_pdf 清理=True。
-- 说明：preview_pdf 只是「官方管线可真实落盘」的补充证据，不冒充最终导出；F14 官方 CSV 列保持 NOT_RUN。
+- 审计 11 个 MenuItem（含 ID/标签/加速键/事件 ID）；**原生菜单非 DOM，CDP 无法真实点击 → 仅结构性证据（U/静态）**；CSV 11 行如实 NOT_RUN。
+- 证据：`evidence/P5-T26-F16-native-menu-audit.md`（含 handle_event 分发目标），报告「附录 G」G.2 有完整表格。
 
-### 本轮失败项（如实，不伪造）
-
-- `CMD.editor.list.bullet`（Ctrl+Shift+8）：DOM 断言 before=1→after=1（未观察到列表结构变化）；
-- `CMD.editor.blockquote`（Ctrl+Shift+B）：before=0→after=0（键位未产生引用节点）；
-- `UI.toolbar.保存-Ctrl-S`：点击保存按钮后 25s 内磁盘未见 marker（同一次运行早段 F-OFF-2 官方保存为 PASS，可能受连续自动化操作后的保存链状态影响，待人工复核）。
+| MID | 标签 | 加速键 | 事件 ID |
+| --- | --- | --- | --- |
+| `MID_NEW` | 新建文档 | Ctrl+N | `ke-menu:new-document` |
+| `MID_OPEN_WS` | 打开 Workspace… | Ctrl+O | `ke-menu:open-workspace` |
+| `MID_NEW_WS` | 新建工作区… | （无） | `ke-menu:new-workspace` |
+| `MID_CLOSE_WS` | 关闭工作区 | （无） | `ke-menu:close-workspace` |
+| `MID_RECOVERY` | 恢复检查… | （无） | `ke-menu:recovery-check` |
+| `MID_SETTINGS` | 设置… | Ctrl+, | `ke-menu:settings` |
+| `MID_EXIT` | 退出 | Ctrl+Q | `ke-menu:exit` |
+| `MID_RELOAD` | 重新加载 | Ctrl+R | `ke-menu:reload` |
+| `MID_DEVTOOLS` | 开发者工具 | F12 | `ke-menu:devtools` |
+| `MID_RELOAD` | 重新加载 | Ctrl+R | `ke-menu:reload` |
+| `MID_RECENT` | 最近工作区… | （无） | `ke-menu:refresh-recent` |

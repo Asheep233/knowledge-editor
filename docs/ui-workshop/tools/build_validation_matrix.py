@@ -22,6 +22,19 @@ KNOWN_FAILURES = {
     "T26-W09-perf-plain-results.json",
 }
 
+# 非验收类「就绪检查」证据：结果列显式标注 READINESS，不按 pass_count==total 判 PASS，
+# 也不得当作验收通过（例如 T27 I 门禁 dry-run 的 ready=false）。
+# 格式：文件名 → (task, kind, platform, 复现命令, 结果列文本)
+READINESS_EVIDENCE: dict[str, tuple[str, str, str, str, str]] = {
+    "T27-gate-readiness.json": (
+        "T27/W08-prep",
+        "W-prep（I 门禁就绪检查，非验收证据）",
+        "Windows（安装包/NSIS dry-run，只读）",
+        "python tools/run_t27_gate_check.py",
+        "NOT_READY(6/8)：阻塞=未授权 KE_T27_AUTHORIZED + 未声明 KE_T27_ISOLATED_ENV；W03/W08 I 仍 NOT_RUN",
+    ),
+}
+
 # evidence 文件 → (task, kind, platform, 复现命令/说明)
 META: dict[str, tuple[str, str, str, str]] = {
     "P0-S1-probe-results.json": ("T02", "U/W?（Linux 侧 U + Windows 混合，见文档）", "Linux WSL + Windows", "python run_s1_probe.py"),
@@ -47,10 +60,18 @@ META: dict[str, tuple[str, str, str, str]] = {
     "T26-A3-recover-results.json": ("T26/A3", "W", "Windows 产品壳（隔离构建，启动 recover/safeMode）", "python tools/run_t26_recover_probe.py"),
     "T26-A4-A6-install-results.json": ("T26/A4+A6", "W", "Windows 产品壳（隔离构建，签名安装/生命周期）", "python tools/run_t26_install_probe.py"),
     "T26-A5-ui-results.json": ("T26/A5", "W", "Windows 产品壳（隔离构建，工坊信任 UI）", "python tools/run_t26_ui_probe.py"),
+    "T26-A7-A5-guest-results.json": ("T26/A7+A5", "W", "Windows 产品壳（隔离构建，guest 宿主/能力上限/心跳崩溃/safeMode）", "python tools/run_t26_guest_probe.py"),
+    "T26-A7-isolation-results.json": ("T26/A7", "W", "Windows 产品壳（隔离构建，guest origin/internals 自检/IPC 可达性）", "python tools/run_t26_guest_isolation_probe.py"),
+    "T26-A8-save-results.json": ("T26/A8", "W", "Windows 产品壳（隔离构建，Core 保存 flag 产品 UI）", "python tools/run_t26_save_probe.py"),
+    "T26-IME-DPI-results.json": ("T26/IME-DPI", "W", "Windows 产品壳（隔离构建，CDP/WebView2 渲染层 IME/DPI）", "python tools/run_t26_ime_dpi_probe.py"),
+    "T26-isolated-smoke-results.json": ("T26/A1", "W", "Windows 产品壳（隔离构建，冒烟/独立 appData/单实例）", "手工隔离构建流程（见 evidence/P5-T26-isolated-smoke.md）"),
+    "T26-W04-sdk-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，外部脚手架→签名→安装→启用）", "python tools/run_t26_w04_probe.py"),
+    "T26-W04-sdk-dist-results.json": ("T26/W04", "W", "Windows 产品壳（隔离构建，发布形态 SDK 握手/snapshot）", "python tools/run_t26_w04_sdk_probe.py"),
     "T26-W02-form-results.json": ("T26/W02", "W", "Windows 产品壳（隔离构建，表单交接 title/tags）", "python tools/run_t26_form_probe.py"),
     "T26-W05-protocol-results.json": ("T26/W05", "W", "Windows 产品壳（隔离构建，协议线握手/snapshot）", "python tools/run_t26_protocol_probe.py"),
     "T26-W06-boundary-results.json": ("T26/W06", "W", "Windows 产品壳（隔离构建，网络/worker/能力边界）", "python tools/run_t26_boundary_probe.py"),
     "T26-W07-fault-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，无限循环故障）", "python tools/run_t26_fault_probe.py"),
+    "T26-W07-mem-results.json": ("T26/W07", "W", "Windows 产品壳（隔离构建，guest CPU/内存压力故障）", "python tools/run_t26_fault_mem_probe.py"),
     "T26-W01-zip-results.json": ("T26/W01", "W", "Windows 产品壳（隔离构建，ZIP 离线包/解压安全）", "python tools/run_t26_zip_probe.py"),
     "T26-W09-perf-results.json": ("T26/W09", "W", "Windows 产品壳（性能基线，已知大文档限制）", "python tools/run_t26_perf_probe.py"),
     "T26-W09-perf-diag-results.json": ("T26/W09", "W", "Windows 产品壳（性能诊断，已知大文档限制）", "python tools/run_t26_perf_diag_probe.py"),
@@ -66,10 +87,10 @@ BASELINE_ROWS = [
     ("frontend: Core broker 单测", "P1", "U", "Linux WSL", "PASS", "18", "18", "cd frontend && npx vitest run src/core/broker"),
     ("frontend: Core packs 单测", "P2/P4", "U", "Linux WSL", "PASS", "85", "85", "cd frontend && npx vitest run src/core/packs"),
     ("frontend: Core print 单测", "P2", "U", "Linux WSL", "PASS", "14", "14", "cd frontend && npx vitest run src/core/print"),
-    ("frontend: 工坊 UI 单测", "P3/P4", "U", "Linux WSL（happy-dom）", "PASS", "18", "18", "cd frontend && npx vitest run src/components/workshop"),
+    ("frontend: 工坊 UI 单测", "P3/P4", "U", "Linux WSL（happy-dom）", "PASS", "19", "19", "cd frontend && npx vitest run src/components/workshop"),
     ("frontend: tsc + vitest 全量", "P1–P4", "U", "Linux WSL（happy-dom 组件测试）", "PASS", "1819", "1820", "cd frontend && npx tsc -b --noEmit && npx vitest run --maxWorkers=2"),
     ("backend: pytest 全量", "P1", "A", "Linux WSL + Windows Py3.10", "PASS", "847", "847", "python3 -m pytest backend/tests -q（Windows: CI venv）"),
-    ("cargo: 产品壳单测", "P2–P4", "U", "Windows（Rust 单元测试）", "PASS", "38", "38", "cd desktop/src-tauri && cargo test --release"),
+    ("cargo: 产品壳单测", "P2–P4", "U", "Windows（Rust 单元测试）", "PASS", "50", "50", "cd desktop/src-tauri && cargo test --release"),
     ("cargo: 原型壳单测（无独立测试，仅构建）", "P0", "B", "Windows", "BUILD_OK", "", "", "cargo build --release（原型 tauri_sandbox）"),
 ]
 
@@ -114,6 +135,15 @@ def main() -> int:
     # S3/S5 双平台 pytest（evidence md 记录）
     rows.append(["P0-S3-prototype.md（pytest 10/10 双平台）", "T04", "A/U", "Linux WSL + Windows", "PASS", "10", "10", "pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py"])
     rows.append(["P0-S5-prototype.md（pytest 10/10 双平台）", "T06", "A/U", "Linux WSL + Windows", "PASS", "10", "10", "pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py"])
+    # 非验收就绪检查（显式 READINESS；不算验收通过，不计入验收 PASS 数）
+    for name, (task, kind, platform, reproduce, result) in sorted(READINESS_EVIDENCE.items()):
+        path = EVID / name
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        checks = data.get("checks", [])
+        passed = sum(1 for c in checks if c.get("ok", c.get("pass")))
+        rows.append([name, task, kind, platform, result, str(passed), str(len(checks)), reproduce])
     for row in BASELINE_ROWS:
         rows.append([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]])
 

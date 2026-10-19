@@ -2,6 +2,11 @@
 
 > 任务包：`astranota-ui-workshop-taskpack-2026-10-18`（sha256 zip `09969e62…52fa`，自校验 PASS）。
 > 状态词：`todo / in_progress / passed / failed / blocked / deferred`；验收结果另用 `PASS / FAIL / BLOCKED / NOT_RUN / NOT_APPLICABLE`。
+>
+> ⚠️ **本文件是逐任务台账（按时间顺序追加，保留历史表述）——最终交付状态以
+> [`HANDOVER-FINAL.md`](HANDOVER-FINAL.md) + [`reports/FINAL-DELIVERY-STATUS.md`](reports/FINAL-DELIVERY-STATUS.md)
+> 为准。** 下方「当前接手点」与任务表为会话起点快照（2026-10-19 01:00），其中里程碑/回归数字已被
+> 后续证据取代（当前里程碑 = `EXPERIMENTAL_TRUSTED_PACKS`，见 `reports/milestone-assessment.md`）。
 
 ## 当前接手点
 
@@ -26,7 +31,8 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 已知失败归属：无新增；历史 v1.2.16 报告中「3 个 Linux 超长文件名失败」在当前基线未复现
   （参见 CHANGELOG_DEV v1.2.17：已随 CI 可移植性修复收敛）。
 测试数据目录：临时目录/沙箱（C:\ke-tmp\ke-sandbox 等）；禁止真实笔记。
-当前里程碑状态：**P0_READY**（项目级口径不变）；P1 `P1_READY_PENDING`；P2 `in_progress`；P3 `EXPERIMENTAL_CORE_ONLY`。判定依据见 `reports/P1-report.md`、`reports/P2-P3-report.md`
+当前里程碑状态（2026-10-19 交付整理更新）：**`EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节，见 `reports/milestone-assessment.md`）；
+  本块其余回归数字为会话起点（01:00）快照，历史参考，不用于对外表述（最新基线见 `HANDOVER-FINAL.md`）。
 ```
 
 ## 任务进度
@@ -887,4 +893,37 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
   用户 App 未运行 → 用户实例影响 N/A，未触碰用户进程/数据。
 - W07 剩余：boot crash、桥接超时、连续启动失败、原生 Rust 恢复、I 门禁；自然 OOM 崩溃路径未触发
   （2GB 压力上限受同机安全约束，崩溃检测用注入验证）。
+
+## P6/T26 进度（W04 SDK 发布形态 W 7/7，2026-10-19）
+
+- 新增 `docs/ui-workshop/sdk/`：`@astranota/ui-workshop-sdk` 源码（TS）+ 构建脚本 + 产物
+  `dist/guest-sdk.js`（iife，全局 `KeWorkshopSDK`）/`dist/guest-sdk.mjs`（ESM）；
+  外部包可内联 dist 后 `autoConnect` 握手、`request('context.snapshot')`、`heartbeat`。
+- 协议契约修正：SDK 初版握手消息误用 `handshake.request`，宿主 HostDispatcher 只识别
+  `type:'handshake'` → E_TIMEOUT；修正后 SDK 自检 **4/4**、真实产品 W **7/7 PASS**。
+  证据：`evidence/P5-T26-W04-sdk-dist.md`、`evidence/T26-W04-sdk-dist-results.json`。
+- W04 剩余：npm/tgz 正式发布流程与版本策略、文档站/示例集/调试工具、发布密钥分发规范。
+
+## P6/T27 进度（W08/T27 I 门禁就绪检查 dry-run NOT_READY，2026-10-19）
+
+- 新增 `tools/run_t27_gate_check.py`（**只读 dry-run，绝不安装/不修改系统**）：
+  候选 `AstraNota_1.2.18_x64-setup.exe` + 28 个历史安装包 + NSIS 配置齐备 → 6/8 PASS；
+  阻塞 = `KE_T27_AUTHORIZED` 未授权 + `KE_T27_ISOLATED_ENV` 未声明 → **ready=false**。
+- 明确口径：**这是就绪检查，不是 I 通过**；W03/W08 的 I 门禁仍 **NOT_RUN**，execute 需主理人授权 +
+  专用隔离环境。证据：`evidence/P5-T26-W08-gate-prep.md`、`evidence/T27-gate-readiness.json`；
+  执行计划见 `reports/T27-installer-upgrade-plan.md`。
+
+## 交付整理（最终）：验证矩阵 + 交付状态文档（2026-10-19）
+
+- 验证矩阵 `validation-matrix.csv` 重新生成（**51 行**，`--check` PASS）：新增纳入 A7/A5 guest、
+  A7 隔离、A8 保存、IME/DPI、隔离冒烟、W04 外部路径、W04 SDK 发布形态、W07 内存/CPU 扩展等
+  results JSON；新增 T27 就绪检查 **READINESS 行（NOT_READY 6/8，非验收通过）**；
+  基线修正 cargo 38→**50**、工坊 UI 单测 18→**19**（本地复跑核对）；W09 大文档性能继续
+  **KNOWN_FAIL（已知限制）**，未改成通过。
+- 文档：新增 `reports/FINAL-DELIVERY-STATUS.md`（一页式：已通过/部分/未通过 + 下一步）；
+  `HANDOVER-FINAL.md` 重写为最终交付状态（基线/W 证据索引/里程碑/残余风险/NOT_RUN/复现命令/事故）；
+  `reports/T26-acceptance-status.md` 修正过期「项目级 P0_READY」表述为
+  **`EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节 + `milestone-assessment.md` 口径），更正
+  A7 隔离核对 5/5→**6/6**，补录 W04 SDK/T27 就绪；`HANDOVER.md` 顶部标注为历史阶段快照。
+- 一致性核对：文档中所有「通过」均引用 evidence 文件；部分通过一律标「部分」；未推送/未 Release。
 

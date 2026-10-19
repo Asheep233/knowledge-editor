@@ -1,5 +1,11 @@
 # UI 工坊交接报告（当前真实状态版）
 
+> ⚠️ **历史阶段快照（截至 2026-10-19 会话中段）——数字/完成度已过时，最终状态以
+> [`HANDOVER-FINAL.md`](HANDOVER-FINAL.md) + [`reports/FINAL-DELIVERY-STATUS.md`](reports/FINAL-DELIVERY-STATUS.md) 为准。**
+> 本文件保留作交接过程记录：其中 §1 完成度表「P0_READY」、§4 矩阵 22 行、§6 风险清单等均早于
+> A7/A8/IME-DPI/W01/W02/W04/W05/W06/W07/W09 的产品 W 证据与里程碑评估（当前里程碑为
+> `EXPERIMENTAL_TRUSTED_PACKS`），**不得再用本文数字对外表述**。
+
 > 生成时间：2026-10-19 · 分支：`feat/ui-workshop`（**本地分支，未推送、未发布 Release**）
 > 基线：v1.2.18 `4c71233` + 轻量外观 overlay `e54d37b`（overlay 已作为 P0 前置补丁提交）
 > 本文件是**阶段性交接**：记录已完成/进行中/未开始、证据位置、复现方式、剩余风险与建议路线；

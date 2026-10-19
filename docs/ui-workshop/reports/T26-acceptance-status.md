@@ -1,11 +1,19 @@
-# T26 Windows 验收状态（阶段，非最终认证）
+# T26 Windows 验收状态（阶段验收记录，非最终认证）
 
 - 日期：2026-10-19 · 平台：Windows 11 + WebView2 155 · 环境：隔离测试构建
   （独立 identifier `com.astranota.uiws.e2e`，测试数据在 `C:\ke-tmp`，不触碰用户实例/真实笔记）
-- 结论口径：**A1–A6 已完成（真实产品壳 W 证据）；A7/A8/真实 IME/多 DPI/安装包升级未完成 →
-  T26 尚未达到最终认证，不冒进标记。**
+- 结论口径（2026-10-19 交付整理后）：**A1–A8 及 W01/W02/W04/W05/W06/W07（无限循环 + 内存/CPU 压力
+  类别）/W09（工坊口径）/IME-DPI 均已有真实产品壳 W 证据；但 T26 任务级最终认证仍未达成**——仍缺
+  人工真实系统 IME/多 DPI、安装包覆盖升级/回滚 I 门禁（T27，当前就绪检查 NOT_READY 待授权）、
+  W01/W03/W07 等 I 门禁，以及 W02/W05/W06/W07 的部分类别。
+- 项目里程碑口径：按 `reports/milestone-assessment.md`（ACCEPTANCE A 节）=
+  **`EXPERIMENTAL_TRUSTED_PACKS`**，不声明更高状态。
+- **修正说明**：本文 2026-10-19 08:36 版第 4 节曾写「项目级仍 `P0_READY`，不得使用
+  `EXPERIMENTAL_TRUSTED_PACKS`」——该表述早于里程碑评估，与 ACCEPTANCE A 节口径及
+  `reports/milestone-assessment.md` 冲突；现以里程碑评估为准修正（变更依据：里程碑评估 + 本文件
+  §1 的 A1–A8 W 证据）。历史表述保留在 `progress.md` 台账中，不删除。
 
-## 1. 已完成场景（真实产品壳 W）
+## 1. 已完成场景（真实产品壳 W / 原型 W 汇总）
 
 | 场景 | 结果 | 证据 |
 | --- | --- | --- |
@@ -17,51 +25,73 @@
 | A5 工坊信任 UI（入口/真实列表/签名徽章/授予撤销/TrustStore 持久化） | **11/11** | `P5-T26-A5-ui.md` |
 | A8 Core 保存 flag 产品 UI（autosave→上下文写/frontmatter 保留） | **9/9** | `P5-T26-A8-save.md` |
 | A7 产品侧包隔离宿主 + A5 能力上限运行时（自定义协议/心跳崩溃/safeMode/停用持久化） | **11/11** | `P5-T26-A7-A5-guest.md` |
-| A7 安全核对：guest 独立 origin + Tauri IPC 不可用（附残余风险） | **5/5** | `P5-T26-A7-isolation.md` |
+| A7 安全核对：guest 独立 origin + Tauri IPC 可达性（附残余风险） | **6/6** | `P5-T26-A7-isolation.md` |
 | 原型壳 W 探针一键门禁 | **13/13** | `P5-T26-windows-witnesses.md` |
-| 产品 IME 组词 + DPI/缩放后编辑面可用（CDP/WebView2 渲染层） | **7/7** | `P5-T26-ime-dpi.md` |
+| 产品 IME 组词 + DPI/缩放后编辑面可用（CDP/WebView2 渲染层，不能替代人工实测） | **7/7** | `P5-T26-ime-dpi.md` |
 | W01 ZIP 离线包 staging/安装 + 解压安全（U+W） | **8/8** | `P5-T26-W01-zip.md` |
+| W02 表单交接（Core U 6/6 + 产品 title/tags 交接 W 8/8） | **W 8/8 PASS（title/tags 切片）** | `P5-T26-W02-formhandoff.md`、`P5-T26-W02-form.md` |
+| W04 外部开发者路径（脚手架→签名→安装→启用，不修改宿主源码） | **W 7/7 + 脚手架自检 5/5** | `P5-T26-W04-sdk.md`、`W04-scaffold-selftest.json` |
+| W04 SDK 发布形态（`docs/ui-workshop/sdk/` dist guest-sdk + autoConnect 握手/snapshot） | **W 7/7 + SDK 自检 4/4** | `P5-T26-W04-sdk-dist.md` |
 | W05 产品 guest 协议线（Broker/Dispatcher↔SDK 握手 + snapshot） | **7/7** | `P5-T26-W05-protocol.md` |
 | W06 guest 执行/网络边界（fetch/worker/WS/能力越权，功能级） | **8/8** | `P5-T26-W06-boundary.md` |
-| W07 guest 无限循环故障（宿主独立/心跳检测/failed+safeMode/停用） | **8/8（部分类别）** | `P5-T26-W07-fault.md` |
+| W07 guest 无限循环故障（宿主独立/心跳检测/failed+safeMode/停用） | **8/8（无限循环类别，部分）** | `P5-T26-W07-fault.md` |
+| W07 guest 内存/CPU 压力故障（独立 renderer；内存 11/11 + CPU 10/10） | **W 21/21（扩展类别，部分）** | `P5-T26-W07-fault-mem.md` |
 | W09 性能（工坊口径：无复制/无逐字符广播/无泄漏） | **6/6 PASS（W）** | `P5-T26-W09-workshop.md` |
-| W02 表单交接（Core U 6/6 + 产品 title/tags 交接 W 8/8） | **W 8/8 PASS（title/tags 切片）** | `P5-T26-W02-formhandoff.md`、`P5-T26-W02-form.md` |
-| W04 外部开发者路径（脚手架→签名→安装→启用） | **W 7/7 + 自检 5/5 PASS** | `P5-T26-W04-sdk.md` |
-| 产品大文档首次打开性能（pre-existing 限制，非工坊回归） | 记录 | `P5-T26-W09-perf.md`、`-diag`、`-plain` |
+| 产品大文档首次打开性能（pre-existing 限制，非工坊回归） | 记录（FAIL，已知限制） | `P5-T26-W09-perf.md`、`-diag`、`-plain` |
+| T27/W08 I 门禁就绪检查（dry-run，只读；**非 I 通过**） | **NOT_READY 6/8**（产物齐备；阻塞=未授权 `KE_T27_AUTHORIZED` + 未声明 `KE_T27_ISOLATED_ENV`） | `P5-T26-W08-gate-prep.md`、`T27-gate-readiness.json` |
 
-> 说明：A1–A8 全部已通过真实产品壳 W；T26 认证仍需补真实 IME/多 DPI、安装包升级/回滚演练（T27）。
+> 说明：A1–A8 全部已有真实产品壳 W 证据（≠ T26 最终认证完成）；T26 认证仍需补人工真实 IME/
+> 多 DPI、安装包升级/回滚演练（T27 I 门禁），并完成 W02/W05/W06/W07 剩余类别。
 
 ## 2. 本轮发现并修复的真实缺陷（W 价值）
 
 1. `PrintRenderState` 未 `.manage()` → 打印命令 State 注入失败（T16 单元/构建不可见）；
 2. `workshop_pack_activate` 非幂等 → 重复激活破坏 previous/rollback 目标（已修复 + 单测）；
 3. 隔离构建 `frontendDist` 绝对路径导致 file:// origin → IPC 失败（需相对路径嵌入资源）；
-4. 测试构建与主构建共享 target 互相覆盖 exe（单实例静默接管）→ 固定测试 exe 目录。
+4. 测试构建与主构建共享 target 互相覆盖 exe（单实例静默接管）→ 固定测试 exe 目录；
+5. SDK 发布形态初版握手消息误用 `handshake.request`（宿主 HostDispatcher 契约是
+   `type:'handshake'`）→ `E_TIMEOUT`；修正后产品 W 7/7（`P5-T26-W04-sdk-dist.md`）。
 
 ## 3. 未完成项（不得省略）
 
-- **A5/A7**：已完成（`P5-T26-A7-A5-guest.md` W 11/11）；首跑失败记录保留于
-  `P5-T26-A7-A5-guest-attempt.md`（CSP 发现 → 自定义协议修复）；
-- **A7**：产品侧包隔离宿主（真实入口资源 + 崩溃检测 + 停用/恢复持久化）—— 原型已 W 8/8，产品壳未接；
-- **A8**：`VITE_KE_CORE_SAVE=1` 产品 UI 保存 **已完成 W 9/9**（autosave→`/api/context/write`、frontmatter
-  保留；排查中修复 base URL/sidecar 版本/上下文写入 merge 三个真实缺陷），见 `P5-T26-A8-save.md`；
-- **人工真实系统 IME/多 DPI**（CDP 路径已过 W 7/7，但不能替代人工输入法实测）；
-- **安装包升级/回滚演练**（发布候选阶段 T27）；
-- 正式发布密钥签发/分发流程（ADR-003 实施清单）。
+- **人工真实系统 IME / 多 DPI**：CDP 路径已过 W 7/7（`P5-T26-ime-dpi.md`），但不能替代人工输入法/
+  多显示器实测；
+- **安装包覆盖升级/回滚 I 门禁（T27/W08）**：计划与产物已就绪（`reports/T27-installer-upgrade-plan.md`、
+  `P5-T26-W08-gate-prep.md`），执行需主理人授权 + 专用隔离环境；当前 **NOT_RUN**，
+  就绪检查 NOT_READY（6/8）；
+- **W01 I 门禁**（真实安装器 zip 离线包路径）未执行；更深 zip bomb/嵌套压缩未覆盖；
+- **W02 剩余**：公式/重命名草稿、迟到命令、候选启动失败、提交后编辑器 UI 同步、IME 组字交接；
+- **W04 剩余**：SDK npm/tgz 正式发布流程与版本策略、文档站/示例集/调试工具、发布密钥分发规范、
+  外部开发者第二套 UI 全任务覆盖；
+- **W05 剩余**：subscribe/断连重放/慢包/超时 queryResult/取消冲突语义；
+- **W06 剩余**：导航/下载/伪造消息系统化、loopback 资源白名单、Tauri 升级回归；
+- **W07 剩余**：boot crash、桥接超时、连续启动失败、原生 Rust 恢复、I 门禁；内存场景的 renderer
+  崩溃为 CDP `Page.crash` 注入（非自然 OOM），2GB 压力上限受同机安全约束（见
+  `P5-T26-W07-fault-mem.md` / `milestone-assessment.md` W07 行）；
+- **W09 全量**：工坊硬指标已 PASS；大文档首开慢为产品既有 `@tiptap/markdown` 解析限制
+  （非工坊回归），需产品性能优化后复跑；
+- **F01–F16 全功能基线逐项 guest 覆盖**未逐项验证；
+- **正式发布密钥签发/分发流程**（ADR-003 实施清单）未执行。
 
 ## 3b. 隔离残余风险（必须随认证结论一起说明）
 
-- guest 独立 origin 已成立，但 guest 仍能看到 `__TAURI_INTERNALS__` 对象；实测 invoke 无响应
-  （remote IPC 未生效，timeout）→ 当前不可利用，但属实现细节；需 SDK 自检 + Tauri remote-domain
-  审计 + 升级回归（详见 `P5-T26-A7-isolation.md` / ADR-004）。
+- guest 独立 origin 已成立（`http://workshop.localhost`），但 guest 仍能看到 `__TAURI_INTERNALS__`
+  对象（跨域 iframe 继承 Tauri 注入，不可配置不可移除）；实测 invoke 无响应（timeout，remote IPC
+  未生效）→ 当前不可利用，但属实现细节；已实现 guest 自检上报 + 宿主残余风险提示。需 Tauri
+  remote-domain IPC 审计与升级回归（详见 `P5-T26-A7-isolation.md` / ADR-004）；
+- 版本基准：以上结论对应当前 Tauri/WebView2 155；Tauri 升级后必须复跑
+  `run_t26_guest_isolation_probe.py` 与 W 探针门禁。
 
 ## 4. 认证判定
 
-- 当前**接近但未满足** T26 最终完成定义（A1–A8 全绿 ✅ 已达成；仍缺真实 IME/多 DPI、安装包升级演练）；按完成度词汇若需对外表述，项目级仍为
-  **`P0_READY`**（工坊尚未在产品 UX 完整落地），不得使用 `EXPERIMENTAL_TRUSTED_PACKS` /
-  `LOCAL_WORKSHOP_RELEASE_CANDIDATE` 等更高状态。
-- 建议下一阶段顺序：A5/A7（产品包宿主 + 信任 UI）→ A8 → 真实 IME/多 DPI → 安装包升级/回滚 →
-  重新评估认证与状态词汇。
+- **项目里程碑 = `EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节，见 `reports/milestone-assessment.md`）：
+  只允许受信实验包；隔离/离线/恢复仍有未通过项与残余风险。
+- **T26 任务级最终认证 = 未达成**：完成定义（A1–A8 全绿 + W 门禁 + 人工 IME/多 DPI + T27 安装升级/
+  回滚演练）中，A1–A8 与原型 W 门禁已达成，但人工 IME/多 DPI、T27 I 门禁、W partial 类别未完成。
+- **禁止表述**：`IMPLEMENTED_WINDOWS_PENDING` 完成态、`LOCAL_WORKSHOP_RELEASE_CANDIDATE`；
+  也不得把「A1–A8 W 通过」表述为「T26 已认证」。
+- 建议下一阶段顺序：T27 I 门禁（获授权后）→ 人工 IME/多 DPI → W02/W05/W06/W07 剩余类别 →
+  W09 产品性能优化 → 正式密钥流程 → 重新评估 T26 认证与项目里程碑。
 
 ## 5. 隔离缺陷与操作事故（2026-10-19，必须披露）
 

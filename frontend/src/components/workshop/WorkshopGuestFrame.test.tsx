@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PACK_API_VERSION, type PackManifest } from '../../core/packs/manifest'
 import type { GuestHostBackend } from '../../core/packs/guestHost'
+import { HostDispatcher } from '../../core/protocol/channel'
 import { WorkshopGuestFrame } from './WorkshopGuestFrame'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -74,6 +75,9 @@ afterEach(async () => {
     root = null
   }
   container.remove()
+  delete document.documentElement.dataset.theme
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('A7 WorkshopGuestFrame', () => {
@@ -91,5 +95,40 @@ describe('A7 WorkshopGuestFrame', () => {
     expect(text()).toContain('guest：active')
     expect(text()).toContain('ui.shell, context.read')
     expect(container.querySelector('iframe')).not.toBeNull()
+  })
+})
+
+describe('T26 G4 宿主事件 → dispatcher.emit（guest 协议事件源）', () => {
+  it('保存成功 window 事件 → emit document-saved（载荷正确）', async () => {
+    const emitSpy = vi.spyOn(HostDispatcher.prototype, 'emit')
+    await mount('trusted')
+    await click(buttonByText('启用 guest'))
+    expect(text()).toContain('guest：active')
+    window.dispatchEvent(
+      new CustomEvent('ke:workshop-document-saved', { detail: { relPath: 'Articles/a.md', revision: 7 } }),
+    )
+    await flush(5)
+    expect(emitSpy).toHaveBeenCalledWith({ type: 'document-saved', relPath: 'Articles/a.md', revision: 7 })
+  })
+
+  it('主题变化（data-theme）→ emit theme-changed', async () => {
+    const emitSpy = vi.spyOn(HostDispatcher.prototype, 'emit')
+    await mount('trusted')
+    await click(buttonByText('启用 guest'))
+    document.documentElement.dataset.theme = 'dark'
+    await flush(5)
+    expect(emitSpy).toHaveBeenCalledWith({ type: 'theme-changed', theme: 'dark' })
+  })
+
+  it('文档切换 window 事件 → emit context-changed（上下文解析失败时回退默认上下文，不丢通知）', async () => {
+    const emitSpy = vi.spyOn(HostDispatcher.prototype, 'emit')
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('offline')
+    }))
+    await mount('trusted')
+    await click(buttonByText('启用 guest'))
+    window.dispatchEvent(new CustomEvent('ke:workshop-context-changed', { detail: { relPath: 'Articles/b.md' } }))
+    await flush(8)
+    expect(emitSpy).toHaveBeenCalledWith({ type: 'context-changed', contextId: 'ke-default', epoch: 1 })
   })
 })

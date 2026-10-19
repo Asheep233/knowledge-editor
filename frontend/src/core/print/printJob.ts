@@ -20,12 +20,14 @@ export interface PrintSnapshot {
 
 export interface RenderedPrint {
   html: string
-  pages: number
+  /** 页数；渲染器无法得知时返回 null（产品 Rust PrintToPdf 不回传页数），不得伪造 */
+  pages: number | null
 }
 
 export interface PrintedPdf {
   pdfPath: string
-  pages: number
+  /** 页数；传输层无法得知时为 null（T26 G3：产品链路返回 null） */
+  pages: number | null
   bytes: number
 }
 
@@ -167,7 +169,7 @@ export class PrintJobManager {
       this.setState(job, 'printing')
       const printed = await this.options.transport.print(rendered, job.targetPath, job.controller.signal)
       if (job.controller.signal.aborted) return
-      job.pages = printed.pages
+      job.pages = printed.pages ?? undefined
       job.pdfPath = printed.pdfPath
       this.settle(job, 'done')
     } catch (e) {

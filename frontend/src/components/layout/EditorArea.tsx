@@ -50,6 +50,9 @@ import {
 } from '../../state/viewMode'
 import SourceModeView from '../editor/SourceModeView'
 import ExportPdfDialog, { exportPdfWithOverrides, type PdfExportOptions } from '../editor/ExportPdfDialog'
+// T26 G3/G4：打印渲染器注入（MD→HTML 同源 schema）+ 宿主事件源（保存/切档）
+import { setPrintEditorProvider } from '../../core/print/printEditorBridge'
+import { notifyWorkshopContextChanged, notifyWorkshopDocumentSaved } from '../workshop/workshopHostEvents'
 // task-74：微分斜体 d → 正体 \mathrm{d}（差异预览 + 勾选 → 另存同目录新文件；原件绝不改动）
 import UprightDDialog from '../editor/UprightDDialog'
 import { type MathDocNode } from '../../editor/upright-d'
@@ -452,8 +455,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           const articlePath = stillCurrent() ? articleRef.current?.path : undefined
           const usedCore = coreSaveEnabled() && !!articlePath
           let saved: Awaited<ReturnType<typeof saveArticle>>
+          // T26 G4：Core 保存返回真实 revision → document-saved 事件可携带；旧链不返回 revision（null）
+          let savedRevision: number | null = null
           if (usedCore && articlePath) {
-            await saveViaCore(articlePath, written, signal)
+            const coreResult = await saveViaCore(articlePath, written, signal)
+            if (Number.isInteger(coreResult?.revision) && coreResult.revision >= 0) savedRevision = coreResult.revision
             saved = { content: written } as Awaited<ReturnType<typeof saveArticle>>
           } else {
             saved = await saveArticle(docId, written, signal)
@@ -468,6 +474,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           // Core 路径返回的 saved 只有 content（ArticleMeta 由 App 现有状态维护）→ 不覆盖 article meta
           // Core 路径返回的 saved 只有 content（ArticleMeta 由 App 现有状态维护）→ 不覆盖 article meta
           onSaved?.(docId, usedCore ? undefined : saved)
+          // T26 G4：保存成功（真实落盘）→ 通知工坊 guest（document-saved；产品约定 docId 即 relPath）
+          notifyWorkshopDocumentSaved({ relPath: docId, revision: savedRevision })
           if (latest) {
             void clearRecoveryPoint(docId)
             // S-1：该次保存覆盖了最新编辑、且该文档仍是当前文档 → 清除「未保存」标记，
@@ -722,6 +730,13 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     editorRef.current = editor
   }, [editor])
 
+  // T26 G3：把产品编辑器注册为打印渲染器（仅作为 MD→HTML 的解析/序列化器；
+  // print.snapshot 只消费后端可信快照正文，不读取编辑器当前文档内容）。
+  useEffect(() => {
+    setPrintEditorProvider(() => editorRef.current)
+    return () => setPrintEditorProvider(null)
+  }, [])
+
   // v1.1.7 M2：公式节点请求编辑 → 打开根级模态
   useEffect(() => {
     const onReq = (ev: Event) => {
@@ -765,6 +780,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     docLoadGenRef.current += 1
     const newId = article?.id ?? null
     const prevId = prevArticleIdRef.current
+    // T26 G4：打开/切换文档 → 通知工坊 guest（context-changed；真实 contextId/epoch 由宿主桥解析）
+    if (newId !== prevId) notifyWorkshopContextChanged({ relPath: newId })
     if (prevId && prevId !== newId) {
       // task-61：离开文档前清掉遗留的空公式块（此处编辑器仍载着 prevId），
       // 随后触发的 flush 保存就不会把 `$$\n\n$$` 写进旧文档；同时关闭弹窗。

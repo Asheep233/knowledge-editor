@@ -148,7 +148,12 @@ export interface ProtocolMethods {
       fileDurable?: boolean
     }
   }
-  'print.snapshot': { params: { relPath: string }; result: { pdfToken: string; pages: number } }
+  /**
+   * T26 G3：`pdfToken` 为宿主真实打印产物（隔离目录 PDF）的不透明 token；
+   * `pages` 在宿主无法得知页数时为 **null**（产品 Rust PrintToPdf 不回传页数，禁止伪造 1）。
+   * 这是对 guest 的显式语义扩展：旧实现恒返回 `{pdfToken: relPath, pages: 1}` 假结果。
+   */
+  'print.snapshot': { params: { relPath: string }; result: { pdfToken: string; pages: number | null } }
   /** 声明式命令调用：仅允许 manifest.commands 中声明的 name（T17/T18） */
   'command.invoke': { params: { name: string; args?: Record<string, unknown> }; result: { ok: boolean; value?: unknown } }
 }

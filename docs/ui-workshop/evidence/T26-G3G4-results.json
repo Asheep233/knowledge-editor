@@ -1,0 +1,557 @@
+{
+  "generated_at": "2026-10-19T10:37:09+0800",
+  "scenario": "T26 G3/G4 产品 W：print.snapshot 真实打印管线 + 宿主事件发射（document-saved/context-changed/theme-changed）",
+  "build": {
+    "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+    "exe_sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
+    "exe_mtime": "2026-10-19T10:33:12"
+  },
+  "pack": {
+    "id": "com.probe.t26g3g4",
+    "capabilities": [
+      "ui.shell",
+      "context.read",
+      "print.request"
+    ],
+    "signature": "ed25519 k1 (signed)"
+  },
+  "checks": [
+    {
+      "name": "W-T26-G3G4-1 隔离产品实例启动 + CDP 主窗口就绪（工坊入口已渲染，WebView2 IPC 可用）",
+      "pass": true,
+      "detail": {
+        "port": 9430,
+        "target": "http://tauri.localhost/"
+      }
+    },
+    {
+      "name": "W-T26-G3G4-2 隐藏打印 renderer 创建成功（KE_WS_PRINT_RENDER=1 状态文件 ok）",
+      "pass": true,
+      "detail": {
+        "statusFile": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\print-render-status.json",
+        "status": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "W-T26-G3G4-3 安装声明 print.request 的签名包（Rust ALLOWED_CAPS 放行）",
+      "pass": true,
+      "detail": {
+        "ok": true,
+        "value": {
+          "active": "1.0.0",
+          "previous": null,
+          "updatedAt": "SystemTime { intervals: 134368510206304050 }"
+        }
+      }
+    },
+    {
+      "name": "W-T26-G3G4-4 会话 active 且运行期能力含 print.request",
+      "pass": true,
+      "detail": {
+        "state": "active",
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "print.request"
+        ],
+        "guestStatusLog": [
+          "starting",
+          "active",
+          "active"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-G3G4-5 握手能力协商含 print.request + context.read（G3/G4 前提）",
+      "pass": true,
+      "detail": {
+        "acceptedFeatures": [
+          "ui.shell",
+          "context.read",
+          "print.request"
+        ]
+      }
+    },
+    {
+      "name": "W-T26-G3G4-6 print.snapshot 返回真实不透明 pdfToken（非 relPath 桩）且 pages=null（不伪造）",
+      "pass": true,
+      "detail": {
+        "print1": {
+          "pdfToken": "pdf-mven8lrl-29z7qzp0",
+          "pages": null,
+          "tokenType": "string"
+        },
+        "print2": {
+          "pdfToken": "pdf-mven8m1a-jk2k45ov",
+          "pages": null,
+          "tokenType": "string"
+        },
+        "phase": "guest-print-done",
+        "error": null
+      }
+    },
+    {
+      "name": "W-T26-G3G4-7 pdfToken 对应真实 PDF：文件存在、%PDF 头、大小>1000、位于隔离目录",
+      "pass": true,
+      "detail": {
+        "pdfPath": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8li2n3q.pdf",
+        "size": 166439,
+        "head": "%PDF",
+        "underIsolatedBase": true,
+        "token": "pdf-mven8lrl-29z7qzp0",
+        "registryEntry": {
+          "pdfToken": "pdf-mven8lrl-29z7qzp0",
+          "pdfPath": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8li2n3q.pdf",
+          "relPath": "Articles/print-test.md",
+          "revision": 0,
+          "pages": null,
+          "bytes": 0,
+          "createdAt": 1792377421617
+        }
+      }
+    },
+    {
+      "name": "W-T26-G3G4-8 连续两次打印 → 不同 token/不同 PDF 文件（不覆盖语义）",
+      "pass": true,
+      "detail": {
+        "token1": "pdf-mven8lrl-29z7qzp0",
+        "token2": "pdf-mven8m1a-jk2k45ov",
+        "pdf2": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8lrxczk.pdf",
+        "size2": 166439
+      }
+    },
+    {
+      "name": "W-T26-G3G4-9 非法路径 print.snapshot → 如实协议错误（不返回假 token）",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "code": "E_BAD_PAYLOAD",
+        "message": "print.snapshot relPath 非法: ../escape.md"
+      }
+    },
+    {
+      "name": "W-T26-G3G4-10 不存在的文档 print.snapshot → 如实错误（不返回假 token）",
+      "pass": true,
+      "detail": {
+        "ok": false,
+        "code": "E_INTERNAL",
+        "message": "E_PRINT_SNAPSHOT: 无法读取文档正文（Articles/does-not-exist.md）"
+      }
+    },
+    {
+      "name": "W-T26-G3G4-11 产品真实保存落盘（打开文档 + 编辑标记 → 磁盘含标记，事件由真实保存触发）",
+      "pass": true,
+      "detail": {
+        "opened": true,
+        "focused": true,
+        "typed": true,
+        "saved": true,
+        "savedBy": "autosave",
+        "file": "C:\\ke-tmp\\uiws-t26-g3g4\\workspace\\Articles\\print-test.md"
+      }
+    },
+    {
+      "name": "W-T26-G3G4-12 document-saved 事件到达 guest 且载荷正确（relPath/revision）",
+      "pass": true,
+      "detail": {
+        "documentSaved": {
+          "type": "document-saved",
+          "relPath": "Articles/print-test.md",
+          "revision": 1
+        },
+        "hostEventObserved": true,
+        "waitError": null
+      }
+    },
+    {
+      "name": "W-T26-G3G4-13 事件 revision 与后端真实 context.snapshot revision 一致（可信，非伪造）",
+      "pass": true,
+      "detail": {
+        "revisionCheck": {
+          "eventRevision": 1,
+          "liveRevision": 1,
+          "beforeSaveRevision": 0,
+          "match": true
+        },
+        "beforeSaveRevision": 0
+      }
+    },
+    {
+      "name": "W-T26-G3G4-14 context-changed 事件到达 guest（真实 contextId/epoch；打开/切换文档触发）",
+      "pass": true,
+      "detail": {
+        "contextChanged": {
+          "type": "context-changed",
+          "contextId": "ke-default",
+          "epoch": 1
+        },
+        "openedSecondDoc": true,
+        "waitError": null
+      }
+    },
+    {
+      "name": "W-T26-G3G4-15 theme-changed 事件到达 guest（theme=dark；data-theme 变化驱动）",
+      "pass": true,
+      "detail": {
+        "themeChanged": {
+          "type": "theme-changed",
+          "theme": "dark"
+        },
+        "waitError": null
+      }
+    },
+    {
+      "name": "W-T26-G3G4-16 宿主侧三类 window 事件全部真实触发（保存/切档/主题链路完整性）",
+      "pass": true,
+      "detail": {
+        "hostEventNames": [
+          "ke:workshop-context-changed",
+          "ke:workshop-document-saved",
+          "ke:workshop-context-changed",
+          "ke:workshop-theme-changed"
+        ],
+        "hostEvents": [
+          {
+            "name": "ke:workshop-context-changed",
+            "detail": {
+              "relPath": "Articles/print-test.md"
+            },
+            "at": 1792377422102
+          },
+          {
+            "name": "ke:workshop-document-saved",
+            "detail": {
+              "relPath": "Articles/print-test.md",
+              "revision": 1
+            },
+            "at": 1792377425899
+          },
+          {
+            "name": "ke:workshop-context-changed",
+            "detail": {
+              "relPath": "Articles/second.md"
+            },
+            "at": 1792377426224
+          },
+          {
+            "name": "ke:workshop-theme-changed",
+            "detail": {
+              "theme": "dark"
+            },
+            "at": 1792377427307
+          }
+        ]
+      }
+    },
+    {
+      "name": "W-T26-G3G4-17 主进程存活（打印/事件链路无崩溃）",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "W-T26-G3G4-18 用户实例未运行 → N/A（隔离测试未触碰用户数据）",
+      "pass": true,
+      "detail": {
+        "user_pid": "N/A (not running)"
+      }
+    }
+  ],
+  "pass_count": 18,
+  "total": 18,
+  "results_file": "T26-G3G4-results.json",
+  "rounds": {
+    "round1": {
+      "exe_sha256_prefix": "d0a1b8bf202e250f",
+      "exe_mtime": "2026-10-19T10:24",
+      "pass": 14,
+      "total": 18,
+      "fails": [
+        "PDF 输出目录（appDataDir known-folder 不读 APPDATA env）",
+        "会话 suspended（打印阻塞主线程 > 心跳超时 1200ms 误判）",
+        "宿主侧缺 theme window 事件（未走统一事件链）",
+        "探针状态文件路径（known-folder）+ CDP 目标误选 print-render 页"
+      ]
+    },
+    "round2": {
+      "exe_sha256_prefix": "764f191b71d82e35",
+      "exe_mtime": "2026-10-19T10:33",
+      "pass": "见 pass_count",
+      "total": 18
+    }
+  },
+  "observed": {
+    "build": {
+      "exe": "C:\\ke-tmp\\uiws-t26\\bin\\knowledgeeditor.exe",
+      "sha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
+      "mtime": "2026-10-19T10:33:12"
+    },
+    "launch_env": {
+      "KE_WS_PRINT_RENDER": "1",
+      "APPDATA": "isolated",
+      "KE_WORKSPACE": "isolated"
+    },
+    "isolated_pdf_dir": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out",
+    "renderer_status": {
+      "ok": true
+    },
+    "renderer_status_file": "C:\\Users\\y8882\\AppData\\Roaming\\com.astranota.uiws.e2e\\print-render-status.json",
+    "session": {
+      "state": "active",
+      "capabilities": [
+        "ui.shell",
+        "context.read",
+        "print.request"
+      ]
+    },
+    "accepted_features": [
+      "ui.shell",
+      "context.read",
+      "print.request"
+    ],
+    "snapshot_before_save": {
+      "revision": 0,
+      "relPath": "Articles/print-test.md",
+      "hasContent": true
+    },
+    "print1": {
+      "token": "pdf-mven8lrl-29z7qzp0",
+      "pages": null,
+      "registryEntry": {
+        "pdfToken": "pdf-mven8lrl-29z7qzp0",
+        "pdfPath": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8li2n3q.pdf",
+        "relPath": "Articles/print-test.md",
+        "revision": 0,
+        "pages": null,
+        "bytes": 0,
+        "createdAt": 1792377421617
+      },
+      "pdfPath": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8li2n3q.pdf",
+      "pdfSize": 166439,
+      "pdfHead": "%PDF"
+    },
+    "print2": {
+      "token": "pdf-mven8m1a-jk2k45ov",
+      "pages": null,
+      "registryEntry": {
+        "pdfToken": "pdf-mven8m1a-jk2k45ov",
+        "pdfPath": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8lrxczk.pdf",
+        "relPath": "Articles/print-test.md",
+        "revision": 0,
+        "pages": null,
+        "bytes": 0,
+        "createdAt": 1792377421966
+      },
+      "pdfPath": "C:\\ke-tmp\\uiws-t26-g3g4\\pdf-out\\print-print-test-r0-mven8lrxczk.pdf",
+      "pdfSize": 166439
+    },
+    "bad_path": {
+      "ok": false,
+      "code": "E_BAD_PAYLOAD",
+      "message": "print.snapshot relPath 非法: ../escape.md"
+    },
+    "missing_doc": {
+      "ok": false,
+      "code": "E_INTERNAL",
+      "message": "E_PRINT_SNAPSHOT: 无法读取文档正文（Articles/does-not-exist.md）"
+    },
+    "save": {
+      "saved": true,
+      "savedBy": "autosave",
+      "markerInDisk": true,
+      "save_chain": "core(/api/context/write)"
+    },
+    "document_saved": {
+      "type": "document-saved",
+      "relPath": "Articles/print-test.md",
+      "revision": 1
+    },
+    "revision_check": {
+      "eventRevision": 1,
+      "liveRevision": 1,
+      "beforeSaveRevision": 0,
+      "match": true
+    },
+    "before_save_revision": 0,
+    "context_changed": {
+      "type": "context-changed",
+      "contextId": "ke-default",
+      "epoch": 1
+    },
+    "theme_changed": {
+      "type": "theme-changed",
+      "theme": "dark"
+    },
+    "guest_all_events": [
+      {
+        "type": "context-changed",
+        "contextId": "ke-default",
+        "epoch": 1
+      },
+      {
+        "type": "document-saved",
+        "relPath": "Articles/print-test.md",
+        "revision": 1
+      },
+      {
+        "type": "context-changed",
+        "contextId": "ke-default",
+        "epoch": 3
+      },
+      {
+        "type": "theme-changed",
+        "theme": "dark"
+      }
+    ],
+    "host_events": [
+      {
+        "name": "ke:workshop-context-changed",
+        "detail": {
+          "relPath": "Articles/print-test.md"
+        },
+        "at": 1792377422102
+      },
+      {
+        "name": "ke:workshop-document-saved",
+        "detail": {
+          "relPath": "Articles/print-test.md",
+          "revision": 1
+        },
+        "at": 1792377425899
+      },
+      {
+        "name": "ke:workshop-context-changed",
+        "detail": {
+          "relPath": "Articles/second.md"
+        },
+        "at": 1792377426224
+      },
+      {
+        "name": "ke:workshop-theme-changed",
+        "detail": {
+          "theme": "dark"
+        },
+        "at": 1792377427307
+      }
+    ],
+    "diag": {
+      "start": {
+        "blocked": false,
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "print.request"
+        ],
+        "hasEntry": true,
+        "hasSession": true
+      },
+      "log": [
+        "starting",
+        "active",
+        "active"
+      ],
+      "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nprint-test.md\nsecond.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-g3g4\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26g3g4 设为 trusted\n已安装包\nT26 G3G4 Print/Events Pack com.probe.t26g3g4\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell, context.read, print.request\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+    },
+    "guest_status_log": [
+      "starting",
+      "active",
+      "active"
+    ],
+    "app_log_tail": [
+      "[sidecar] INFO:     127.0.0.1:58583 - \"GET /api/articles/Articles/second.md HTTP/1.1\" 200 OK",
+      "[sidecar] INFO:     127.0.0.1:57384 - \"GET /api/fs/events?since=0 HTTP/1.1\" 200 OK",
+      "[sidecar] INFO:     127.0.0.1:58583 - \"POST /api/workspace/recent-documents HTTP/1.1\" 201 Created",
+      "[sidecar] INFO:     127.0.0.1:57384 - \"OPTIONS /api/fs/events?since=1 HTTP/1.1\" 200 OK",
+      "[sidecar] INFO:     127.0.0.1:57384 - \"GET /api/fs/events?since=1 HTTP/1.1\" 200 OK",
+      "[sidecar] INFO:     127.0.0.1:57384 - \"GET /api/fs/events?since=1 HTTP/1.1\" 200 OK"
+    ]
+  },
+  "raw": {
+    "guest_results": {
+      "phase": "guest-print-done",
+      "acceptedFeatures": [
+        "ui.shell",
+        "context.read",
+        "print.request"
+      ],
+      "contextId": "ke-default",
+      "epoch": 1,
+      "snapshotBeforeSave": {
+        "revision": 0,
+        "relPath": "Articles/print-test.md",
+        "hasContent": true
+      },
+      "print1": {
+        "pdfToken": "pdf-mven8lrl-29z7qzp0",
+        "pages": null,
+        "tokenType": "string"
+      },
+      "print2": {
+        "pdfToken": "pdf-mven8m1a-jk2k45ov",
+        "pages": null,
+        "tokenType": "string"
+      },
+      "sameToken": false,
+      "badPath": {
+        "ok": false,
+        "code": "E_BAD_PAYLOAD",
+        "message": "print.snapshot relPath 非法: ../escape.md"
+      },
+      "missingDoc": {
+        "ok": false,
+        "code": "E_INTERNAL",
+        "message": "E_PRINT_SNAPSHOT: 无法读取文档正文（Articles/does-not-exist.md）"
+      }
+    },
+    "host_events": [
+      {
+        "name": "ke:workshop-context-changed",
+        "detail": {
+          "relPath": "Articles/print-test.md"
+        },
+        "at": 1792377422102
+      },
+      {
+        "name": "ke:workshop-document-saved",
+        "detail": {
+          "relPath": "Articles/print-test.md",
+          "revision": 1
+        },
+        "at": 1792377425899
+      },
+      {
+        "name": "ke:workshop-context-changed",
+        "detail": {
+          "relPath": "Articles/second.md"
+        },
+        "at": 1792377426224
+      },
+      {
+        "name": "ke:workshop-theme-changed",
+        "detail": {
+          "theme": "dark"
+        },
+        "at": 1792377427307
+      }
+    ],
+    "diag": {
+      "start": {
+        "blocked": false,
+        "capabilities": [
+          "ui.shell",
+          "context.read",
+          "print.request"
+        ],
+        "hasEntry": true,
+        "hasSession": true
+      },
+      "log": [
+        "starting",
+        "active",
+        "active"
+      ],
+      "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nprint-test.md\nsecond.md\n附件 0\n设置\n\n从左侧选择一篇文档，或新建一篇开始创作\n\nMarkdown 为唯一事实源，所有内容本地存储\n\n+ 新建文档\n文档属性\n未打开文档\n大纲\n0\n\n暂无标题（使用 # / ## / ###）\n\nMarkdown 为唯一事实源\n索引可整体重建\n\n未打开文档\n本地存储 · 自动保存已开启\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-g3g4\\workspace\n创意工坊\n创意工坊\n关闭\n创意工坊\n\n安装前会展示包身份与能力影响，需显式确认\n\n检查/修复全部包\n选择包并预览…\n选择 ZIP 离线包…\n已将 com.probe.t26g3g4 设为 trusted\n已安装包\nT26 G3G4 Print/Events Pack com.probe.t26g3g4\n版本 1.0.0 · 已激活\n信任：trusted\n签名：valid\n回滚\n修复/恢复\n授予信任\n撤销信任\nguest：active\n协议线已连接\n能力：ui.shell, context.read, print.request\n启用 guest\n停用 guest\nE_ISOLATION_RESIDUAL: guest 可见 __TAURI_INTERNALS__（remote IPC 已拒绝，残余风险见 ADR-004）\n卸载"
+    }
+  }
+}

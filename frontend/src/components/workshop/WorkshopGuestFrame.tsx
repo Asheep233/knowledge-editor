@@ -5,23 +5,22 @@
  *   （allow-scripts，不透明 origin）注入 entry → postMessage JSON 线接真实 Broker/HostDispatcher；
  * - 心跳：guest postMessage 心跳 → host.heartbeat()；心跳超时由宿主自动 reportCrash；
  * - 隔离守卫：iframe 内容不可被父窗口访问（沙箱不透明 origin）；若可访问且暴露 Tauri globals → 禁用；
- * - safeMode 时显示横幅并禁止再次启用危险操作；状态落盘 `workshop-session-status.json`。
+ * - safeMode 时显示横幅并禁止再次启用危险操作；状态落盘 `workshop-session-status.json`；
+ * - T26 G3：产品 Broker 后端接真实打印管线（`ProductBrokerBackend`，见 `productBrokerBackend.ts`）；
+ * - T26 G4：监听产品事件（保存/文档切换 → window 事件；主题 → data-theme 变化）并 `dispatcher.emit`
+ *   为协议 `HostEvent` 广播给 guest（见 `hostEventBridge.ts`）。
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { Broker, connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
+import { Broker } from '../../core/broker/broker'
 import { brokeredHandlers } from '../../core/broker/binding'
 import { HostDispatcher } from '../../core/protocol/channel'
-import type { ProtocolMethods } from '../../core/protocol/types'
-import { CoreSaveBridge } from '../../core/session/coreSaveBridge'
-import { createGuestSessionHost, type GuestSessionHost, type GuestHostBackend } from '../../core/packs/guestHost'
-import {
-  createArticleMetaCommandHandler,
-  fetchContextSnapshotWithContent,
-  isolationGuard,
-  writeContextDocument,
-} from '../../core/packs/productHostAdapter'
+import { isolationGuard } from '../../core/packs/productHostAdapter'
 import type { TrustTier } from '../../core/packs/trustPolicy'
+import { createGuestSessionHost, type GuestSessionHost, type GuestHostBackend } from '../../core/packs/guestHost'
+import { createHostEventBridge, observeProductTheme } from './hostEventBridge'
+import { contextInfo, DEFAULT_CONTEXT_ID, ProductBrokerBackend, resolveGuestRevision } from './productBrokerBackend'
+import { notifyWorkshopThemeChanged } from './workshopHostEvents'
 
 interface GuestStartResultSession { connection: NonNullable<import('../../core/packs/packageHost').PackageSession['connection']> }
 
@@ -32,60 +31,12 @@ export interface WorkshopGuestFrameProps {
   backend: GuestHostBackend
 }
 
-const DEFAULT_CONTEXT_ID = 'ke-default'
-let sharedBridge: CoreSaveBridge | null = null
-function bridge(): CoreSaveBridge {
-  if (!sharedBridge) {
-    const base = (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? ''
-    sharedBridge = new CoreSaveBridge({ baseUrl: base, contextId: DEFAULT_CONTEXT_ID })
-  }
-  return sharedBridge
-}
-
-async function contextInfo(): Promise<{ contextId: string; epoch: number }> {
-  return await bridge().ensureContext()
-}
-
-/** W05：产品 guest Broker 后端（真实后端 HTTP；G1 内容读 / G2 真实写；打印仍为 G3 遗留桩）。 */
-class ProductBrokerBackend implements BrokerBackend {
-  currentEpoch() {
-    return 1
-  }
-  async snapshot(params: ProtocolMethods['context.snapshot']['params'], conn: BrokerConnection) {
-    const ctx = await contextInfo()
-    // G1：仅具备 context.read 的连接返回正文（Broker 已按能力拒绝无权限请求；此处第二道防线）。
-    // 正文复用既有只读文档 API；读不到时退化为旧形状 {relPath,revision,diskHash}。
-    return await fetchContextSnapshotWithContent(
-      ctx,
-      params.relPath,
-      connectionHasCapability(conn, 'context.read'),
-      { baseUrl: (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '' },
-    )
-  }
-  async write(params: ProtocolMethods['context.write']['params'], _conn: BrokerConnection) {
-    // G2：真实 /api/context/write；completed/conflict/stale/failed 如实返回，不伪造 revision/fileDurable。
-    const ctx = await contextInfo()
-    return await writeContextDocument(ctx, params, {
-      baseUrl: (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '',
-    })
-  }
-  async print(params: ProtocolMethods['print.snapshot']['params']) {
-    // G3（打印真实管线）仍是遗留缺口：保持既有桩行为，不在本任务范围内冒充真实 PDF。
-    return { pdfToken: params.relPath, pages: 1 }
-  }
-  private readonly commandHandler = createArticleMetaCommandHandler({
-    baseUrl: (globalThis as { __KE_API_BASE__?: string }).__KE_API_BASE__ ?? '',
-  })
-  async invokeCommand(params: ProtocolMethods['command.invoke']['params']) {
-    // W02：白名单命令（article.setTitle/setTags）→ 宿主原子写后端 meta；其余命令拒绝
-    return await this.commandHandler.invoke(params.name, params.args)
-  }
-}
-
 export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopGuestFrameProps) {
   const hostRef = useRef<GuestSessionHost | null>(null)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const sessionRef = useRef<GuestStartResultSession | null>(null)
+  /** G4：guest 协议分发器引用（宿主事件发射点；随连接生命周期建立/清理） */
+  const dispatcherRef = useRef<HostDispatcher | null>(null)
   const [status, setStatus] = useState('idle')
   const [capabilities, setCapabilities] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -113,6 +64,10 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
     const host = createGuestSessionHost({
       backend,
       tier,
+      // T26 G3/G4 实测：真实打印（Rust PrintToPdf 在主线程 message pump 中等待完成）会短暂
+      // 阻塞主窗口事件循环，默认 1200ms 心跳超时会把「宿主在打印」误判为 guest 崩溃（suspended）。
+      // 放宽到 8s：远大于单次打印耗时，仍能捕获真正失联的 guest。
+      heartbeatTimeoutMs: 8000,
       onStatus: (s) => {
         const w = window as unknown as { __keGuestStatusLog?: string[] }
         w.__keGuestStatusLog = [...(w.__keGuestStatusLog ?? []), s.state]
@@ -177,9 +132,27 @@ export function WorkshopGuestFrame({ packId, version, tier, backend }: WorkshopG
       context: () => ({ contextId: DEFAULT_CONTEXT_ID, epoch: 1 }),
     })
     dispatcher.start()
+    // G4：保存 dispatcher 引用 —— 产品事件源（EditorArea 保存/切档、主题变化）经此发 HostEvent
+    dispatcherRef.current = dispatcher
     setDispatcherReady(true)
     ;(window as unknown as { __keDispatcherReady?: boolean }).__keDispatcherReady = true
+
+    // G4：产品 window 事件 → 协议 HostEvent（document-saved / context-changed）
+    const hostEventBridge = createHostEventBridge({
+      emit: (event) => dispatcher.emit(event),
+      // contextId/epoch 用后端真实上下文（context/open），失败时桥内回退默认上下文
+      resolveContext: async () => await contextInfo(),
+      // 旧保存链事件不带 revision 时，向后端快照读取真实 revision（不伪造；含 epoch 失效重试）
+      resolveRevision: async (relPath) => await resolveGuestRevision(relPath),
+    })
+    // G4：主题变化 —— 产品唯一状态落点为 documentElement[data-theme]（applyTheme 写入）；
+    // 观察后走统一 window 事件 → HostEventBridge → dispatcher.emit（与保存/切档同一条链路）。
+    const stopThemeObserver = observeProductTheme((theme) => notifyWorkshopThemeChanged({ theme }))
+
     return () => {
+      stopThemeObserver()
+      hostEventBridge.dispose()
+      dispatcherRef.current = null
       dispatcher.close()
       setDispatcherReady(false)
     }

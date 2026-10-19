@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T17:25:48+0800",
-  "head": "c5c82bb",
+  "generatedAt": "2026-10-19T17:26:36+0800",
+  "head": "ddfba49",
   "branch": "feat/ui-workshop",
   "checks": [
     {
@@ -34,16 +34,15 @@
       "pass": true,
       "detail": {
         "branch": "feat/ui-workshop",
-        "head": "c5c82bb",
+        "head": "ddfba49",
         "upstream": null
       }
     },
     {
-      "name": "DC-6 工作树干净",
+      "name": "DC-6 工作树干净（忽略本工具 `--write` 的自身证据文件）",
       "pass": false,
       "detail": [
-        "M docs/ui-workshop/evidence/T26-delivery-consistency.json",
-        " M docs/ui-workshop/tools/verify_delivery_consistency.py"
+        "M docs/ui-workshop/tools/verify_delivery_consistency.py"
       ]
     },
     {

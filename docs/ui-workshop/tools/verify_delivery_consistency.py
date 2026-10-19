@@ -66,8 +66,8 @@ def main() -> int:
     check("DC-5 分支本地未推送（无 upstream）", upstream == "", {"branch": branch, "head": head, "upstream": upstream or None})
 
     # 6) 工作树干净
-    status = git("status", "--porcelain")
-    check("DC-6 工作树干净", status == "", status.splitlines()[:5])
+    status_lines = [l for l in git("status", "--porcelain").splitlines() if "T26-delivery-consistency.json" not in l]
+    check("DC-6 工作树干净（忽略本工具 `--write` 的自身证据文件）", not status_lines, status_lines[:5])
 
     # 7) feature-baseline.csv 结构/统计（如实口径输出，不做通过判定）
     rows = list(csv.DictReader((DOCS / "feature-baseline.csv").open(encoding="utf-8")))

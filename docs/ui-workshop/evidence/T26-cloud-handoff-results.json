@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-10-19T17:37:35+0800",
+  "scenario": "云端交接包本地模拟自验",
+  "bundleRef": "refs/heads/feat/ui-workshop",
+  "bundleHead": "689575b00d0474caf4303e9681f0257df6581f15",
+  "bundleSizeBytes": 4886110,
+  "zipSizeBytes": 4877363,
+  "checks": [
+    {
+      "name": "bundle verify",
+      "pass": true
+    },
+    {
+      "name": "bundle ref 正确（refs/heads/feat/ui-workshop）",
+      "pass": true
+    },
+    {
+      "name": "模拟云端 clone+fetch+checkout",
+      "pass": true
+    },
+    {
+      "name": "模拟 HEAD 与本地一致",
+      "pass": true,
+      "detail": "689575b"
+    },
+    {
+      "name": "关键文件存在",
+      "pass": true
+    },
+    {
+      "name": "cloud_build.ps1 语法解析",
+      "pass": true
+    },
+    {
+      "name": "cloud_verify_installed.py --help",
+      "pass": true
+    },
+    {
+      "name": "zip 完整",
+      "pass": true
+    }
+  ],
+  "passCount": 8,
+  "total": 8,
+  "notes": [
+    "初版 bundle 仅记录 HEAD ref 无法按分支 fetch，已修复",
+    "cloud_build.ps1 已改为按 frontend/desktop 分别 npm ci"
+  ]
+}

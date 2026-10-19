@@ -8,7 +8,7 @@ mkdir C:\ke-cloud; # 上传本目录到 C:\ke-cloud\（含 ui-workshop.bundle �
 # 1) 取代码
 cd C:\ke-cloud; git clone https://github.com/Asheep233/knowledge-editor.git repo; cd repo
 git checkout 4c71233
-git fetch C:\ke-cloud\ui-workshop.bundle feat/ui-workshop:feat/ui-workshop
+git fetch C:\ke-cloud\ui-workshop.bundle 'refs/heads/feat/ui-workshop:feat/ui-workshop'
 git checkout feat/ui-workshop
 # 2) 构建（见 cloud_build.ps1）
 powershell -ExecutionPolicy Bypass -File C:\ke-cloud\cloud_build.ps1

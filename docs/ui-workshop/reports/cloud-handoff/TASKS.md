@@ -32,7 +32,7 @@ git clone https://github.com/Asheep233/knowledge-editor.git repo
 cd repo
 git checkout 4c71233            # 基础提交（v1.2.18）
 git bundle verify C:\ke-cloud\ui-workshop.bundle
-git fetch C:\ke-cloud\ui-workshop.bundle feat/ui-workshop:feat/ui-workshop
+git fetch C:\ke-cloud\ui-workshop.bundle 'refs/heads/feat/ui-workshop:feat/ui-workshop'
 git checkout feat/ui-workshop    # 可选：git log --oneline -1 记录 HEAD
 ```
 

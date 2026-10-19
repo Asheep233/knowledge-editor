@@ -3,8 +3,10 @@
 param([string]$Repo = 'C:\ke-cloud\repo')
 $ErrorActionPreference = 'Stop'
 $root = $Repo
-if (-not (Test-Path (Join-Path $root 'package.json'))) { throw "repo 不存在或路径错误: $root" }
-if (-not (Test-Path (Join-Path $root 'node_modules'))) { & npm ci --prefix $root 2>&1 | Out-Null }
+if (-not (Test-Path (Join-Path $root 'frontend\package.json'))) { throw "repo 不存在或路径错误: $root" }
+# 前端/桌面分别安装依赖（仓库根无 package.json）
+if (-not (Test-Path (Join-Path $root 'frontend\node_modules'))) { & npm ci --prefix (Join-Path $root 'frontend') 2>&1 | Out-Null }
+if (-not (Test-Path (Join-Path $root 'desktop\node_modules'))) { & npm ci --prefix (Join-Path $root 'desktop') 2>&1 | Out-Null }
 
 function Build-Installer([string]$Label, [bool]$Workshop) {
     Write-Host "==> 构建 [$Label] workshop=$Workshop"
@@ -16,6 +18,7 @@ function Build-Installer([string]$Label, [bool]$Workshop) {
         Push-Location (Join-Path $root 'desktop')
         try {
             $env:CI='true'
+            if (-not (Test-Path (Join-Path $root 'desktop\node_modules'))) { & npm ci 2>&1 | Out-Null }
             & npm run build
             if ($LASTEXITCODE -ne 0) { throw 'tauri build 失败' }
         } finally { Pop-Location }

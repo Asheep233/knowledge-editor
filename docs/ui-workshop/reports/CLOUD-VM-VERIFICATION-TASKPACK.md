@@ -2,7 +2,7 @@
 
 > 目的：把本地无法安全完成的 **I 类（安装/覆盖升级/回滚/卸载/重启）** 与 **安装态 UI 工坊冒烟**
 > 放到**云端 Windows VM**（可快照、无真实用户数据）执行，回传证据后由 Lead 登记 W03/W08 与里程碑。
-> **素材目录**：`docs/ui-workshop/reports/cloud-handoff/`；**一键打包**：`docs/ui-workshop/reports/cloud-vm-taskpack.zip`
+> **素材目录**：`docs/ui-workshop/reports/cloud-handoff/`；**一键打包**：`docs/ui-workshop/reports/cloud-vm-taskpack.zip`（约 4.9MB）
 
 ## 目录内容
 
@@ -13,13 +13,13 @@
 | `cloud-handoff/cloud_build.ps1` | 构建候选（默认 + workshop-enabled）与基线 v1.2.9 NSIS 安装包 |
 | `cloud-handoff/cloud_verify_installed.py` | 安装态 CDP 冒烟（入口可见性/安装签名包/信任/启用 guest/会话 active） |
 | `cloud-handoff/T27-I-results.schema.json` | I 门禁证据 JSON 结构（U1–U6 + verdict） |
-| `cloud-handoff/ui-workshop.bundle` | `git bundle`（range `4c71233..feat/ui-workshop`，1.6MB） |
+| `cloud-handoff/ui-workshop.bundle` | `git bundle`（range `4c71233..refs/heads/feat/ui-workshop`，HEAD `689575b`，约 4.9MB） |
 
 ## 给执行方（Codex）的关键命令
 
 ```powershell
 cd C:\ke-cloud\repo; git checkout 4c71233
-git fetch C:\ke-cloud\ui-workshop.bundle feat/ui-workshop:feat/ui-workshop; git checkout feat/ui-workshop
+git fetch C:\ke-cloud\ui-workshop.bundle 'refs/heads/feat/ui-workshop:feat/ui-workshop'; git checkout feat/ui-workshop
 powershell -ExecutionPolicy Bypass -File C:\ke-cloud\cloud_build.ps1
 python C:\ke-cloud\cloud_verify_installed.py --exe "<安装目录>\knowledgeeditor.exe" --expect-entry yes --pack-dir C:\ke-cloud\pack --pubkeys <json>
 ```

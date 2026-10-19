@@ -11,6 +11,8 @@ import {
   ProductBrokerBackend,
   WORKSHOP_COMMAND_PROTOCOL_NAMES,
   WORKSHOP_EDITOR_ACTION_WHITELIST,
+  WORKSHOP_EDITOR_PARAM_COMMANDS,
+  WORKSHOP_EDITOR_PARAM_KEY,
   WORKSHOP_EDITOR_COMMAND_WHITELIST,
   WORKSHOP_EDITOR_PROTOCOL_NAMES,
   getWorkshopEditorExecutor,
@@ -18,11 +20,13 @@ import {
   normalizeGuestPrintRelPath,
   resetGuestContextBridgeForTests,
   isWorkshopEditorActionName,
+  isWorkshopEditorParamName,
   resolveWorkshopEditorCommand,
+  validateWorkshopEditorArgs,
   type ProductBrokerBackendOptions,
 } from './productBrokerBackend'
 import { __clearActionHandlers, registerActionHandler } from '../../state/shortcuts'
-import { WORKSHOP_EDITOR_EXECUTORS, createWorkshopEditorExecutor } from '../layout/EditorArea'
+import { WORKSHOP_EDITOR_EXECUTORS, WORKSHOP_EDITOR_PARAM_EXECUTORS, createWorkshopEditorExecutor } from '../layout/EditorArea'
 
 const REL = 'Articles/a.md'
 const CONTENT = '---\ntitle: a\n---\n\n# 标题\n\n正文段落\n'
@@ -761,30 +765,30 @@ describe('W07 task-27 editor.* 协议名（kebab）映射修复', () => {
 // ---------------- W07 task-29：可无头产品动作（table/footnote/note/doc.save） ----------------
 
 describe('W07 task-29 可无头产品动作接入 command.invoke', () => {
-  const ACTIONS = [
-    'editor.table.insert',
-    'editor.footnote.insert',
-    'editor.note.insert',
-    'doc.save',
-  ] as const
+  // task-33 起 `editor.table.insert` 升级为参数化命令（走执行器 insertTable），不再是无参 action
+  const ACTIONS = ['editor.footnote.insert', 'editor.note.insert', 'doc.save'] as const
 
   afterEach(() => {
     __clearActionHandlers()
   })
 
-  it('4 条协议名 = 既有 action id、全部匹配 manifest 正则；不接对话框类动作', () => {
+  it('3 条无参 action 协议名合法、全部匹配 manifest 正则；不接对话框类动作', () => {
     expect([...WORKSHOP_EDITOR_ACTION_WHITELIST]).toEqual([...ACTIONS])
-    expect(WORKSHOP_COMMAND_PROTOCOL_NAMES).toHaveLength(18)
+    expect(WORKSHOP_COMMAND_PROTOCOL_NAMES).toHaveLength(21)
     for (const name of [...WORKSHOP_COMMAND_PROTOCOL_NAMES]) {
       expect(name).toMatch(/^[a-z][a-z0-9.-]{1,80}$/)
     }
-    for (const dialogAction of ['editor.link.insert', 'editor.image.insert', 'editor.math.inline', 'editor.math.block', 'editor.module.insert']) {
+    // task-33 起 link/math 升级为参数化无头命令；仍不暴露的是文件选择/模块选择类动作
+    expect(WORKSHOP_COMMAND_PROTOCOL_NAMES).toEqual(
+      expect.arrayContaining(['editor.link.insert', 'editor.math.inline', 'editor.math.block']),
+    )
+    for (const dialogAction of ['editor.image.insert', 'editor.module.insert']) {
       expect(WORKSHOP_COMMAND_PROTOCOL_NAMES).not.toContain(dialogAction)
       expect(isWorkshopEditorActionName(dialogAction)).toBe(false)
     }
   })
 
-  it('manifest 可逐条声明 18 条协议命令（kebab/点分均合法）', () => {
+  it('manifest 可逐条声明 21 条协议命令（kebab/点分均合法）', () => {
     expect(() =>
       validateManifest({
         id: 'com.probe.t29',
@@ -799,7 +803,7 @@ describe('W07 task-29 可无头产品动作接入 command.invoke', () => {
     ).not.toThrow()
   })
 
-  it('4 条动作成功：runAction 调用真实 handler，返回 {ok:true,value:{name,executed:true}}', async () => {
+  it('3 条动作成功：runAction 调用真实 handler，返回 {ok:true,value:{name,executed:true}}', async () => {
     const { backend } = makeBackend()
     for (const name of ACTIONS) {
       const handler = vi.fn()
@@ -835,16 +839,16 @@ describe('W07 task-29 可无头产品动作接入 command.invoke', () => {
 
   it('能力缺失（无 editor.commands.readonly）→ E_CAPABILITY，handler 不执行', async () => {
     const handler = vi.fn()
-    registerActionHandler('editor.table.insert', handler)
+    registerActionHandler('editor.footnote.insert', handler)
     const { backend } = makeBackend()
-    const err = await rejection(backend.invokeCommand({ name: 'editor.table.insert' }, editorConn(['ui.shell'])))
+    const err = await rejection(backend.invokeCommand({ name: 'editor.footnote.insert' }, editorConn(['ui.shell'])))
     expect(err.code).toBe('E_CAPABILITY')
     expect(handler).not.toHaveBeenCalled()
   })
 
   it('对话框类动作（link/image/math/module）明确拒绝 E_COMMAND_NOT_ALLOWED，不暴露不可无头动作', async () => {
     const { backend } = makeBackend()
-    for (const name of ['editor.link.insert', 'editor.image.insert', 'editor.math.inline', 'editor.math.block', 'editor.module.insert']) {
+    for (const name of ['editor.image.insert', 'editor.module.insert']) {
       const err = await rejection(backend.invokeCommand({ name }, editorConn()))
       expect(err.code).toBe('E_FORBIDDEN')
       expect(String(err.message)).toContain('E_COMMAND_NOT_ALLOWED')
@@ -884,5 +888,358 @@ describe('W07 task-29 可无头产品动作接入 command.invoke', () => {
     expect(result).toEqual({ ok: true, value: { name: 'editor.bold', executed: true } })
     expect(executor.execute).toHaveBeenCalledWith('bold')
     expect(runSpy).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------- W07 task-33：参数化无头命令（link/math/table，严格 args 校验） ----------------
+
+function paramExecutor() {
+  const executor = {
+    execute: vi.fn((_name: string, _args?: Record<string, unknown>) => ({ ok: true })),
+  }
+  ;(window as unknown as { __KE_WORKSHOP_EDITOR__?: typeof executor }).__KE_WORKSHOP_EDITOR__ = executor
+  return executor
+}
+
+const HREF_2048 = 'https://' + 'a'.repeat(2048 - 'https://'.length)
+
+describe('W07 task-33 参数化无头命令（协议层校验 + 执行器传参）', () => {
+  afterEach(() => {
+    delete (window as unknown as { __KE_WORKSHOP_EDITOR__?: ReturnType<typeof paramExecutor> }).__KE_WORKSHOP_EDITOR__
+  })
+
+  it('4 条参数化协议名合法且映射内部键固定；link 变体不在白名单', async () => {
+    expect([...WORKSHOP_EDITOR_PARAM_COMMANDS]).toEqual([
+      'editor.link.insert',
+      'editor.math.inline',
+      'editor.math.block',
+      'editor.table.insert',
+    ])
+    for (const name of WORKSHOP_EDITOR_PARAM_COMMANDS) {
+      expect(name).toMatch(/^[a-z][a-z0-9.-]{1,80}$/)
+      expect(isWorkshopEditorParamName(name)).toBe(true)
+    }
+    expect(WORKSHOP_EDITOR_PARAM_KEY).toEqual({
+      'editor.link.insert': 'linkInsert',
+      'editor.math.inline': 'mathInline',
+      'editor.math.block': 'mathBlock',
+      'editor.table.insert': 'tableInsert',
+    })
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    const err = await rejection(backend.invokeCommand({ name: 'editor.link.remove', args: { href: 'https://x' } }, editorConn()))
+    expect(err.code).toBe('E_FORBIDDEN')
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('link.insert 成功：http/https/mailto 通过（scheme 大小写不敏感），href 去首尾空白后传执行器', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    const cases: Array<[Record<string, unknown>, Record<string, unknown>]> = [
+      [{ href: 'https://example.com/a', text: '标签' }, { href: 'https://example.com/a', text: '标签' }],
+      [{ href: 'http://example.com' }, { href: 'http://example.com' }],
+      [{ href: '  mailto:user@example.com  ' }, { href: 'mailto:user@example.com' }],
+      [{ href: 'HTTPS://EXAMPLE.COM/X', text: '大写 scheme' }, { href: 'HTTPS://EXAMPLE.COM/X', text: '大写 scheme' }],
+      [{ href: 'https://example.com/a', text: '' }, { href: 'https://example.com/a' }],
+    ]
+    for (const [args] of cases) {
+      const result = await backend.invokeCommand({ name: 'editor.link.insert', args }, editorConn())
+      expect(result).toEqual({ ok: true, value: { name: 'editor.link.insert', executed: true } })
+    }
+    expect(executor.execute.mock.calls.map((call) => [call[0], call[1]])).toEqual(
+      cases.map(([, expected]) => ['linkInsert', expected]),
+    )
+  })
+
+  it('link.insert 危险/不合法 href 拒绝 E_BAD_PAYLOAD 且不执行（含相对路径/其它 scheme）', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    for (const href of [
+      'javascript:alert(1)',
+      'JavaScript:alert(1)',
+      'data:text/html,<b>x</b>',
+      'file:///C:/Windows/win.ini',
+      '/relative/path',
+      'relative/path',
+      'ftp://example.com/x',
+      '//example.com/x',
+      'https://',
+      'mailto:',
+      '  ',
+      'https://example.com/a b',
+    ]) {
+      const err = await rejection(backend.invokeCommand({ name: 'editor.link.insert', args: { href } }, editorConn()))
+      expect(err.code, `href=${href}`).toBe('E_BAD_PAYLOAD')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('link.insert 长度边界：href=2048/text=500 通过；2049/501 拒绝', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    await expect(
+      backend.invokeCommand({ name: 'editor.link.insert', args: { href: HREF_2048, text: 'x'.repeat(500) } }, editorConn()),
+    ).resolves.toEqual({ ok: true, value: { name: 'editor.link.insert', executed: true } })
+    for (const args of [
+      { href: HREF_2048 + 'a' },
+      { href: 'https://example.com/x', text: 'x'.repeat(501) },
+    ]) {
+      const err = await rejection(backend.invokeCommand({ name: 'editor.link.insert', args }, editorConn()))
+      expect(err.code).toBe('E_BAD_PAYLOAD')
+    }
+    expect(executor.execute).toHaveBeenCalledTimes(1)
+  })
+
+  it('link.insert 参数形态非法（缺 href/非对象/未知键/text 控制字符）→ E_BAD_PAYLOAD', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    for (const args of [undefined, {}, { text: 'x' }, { href: 123 }, { href: 'https://x', extra: 1 }, { href: 'https://x', text: 'a\u0000b' }]) {
+      const err = await rejection(backend.invokeCommand({ name: 'editor.link.insert', args }, editorConn()))
+      expect(err.code).toBe('E_BAD_PAYLOAD')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('math.inline/math.block 成功：latex 原样传执行器（控制字符除外，常见空白允许）', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    const latex = 'E = mc^2\n\\int_0^1 x dx'
+    for (const name of ['editor.math.inline', 'editor.math.block']) {
+      const result = await backend.invokeCommand({ name, args: { latex } }, editorConn())
+      expect(result).toEqual({ ok: true, value: { name, executed: true } })
+    }
+    expect(executor.execute.mock.calls.map((call) => [call[0], call[1]])).toEqual([
+      ['mathInline', { latex }],
+      ['mathBlock', { latex }],
+    ])
+  })
+
+  it('math 非法：空/缺参/超长 2000+/控制字符/未知键 → E_BAD_PAYLOAD 不执行', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    for (const args of [
+      undefined,
+      {},
+      { latex: '' },
+      { latex: 42 },
+      { latex: 'x'.repeat(2001) },
+      { latex: 'a\u0000b' },
+      { latex: 'a\u0007b' },
+      { latex: 'x^2', extra: true },
+    ]) {
+      const err = await rejection(backend.invokeCommand({ name: 'editor.math.inline', args }, editorConn()))
+      expect(err.code).toBe('E_BAD_PAYLOAD')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('table.insert：缺省 3/3/true；显式 1-8 边界通过并按规范化参数传执行器', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    const cases: Array<[Record<string, unknown> | undefined, Record<string, unknown>]> = [
+      [undefined, { rows: 3, cols: 3, withHeaderRow: true }],
+      [{}, { rows: 3, cols: 3, withHeaderRow: true }],
+      [{ rows: 1, cols: 8, withHeaderRow: false }, { rows: 1, cols: 8, withHeaderRow: false }],
+      [{ rows: 8, cols: 1 }, { rows: 8, cols: 1, withHeaderRow: true }],
+    ]
+    for (const [args] of cases) {
+      const result = await backend.invokeCommand({ name: 'editor.table.insert', args }, editorConn())
+      expect(result).toEqual({ ok: true, value: { name: 'editor.table.insert', executed: true } })
+    }
+    expect(executor.execute.mock.calls.map((call) => [call[0], call[1]])).toEqual(
+      cases.map(([, expected]) => ['tableInsert', expected]),
+    )
+  })
+
+  it('table.insert 越界/非整数/类型错误/未知键 → E_BAD_PAYLOAD 不执行', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    for (const args of [
+      { rows: 0 },
+      { rows: 9 },
+      { rows: 2.5 },
+      { rows: '3' },
+      { cols: 0 },
+      { cols: 9 },
+      { cols: 2.5 },
+      { withHeaderRow: 'yes' },
+      { withHeaderRow: 1 },
+      { rows: 3, extra: true },
+    ]) {
+      const err = await rejection(backend.invokeCommand({ name: 'editor.table.insert', args }, editorConn()))
+      expect(err.code).toBe('E_BAD_PAYLOAD')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('参数非法不执行（executor 零调用）且优先于能力检查（E_BAD_PAYLOAD）', async () => {
+    const executor = paramExecutor()
+    const { backend } = makeBackend()
+    const err = await rejection(
+      backend.invokeCommand({ name: 'editor.link.insert', args: { href: 'javascript:1' } }, editorConn(['ui.shell'])),
+    )
+    expect(err.code).toBe('E_BAD_PAYLOAD')
+    expect(executor.execute).not.toHaveBeenCalled()
+  })
+
+  it('参数合法但能力缺失 → E_CAPABILITY；执行器缺失 → E_EDITOR_NOT_READY；执行器失败 → E_COMMAND_EXECUTION_FAILED', async () => {
+    const { backend } = makeBackend()
+    const capErr = await rejection(
+      backend.invokeCommand({ name: 'editor.table.insert', args: {} }, editorConn(['ui.shell'])),
+    )
+    expect(capErr.code).toBe('E_CAPABILITY')
+
+    delete (window as unknown as { __KE_WORKSHOP_EDITOR__?: unknown }).__KE_WORKSHOP_EDITOR__
+    const readyErr = await rejection(
+      backend.invokeCommand({ name: 'editor.math.inline', args: { latex: 'x' } }, editorConn()),
+    )
+    expect(readyErr.code).toBe('E_INTERNAL')
+    expect(String(readyErr.message)).toContain('E_EDITOR_NOT_READY')
+
+    const failing = { execute: vi.fn(() => ({ ok: false, error: 'E_COMMAND_EXECUTION_FAILED' })) }
+    ;(window as unknown as { __KE_WORKSHOP_EDITOR__?: typeof failing }).__KE_WORKSHOP_EDITOR__ = failing
+    const execErr = await rejection(
+      backend.invokeCommand({ name: 'editor.table.insert', args: { rows: 2 } }, editorConn()),
+    )
+    expect(execErr.code).toBe('E_INTERNAL')
+    expect(String(execErr.message)).toContain('E_COMMAND_EXECUTION_FAILED')
+  })
+
+  it('无参命令收到非空 args → E_BAD_PAYLOAD 不执行（toggle 与 action 均明确拒绝）', async () => {
+    const executor = paramExecutor()
+    const handler = vi.fn()
+    registerActionHandler('doc.save', handler)
+    const { backend } = makeBackend()
+    for (const name of ['editor.bold', 'editor.undo', 'doc.save', 'editor.footnote.insert']) {
+      const err = await rejection(backend.invokeCommand({ name, args: { unexpected: 1 } }, editorConn()))
+      expect(err.code, name).toBe('E_BAD_PAYLOAD')
+    }
+    expect(executor.execute).not.toHaveBeenCalled()
+    expect(handler).not.toHaveBeenCalled()
+    // 空对象/缺省仍可执行
+    await expect(backend.invokeCommand({ name: 'editor.bold', args: {} }, editorConn())).resolves.toEqual({
+      ok: true,
+      value: { name: 'editor.bold', executed: true },
+    })
+    expect(executor.execute).toHaveBeenCalledWith('bold')
+    __clearActionHandlers()
+  })
+
+  it('validateWorkshopEditorArgs 纯函数：非参数化命令/非对象 args 拒绝', () => {
+    expect(validateWorkshopEditorArgs('editor.bold', {})).toMatchObject({ ok: false })
+    expect(validateWorkshopEditorArgs('editor.link.insert', [] as never)).toMatchObject({ ok: false })
+    expect(validateWorkshopEditorArgs('editor.link.insert', { href: 'https://x' })).toMatchObject({
+      ok: true,
+      value: { href: 'https://x' },
+    })
+  })
+})
+
+// ---------------- W07 task-33：EditorArea 参数化执行器 ----------------
+
+describe('W07 task-33 EditorArea 参数化执行器（fake chain 校验调用参数）', () => {
+  function fakeParamEditor(opts: { selectionEmpty?: boolean; runResult?: boolean } = {}) {
+    const calls: Array<{ method: string; args: unknown[] }> = []
+    const chain: Record<string, unknown> = {}
+    for (const method of ['focus', 'toggleBold', 'insertContent', 'insertTable', 'extendMarkRange', 'setLink']) {
+      chain[method] = (...args: unknown[]) => {
+        calls.push({ method, args })
+        return chain
+      }
+    }
+    chain.run = () => opts.runResult ?? true
+    const editor = {
+      isDestroyed: false,
+      state: { selection: { empty: opts.selectionEmpty ?? true } },
+      chain: () => chain,
+    }
+    return { calls, editor }
+  }
+
+  it('参数化执行器映射键与协议映射一致（4 条）', () => {
+    expect(Object.keys(WORKSHOP_EDITOR_PARAM_EXECUTORS).sort()).toEqual(Object.values(WORKSHOP_EDITOR_PARAM_KEY).sort())
+    expect(Object.keys(WORKSHOP_EDITOR_PARAM_EXECUTORS)).toHaveLength(4)
+  })
+
+  it('tableInsert：按规范化参数调用 insertTable（rows/cols/withHeaderRow）', () => {
+    const { calls, editor } = fakeParamEditor()
+    const executor = createWorkshopEditorExecutor(() => editor as never)
+    expect(executor.execute('tableInsert', { rows: 2, cols: 4, withHeaderRow: false })).toEqual({ ok: true })
+    expect(calls.find((call) => call.method === 'insertTable')?.args[0]).toEqual({
+      rows: 2,
+      cols: 4,
+      withHeaderRow: false,
+    })
+  })
+
+  it('mathInline/mathBlock：insertContent 节点 type/attrs（id 非空、latex 原样）', () => {
+    for (const [key, type] of [
+      ['mathInline', 'math'],
+      ['mathBlock', 'mathBlock'],
+    ] as const) {
+      const { calls, editor } = fakeParamEditor()
+      const executor = createWorkshopEditorExecutor(() => editor as never)
+      expect(executor.execute(key, { latex: 'x^2' })).toEqual({ ok: true })
+      const node = calls.find((call) => call.method === 'insertContent')?.args[0] as {
+        type: string
+        attrs: { id: string; latex: string }
+      }
+      expect(node.type).toBe(type)
+      expect(node.attrs.latex).toBe('x^2')
+      expect(typeof node.attrs.id).toBe('string')
+      expect(node.attrs.id.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('linkInsert：有选区 → extendMarkRange(link)+setLink；无选区 → insertContent 文本（text||href，含 link mark）', () => {
+    // 有选区：extendMarkRange + setLink，text 不参与
+    const selected = fakeParamEditor({ selectionEmpty: false })
+    const execSelected = createWorkshopEditorExecutor(() => selected.editor as never)
+    expect(execSelected.execute('linkInsert', { href: 'https://e.com/x', text: '忽略' })).toEqual({ ok: true })
+    expect(selected.calls.some((call) => call.method === 'extendMarkRange' && call.args[0] === 'link')).toBe(true)
+    expect(selected.calls.find((call) => call.method === 'setLink')?.args[0]).toEqual({ href: 'https://e.com/x' })
+    expect(selected.calls.some((call) => call.method === 'insertContent')).toBe(false)
+
+    // 无选区 + text → insertContent 指定文本
+    const plain = fakeParamEditor({ selectionEmpty: true })
+    const execPlain = createWorkshopEditorExecutor(() => plain.editor as never)
+    expect(execPlain.execute('linkInsert', { href: 'https://e.com/y', text: '点我' })).toEqual({ ok: true })
+    expect(plain.calls.find((call) => call.method === 'insertContent')?.args[0]).toEqual({
+      type: 'text',
+      text: '点我',
+      marks: [{ type: 'link', attrs: { href: 'https://e.com/y' } }],
+    })
+
+    // 无选区 + 无 text → 文本回退为 href
+    const noText = fakeParamEditor({ selectionEmpty: true })
+    const execNoText = createWorkshopEditorExecutor(() => noText.editor as never)
+    expect(execNoText.execute('linkInsert', { href: 'https://e.com/z' })).toEqual({ ok: true })
+    expect(noText.calls.find((call) => call.method === 'insertContent')?.args[0]).toMatchObject({
+      type: 'text',
+      text: 'https://e.com/z',
+    })
+  })
+
+  it('无参命令收到非空 args → E_BAD_PAYLOAD 且不执行 chain（第二道防线）', () => {
+    const { calls, editor } = fakeParamEditor()
+    const executor = createWorkshopEditorExecutor(() => editor as never)
+    expect(executor.execute('bold', { unexpected: 1 })).toEqual({ ok: false, error: 'E_BAD_PAYLOAD' })
+    expect(calls).toHaveLength(0)
+    expect(executor.execute('bold', {})).toEqual({ ok: true })
+    expect(calls[0]?.method).toBe('focus')
+  })
+
+  it('参数化命令 args 非对象（null/数组）→ E_BAD_PAYLOAD', () => {
+    const { calls, editor } = fakeParamEditor()
+    const executor = createWorkshopEditorExecutor(() => editor as never)
+    expect(executor.execute('tableInsert', null as unknown as Record<string, unknown>)).toEqual({
+      ok: false,
+      error: 'E_BAD_PAYLOAD',
+    })
+    expect(executor.execute('tableInsert', [] as unknown as Record<string, unknown>)).toEqual({
+      ok: false,
+      error: 'E_BAD_PAYLOAD',
+    })
+    expect(calls).toHaveLength(0)
   })
 })

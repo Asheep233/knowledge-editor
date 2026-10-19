@@ -59,6 +59,10 @@ import {
   type WorkshopEditorCommand,
   type WorkshopEditorExecutor,
   type WorkshopEditorExecutorResult,
+  type WorkshopEditorParamKey,
+  type WorkshopLinkArgs,
+  type WorkshopMathArgs,
+  type WorkshopTableArgs,
 } from '../workshop/productBrokerBackend'
 // task-74：微分斜体 d → 正体 \mathrm{d}（差异预览 + 勾选 → 另存同目录新文件；原件绝不改动）
 import UprightDDialog from '../editor/UprightDDialog'
@@ -132,17 +136,76 @@ export const WORKSHOP_EDITOR_EXECUTORS: Record<WorkshopEditorCommand, (editor: E
 }
 
 /**
+ * W07 task-33：4 条**参数化无头命令**（协议层已严格校验 args；执行器再做类型防御）。
+ * - link：有选区 → extendMarkRange('link')+setLink；无选区 → insertContent 文本（link mark，文本=text||href）；
+ * - math inline/block：直接 insertContent（不打开 MathLive 对话框）；
+ * - table：按 rows/cols/withHeaderRow 插入（缺省已由协议层填 3/3/true）。
+ */
+export const WORKSHOP_EDITOR_PARAM_EXECUTORS: Record<
+  WorkshopEditorParamKey,
+  (editor: Editor, args: Record<string, unknown>) => boolean
+> = {
+  linkInsert: (editor, args) => {
+    const { href, text } = args as unknown as WorkshopLinkArgs
+    if (typeof href !== 'string' || href.length === 0) return false
+    if (!editor.state.selection.empty) {
+      return editor.chain().focus().extendMarkRange('link').setLink({ href }).run()
+    }
+    const label = typeof text === 'string' && text.length > 0 ? text : href
+    return editor.chain().focus().insertContent({
+      type: 'text',
+      text: label,
+      marks: [{ type: 'link', attrs: { href } }],
+    }).run()
+  },
+  mathInline: (editor, args) => {
+    const { latex } = args as unknown as WorkshopMathArgs
+    if (typeof latex !== 'string' || latex.length === 0) return false
+    return editor.chain().focus().insertContent({ type: 'math', attrs: { id: newId(), latex } }).run()
+  },
+  mathBlock: (editor, args) => {
+    const { latex } = args as unknown as WorkshopMathArgs
+    if (typeof latex !== 'string' || latex.length === 0) return false
+    return editor.chain().focus().insertContent({ type: 'mathBlock', attrs: { id: newId(), latex } }).run()
+  },
+  tableInsert: (editor, args) => {
+    const { rows, cols, withHeaderRow } = args as unknown as WorkshopTableArgs
+    if (!Number.isInteger(rows) || !Number.isInteger(cols) || typeof withHeaderRow !== 'boolean') return false
+    return editor.chain().focus().insertTable({ rows, cols, withHeaderRow }).run()
+  },
+}
+
+/**
  * 创建 guest 可用的**受控执行器**（只认白名单，不支持任意命令/参数）。
- * 错误符号名沿用任务约定（E_COMMAND_NOT_ALLOWED / E_EDITOR_NOT_READY / E_COMMAND_EXECUTION_FAILED）。
+ * W07 task-33：签名扩展为 `execute(name, args?)`；14 条无参命令收到非空 args → E_BAD_PAYLOAD。
+ * 错误符号名沿用任务约定（E_COMMAND_NOT_ALLOWED / E_EDITOR_NOT_READY / E_BAD_PAYLOAD /
+ * E_COMMAND_EXECUTION_FAILED）。
  */
 export function createWorkshopEditorExecutor(getEditor: () => Editor | null): WorkshopEditorExecutor {
   return {
-    execute(name: string): WorkshopEditorExecutorResult {
+    execute(name: string, args?: Record<string, unknown>): WorkshopEditorExecutorResult {
+      const paramRun = WORKSHOP_EDITOR_PARAM_EXECUTORS[name as WorkshopEditorParamKey]
+      if (paramRun) {
+        const editor = getEditor()
+        if (!editor || editor.isDestroyed) return { ok: false, error: 'E_EDITOR_NOT_READY' }
+        if (typeof args !== 'object' || args === null || Array.isArray(args)) {
+          return { ok: false, error: 'E_BAD_PAYLOAD' }
+        }
+        try {
+          return paramRun(editor, args) ? { ok: true } : { ok: false, error: 'E_COMMAND_EXECUTION_FAILED' }
+        } catch (e) {
+          return { ok: false, error: `E_COMMAND_EXECUTION_FAILED: ${String((e as Error)?.message ?? e)}` }
+        }
+      }
       if (!(WORKSHOP_EDITOR_COMMAND_WHITELIST as readonly string[]).includes(name)) {
         return { ok: false, error: 'E_COMMAND_NOT_ALLOWED' }
       }
       const editor = getEditor()
       if (!editor || editor.isDestroyed) return { ok: false, error: 'E_EDITOR_NOT_READY' }
+      // 无参命令：非空 args 明确拒绝（第二道防线；协议层已先拒绝）
+      if (args !== undefined && args !== null && (typeof args !== 'object' || Object.keys(args).length > 0)) {
+        return { ok: false, error: 'E_BAD_PAYLOAD' }
+      }
       const run = WORKSHOP_EDITOR_EXECUTORS[name as WorkshopEditorCommand]
       if (!run) return { ok: false, error: 'E_COMMAND_NOT_ALLOWED' }
       try {

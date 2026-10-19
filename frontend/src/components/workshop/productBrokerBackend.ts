@@ -17,9 +17,11 @@
  * - W07 task-27：editor.* 协议名统一为**小写 kebab**（`editor.bullet-list` 等，可写入
  *   manifest.commands[].name 的 `^[a-z][a-z0-9.-]{1,80}$` 校验），内部映射到 camelCase
  *   执行键；旧 camelCase 协议名保留兼容接受（manifest 无法声明，legacy）；
- * - W07 task-29：追加 4 条可无头产品动作（`editor.table.insert`/`editor.footnote.insert`/
- *   `editor.note.insert`/`doc.save`，复用 state/shortcuts 的 `runAction` 真实 action handler）；
- *   对话框类动作（link/image/math/module）**不接**。
+ * - W07 task-29：追加可无头**无参**产品动作（`editor.footnote.insert`/`editor.note.insert`/
+ *   `doc.save`，复用 state/shortcuts 的 `runAction` 真实 action handler）；
+ * - W07 task-33：追加 4 条**参数化无头命令**（`editor.link.insert`/`editor.math.inline`/
+ *   `editor.math.block`/`editor.table.insert`，严格 args 校验 → 编辑器执行器带参执行，
+ *   危险 scheme/超长/越界一律 E_BAD_PAYLOAD 且不执行）；对话框类动作仍不暴露未接。
  */
 import { connectionHasCapability, type BrokerBackend, type BrokerConnection } from '../../core/broker/broker'
 import { createProductPrintRenderer } from '../../core/print/productPrintRenderer'
@@ -138,7 +140,8 @@ export interface WorkshopEditorExecutorResult {
 
 /** 主窗口 EditorArea 注册的受控执行器；不存在 = 编辑器未就绪（不得假成功）。 */
 export interface WorkshopEditorExecutor {
-  execute(name: string): WorkshopEditorExecutorResult
+  /** W07 task-33：签名扩展为 `(name, args?)`；无参命令收到非空 args 由执行器拒绝（E_BAD_PAYLOAD）。 */
+  execute(name: string, args?: Record<string, unknown>): WorkshopEditorExecutorResult
 }
 
 interface WorkshopEditorHolder {
@@ -159,14 +162,14 @@ export function isWorkshopEditorInvokeName(name: unknown): name is WorkshopEdito
 // ---------------- W07 task-29：可无头执行的产品 action（复用 action 注册表） ----------------
 
 /**
- * 追加接入的 4 条**可无头执行**产品动作（协议名 = 既有 action id，全部匹配 manifest
+ * W07 task-29：可无头执行的**无参产品动作**（协议名 = 既有 action id，全部匹配 manifest
  * `commands[].name` 正则；逐条声明、最小化）。
  *
- * 只接「不需要对话框/文件选择」的动作：表格插入（产品默认 3×3 带表头，与快捷键路径一致）、
- * 脚注/信息块插入、文档保存。**不接** link/image/math/module（对话框中继，不可无头执行）。
+ * 只接「不需要参数、不需要对话框/文件选择」的动作：脚注插入、信息块插入、文档保存。
+ * （`editor.table.insert` 在 task-33 升级为**参数化命令**，走执行器 insertTable(rows/cols/...)；
+ * link/math/module 等对话框动作仍不接，改为参数化无头命令或保持不暴露。）
  */
 export const WORKSHOP_EDITOR_ACTION_WHITELIST = [
-  'editor.table.insert',
   'editor.footnote.insert',
   'editor.note.insert',
   'doc.save',
@@ -174,15 +177,170 @@ export const WORKSHOP_EDITOR_ACTION_WHITELIST = [
 
 export type WorkshopEditorActionName = (typeof WORKSHOP_EDITOR_ACTION_WHITELIST)[number]
 
-/** guest 命令桥接受的全部协议名（14 条切换命令 + 4 条产品动作；供诊断/单测）。 */
-export const WORKSHOP_COMMAND_PROTOCOL_NAMES: readonly string[] = [
-  ...WORKSHOP_EDITOR_PROTOCOL_NAMES,
-  ...WORKSHOP_EDITOR_ACTION_WHITELIST,
-]
-
 export function isWorkshopEditorActionName(name: unknown): name is WorkshopEditorActionName {
   return typeof name === 'string' && (WORKSHOP_EDITOR_ACTION_WHITELIST as readonly string[]).includes(name)
 }
+
+// ---------------- W07 task-33：参数化无头命令（严格 args 校验） ----------------
+
+/** 参数化命令协议名（均匹配 manifest 正则；逐条声明）→ 执行器内部键。 */
+export const WORKSHOP_EDITOR_PARAM_COMMANDS = [
+  'editor.link.insert',
+  'editor.math.inline',
+  'editor.math.block',
+  'editor.table.insert',
+] as const
+
+export type WorkshopEditorParamName = (typeof WORKSHOP_EDITOR_PARAM_COMMANDS)[number]
+export type WorkshopEditorParamKey = 'linkInsert' | 'mathInline' | 'mathBlock' | 'tableInsert'
+
+export const WORKSHOP_EDITOR_PARAM_KEY: Record<WorkshopEditorParamName, WorkshopEditorParamKey> = {
+  'editor.link.insert': 'linkInsert',
+  'editor.math.inline': 'mathInline',
+  'editor.math.block': 'mathBlock',
+  'editor.table.insert': 'tableInsert',
+}
+
+export function isWorkshopEditorParamName(name: unknown): name is WorkshopEditorParamName {
+  return typeof name === 'string' && (WORKSHOP_EDITOR_PARAM_COMMANDS as readonly string[]).includes(name)
+}
+
+export interface WorkshopLinkArgs {
+  href: string
+  text?: string
+}
+
+export interface WorkshopMathArgs {
+  latex: string
+}
+
+export interface WorkshopTableArgs {
+  rows: number
+  cols: number
+  withHeaderRow: boolean
+}
+
+export type WorkshopEditorParamArgs = WorkshopLinkArgs | WorkshopMathArgs | WorkshopTableArgs
+
+export interface WorkshopEditorArgsValidation {
+  ok: boolean
+  /** 失败原因（人类可读；成功时 undefined） */
+  error?: string
+  /** 规范化后的参数（缺省值已填充；成功时存在） */
+  value?: WorkshopEditorParamArgs
+}
+
+const LINK_HREF_MAX = 2048
+const LINK_TEXT_MAX = 500
+const MATH_LATEX_MAX = 2000
+const TABLE_MIN = 1
+const TABLE_MAX = 8
+/** 控制字符（允许常见空白 \t \n \r；其余拒绝）。 */
+const CONTROL_EXCEPT_WHITESPACE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/
+
+function isPlainArgsObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasOnlyKeys(obj: Record<string, unknown>, allowed: readonly string[]): boolean {
+  return Object.keys(obj).every((key) => allowed.includes(key))
+}
+
+/** 空/缺省 args（无参命令的唯一合法形态）。 */
+export function isEmptyCommandArgs(args: unknown): boolean {
+  if (args === undefined || args === null) return true
+  return isPlainArgsObject(args) && Object.keys(args).length === 0
+}
+
+function validateLinkArgs(args: Record<string, unknown>): WorkshopEditorArgsValidation {
+  if (!hasOnlyKeys(args, ['href', 'text'])) return { ok: false, error: '仅允许 href/text 参数' }
+  if (typeof args.href !== 'string') return { ok: false, error: 'href 必须是字符串' }
+  const href = args.href.trim()
+  if (href.length === 0) return { ok: false, error: 'href 不能为空' }
+  if (href.length > LINK_HREF_MAX) return { ok: false, error: `href 超长（>${LINK_HREF_MAX}）` }
+  // 拒绝控制字符/空白（URL 中不应出现裸空白）
+  if (CONTROL_EXCEPT_WHITESPACE.test(href) || /\s/.test(href)) {
+    return { ok: false, error: 'href 含控制字符/空白' }
+  }
+  // 严格 scheme 白名单：http(s)/mailto；javascript:/data:/file:/相对路径等一律拒绝
+  const schemeOk = /^https?:\/\/[^\s]+$/i.test(href) || /^mailto:[^\s]+$/i.test(href)
+  if (!schemeOk) return { ok: false, error: 'href 仅允许 http://、https://、mailto:' }
+  let text: string | undefined
+  if (args.text !== undefined) {
+    if (typeof args.text !== 'string') return { ok: false, error: 'text 必须是字符串' }
+    if (args.text.length > LINK_TEXT_MAX) return { ok: false, error: `text 超长（>${LINK_TEXT_MAX}）` }
+    if (CONTROL_EXCEPT_WHITESPACE.test(args.text)) return { ok: false, error: 'text 含控制字符' }
+    text = args.text.length > 0 ? args.text : undefined
+  }
+  return { ok: true, value: text === undefined ? { href } : { href, text } }
+}
+
+function validateMathArgs(args: Record<string, unknown>): WorkshopEditorArgsValidation {
+  if (!hasOnlyKeys(args, ['latex'])) return { ok: false, error: '仅允许 latex 参数' }
+  if (typeof args.latex !== 'string') return { ok: false, error: 'latex 必须是字符串' }
+  const latex = args.latex
+  if (latex.length === 0) return { ok: false, error: 'latex 不能为空' }
+  if (latex.length > MATH_LATEX_MAX) return { ok: false, error: `latex 超长（>${MATH_LATEX_MAX}）` }
+  if (CONTROL_EXCEPT_WHITESPACE.test(latex)) return { ok: false, error: 'latex 含控制字符' }
+  return { ok: true, value: { latex } }
+}
+
+function validateTableArgs(args: Record<string, unknown>): WorkshopEditorArgsValidation {
+  if (!hasOnlyKeys(args, ['rows', 'cols', 'withHeaderRow'])) {
+    return { ok: false, error: '仅允许 rows/cols/withHeaderRow 参数' }
+  }
+  const readDim = (key: 'rows' | 'cols'): { ok: true; value: number } | { ok: false; error: string } => {
+    if (args[key] === undefined) return { ok: true, value: 3 }
+    const value = args[key]
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < TABLE_MIN || value > TABLE_MAX) {
+      return { ok: false, error: `${key} 必须是 ${TABLE_MIN}-${TABLE_MAX} 的整数` }
+    }
+    return { ok: true, value }
+  }
+  const rows = readDim('rows')
+  if (!rows.ok) return { ok: false, error: rows.error }
+  const cols = readDim('cols')
+  if (!cols.ok) return { ok: false, error: cols.error }
+  let withHeaderRow = true
+  if (args.withHeaderRow !== undefined) {
+    if (typeof args.withHeaderRow !== 'boolean') return { ok: false, error: 'withHeaderRow 必须是布尔值' }
+    withHeaderRow = args.withHeaderRow
+  }
+  return { ok: true, value: { rows: rows.value, cols: cols.value, withHeaderRow } }
+}
+
+/**
+ * 严格校验参数化命令 args（协议层第一道防线；EditorArea 执行器再做类型防御）：
+ * - `editor.link.insert`：{href ≤2048, 仅 http/https/mailto, text ≤500}；
+ * - `editor.math.inline|block`：{latex ≤2000, 拒绝控制字符（常见空白除外）}；
+ * - `editor.table.insert`：{rows/cols 整数 1-8 缺省 3, withHeaderRow 布尔缺省 true}。
+ * 失败 → `{ok:false,error}`（调用方如实映射 E_BAD_PAYLOAD，不执行）。
+ */
+export function validateWorkshopEditorArgs(name: string, args: unknown): WorkshopEditorArgsValidation {
+  if (!isWorkshopEditorParamName(name)) return { ok: false, error: '非参数化命令' }
+  // 缺省 args（undefined/null）等价空对象：table 可全缺省；link/math 由各自必填校验拒绝
+  const raw = args === undefined || args === null ? {} : args
+  if (!isPlainArgsObject(raw)) return { ok: false, error: 'args 必须是对象' }
+  const parsed = raw as Record<string, unknown>
+  switch (name) {
+    case 'editor.link.insert':
+      return validateLinkArgs(parsed)
+    case 'editor.math.inline':
+    case 'editor.math.block':
+      return validateMathArgs(parsed)
+    case 'editor.table.insert':
+      return validateTableArgs(parsed)
+    default:
+      return { ok: false, error: '非参数化命令' }
+  }
+}
+
+/** guest 命令桥接受的全部协议名（14 切换 + 4 参数化 + 3 无参动作 = 21 条；供诊断/单测）。 */
+export const WORKSHOP_COMMAND_PROTOCOL_NAMES: readonly string[] = [
+  ...WORKSHOP_EDITOR_PROTOCOL_NAMES,
+  ...WORKSHOP_EDITOR_PARAM_COMMANDS,
+  ...WORKSHOP_EDITOR_ACTION_WHITELIST,
+]
 
 let sharedBridge: CoreSaveBridge | null = null
 function bridge(): CoreSaveBridge {
@@ -430,6 +588,7 @@ export class ProductBrokerBackend implements BrokerBackend {
   private async invokeEditorCommand(
     name: WorkshopEditorInvokeName,
     conn: BrokerConnection,
+    args?: Record<string, unknown> | null,
   ): Promise<ProtocolMethods['command.invoke']['result']> {
     const resolved = resolveWorkshopEditorCommand(name)
     if (!resolved) {
@@ -437,6 +596,10 @@ export class ProductBrokerBackend implements BrokerBackend {
         name,
         protocolNames: [...WORKSHOP_COMMAND_PROTOCOL_NAMES],
       })
+    }
+    // W07 task-33：14 条切换命令为**无参命令** → 收到非空 args 明确拒绝（不静默忽略）
+    if (!isEmptyCommandArgs(args)) {
+      throw protocolError('E_BAD_PAYLOAD', `E_BAD_PAYLOAD: ${String(name)} 不接受参数`, { name })
     }
     if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
       throw protocolError('E_CAPABILITY', '缺少能力: editor.commands.readonly', {
@@ -466,7 +629,45 @@ export class ProductBrokerBackend implements BrokerBackend {
   }
 
   /**
-   * W07 task-29：执行 4 条可无头产品动作（复用 product action 注册表 `runAction`）。
+   * W07 task-33：参数化无头命令（link/math/table）——严格校验 args → 能力 → 执行器（带参数）。
+   * 非法 args 一律 E_BAD_PAYLOAD 且**不执行**（不假成功）；执行器缺失/失败如实错误。
+   */
+  private async invokeEditorParamCommand(
+    name: WorkshopEditorParamName,
+    conn: BrokerConnection,
+    args: Record<string, unknown> | null | undefined,
+  ): Promise<ProtocolMethods['command.invoke']['result']> {
+    const validation = validateWorkshopEditorArgs(name, args)
+    if (!validation.ok || !validation.value) {
+      throw protocolError('E_BAD_PAYLOAD', `E_BAD_PAYLOAD: ${String(name)} 参数非法（${validation.error ?? '未知'}）`, {
+        name,
+      })
+    }
+    if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
+      throw protocolError('E_CAPABILITY', '缺少能力: editor.commands.readonly', {
+        required: 'editor.commands.readonly',
+        granted: conn.capabilities,
+      })
+    }
+    const executor = getWorkshopEditorExecutor()
+    if (!executor) {
+      throw protocolError('E_INTERNAL', 'E_EDITOR_NOT_READY: 编辑器未就绪（主窗口 EditorArea 未挂载）', { name })
+    }
+    const paramKey = WORKSHOP_EDITOR_PARAM_KEY[name]
+    let result: WorkshopEditorExecutorResult
+    try {
+      result = executor.execute(paramKey, validation.value as unknown as Record<string, unknown>)
+    } catch (e) {
+      throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${String((e as Error)?.message ?? e)}`, { name })
+    }
+    if (!result || result.ok !== true) {
+      throw protocolError('E_INTERNAL', `E_COMMAND_EXECUTION_FAILED: ${result?.error ?? '执行器未返回成功'}`, { name })
+    }
+    return { ok: true, value: { name, executed: true } }
+  }
+
+  /**
+   * W07 task-29：执行可无头产品动作（复用 product action 注册表 `runAction`）。
    * - action handler 未注册（编辑器/应用未就绪）→ runAction 返回 `{ran:false}` → 如实
    *   `E_EDITOR_NOT_READY`（不假成功）；
    * - handler 抛错 → `E_COMMAND_EXECUTION_FAILED`；
@@ -475,7 +676,12 @@ export class ProductBrokerBackend implements BrokerBackend {
   private async invokeEditorAction(
     name: WorkshopEditorActionName,
     conn: BrokerConnection,
+    args?: Record<string, unknown> | null,
   ): Promise<ProtocolMethods['command.invoke']['result']> {
+    // W07 task-33：无参动作收到非空 args 明确拒绝（不静默忽略）
+    if (!isEmptyCommandArgs(args)) {
+      throw protocolError('E_BAD_PAYLOAD', `E_BAD_PAYLOAD: ${String(name)} 不接受参数`, { name })
+    }
     if (!connectionHasCapability(conn, 'editor.commands.readonly')) {
       throw protocolError('E_CAPABILITY', '缺少能力: editor.commands.readonly', {
         required: 'editor.commands.readonly',
@@ -500,13 +706,21 @@ export class ProductBrokerBackend implements BrokerBackend {
 
   async invokeCommand(params: ProtocolMethods['command.invoke']['params'], conn: BrokerConnection) {
     const name = params.name
-    // W07 task-29：4 条可无头产品动作（协议名 = 既有 action id；doc.save 也走此通道）
+    // W07 task-33：参数化无头命令（link/math/table 尺寸；严格 args 校验）
+    if (isWorkshopEditorParamName(name)) {
+      return await this.invokeEditorParamCommand(name, conn, params.args as Record<string, unknown> | null | undefined)
+    }
+    // W07 task-29：无参产品动作（协议名 = 既有 action id；doc.save 也走此通道）
     if (isWorkshopEditorActionName(name)) {
-      return await this.invokeEditorAction(name, conn)
+      return await this.invokeEditorAction(name, conn, params.args as Record<string, unknown> | null | undefined)
     }
     // T26 F03：editor.* 走受控编辑器切换命令桥；其它名称仍走既有 W02 article meta 白名单
     if (typeof name === 'string' && name.startsWith('editor.')) {
-      return await this.invokeEditorCommand(name as WorkshopEditorInvokeName, conn)
+      return await this.invokeEditorCommand(
+        name as WorkshopEditorInvokeName,
+        conn,
+        params.args as Record<string, unknown> | null | undefined,
+      )
     }
     // 未白名单的 doc.* / 其它未知前缀：明确拒绝（不落到 article meta 处理器，错误语义更清晰）
     if (typeof name === 'string' && name.startsWith('doc.')) {

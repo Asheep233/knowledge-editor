@@ -993,3 +993,9 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 - 78e5c25：checks 60/63；F03 +22 行（19 PASS/3 FAIL）；CSV 49/130 已登记（官方 45 PASS/3 FAIL）；
   F14 对话框/预览 PASS、最终导出 NOT_RUN（USERPROFILE 隔离限制）+ preview_pdf 真实 PDF 补充证据。
 - 未覆盖：F03 剩余 12 行、F16 原生菜单等；不宣称 F01–F16 达成。
+
+## P6 进度（W07 C2-3 + boot 三缺口修复+复测，2026-10-19）
+
+- a80ec8b/b030b25：入口角标、启动失败可观测、孤儿 sidecar 自愈、损坏 settings 备份重置。
+- 543bb08：四项 FAIL→PASS；W07 bridge 45/46（剩 C2-7 no-fallback 自动修复）、boot 43/45
+  （剩 B1-6/B2-5 运行期无自愈需重启）。仍 PASS-with-gaps。

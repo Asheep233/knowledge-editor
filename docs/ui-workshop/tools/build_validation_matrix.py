@@ -18,8 +18,8 @@ OUT = ROOT / "docs" / "ui-workshop" / "validation-matrix.csv"
 # 已知失败（已记录的风险，不是回归）：矩阵中标注 KNOWN_FAIL，不参与 --check 门禁
 # 部分通过但缺口已逐条记录（PASS_WITH_FINDINGS，不等同 FAIL、也不等同全通过）
 PARTIAL_EVIDENCE = {
-    "T26-W07-boot-results.json": 4,
-    "T26-W07-bridge-results.json": 2,
+    "T26-W07-boot-results.json": 2,
+    "T26-W07-bridge-results.json": 1,
     "T26-F-ledger-results.json": 3,
 }
 

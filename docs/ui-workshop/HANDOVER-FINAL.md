@@ -293,3 +293,14 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - **F14**：官方导出对话框/A4 预览 PASS；最终 `export_pdf` 落 Documents **NOT_RUN**（USERPROFILE 覆盖会
   disable CDP，无法安全隔离，未写真实用户目录）；补充 preview_pdf 隔离 TEMP 真实 PDF 36541B 作为官方管线
   落盘补充证据（不冒充最终导出）。未覆盖：F03 剩余 12 行、F16 原生菜单等，如实 NOT_RUN。
+
+## 追加（2026-10-19 后段 · W07 C2-3 + boot 三缺口修复 + 复测）
+
+- `a80ec8b` **C2-3/B1-4**：WorkshopEntry 冷启动只读 startup status → 入口 `workshop-startup-badge`
+  （safeMode/恢复动作可见，无状态不误报）；sidecar 启动失败结构化 eprintln（E_SIDECAR_PORT/START + N/3）
+  + terminal `ke:runtime-error`。
+- `b030b25` **A2-10/B3-4**：spawn registry `sidecar-spawn.json` 保守判定并整树停止上次孤儿 sidecar；
+  损坏 settings/app_config → `.corrupt-<ts>.bak` 备份原始字节 + 默认重置（幂等）+ 可恢复事件。
+- `543bb08` **修复后产品 W 复测**：C2-3/A2-10/B1-4/B3-4 均 FAIL→**PASS**（入口 badge 可见、孤儿 pid 14128
+  被清理端口回 8000、stderr 517B 结构化原因、损坏文件备份+重置幂等）；bridge **45/46**（剩 C2-7），
+  boot **43/45**（剩 B1-6/B2-5 运行期无自愈，需重启，已知设计限制）。

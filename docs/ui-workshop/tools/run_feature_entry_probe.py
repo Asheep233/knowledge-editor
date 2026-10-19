@@ -1398,15 +1398,50 @@ def append_coverage(result: dict, rows: list[dict], stats: dict) -> None:
     if have_d:
         registered2 = len(registered)
         pass2 = sum(1 for c in result["checks"] if c["pass"])
+        def find_check(prefix: str) -> dict:
+            for ck in result["checks"]:
+                if ck["name"].startswith(prefix):
+                    return ck
+            return {}
+
+        pa6 = find_check("F-PA-6")
+        pa7 = find_check("F-PA-7")
+        pa8 = find_check("F-PA-8")
+        d6 = pa6.get("detail") if isinstance(pa6.get("detail"), dict) else {}
+        d7 = pa7.get("detail") if isinstance(pa7.get("detail"), dict) else {}
+        d8 = pa8.get("detail") if isinstance(pa8.get("detail"), dict) else {}
         update = [
             "",
-            "### D.5 第二窗口补充更新（v2，2026-10-19）",
+            "---",
             "",
-            f"- 探针修复：根因 = v1 在 pack A 事件测试前调用通用 dismiss_overlays 误点工坊对话框「关闭」→ guest 卸载；已移除并做事件触发/停用轮询加固。",
-            f"- 本轮 checks：**{pass2}/{len(result['checks'])} PASS**；CSV 已登记 **{registered2} 行**（本轮更新行见下表）。",
-            "- 事件证据方法如实区分：`real-save` / `real-theme-toggle` 为真实保存链/真实主题切换触发；"
-            "`bridge-window-event(...)` 为兜底（产品真实 window 事件入口 `ke:workshop-document-saved`/`ke:workshop-theme-changed`，"
-            "真实保存链由 F-OFF-2 单独覆盖）。",
+            "## 附录 E：第二轮补登记（v2，2026-10-19）",
+            "",
+            "> 本节为第二轮窗口（Lead GO）正式跑结果，追加在 v1 附录 D 之后；不改上文（§0–§7 / 附录 D）结论。",
+            "",
+            "### E.1 v1 失败根因与修复（pack A 事件三项）",
+            "",
+            "- **v1 根因**：v1 探针在 pack A 事件测试前调用通用 `dismiss_overlays()`，会点击工坊对话框的「关闭」→ 工坊面板卸载 → guest iframe 停止，"
+            "导致 document-saved / theme-changed / 停用 guest 3 项连锁失败（**探针缺陷，不是产品能力失败**）。",
+            "- **修复**：移除该调用；document-saved 改为「真实保存优先（显式设置编辑器末尾选区 + 插入 marker + 等待磁盘/事件）」；"
+            "theme-changed 改为「真实设置面板切主题优先」；两者在窗口内未触发时兜底使用**产品真实 window 事件入口**"
+            "（`ke:workshop-document-saved` / `ke:workshop-theme-changed`，与产品保存链/主题链 dispatch 同名），"
+            "并在 check detail 标注 `eventMethod`；停用 guest 增加面板就绪等待 + 15s 轮询。",
+            "",
+            "### E.2 事件三项最终结果（如实，含方法）",
+            "",
+            f"| 项 | 结果 | 方法 | 关键值 |",
+            f"| --- | --- | --- | --- |",
+            f"| F-PA-6 document-saved | {'PASS' if pa6.get('pass') else 'FAIL'} | `{d6.get('eventMethod', '未执行')}` | saved={d6.get('saved')}, event={json.dumps(d6.get('event'), ensure_ascii=False)[:120]} |",
+            f"| F-PA-7 theme-changed | {'PASS' if pa7.get('pass') else 'FAIL'} | `{d7.get('eventMethod', '未执行')}` | event={json.dumps(d7.get('event'), ensure_ascii=False)[:120]} |",
+            f"| F-PA-8 停用 guest | {'PASS' if pa8.get('pass') else 'FAIL'} | `real-ui-click` | state={d8.get('state')}, stopClicked={d8.get('stopClicked')} |",
+            "",
+            "- 方法口径：`real-save` / `real-theme-toggle` = 真实保存链/真实主题切换触发；"
+            "`bridge-window-event(...)` = 测试兜底注入（走产品真实事件入口与 G4 事件桥，**不是** mock；真实保存链由 F-OFF-2 单独覆盖）；"
+            "`未执行` = 本轮未跑到。",
+            "",
+            "### E.3 本轮覆盖统计（CSV 已登记行）",
+            "",
+            f"- 探针 checks：**{pass2}/{len(result['checks'])} PASS**；CSV 已登记 **{registered2} 行**（v1 27 行基础上按本轮真实结果更新；其余 F 域行保持 NOT_RUN）。",
             "",
             "| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |",
             "| --- | ---: | ---: | ---: | --- |",

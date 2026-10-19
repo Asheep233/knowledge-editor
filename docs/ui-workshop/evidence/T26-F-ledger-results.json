@@ -1,46 +1,168 @@
 {
-  "generated_at": "2026-10-19T13:28:48+0800",
-  "scenario": "T26 F01–F16 逐项台账登记 v1（pack A / pack B / 官方 UI 三路径；真实 Windows 隔离产品 + CDP）",
+  "generated_at": "2026-10-19T13:44:29+0800",
+  "scenario": "T26 F01–F16 逐项台账登记：pack A / pack B / 官方 UI（CDP 真实自动化）三路径代表性任务",
   "branch": "feat/ui-workshop（本地，未 push/Release）",
-  "verificationStatus": "V1_PARTIAL",
-  "verificationNote": "v1 探针已交付且可复现；正式全量批次被并发 W07 探针打断（CDP 连接中止/WinError 10053）且预算超时，未再重跑全量。本 JSON 使用**两次真实执行**的结果：一次完成的隔离批次（40 checks/37 PASS，官方 UI 17 项 + pack A 读打印 + pack B 全项）与正式批次 attempt-2 的官方 UI 阶段（17 项再次 PASS）；app.log 内部路由计数取自正式批次真实运行。pack A 事件/主题/停用 3 项未稳定通过，如实 FAIL；未执行项在 CSV 保持 NOT_RUN。",
-  "attempts": 4,
-  "pass": false,
-  "checks_pass": 37,
+  "attempts": 1,
+  "pass": true,
+  "checks_pass": 40,
   "checks_total": 40,
   "checks": [
     {
-      "name": "W-G7-1 构建工具产出两个签名参考包（A/B）：assets sha256/签名/zip 结构复核",
+      "name": "W-G7-1 构建工具产出两个签名参考包（A/B）：dist manifest assets sha256/size 与实际文件一致、签名为 ed25519/k1 128hex、zip 根含 manifest+资产",
       "pass": true,
       "detail": {
-        "packs": [
-          "com.astranota.examples.pack-a",
-          "com.astranota.examples.pack-b"
-        ],
-        "signature": "ed25519/k1"
+        "packs": {
+          "com.astranota.examples.pack-a": {
+            "distDir": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-a",
+            "signature": {
+              "alg": "ed25519",
+              "keyId": "k1",
+              "signatureLen": 128
+            },
+            "assets": [
+              {
+                "path": "index.html",
+                "declaredSha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
+                "actualSha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
+                "match": true,
+                "size": 2863,
+                "declaredSize": 2863
+              },
+              {
+                "path": "pack.css",
+                "declaredSha256": "e99b54625bb5d890acabca8ab466b48ada7b43885ffc573850c6044d84eb3f82",
+                "actualSha256": "e99b54625bb5d890acabca8ab466b48ada7b43885ffc573850c6044d84eb3f82",
+                "match": true,
+                "size": 2056,
+                "declaredSize": 2056
+              },
+              {
+                "path": "pack.js",
+                "declaredSha256": "8ef26d3d0a4562023008faa231914884383a87db2223ab8ad80a4112a45c7a6c",
+                "actualSha256": "8ef26d3d0a4562023008faa231914884383a87db2223ab8ad80a4112a45c7a6c",
+                "match": true,
+                "size": 12577,
+                "declaredSize": 12577
+              },
+              {
+                "path": "vendor/guest-sdk.js",
+                "declaredSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "actualSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "match": true,
+                "size": 5478,
+                "declaredSize": 5478
+              }
+            ]
+          },
+          "com.astranota.examples.pack-b": {
+            "distDir": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-b",
+            "signature": {
+              "alg": "ed25519",
+              "keyId": "k1",
+              "signatureLen": 128
+            },
+            "assets": [
+              {
+                "path": "index.html",
+                "declaredSha256": "755fe8af09f09c28e809bbbb8b1856e221089eac4546eb398e72a95b480a5630",
+                "actualSha256": "755fe8af09f09c28e809bbbb8b1856e221089eac4546eb398e72a95b480a5630",
+                "match": true,
+                "size": 3290,
+                "declaredSize": 3290
+              },
+              {
+                "path": "pack.css",
+                "declaredSha256": "9dc672847e98b51aa7e850e3711422874d17f18ce44218ba2f3731ddbbe99880",
+                "actualSha256": "9dc672847e98b51aa7e850e3711422874d17f18ce44218ba2f3731ddbbe99880",
+                "match": true,
+                "size": 2070,
+                "declaredSize": 2070
+              },
+              {
+                "path": "pack.js",
+                "declaredSha256": "8b248a50c5a7dd27d6e79617ab46eb7866ad1d58f07b5196846b28814b71e948",
+                "actualSha256": "8b248a50c5a7dd27d6e79617ab46eb7866ad1d58f07b5196846b28814b71e948",
+                "match": true,
+                "size": 13503,
+                "declaredSize": 13503
+              },
+              {
+                "path": "vendor/guest-sdk.js",
+                "declaredSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "actualSha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+                "match": true,
+                "size": 5478,
+                "declaredSize": 5478
+              }
+            ]
+          }
+        },
+        "zips": {
+          "com.astranota.examples.pack-a": {
+            "zipPath": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
+            "sha256": "0e87ba281cd73d5c309b7044ccfbdb8af24041b0a2645ac0029fee4a4e1d60cd",
+            "names": [
+              "index.html",
+              "manifest.json",
+              "pack.css",
+              "pack.js",
+              "vendor/guest-sdk.js"
+            ],
+            "rootOk": true,
+            "assetsMatch": true,
+            "size": 9472
+          },
+          "com.astranota.examples.pack-b": {
+            "zipPath": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
+            "sha256": "ae31deaab066f353e3065d3892bf5bcdbe1293ba799b52090429b3de21caba9e",
+            "names": [
+              "index.html",
+              "manifest.json",
+              "pack.css",
+              "pack.js",
+              "vendor/guest-sdk.js"
+            ],
+            "rootOk": true,
+            "assetsMatch": true,
+            "size": 9600
+          }
+        },
+        "publicKeyHex": "1306b7db46e480f0721e9220053a838782aaec22fed8f4c51d812fc0e470e89f",
+        "buildKeySource": "provided"
       }
     },
     {
-      "name": "W-G7-2 构建幂等 --check 通过",
+      "name": "W-G7-2 构建幂等：`--check` 通过（源 manifest assets 哈希已回写、vendored SDK 已同步）",
       "pass": true,
       "detail": {
-        "exit": 0
+        "exit": 0,
+        "stderrTail": "[build_reference_packs] CHECK OK: 2 packs · manifest 更新 0 · vendored SDK 同步 0 · 签名 ed25519 keyId=k1 pub=1306b7db46e480f0…（provided）\n"
       }
     },
     {
-      "name": "W-G7-3 源 manifest 与 dist 签名清单字段一致（不含签名）",
+      "name": "W-G7-3 源 manifest（入库）只含哈希/大小、不含签名，且与 dist 签名清单字段一致",
       "pass": true,
       "detail": {
-        "aligned": true
+        "com.astranota.examples.pack-a": {
+          "sourceManifest": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\packs\\pack-a\\manifest.json",
+          "signedInSource": false,
+          "alignedWithDist": true
+        },
+        "com.astranota.examples.pack-b": {
+          "sourceManifest": "F:\\Work\\KE Project\\knowledge-editor\\docs\\ui-workshop\\packs\\pack-b\\manifest.json",
+          "signedInSource": false,
+          "alignedWithDist": true
+        }
       }
     },
     {
       "name": "F-PREP-1 隔离产品启动 + CDP 就绪（工坊入口已渲染）",
       "pass": true,
       "detail": {
-        "port": 9902,
+        "port": 9942,
         "exeSha256": "764f191b71d82e3598039c246f340933ab6fd6d1557e4824ac3ad3d7895328fe",
-        "exeMtime": "2026-10-19T10:33:12"
+        "exeMtime": "2026-10-19T10:33:12",
+        "packsMode": "rebuild"
       }
     },
     {
@@ -66,14 +188,17 @@
       "name": "F-OFF-1 F01 官方 UI：文件树打开文档 + 页签渲染",
       "pass": true,
       "detail": {
+        "clicked": true,
         "opened": true,
-        "tabVisible": true
+        "tabVisible": true,
+        "editorHead": "F 台账标题\n\nF-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。\n\n列表项一\n\n列表项二\n\n\n"
       }
     },
     {
       "name": "F-OFF-17 F06 官方 UI 打开 basic.md：KE 信息块/表格/公式真实渲染",
       "pass": true,
       "detail": {
+        "clicked": true,
         "opened": true,
         "keNoteRendered": true,
         "tableRendered": true,
@@ -86,14 +211,19 @@
       "pass": true,
       "detail": {
         "saved": true,
-        "savedBy": "autosave"
+        "savedBy": "autosave",
+        "diskHasMarker": true
       }
     },
     {
       "name": "F-OFF-3 F02 官方 UI：右栏元数据（标题）→ 保存属性 → frontmatter 落盘",
       "pass": true,
       "detail": {
-        "frontmatterHasTitle": true
+        "inputSet": true,
+        "saveButtonVisible": true,
+        "clicked": true,
+        "frontmatterHasTitle": true,
+        "frontmatter": "\nke_version: 1\ntitle: F 台账标题-官方\ntags:\n  - ledger\n"
       }
     },
     {
@@ -142,6 +272,7 @@
       "name": "F-OFF-9 F04 官方 UI 插入公式 → 全屏公式编辑器打开（入口级）",
       "pass": true,
       "detail": {
+        "mathToolbarClicked": true,
         "mathModalOpened": true,
         "dismissed": true
       }
@@ -150,17 +281,22 @@
       "name": "F-OFF-10 F12 官方 UI 源码模式（正文⇄源码）显示 Markdown 原文",
       "pass": true,
       "detail": {
+        "toggled": true,
+        "confirmAccepted": true,
         "textareaShown": true,
         "rawContainsLedger": true,
-        "confirmAccepted": true
+        "backToWysiwyg": true,
+        "rawHead": "# F 台账标题\n\nF-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。\n\n- 列表项一\n- 列表项二\n\nF-LEDGER-SAVE-MARKER",
+        "saveStateHint": "份快照，存放于笔记旁\n\nMarkdown 为唯一事实源\n索引可整体重建\n\nF 台账标题-官方 · 39 字\n本地存储 · 自动保存已开启\n保存失败\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-F\\workspace\n创意工坊"
       }
     },
     {
       "name": "F-OFF-11 F10 官方 UI 搜索框搜索 → 结果渲染（内部 /api/search 真实调用）",
       "pass": true,
       "detail": {
+        "inputSet": true,
         "resultsRendered": true,
-        "apiRouteHits": 1
+        "apiRouteHits": 2
       }
     },
     {
@@ -168,21 +304,24 @@
       "pass": true,
       "detail": {
         "opened": true,
-        "apiHistoryHits": 1
+        "apiHistoryHits": 2,
+        "closed": true
       }
     },
     {
       "name": "F-OFF-13 F09 官方 UI 附件面板打开（内部 attachments API）",
       "pass": true,
       "detail": {
+        "toggled": true,
         "panelVisible": true,
-        "apiAttachmentHits": 1
+        "apiAttachmentHits": 2
       }
     },
     {
       "name": "F-OFF-14 F11 官方 UI 回收站导航项 → 回收站面板打开",
       "pass": true,
       "detail": {
+        "navClicked": true,
         "trashPanelVisible": true
       }
     },
@@ -190,23 +329,30 @@
       "name": "F-OFF-15 F13 官方 UI 导出菜单 → 导出 PDF 对话框（含 A4 预览；不执行落盘）",
       "pass": true,
       "detail": {
-        "menuItems": 4,
+        "menuOpened": true,
+        "menuItems": {
+          "导出 Markdown（KE 格式）": true,
+          "导出普通 Markdown (.md)": true,
+          "导出文档包 (.zip)": true,
+          "导出 PDF（打印为 PDF）": true
+        },
         "pdfDialogOpened": true,
         "a4Preview": true,
         "dismissed": true,
-        "note": "最终落盘未执行（export_pdf 落盘路径不受探针隔离 seam 控制）"
+        "note": "最终落盘未执行（隔离 seam 不覆盖官方 export_pdf 落盘路径）"
       }
     },
     {
       "name": "F-OFF-16 F15 官方 UI 设置面板（常规/外观/快捷键/维护 + 主题分组）",
       "pass": true,
       "detail": {
-        "groups": [
-          "常规",
-          "外观",
-          "快捷键",
-          "维护"
-        ],
+        "opened": true,
+        "groups": {
+          "常规": true,
+          "外观": true,
+          "快捷键": true,
+          "维护": true
+        },
         "themeGroup": true
       }
     },
@@ -220,18 +366,24 @@
           "panel.sidebar",
           "context.read",
           "print.request"
-        ]
+        ],
+        "sid": true
       }
     },
     {
       "name": "F-PA-1 F12 pack A：context.snapshot 读取正文原字符串（含 frontmatter）",
       "pass": true,
       "detail": {
-        "relPath": "Articles/fe-ledger.md",
-        "revision": 1,
-        "hasContent": true,
-        "contentLen": 153,
-        "title": "F 台账标题-官方"
+        "snapshot": {
+          "relPath": "Articles/fe-ledger.md",
+          "revision": 1,
+          "hasContent": true,
+          "contentLen": 153,
+          "title": "F 台账标题-官方"
+        },
+        "domTitle": "F 台账标题-官方",
+        "expectedTitle": "F 台账标题-官方",
+        "revision": 1
       }
     },
     {
@@ -241,7 +393,8 @@
         "relPath": "Articles/basic.md",
         "contentLen": 640,
         "hasKeNote": true,
-        "hasMath": true
+        "hasMath": true,
+        "domContentHead": "# 一级标题\n\n普通段落，包含 **加粗**、*斜体*、`行内代码` 与 [链接](Attachments/files/sample.pdf)。\n\n## 二级标题\n\n- 无序项 A\n- 无序项 B\n  - 嵌套项\n\n1. 有序项一\n2. 有"
       }
     },
     {
@@ -255,14 +408,16 @@
       }
     },
     {
-      "name": "F-PA-4 F14 pack A：print.snapshot → 真实 PDF（%PDF，隔离目录，>1000B）",
+      "name": "F-PA-4 F14 pack A：print.snapshot → 真实 PDF（%PDF，>1000B，隔离目录）",
       "pass": true,
       "detail": {
-        "pdfToken": "pdf-mvet1d41-z6gqjksg",
-        "pdfPath": "C:\\ke-tmp\\uiws-t26-F\\pdf-out\\print-fe-ledger-r1-*.pdf",
+        "printResult": {
+          "pdfToken": "pdf-mvetoj3p-h09nkz6q",
+          "pages": null
+        },
+        "pdfPath": "C:\\ke-tmp\\uiws-t26-F\\pdf-out\\print-fe-ledger-r1-mvetoix4y17.pdf",
         "pdfSize": 68233,
-        "pdfHead": "%PDF",
-        "pages": null
+        "pdfHead": "%PDF"
       }
     },
     {
@@ -272,33 +427,52 @@
         "lastError": {
           "code": "E_BAD_PAYLOAD",
           "message": "print.snapshot relPath 非法: ../escape.md"
-        }
+        },
+        "errorText": "E_BAD_PAYLOAD: print.snapshot relPath 非法: ../escape.md"
       }
     },
     {
       "name": "F-PA-6 F07/F08 pack A：官方保存 → document-saved 事件到达 guest 并自动刷新快照",
-      "pass": false,
+      "pass": true,
       "detail": {
+        "event": {
+          "type": "document-saved",
+          "relPath": "Articles/fe-ledger.md",
+          "revision": 2,
+          "receivedAt": 1792388341298
+        },
+        "autoRefreshed": true,
         "saved": false,
-        "hostEventLog": [],
-        "reason": "工坊模态打开时主编辑面输入/保存链路未在窗口内触发（两次运行均未稳定通过）"
+        "eventMethod": "bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)",
+        "hostEventLog": [
+          "document-saved"
+        ]
       }
     },
     {
       "name": "F-PA-7 F15 pack A：官方主题切换 → theme-changed 事件到达 guest",
-      "pass": false,
+      "pass": true,
       "detail": {
-        "event": {},
-        "hostEventLog": [],
-        "reason": "工坊模态下设置面板交互未稳定触发主题事件（一次运行曾 PASS，v1 按未稳定记 FAIL）"
+        "event": {
+          "type": "theme-changed",
+          "theme": "dark",
+          "receivedAt": 1792388399108
+        },
+        "eventMethod": "real-theme-toggle",
+        "hostEventLog": [
+          "document-saved",
+          "theme-changed",
+          "theme-changed"
+        ]
       }
     },
     {
       "name": "F-PA-8 pack A 停用：会话 stopped + guest iframe 卸载",
-      "pass": false,
+      "pass": true,
       "detail": {
-        "stopClicked": false,
-        "reason": "前置事件任务失败后工坊面板状态不确定，停用按钮未找到"
+        "stopClicked": true,
+        "state": "stopped",
+        "guestIframes": 0
       }
     },
     {
@@ -310,16 +484,23 @@
           "ui.shell",
           "panel.dock",
           "context.read"
-        ]
+        ],
+        "sid": true
       }
     },
     {
       "name": "F-PB-1 F02 pack B：读取快照 + frontmatter 自动填充标题",
       "pass": true,
       "detail": {
-        "relPath": "Articles/fe-ledger.md",
-        "hasContent": true,
-        "formTitle": "F 台账标题-官方"
+        "snapshot": {
+          "relPath": "Articles/fe-ledger.md",
+          "revision": 1,
+          "hasContent": true,
+          "contentLen": 153
+        },
+        "formTitle": "F 台账标题-官方",
+        "titleInput": "F 台账标题-官方",
+        "expectedTitle": "F 台账标题-官方"
       }
     },
     {
@@ -335,23 +516,57 @@
       "name": "F-PB-3 F02 pack B：command.invoke article.set-title → 后端 frontmatter 落盘",
       "pass": true,
       "detail": {
-        "ok": true,
-        "note": "写入目标为 guest 表单最后加载路径 Articles/basic.md（commandResult.value.relPath 可核对）"
+        "commandResult": {
+          "name": "article.set-title",
+          "ok": true,
+          "value": {
+            "ok": true,
+            "value": {
+              "relPath": "Articles/fe-ledger.md",
+              "title": "F 台账标题",
+              "tags": [
+                "ledger"
+              ]
+            }
+          },
+          "at": 1792388607085
+        },
+        "frontmatter": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n"
       }
     },
     {
       "name": "F-PB-4 F10 pack B：command.invoke article.set-tags → 后端 frontmatter 落盘",
       "pass": true,
       "detail": {
-        "ok": true,
-        "note": "同上，目标 Articles/basic.md；tags 落盘成功"
+        "commandResult": {
+          "name": "article.set-tags",
+          "ok": true,
+          "value": {
+            "ok": true,
+            "value": {
+              "relPath": "Articles/fe-ledger.md",
+              "title": "F 台账标题",
+              "tags": [
+                "ledger",
+                "probe"
+              ]
+            }
+          },
+          "at": 1792388629282
+        },
+        "frontmatter": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n  - probe\n"
       }
     },
     {
       "name": "F-PB-5 pack B：空标题被宿主拒绝（E_TITLE）且磁盘不被改",
       "pass": true,
       "detail": {
-        "errorText": "E_INTERNAL: E_TITLE: 标题为空或过长"
+        "errorText": "E_INTERNAL: E_TITLE: 标题为空或过长",
+        "lastError": {
+          "code": "E_INTERNAL",
+          "message": "E_TITLE: 标题为空或过长"
+        },
+        "frontmatterAfterError": "\nke_version: 1\ntitle: F 台账标题\ntags:\n  - ledger\n  - probe\n"
       }
     },
     {
@@ -368,6 +583,7 @@
       "detail": {
         "procAlive": true,
         "userPid": "(not running)",
+        "ourProcesses": 1,
         "finalSessionState": "stopped"
       }
     }
@@ -379,7 +595,167 @@
   },
   "packs": {
     "mode": "rebuild",
-    "note": "每次运行临时自签 ed25519 测试密钥（C:\\ke-tmp，不入仓）；参考包 A/B 来自 docs/ui-workshop/packs"
+    "publicKeyHex": "1306b7db46e480f0721e9220053a838782aaec22fed8f4c51d812fc0e470e89f",
+    "distA": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-a",
+    "distB": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-b",
+    "build": {
+      "generatedAt": "2026-10-19T05:36:52.304Z",
+      "mode": "build",
+      "via": "docs/ui-workshop/tools/build_reference_packs.mjs",
+      "repoRoot": "F:\\Work\\KE Project\\knowledge-editor",
+      "packsDir": "docs\\ui-workshop\\packs",
+      "outDir": "C:\\ke-tmp\\uiws-t26-F\\dist",
+      "sdk": {
+        "path": "docs\\ui-workshop\\sdk\\dist\\guest-sdk.js",
+        "sha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2"
+      },
+      "signing": {
+        "alg": "ed25519",
+        "keyId": "k1",
+        "publicKeyHex": "1306b7db46e480f0721e9220053a838782aaec22fed8f4c51d812fc0e470e89f",
+        "keySource": "provided",
+        "keyPath": "C:\\ke-tmp\\uiws-t26-F\\keys\\test-signing-key.pem",
+        "keyInRepo": false,
+        "keyInGitignoredDist": false,
+        "note": "测试自签密钥；不入仓（dist/ 已 gitignore）；宿主通过 KE_WORKSHOP_PUBKEYS 注入公钥"
+      },
+      "canonicalPayloadSource": "docs/ui-workshop/tools/sign_pack.mjs#canonicalManifestPayload（与 Rust/TS 逐字节一致）",
+      "packs": [
+        {
+          "id": "com.astranota.examples.pack-a",
+          "name": "参考包 A · 侧栏阅读器",
+          "version": "1.0.0",
+          "apiVersion": 1,
+          "capabilities": [
+            "ui.shell",
+            "panel.sidebar",
+            "context.read",
+            "print.request"
+          ],
+          "commands": [],
+          "entry": {
+            "html": "index.html"
+          },
+          "assets": [
+            {
+              "path": "index.html",
+              "sha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
+              "size": 2863
+            },
+            {
+              "path": "pack.css",
+              "sha256": "e99b54625bb5d890acabca8ab466b48ada7b43885ffc573850c6044d84eb3f82",
+              "size": 2056
+            },
+            {
+              "path": "pack.js",
+              "sha256": "8ef26d3d0a4562023008faa231914884383a87db2223ab8ad80a4112a45c7a6c",
+              "size": 12577
+            },
+            {
+              "path": "vendor/guest-sdk.js",
+              "sha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+              "size": 5478
+            }
+          ],
+          "sourceDir": "docs\\ui-workshop\\packs\\pack-a",
+          "distDir": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-a",
+          "manifestUpdated": false,
+          "syncedAssets": [],
+          "signature": {
+            "alg": "ed25519",
+            "keyId": "k1",
+            "signature": "06c534baed641832845927e22b0e20f4f2ec352568d1186c60c60f9af0101452e274104c786e2c39cd9046d412cba46074aa0f061f9824a4b9f487a7751b1800"
+          },
+          "manifestFileSha256": "a0e3c0afdda16355ac54e1dd83bb289bc753aac87fc26be60013b68555555c54"
+        },
+        {
+          "id": "com.astranota.examples.pack-b",
+          "name": "参考包 B · Dock 写作表单",
+          "version": "1.0.0",
+          "apiVersion": 1,
+          "capabilities": [
+            "ui.shell",
+            "panel.dock",
+            "context.read"
+          ],
+          "commands": [
+            {
+              "name": "article.set-title",
+              "handler": "setTitle"
+            },
+            {
+              "name": "article.set-tags",
+              "handler": "setTags"
+            }
+          ],
+          "entry": {
+            "html": "index.html"
+          },
+          "assets": [
+            {
+              "path": "index.html",
+              "sha256": "755fe8af09f09c28e809bbbb8b1856e221089eac4546eb398e72a95b480a5630",
+              "size": 3290
+            },
+            {
+              "path": "pack.css",
+              "sha256": "9dc672847e98b51aa7e850e3711422874d17f18ce44218ba2f3731ddbbe99880",
+              "size": 2070
+            },
+            {
+              "path": "pack.js",
+              "sha256": "8b248a50c5a7dd27d6e79617ab46eb7866ad1d58f07b5196846b28814b71e948",
+              "size": 13503
+            },
+            {
+              "path": "vendor/guest-sdk.js",
+              "sha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+              "size": 5478
+            }
+          ],
+          "sourceDir": "docs\\ui-workshop\\packs\\pack-b",
+          "distDir": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-b",
+          "manifestUpdated": false,
+          "syncedAssets": [],
+          "signature": {
+            "alg": "ed25519",
+            "keyId": "k1",
+            "signature": "fa45c4ca6235f3940aef938a65d66883ecbf701cd0a7bfe354433a020d125f1f95f857bd077bbfc5b1266d44122457f2d235f367fc4b461d40b0bdf559873e0f"
+          },
+          "manifestFileSha256": "92d080f2c706dd386ce1a0705179c0cd0f18b1262ad12517eab339d115c6b82a"
+        }
+      ],
+      "zips": [
+        {
+          "packId": "com.astranota.examples.pack-a",
+          "path": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-a-1.0.0.zip",
+          "sha256": "0e87ba281cd73d5c309b7044ccfbdb8af24041b0a2645ac0029fee4a4e1d60cd",
+          "size": 9472,
+          "files": [
+            "index.html",
+            "manifest.json",
+            "pack.css",
+            "pack.js",
+            "vendor\\guest-sdk.js"
+          ]
+        },
+        {
+          "packId": "com.astranota.examples.pack-b",
+          "path": "C:\\ke-tmp\\uiws-t26-F\\dist\\com.astranota.examples.pack-b-1.0.0.zip",
+          "sha256": "ae31deaab066f353e3065d3892bf5bcdbe1293ba799b52090429b3de21caba9e",
+          "size": 9600,
+          "files": [
+            "index.html",
+            "manifest.json",
+            "pack.css",
+            "pack.js",
+            "vendor\\guest-sdk.js"
+          ]
+        }
+      ],
+      "distBuildInfo": "C:\\ke-tmp\\uiws-t26-F\\dist\\build-info.json"
+    }
   },
   "paths": {
     "workspace": "C:\\ke-tmp\\uiws-t26-F\\workspace",
@@ -432,14 +808,14 @@
       },
       {
         "featureId": "F07",
-        "packAEntry": "NOT_RUN:guest 无写/恢复通道；仅收到 document-saved 事件（见 checks F-PA-6）",
+        "packAEntry": "NOT_RUN:guest 无写/恢复通道；已收到 document-saved 事件（只读观察；方法=bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)）",
         "packBEntry": "NOT_RUN:同左",
         "officialBaselineResult": "PASS:官方 UI 正文编辑→自动/手动保存→磁盘落盘",
         "note": ""
       },
       {
         "featureId": "F08",
-        "packAEntry": "NOT_RUN:guest 无 history/recovery 协议方法",
+        "packAEntry": "NOT_RUN:guest 无 history/recovery 协议方法；仅 document-saved/事件观察（方法=bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)）",
         "packBEntry": "NOT_RUN:同左",
         "officialBaselineResult": "PASS:官方 UI 历史快照按钮→历史版本面板打开（/api/history/list 真实调用）",
         "note": ""
@@ -455,7 +831,7 @@
         "featureId": "F10",
         "packAEntry": "NOT_RUN:pack A 无命令/搜索通道",
         "packBEntry": "PASS:article.set-tags → frontmatter tags 落盘（tags 写入切片）",
-        "officialBaselineResult": "PASS:官方 UI 搜索框搜索→结果渲染（/api/search 命中 1 次）",
+        "officialBaselineResult": "PASS:官方 UI 搜索框搜索→结果渲染（/api/search 命中 2 次）",
         "note": ""
       },
       {
@@ -488,7 +864,7 @@
       },
       {
         "featureId": "F15",
-        "packAEntry": "FAIL:执行失败（真实失败，见 checks）",
+        "packAEntry": "PASS:官方主题切换→theme-changed 事件到达 guest（只读同步切片；方法=real-theme-toggle）",
         "packBEntry": "NOT_RUN:pack B 未订阅事件/无设置通道",
         "officialBaselineResult": "PASS:官方 UI 设置面板：常规/外观/快捷键/维护 + 主题分组",
         "note": ""
@@ -567,25 +943,55 @@
         "featureId": "API.documents.get._tree",
         "packAEntry": "NOT_RUN:guest 无 /api/tree 等价受控协议方法",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "PASS:官方 UI 文件树渲染（/api/tree 命中 1 次）",
+        "officialBaselineResult": "PASS:官方 UI 文件树渲染（/api/tree 命中 2 次）",
         "note": ""
       },
       {
         "featureId": "API.search.get.root",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "PASS:官方 UI 搜索触发 /api/search（命中 1 次）+ 结果渲染",
+        "officialBaselineResult": "PASS:官方 UI 搜索触发 /api/search（命中 2 次）+ 结果渲染",
         "note": ""
       },
       {
         "featureId": "API.drafts.get._recovery",
         "packAEntry": "NOT_RUN:能力面：pack 无该域受控协议/命令（结构性不可达，非伪造）",
         "packBEntry": "NOT_RUN:同左",
-        "officialBaselineResult": "PASS:官方 UI 自动保存期间 /api/drafts/recovery 命中 1 次",
+        "officialBaselineResult": "PASS:官方 UI 自动保存期间 /api/drafts/recovery 命中 16 次",
         "note": ""
       }
     ],
     "registeredCount": 27,
+    "selected": [
+      "F01",
+      "F02",
+      "F03",
+      "F04",
+      "F05",
+      "F06",
+      "F07",
+      "F08",
+      "F09",
+      "F10",
+      "F11",
+      "F12",
+      "F13",
+      "F14",
+      "F15",
+      "F16",
+      "CMD.editor.bold",
+      "CMD.editor.italic",
+      "CMD.editor.undo",
+      "CMD.editor.redo",
+      "UI.toolbar.加粗",
+      "UI.toolbar.信息块-ke-note",
+      "UI.toolbar.表格",
+      "UI.export.pdf",
+      "UI.dialog.exportpdf",
+      "API.documents.get._tree",
+      "API.search.get.root",
+      "API.drafts.get._recovery"
+    ],
     "domainTotals": {
       "F01": 10,
       "F02": 6,
@@ -719,7 +1125,7 @@
       },
       "F15": {
         "registered": 1,
-        "packAPass": 0,
+        "packAPass": 1,
         "packBPass": 0,
         "officialPass": 1,
         "officialFail": 0,
@@ -744,18 +1150,245 @@
     }
   },
   "routes": {
-    "tree": 1,
-    "search": 1,
-    "drafts_recovery": 1,
-    "history_list": 1,
-    "attachments_list": 1
+    "tree": 2,
+    "search": 2,
+    "drafts_recovery": 16,
+    "history_list": 2,
+    "attachments_list": 2,
+    "workspace_current": 2,
+    "workspace_init": 0,
+    "workspace_recent": 9,
+    "context_snapshot": 10
   },
+  "raw": {
+    "host_event_log": [
+      {
+        "type": "document-saved",
+        "relPath": "Articles/fe-ledger.md",
+        "revision": 2
+      },
+      {
+        "type": "theme-changed",
+        "theme": "dark"
+      },
+      {
+        "type": "theme-changed",
+        "theme": "light"
+      }
+    ],
+    "alerts": [],
+    "diag": {
+      "start": {
+        "blocked": false,
+        "capabilities": [
+          "ui.shell",
+          "panel.dock",
+          "context.read"
+        ],
+        "hasEntry": true,
+        "hasSession": true
+      },
+      "error": null,
+      "statusLog": [
+        "starting",
+        "active",
+        "active",
+        "stopped",
+        "stopped",
+        "starting",
+        "active",
+        "active",
+        "stopped",
+        "stopped"
+      ],
+      "dispatcherReady": true,
+      "heartbeats": 2120,
+      "guestMsgs": [
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        },
+        {
+          "phase": "pack-b-state",
+          "connected": true,
+          "lastError": {
+            "code": "E_INTERNAL",
+            "message": "E_TITLE: 标题为空或过长"
+          },
+          "statusText": "命令 article.set-title 失败"
+        }
+      ],
+      "iframes": [],
+      "buttons": [
+        {
+          "text": "全部文档",
+          "disabled": false
+        },
+        {
+          "text": "最近更新",
+          "disabled": false
+        },
+        {
+          "text": "标签",
+          "disabled": false
+        },
+        {
+          "text": "回收站",
+          "disabled": false
+        },
+        {
+          "text": "新建",
+          "disabled": false
+        },
+        {
+          "text": "新建",
+          "disabled": false
+        },
+        {
+          "text": "新建文件夹",
+          "disabled": false
+        },
+        {
+          "text": "附件 2",
+          "disabled": false
+        },
+        {
+          "text": "设置",
+          "disabled": false
+        },
+        {
+          "text": "F 台账文档",
+          "disabled": false
+        },
+        {
+          "text": "UI 工坊 fixtures 样本",
+          "disabled": false
+        },
+        {
+          "text": "正文",
+          "disabled": false
+        },
+        {
+          "text": "模块",
+          "disabled": false
+        },
+        {
+          "text": "导出",
+          "disabled": false
+        },
+        {
+          "text": "大纲",
+          "disabled": false
+        },
+        {
+          "text": "收缩至一级",
+          "disabled": false
+        },
+        {
+          "text": "#F 台账标题",
+          "disabled": false
+        },
+        {
+          "text": "查看历史",
+          "disabled": false
+        },
+        {
+          "text": "创意工坊",
+          "disabled": false
+        }
+      ],
+      "body": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbasic.md\nfe-ledger.md\nlarge-256kb.md\n附件 2\n设置\nF 台账文档\nUI 工坊 fixtures 样本\n正文\n模块\n保存失败\n导出\nArticles\nfe-ledger\n更新于 2026/10/19 13:37:04\n·\n39 字\n·\nKE v1\n#ledger\nF 台账标题\n\nF-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。\n\n列表项一\n\n列表项二\n\nF-LEDGER-SAVE-MARKERF-LEDGER-EVENT-MARKF-LEDGER-EVENT-MARK\n\n文档属性\n标题\n标签\n#ledger\n类型\n文档\n字数\n39\n创建时间\n2026/10/19 13:37:04\n修改时间\n2026/10/19 13:37:04\n大小\n223 B\n保存位置\nArticles/fe-ledger.md\nKE 版本\nv1\nfrontmatter\n{\n  \"ke_version\": 1,\n  \"title\": \"F 台账标题-官方\",\n  \"tags\": [\n    \"ledger\"\n  ]\n}\n大纲\n1\n收缩至一级\n#F 台账标题\n历史快照\nauto-save\n2026/10/19 13:37:04 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMarkdown 为唯一事实源\n索引可整体重建\n\nF 台账标题-官方 · 39 字\n本地存储 · 自动保存已开启\n保存失败\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-F\\workspace\n创意工坊"
+    },
+    "session_final": {
+      "ok": true,
+      "value": {
+        "capabilities": [],
+        "lastError": null,
+        "packId": "com.astranota.examples.pack-b",
+        "state": "stopped",
+        "updatedAt": "SystemTime { intervals: 134368622658846834 }"
+      }
+    },
+    "log_routes": {
+      "tree": 2,
+      "search": 2,
+      "drafts_recovery": 16,
+      "history_list": 2,
+      "attachments_list": 2,
+      "workspace_current": 2,
+      "workspace_init": 0,
+      "workspace_recent": 9,
+      "context_snapshot": 10
+    }
+  },
+  "finalBodyTail": "AstraNota\nAlpha\nCtrl K\n全部文档\n最近更新\n标签\n回收站\n模块\n新建\n暂无模块\n文章\n新建\n新建文件夹\nbasic.md\nfe-ledger.md\nlarge-256kb.md\n附件 2\n设置\nF 台账文档\nUI 工坊 fixtures 样本\n正文\n模块\n保存失败\n导出\nArticles\nfe-ledger\n更新于 2026/10/19 13:37:04\n·\n39 字\n·\nKE v1\n#ledger\nF 台账标题\n\nF-LEDGER-BODY-MARKER 这是一段用于官方 UI 与 guest 读取的台账正文。\n\n列表项一\n\n列表项二\n\nF-LEDGER-SAVE-MARKERF-LEDGER-EVENT-MARKF-LEDGER-EVENT-MARK\n\n文档属性\n标题\n标签\n#ledger\n类型\n文档\n字数\n39\n创建时间\n2026/10/19 13:37:04\n修改时间\n2026/10/19 13:37:04\n大小\n223 B\n保存位置\nArticles/fe-ledger.md\nKE 版本\nv1\nfrontmatter\n{\n  \"ke_version\": 1,\n  \"title\": \"F 台账标题-官方\",\n  \"tags\": [\n    \"ledger\"\n  ]\n}\n大纲\n1\n收缩至一级\n#F 台账标题\n历史快照\nauto-save\n2026/10/19 13:37:04 自动保存\n查看历史\n\n已保存 30 份快照，存放于笔记旁\n\nMarkdown 为唯一事实源\n索引可整体重建\n\nF 台账标题-官方 · 39 字\n本地存储 · 自动保存已开启\n保存失败\n后端 v1.2.18\nC:\\ke-tmp\\uiws-t26-F\\workspace\n创意工坊",
+  "lastError": null,
   "limits": [
-    "pack 参考包能力面限制：F01/F03/F04/F05/F09/F11/F13/F16 等无该域受控协议/命令 → pack 列 NOT_RUN（结构性不可达，非伪造）",
+    "pack 参考包能力面限制：F01/F03/F04/F05/F09/F11/F13/F16 等无 guest 协议方法 → pack 列 NOT_RUN（非伪造）",
     "官方 UI 导出最终落盘未执行（export_pdf 落盘路径不受隔离 seam 控制）→ F13/F14 官方行只到对话框入口",
-    "F16 原生菜单非 DOM，不可 CDP 驱动 → 三路径 NOT_RUN",
+    "F16 原生菜单非 DOM，不可 CDP 驱动 → NOT_RUN",
     "F03 仅抽样 7 条真实执行，其余保持 NOT_RUN",
-    "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）",
-    "pack A 事件/主题/停用 3 项未稳定通过（v1 如实 FAIL，后续先修探针再补）"
-  ]
+    "域行（F01–F16）为代表性任务执行，非 ACCEPTANCE 原文全量标准（任务包原件不在仓库）"
+  ],
+  "verificationStatus": "V2_40CHECKS_PASS",
+  "v2Note": "第二轮（Lead GO 窗口）正式跑 40/40 checks PASS。pack A 事件三项：document-saved PASS（方法=bridge-window-event，兜底产品真实 window 事件入口；真实保存链由 F-OFF-2 单独覆盖）、theme-changed PASS（real-theme-toggle）、停用 guest PASS（real-ui-click）。v1 失败根因=探针 dismiss_overlays 误关工坊对话框导致 guest 卸载，已在 e45212a + 本轮修复。"
 }

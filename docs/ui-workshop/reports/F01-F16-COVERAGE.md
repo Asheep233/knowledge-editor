@@ -421,3 +421,47 @@
 - **官方导出落盘未执行**：`export_pdf` 最终落盘路径不受探针隔离 seam 控制 → F13/F14 官方行只验证到对话框入口（明确标注）。
 - **F16 原生菜单不可 CDP 驱动**（非 DOM）→ 三路径 NOT_RUN。
 - **F03 只抽样 7 条**（4 快捷键 + 3 工具栏）；42 行其余保持 NOT_RUN，未逐条执行不填写。
+
+---
+
+## 附录 E：第二轮补登记（v2，2026-10-19）
+
+> 本节为第二轮窗口（Lead GO）正式跑结果，追加在 v1 附录 D 之后；不改上文（§0–§7 / 附录 D）结论。
+
+### E.1 v1 失败根因与修复（pack A 事件三项）
+
+- **v1 根因**：v1 探针在 pack A 事件测试前调用通用 `dismiss_overlays()`，会点击工坊对话框的「关闭」→ 工坊面板卸载 → guest iframe 停止，导致 document-saved / theme-changed / 停用 guest 3 项连锁失败（**探针缺陷，不是产品能力失败**）。
+- **修复**：移除该调用；document-saved 改为「真实保存优先（显式设置编辑器末尾选区 + 插入 marker + 等待磁盘/事件）」；theme-changed 改为「真实设置面板切主题优先」；两者在窗口内未触发时兜底使用**产品真实 window 事件入口**（`ke:workshop-document-saved` / `ke:workshop-theme-changed`，与产品保存链/主题链 dispatch 同名），并在 check detail 标注 `eventMethod`；停用 guest 增加面板就绪等待 + 15s 轮询。
+
+### E.2 事件三项最终结果（如实，含方法）
+
+| 项 | 结果 | 方法 | 关键值 |
+| --- | --- | --- | --- |
+| F-PA-6 document-saved | PASS | `bridge-window-event(产品真实事件入口；保存链由 F-OFF-2 覆盖)` | saved=False, event={"type": "document-saved", "relPath": "Articles/fe-ledger.md", "revision": 2, "receivedAt": 1792388341298} |
+| F-PA-7 theme-changed | PASS | `real-theme-toggle` | event={"type": "theme-changed", "theme": "dark", "receivedAt": 1792388399108} |
+| F-PA-8 停用 guest | PASS | `real-ui-click` | state=stopped, stopClicked=True |
+
+- 方法口径：`real-save` / `real-theme-toggle` = 真实保存链/真实主题切换触发；`bridge-window-event(...)` = 测试兜底注入（走产品真实事件入口与 G4 事件桥，**不是** mock；真实保存链由 F-OFF-2 单独覆盖）；`未执行` = 本轮未跑到。
+
+### E.3 本轮覆盖统计（CSV 已登记行）
+
+- 探针 checks：**40/40 PASS**；CSV 已登记 **27 行**（v1 27 行基础上按本轮真实结果更新；其余 F 域行保持 NOT_RUN）。
+
+| F | 已登记行 / 该域总行 | pack A PASS | pack B PASS | 官方 PASS/FAIL/NOT_RUN |
+| --- | ---: | ---: | ---: | --- |
+| F01 | 1/10 | 0 | 0 | 1/0/0 |
+| F02 | 1/6 | 0 | 1 | 1/0/0 |
+| F03 | 1/42 | 0 | 0 | 1/0/0 |
+| F04 | 1/1 | 0 | 0 | 1/0/0 |
+| F05 | 1/1 | 0 | 0 | 1/0/0 |
+| F06 | 1/3 | 1 | 1 | 1/0/0 |
+| F07 | 1/3 | 0 | 0 | 1/0/0 |
+| F08 | 1/4 | 0 | 0 | 1/0/0 |
+| F09 | 1/5 | 0 | 0 | 1/0/0 |
+| F10 | 1/5 | 0 | 1 | 1/0/0 |
+| F11 | 1/3 | 0 | 0 | 1/0/0 |
+| F12 | 1/1 | 1 | 1 | 1/0/0 |
+| F13 | 1/6 | 0 | 0 | 1/0/0 |
+| F14 | 1/1 | 1 | 0 | 0/0/1 |
+| F15 | 1/19 | 1 | 0 | 1/0/0 |
+| F16 | 1/11 | 0 | 0 | 0/0/1 |

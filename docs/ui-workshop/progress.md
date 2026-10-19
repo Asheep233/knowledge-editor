@@ -1059,3 +1059,11 @@ Windows 实机可用性：可用（本机；通过 CDP/安装包实测过 v1.2.1
 
 - 1d33dd6/7abafc4：link/math/table 参数化（严格 args 校验，危险 scheme/超长/越界拒绝）；pack A/B W 各 36/36；
   F03 +2 pack PASS（packA 26/packB 27）；F04/F05 PARTIAL（仅插入动作面）。证据 v12/附录 O。
+
+## P6 进度（T27 云端预检 + 交接包 v2，2026-10-19 夜）
+
+- Codex 在 Debian 完成 Linux 预检（PASS：脚本回归 39/39、SHA256 64/64、双前端构建、工具/测试 guest 自检）；
+  **Windows I 门禁 U1–U6/B 段 NOT_RUN/BLOCKED**（无 Windows VM）→ 里程碑不前进。
+- 修正版脚本（Codex 审计发现 6 类真实缺陷）+ tests + 签名 test-pack + 完整 sources.bundle 纳入
+  `reports/cloud-handoff/`（v2）；`cloud-vm-taskpack.zip` 由 `tools/build_cloud_handoff.py` 生成。
+  证据 `P5-T26-T27-I-gate-preflight.md`。

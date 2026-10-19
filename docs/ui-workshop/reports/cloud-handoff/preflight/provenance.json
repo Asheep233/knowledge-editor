@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-19T11:38:30.499670+00:00",
+  "sourceUpload": {
+    "name": "cloud-vm-taskpack.zip",
+    "bytes": 4882419,
+    "sha256": "7f72595d4b4f7a68902c32e39f79a77e6c4702a92c71afad73227cb6741ab9d0"
+  },
+  "candidateCommit": "689575b00d0474caf4303e9681f0257df6581f15",
+  "baselineCommit": "47675b9762360bdaa0ffb3ee832a8fd0603ef803",
+  "baseCommit": "4c71233b8b52eeb5c6ac08ef2a5b349ce59b683b",
+  "host": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "release": "6.18.55"
+  },
+  "windowsVMAvailable": false,
+  "originalRepositoryModified": false,
+  "remoteWrites": false,
+  "sourceBundle": {
+    "path": "sources.bundle",
+    "prerequisites": [],
+    "completeHistory": true,
+    "bytes": 30307543,
+    "sha256": "d5757b80e528fcbfede7f48a20d5ccca8928dacd95681a5bc90cd94f2c53354c"
+  },
+  "finalSourceState": {
+    "originalRepositoryClean": true,
+    "isolatedCandidateClean": true,
+    "dependencySymlinkRemovedAfterTests": true,
+    "commitsCreated": false,
+    "pushes": false,
+    "releasesCreated": false
+  }
+}

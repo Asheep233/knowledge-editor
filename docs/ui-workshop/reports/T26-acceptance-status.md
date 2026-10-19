@@ -136,3 +136,10 @@
   禁止引用/操作 `D:\AstraNota` 用户进程**。
 - 遗留：真实 `%APPDATA%\KnowledgeEditor\runtime\runtime.json` 可能仍记录测试 PID（stale）；
   用户 App 下次启动会重写/清理，不影响数据。
+
+## T27 I 门禁：Linux 预检（2026-10-19 夜，Windows 未执行）
+
+- 云端 Codex（Debian，无 Windows VM）完成 Linux 预检 PASS（脚本回归 39/39、SHA256 64/64、双前端构建、
+  签名工具/测试 guest 自检）；**U1–U6 与 B 段 NOT_RUN/BLOCKED**，`verdict=FAIL` 仅表示门禁未通过、非产品故障。
+- 修正版交接脚本 + tests + test-pack + 完整 sources.bundle 见 `reports/cloud-handoff/`（v2），
+  生成器 `tools/build_cloud_handoff.py`；I 门禁仍未通过，需专用 Windows VM 执行后回传。

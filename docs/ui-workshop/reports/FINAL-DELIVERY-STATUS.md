@@ -195,3 +195,12 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
   `editor.table.insert`（rows/cols 1–8）接入 guest 命令桥；pack A/B 产品 W **各 36/36 PASS**。
 - F 台账：F03 +2 行 pack PASS（link/math.block）→ **packA PASS 26 / packB 27**；F04/F05 域行 PARTIAL
   （仅插入动作面，不伪造全量）。证据 `P5-T26-pack-editor-cmd.md` v12、F 报告附录 O。
+
+## 13. T27 I 门禁云端预检（Linux，非 Windows 验收）
+
+- 用户 Codex 在 **Debian（无 Windows VM）** 完成预检：Linux 预检 PASS（脚本回归 39/39、SHA256 64/64、
+  完整 sources.bundle、双前端构建、签名工具/测试 guest 自检）；**Windows U1–U6 + B 段 NOT_RUN/BLOCKED**。
+- Codex 审计修正我方交接脚本 6 类真实缺陷（数据丢失掩盖/U3 自动 PASS/缺签名包仍通过/异常不落结果/
+  清理范围过宽/构建未固定候选 HEAD），修正版脚本 + 39 项测试纳入 **交接包 v2**。
+- **I 门禁仍未通过 → 里程碑保持 `EXPERIMENTAL_TRUSTED_PACKS`**；需专用 Windows VM 执行
+  `reports/cloud-handoff/README.md` 流程后回传 `windows-evidence`。证据 `P5-T26-T27-I-gate-preflight.md`。

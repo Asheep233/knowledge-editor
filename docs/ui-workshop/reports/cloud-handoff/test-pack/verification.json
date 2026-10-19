@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-10-19T11:43:55.218Z",
+  "packId": "com.astranota.cloud.smoke",
+  "keyId": "cloud-vm-test-only",
+  "testOnly": true,
+  "assetHashesMatch": true,
+  "signatureValid": true,
+  "tamperRejected": true,
+  "privateKeyIncluded": false,
+  "installedWindowsSmoke": "NOT_RUN"
+}

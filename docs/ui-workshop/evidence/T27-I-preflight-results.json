@@ -1,0 +1,94 @@
+{
+  "generatedAt": "2026-10-19T11:38:30.499670+00:00",
+  "executionStatus": "BLOCKED",
+  "productVerdict": "NOT_EVALUATED",
+  "environment": {
+    "vm": "4d3261dbb649",
+    "windows": "NOT_AVAILABLE; host is Debian GNU/Linux 13 x86_64",
+    "snapshot": "NOT_AVAILABLE"
+  },
+  "baselineVersion": "1.2.9",
+  "candidateVersion": "1.2.18",
+  "checks": [
+    {
+      "id": "U1",
+      "name": "基线安装与启动",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U2",
+      "name": "覆盖升级与数据设置保留",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U3",
+      "name": "工作区编辑保存和打印导出",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U4",
+      "name": "回滚与数据可读性",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U5",
+      "name": "卸载候选及用户数据保留",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U6",
+      "name": "两次重启和恢复及单实例",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    }
+  ],
+  "verdict": "FAIL",
+  "notes": [
+    "FAIL means the acceptance gate has not passed because required execution is blocked; no Windows product failure was observed.",
+    "The supplied schema has no NOT_RUN verdict; executionStatus and per-check status preserve the actual execution state.",
+    "User confirmed no Windows VM and requested preflight and handoff only.",
+    "No Windows installer was built, installed, upgraded, rolled back or uninstalled. Authenticode has not been inspected."
+  ],
+  "leadReview": {
+    "reviewedAt": "2026-10-19T20:34:18+0800",
+    "reviewer": "lead",
+    "source": "用户转交的 Codex Linux 预检交接包（ke-cloud-handoff.zip, sha256:c35662ee…）",
+    "verification": {
+      "scriptRegressionTests": "39/39 PASS（lead 本地复跑 pytest tests）",
+      "sha256sums": "64/64 PASS（包内文件完整性）",
+      "sourcesBundleSha256": "d5757b80e528fcbfede7f48a20d5ccca8928dacd95681a5bc90cd94f2c53354c（Codex 包）；仓库 v2 bundle 由 build_cloud_handoff.py 重新生成",
+      "privateKeyInTestPack": false,
+      "windowsExecution": "NOT_RUN（本环境 Debian；未安装/升级/回滚/卸载任何 Windows 安装包）"
+    },
+    "conclusion": "Linux 预检 PASS；Windows T27 I 门禁仍 NOT_RUN/BLOCKED，不得登记为验收通过。"
+  }
+}

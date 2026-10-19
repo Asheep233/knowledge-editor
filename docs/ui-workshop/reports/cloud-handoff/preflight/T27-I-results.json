@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-10-19T11:38:30.499670+00:00",
+  "executionStatus": "BLOCKED",
+  "productVerdict": "NOT_EVALUATED",
+  "environment": {
+    "vm": "4d3261dbb649",
+    "windows": "NOT_AVAILABLE; host is Debian GNU/Linux 13 x86_64",
+    "snapshot": "NOT_AVAILABLE"
+  },
+  "baselineVersion": "1.2.9",
+  "candidateVersion": "1.2.18",
+  "checks": [
+    {
+      "id": "U1",
+      "name": "基线安装与启动",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U2",
+      "name": "覆盖升级与数据设置保留",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U3",
+      "name": "工作区编辑保存和打印导出",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U4",
+      "name": "回滚与数据可读性",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U5",
+      "name": "卸载候选及用户数据保留",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    },
+    {
+      "id": "U6",
+      "name": "两次重启和恢复及单实例",
+      "pass": false,
+      "evidence": [],
+      "detail": {
+        "status": "NOT_RUN",
+        "reason": "No Windows snapshot VM available; Linux preflight is not I-gate evidence"
+      }
+    }
+  ],
+  "verdict": "FAIL",
+  "notes": [
+    "FAIL means the acceptance gate has not passed because required execution is blocked; no Windows product failure was observed.",
+    "The supplied schema has no NOT_RUN verdict; executionStatus and per-check status preserve the actual execution state.",
+    "User confirmed no Windows VM and requested preflight and handoff only.",
+    "No Windows installer was built, installed, upgraded, rolled back or uninstalled. Authenticode has not been inspected."
+  ]
+}

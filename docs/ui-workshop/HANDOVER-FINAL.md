@@ -469,3 +469,12 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   参数化接入；pack A/B 产品 W **各 36/36 PASS**（成功/负向 DOM 不变/撤销还原）。
 - F 台账：F03 link/math.block +2 行 pack PASS → **packA PASS 26 / packB 27**；F04/F05 域行 PARTIAL
   （仅插入动作面）。证据 `P5-T26-pack-editor-cmd.md` v12、F 报告附录 O。
+
+## 追加（2026-10-19 夜 · T27 云端 Linux 预检 + 交接包 v2）
+
+- 用户转交 Codex 交接包（Debian，无 Windows VM）：**Linux 预检 PASS / Windows I 门禁 NOT_RUN(BLOCKED)**，
+  不得当作验收通过；Lead 复核 tests 39/39、SHA256 64/64、bundle refs、测试包无私钥。
+- Codex 审计修正我方脚本 6 类真实缺陷（数据丢失掩盖/U3 自动 PASS/缺签名包仍通过/异常不落结果/清理范围
+  过宽/构建未固定候选 HEAD）；修正版 `scripts/` + `tests/`（39）+ 已签名 `test-pack/` + 完整 `sources.bundle`
+  已纳入 `reports/cloud-handoff/`（v2），生成器 `tools/build_cloud_handoff.py`，一键包 `cloud-vm-taskpack.zip`。
+- 下一步：专用 Windows VM 按 `cloud-handoff/README.md` 执行 U1–U6 + B 段 → 回传 windows-evidence。

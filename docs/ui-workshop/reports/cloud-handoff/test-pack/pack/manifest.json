@@ -1,0 +1,43 @@
+{
+  "id": "com.astranota.cloud.smoke",
+  "name": "Cloud VM Smoke (test only)",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "capabilities": [
+    "ui.shell",
+    "panel.sidebar",
+    "context.read",
+    "print.request"
+  ],
+  "entry": {
+    "html": "index.html"
+  },
+  "commands": [],
+  "assets": [
+    {
+      "path": "index.html",
+      "sha256": "b26958cdc3e1e011c80cad1358f217a9b94f5267f47dc18f650c7eec6ff07d4c",
+      "size": 2863
+    },
+    {
+      "path": "pack.css",
+      "sha256": "e99b54625bb5d890acabca8ab466b48ada7b43885ffc573850c6044d84eb3f82",
+      "size": 2056
+    },
+    {
+      "path": "pack.js",
+      "sha256": "b1ef68dbc2aa2240d28473cd5735d37f513f2b8dbe54551890dd420e47cc87d1",
+      "size": 12573
+    },
+    {
+      "path": "vendor/guest-sdk.js",
+      "sha256": "58179a6461380183daeb445a7aef33af7d9e37e90639325e5295763a4276e7c2",
+      "size": 5478
+    }
+  ],
+  "signature": {
+    "alg": "ed25519",
+    "keyId": "cloud-vm-test-only",
+    "signature": "7e2babc8ad3409f252cd89f4ffcdb7a7c28cd99a786b2d1ca3ef69c894ce1abdb356c28aa146588b5cc885df9dac35f4187a60dcf8960d2e4902e619708a9300"
+  }
+}

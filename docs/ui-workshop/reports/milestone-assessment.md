@@ -212,3 +212,15 @@ ACCEPTANCE A 节：
   表格深层操作不在 pack 能力面，不伪造）。
 - F03 新增 pack PASS 2 行（`CMD.editor.link.insert`、`CMD.editor.math.block`）→ **packA PASS 26 / packB 27**。
 - 证据：`P5-T26-pack-editor-cmd.md` v12、`T26-pack*-editor-cmd-results.json`（各 36 checks）、F 报告附录 O。
+
+## 3n. T27 I 门禁：云端 Linux 预检（2026-10-19，Windows 仍未执行）
+
+- 用户转交 Codex 交接包（`ke-cloud-handoff.zip`，sha256 `c35662ee…`）：执行环境为 **Debian Linux，无 Windows VM**。
+  **Linux 预检 PASS**（前端 1931、后端 841、双前端构建、签名工具自检、测试 guest 验签、脚本回归 39/39、
+  SHA256 64/64；Lead 本地复核 tests 39/39 与包完整性）。
+- Codex 审计发现并修正了**我方脚本的真实缺陷**（数据丢失被重造数掩盖、U3 自动 PASS、缺签名包仍通过、
+  异常不落结果、清理范围过宽、构建未固定候选 HEAD 等），修正版脚本 + 39 项测试已纳入交接包 v2。
+- **Windows I 门禁 U1–U6 与安装态工坊 B 均 NOT_RUN/BLOCKED**（`executionStatus=BLOCKED`；`verdict=FAIL`
+  仅表示门禁未通过，非产品故障）→ **里程碑不前进**，仍需专用 Windows VM 执行并回传证据。
+- 交接包 v2：`reports/cloud-handoff/`（完整 `sources.bundle` 当前 HEAD、修正版 scripts/tests/test-pack/preflight）+
+  `reports/cloud-vm-taskpack.zip`（生成器 `tools/build_cloud_handoff.py`）。证据 `P5-T26-T27-I-gate-preflight.md`。

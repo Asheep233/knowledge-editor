@@ -59,3 +59,8 @@ docs/ui-workshop/core/packs/probe/w02-guest-code.txt
 # UI 工坊 guest SDK 发布产物（dist 由 build.mjs 生成，需入仓供外部使用）
 !docs/ui-workshop/sdk/dist/
 !docs/ui-workshop/sdk/dist/**
+
+# UI 工坊云端交接构建产物（由 tools/build_cloud_handoff.py 生成）
+docs/ui-workshop/reports/cloud-handoff/sources.bundle
+docs/ui-workshop/reports/cloud-vm-taskpack*.zip
+docs/ui-workshop/reports/cloud-handoff/**/__pycache__/

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>参考包 A · 侧栏阅读器</title>
+    <link rel="stylesheet" href="pack.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <strong>参考包 A · 侧栏阅读器</strong>
+      <span class="chip" id="cap-chip">能力：加载中…</span>
+    </header>
+
+    <section class="bar">
+      <label for="rel-path">文档路径</label>
+      <input id="rel-path" type="text" placeholder="Articles/example.md" />
+      <button id="btn-load" type="button">读取快照</button>
+      <button id="btn-print" type="button">打印快照</button>
+    </section>
+
+    <p class="hint">
+      读场景最小示例：使用发布 SDK（<code>KeWorkshopSDK.autoConnect</code>）经宿主 Broker 读取
+      <code>context.snapshot</code>（含 <code>content</code>），接收 <code>document-saved</code> 事件后自动刷新，
+      并可请求 <code>print.snapshot</code> 产出真实 PDF。能力声明：ui.shell / panel.sidebar / context.read / print.request。
+    </p>
+
+    <section class="panel">
+      <div class="row"><span class="k">状态</span><span id="status">启动中…</span></div>
+      <div class="row"><span class="k">SDK</span><span id="sdk-meta">—</span></div>
+      <div class="row"><span class="k">握手</span><span id="handshake">—</span></div>
+      <div class="row"><span class="k">心跳</span><span id="heartbeat">0</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>当前文档</h2>
+      <div class="row"><span class="k">标题</span><span id="doc-title">（未加载）</span></div>
+      <div class="row"><span class="k">路径 / revision</span><span id="doc-meta">—</span></div>
+      <div class="row"><span class="k">正文摘要</span><span id="doc-snippet">—</span></div>
+      <pre id="doc-content" class="content">（尚未读取任何快照）</pre>
+    </section>
+
+    <section class="panel">
+      <h2>宿主事件</h2>
+      <div class="row"><span class="k">最近事件</span><span id="last-event">（暂无）</span></div>
+      <ul id="event-list" class="events"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>打印</h2>
+      <div class="row"><span class="k">结果</span><span id="print-result">（未触发）</span></div>
+    </section>
+
+    <section id="error-box" class="error" hidden>
+      <strong>错误</strong>
+      <span id="error-text"></span>
+    </section>
+
+    <footer class="foot">
+      包 id：<code>com.astranota.examples.pack-a</code> · 发布 SDK <span id="sdk-version">—</span> ·
+      心跳 200ms · 状态镜像经 <code>t19-guest-results</code> 供宿主/测试观察
+    </footer>
+    <script src="vendor/guest-sdk.js"></script>
+    <script src="pack.js"></script>
+  </body>
+</html>

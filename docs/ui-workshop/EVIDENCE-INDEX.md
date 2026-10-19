@@ -1,7 +1,7 @@
 # UI 工坊证据索引（自动生成）
 
-- 生成时间：2026-10-19T19:28:26+0800
-- 证据目录：`docs/ui-workshop/evidence/`（150 个文件；47 个 results JSON、94 个说明 md）
+- 生成时间：2026-10-19T20:35:22+0800
+- 证据目录：`docs/ui-workshop/evidence/`（152 个文件；48 个 results JSON、95 个说明 md）
 - 由 `tools/build_evidence_index.py` 生成；验收结论以 `validation-matrix.csv` 与各证据文件为准。
 
 ## 1. 验证矩阵行（按任务/场景）
@@ -58,6 +58,7 @@
 | P0-S3-prototype.md（pytest 10/10 双平台） | T04 | A/U | PASS |  | `pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py` |
 | P0-S5-prototype.md（pytest 10/10 双平台） | T06 | A/U | PASS |  | `pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py` |
 | P5-T26-F16-native-menu-audit.md（11/11 结构性审计；W/DOM 未覆盖） | T26/F16 | U/静态（非 W） | NOT_RUN(结构性审计 11/11；W 未覆盖) |  | `只读审计 desktop/src-tauri/src/menu.rs（见 evidence/P5-T26-F16-native-menu-audit.md）` |
+| T27-I-preflight-results.json | T27/W03/W08-prep | B（Linux 预检，非 I 验收证据） | PREFLIGHT_PASS / I-GATE_NOT_RUN（executionStatus=BLOCKED：无 Windows VM；verdict=FAIL 仅表示门禁未通过、非产品故障；脚本回归 39/39、SHA256 64/64 已复核） | 0/6 | `python scripts/cloud_t27_gate.py --baseline <baseline> --candidate <candidate>（Windows 执行见 cloud-handoff/README.md）` |
 | T27-gate-readiness.json | T27/W08-prep | W-prep（I 门禁就绪检查，非验收证据） | NOT_READY(6/8)：阻塞=未授权 KE_T27_AUTHORIZED + 未声明 KE_T27_ISOLATED_ENV；W03/W08 I 仍 NOT_RUN |  | `python tools/run_t27_gate_check.py` |
 | frontend: Core session 单测 | P1/P2 | U | PASS |  | `cd frontend && npx vitest run src/core/session` |
 | frontend: Core protocol 单测 | P1 | U | PASS |  | `cd frontend && npx vitest run src/core/protocol` |
@@ -120,6 +121,7 @@
 - `T26-isolated-smoke-results.json` → `P5-T26-isolated-smoke.md`
 - `T26-pack-editor-cmd-results.json` → `P5-T26-pack-editor-cmd.md`
 - `T26-packA-editor-cmd-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `T27-I-preflight-results.json` → **缺少对应说明 md（仅原始 JSON）**
 
 ## 3. 说明 md 未被主要交付文档引用（提示，不阻塞）
 

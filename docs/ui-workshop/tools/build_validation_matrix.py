@@ -32,7 +32,14 @@ KNOWN_FAILURES = {
 # 非验收类「就绪检查」证据：结果列显式标注 READINESS，不按 pass_count==total 判 PASS，
 # 也不得当作验收通过（例如 T27 I 门禁 dry-run 的 ready=false）。
 # 格式：文件名 → (task, kind, platform, 复现命令, 结果列文本)
-READINESS_EVIDENCE: dict[str, tuple[str, str, str, str, str]] = {
+READINESS_EVIDENCE: dict[str, tuple[str, str, str, str, str]] = {    "T27-I-preflight-results.json": (
+        "T27/W03/W08-prep",
+        "B（Linux 预检，非 I 验收证据）",
+        "Debian 13 x86_64（无 Windows VM）",
+        "python scripts/cloud_t27_gate.py --baseline <baseline> --candidate <candidate>（Windows 执行见 cloud-handoff/README.md）",
+        "PREFLIGHT_PASS / I-GATE_NOT_RUN（executionStatus=BLOCKED：无 Windows VM；verdict=FAIL 仅表示门禁未通过、非产品故障；脚本回归 39/39、SHA256 64/64 已复核）",
+    ),
+
     "T27-gate-readiness.json": (
         "T27/W08-prep",
         "W-prep（I 门禁就绪检查，非验收证据）",
@@ -131,6 +138,9 @@ def main() -> int:
     rows: list[list[str]] = []
     for path in sorted(EVID.glob("*-results.json")):
         name = path.name
+        if name in READINESS_EVIDENCE:
+            # 非验收就绪检查/预检证据：只按 READINESS 行输出，不按 pass_count 判 PASS/FAIL
+            continue
         meta = META.get(name)
         if meta is None:
             # S3/S5 是 pytest 文本输出，不是 JSON；其他未知 JSON 记录为待归类的 A/U

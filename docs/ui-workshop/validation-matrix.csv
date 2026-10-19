@@ -49,6 +49,7 @@ T26-packA-editor-cmd-results.json,T26/F03-packA,W,Windows 产品壳（隔离构�
 P0-S3-prototype.md（pytest 10/10 双平台）,T04,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s3_save/test_s3.py
 P0-S5-prototype.md（pytest 10/10 双平台）,T06,A/U,Linux WSL + Windows,PASS,10,10,pytest docs/ui-workshop/prototypes/p0/s5_txn/test_s5.py
 P5-T26-F16-native-menu-audit.md（11/11 结构性审计；W/DOM 未覆盖）,T26/F16,U/静态（非 W）,Windows 源码只读审计,NOT_RUN(结构性审计 11/11；W 未覆盖),11,11,只读审计 desktop/src-tauri/src/menu.rs（见 evidence/P5-T26-F16-native-menu-audit.md）
+T27-I-preflight-results.json,T27/W03/W08-prep,B（Linux 预检，非 I 验收证据）,Debian 13 x86_64（无 Windows VM）,PREFLIGHT_PASS / I-GATE_NOT_RUN（executionStatus=BLOCKED：无 Windows VM；verdict=FAIL 仅表示门禁未通过、非产品故障；脚本回归 39/39、SHA256 64/64 已复核）,0,6,python scripts/cloud_t27_gate.py --baseline <baseline> --candidate <candidate>（Windows 执行见 cloud-handoff/README.md）
 T27-gate-readiness.json,T27/W08-prep,W-prep（I 门禁就绪检查，非验收证据）,Windows（安装包/NSIS dry-run，只读）,NOT_READY(6/8)：阻塞=未授权 KE_T27_AUTHORIZED + 未声明 KE_T27_ISOLATED_ENV；W03/W08 I 仍 NOT_RUN,6,8,python tools/run_t27_gate_check.py
 frontend: Core session 单测,P1/P2,U,Linux WSL（happy-dom）,PASS,48,48,cd frontend && npx vitest run src/core/session
 frontend: Core protocol 单测,P1,U,Linux WSL,PASS,19,19,cd frontend && npx vitest run src/core/protocol

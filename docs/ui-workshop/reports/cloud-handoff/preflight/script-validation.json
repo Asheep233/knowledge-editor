@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-10-19T11:45:21.803468+00:00",
+  "scope": "Linux script regression, PowerShell 7 parser, schema and blocked CLI checks only; Windows execution NOT_RUN",
+  "checks": {
+    "script-regression": {
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "pass": true,
+      "log": "evidence/logs/script-regression.log",
+      "logSHA256": "56610b347e26a51ae65f7d9eacde26bba7dab1fd176dccb3cfc1d8bcada0503e",
+      "testCount": 39
+    },
+    "pythonSyntax": {
+      "pass": true
+    },
+    "powershell-parse": {
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "pass": true,
+      "log": "evidence/logs/powershell-parse.log",
+      "logSHA256": "160a3a0edf788fc3bbd465a5ff8b40c3567e7fcbfaffb2e2dd4fc913b654bc62",
+      "parser": {
+        "version": "7.4.6",
+        "tokens": 2254,
+        "errors": []
+      }
+    },
+    "node-syntax": {
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "pass": true,
+      "log": "evidence/logs/node-syntax.log",
+      "logSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "gate-dry-run": {
+      "exitCode": 2,
+      "expectedExitCode": 2,
+      "pass": true,
+      "log": "evidence/logs/gate-dry-run.log",
+      "logSHA256": "1521ce8877c311abc6c566e33624343fce834f6dcc9a4b2599427dabcc631bf4",
+      "allNotRun": true
+    },
+    "smoke-linux-blocked": {
+      "exitCode": 2,
+      "expectedExitCode": 2,
+      "pass": true,
+      "log": "evidence/logs/smoke-linux-blocked.log",
+      "logSHA256": "889ecacc099c5931bb7749a3492b0e1f4ad1c92e29f7737916207426bf56f5c0",
+      "noLaunch": true
+    },
+    "schema": {
+      "pass": true
+    },
+    "complete-bundle": {
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "pass": true,
+      "log": "evidence/logs/complete-bundle.log",
+      "logSHA256": "d8f3d64e6f24a0ad1706c65a0398360a622d73cae822c448aec1afaca0cb9877"
+    }
+  },
+  "scriptSHA256": {
+    "cloud_build.ps1": "3b71330ef33e34f772b215252080f8c3e7267a47a7b0121f0118a8544e720fe2",
+    "cloud_t27_gate.py": "1e8c27eea8f217d77d34393515ee82d70eb64757b94dad47a32312731e084990",
+    "cloud_verify_installed.py": "d022437b490c2e7cde341a3fd98f2f76f795f50a1bd429d1e09dd1f912167e35",
+    "prepare_test_pack.mjs": "ab54c84995fd6d33ccbf68f61d9ca42f5f0e3fb02d1e101959cf2926aa668be5"
+  },
+  "pass": true
+}

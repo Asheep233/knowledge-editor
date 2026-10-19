@@ -1,0 +1,39 @@
+原任务包脚本审查与交接修正
+
+本次未运行 Windows 安装/卸载；以下是静态审查发现，不是产品实机故障。
+原始文件在 original-taskpack，修正版在 scripts，最终差异见 script-fixes.patch。
+
+cloud_t27_gate.py 原始行号
+129,205: 每次 launch 重写测试文件，只看 exists，数据丢失可能被掩盖。
+210: U3 无条件通过，实际没有执行编辑保存/打印导出。
+198,207: U1b/U2b 不在所附 schema 允许的 U1..U6 枚举中。
+213-223: 卸载退出码被忽略；回滚未检查旧版本/数据读取；数据保留不参与 U5 判定。
+136,190: 截图返回值被忽略；evidence 始终为空；skip-screenshots 参数未使用。
+226-233: 重启只检查进程存活；未验证单实例/恢复日志；一项失败仍可能 PASS_WITH_FINDINGS。
+126,139-140: 继承真实 APPDATA，按 exe 路径清理所有同路径主进程而非本次 PID 树。
+
+cloud_verify_installed.py 原始行号
+141: yes 未传 pack-dir 会跳过签名/信任/guest 验证仍通过。
+101-102: 无标记或路径校验就递归删除用户指定 data-dir。
+127-128,179: CDP 失败/异常可能不输出 JSON；按路径清理其他实例，缺少残留检查。
+
+cloud_build.ps1 原始行号
+8-9,21: 只看 node_modules 是否存在，跨版本依赖可能漂移。
+16,22,41-45: 原生命令输出进入函数返回流，manifest.installers 混入日志。
+26-27: 仅在 repo 搜最新包，忽略 repo 外 CARGO_TARGET_DIR，可能拿旧包或找不到。
+41-48: 未固定候选 HEAD；最终 manifest 仅记录基线 HEAD；未恢复原 checkout。
+
+TASKS.md 环境节未列完整 backend requirements；全新机器照列出的 pip 命令仍缺后端运行/测试依赖。
+TASKS.md 中 tools/create_pack.mjs 与 sign_pack.mjs 的实际路径为 docs/ui-workshop/tools/。
+锁定的 commander@15 需要 Node >=22.12，交接推荐24。
+候选源 build.ps1 是 UTF8 无BOM；PS5.1按ANSI读取可有语法错误，修正版明确使用PowerShell7。
+
+修复策略
+构建：固定两个来源提交、独立 worktree/venv/target、严格检查命令退出码和新产物、逐包溯源、还原环境。
+T27：一次性 fixture、隔离数据、完整阶段结果及证据、失败关闭、手工语义缺口明确保留。
+工坊：完整 yes 流程必填签名包和公钥；不删除已有数据；异常落结果；限定自己创建的进程。
+详细最终实现以 scripts 文件和对应回归测试为准。
+
+验证边界
+PowerShell 在 Linux PowerShell 7.4.6 做语法解析；Python 做本地 mock/边界测试。
+未执行 Windows PowerShell 5.1、NSIS 或安装态 CDP，不据此宣称 Windows 实机通过。

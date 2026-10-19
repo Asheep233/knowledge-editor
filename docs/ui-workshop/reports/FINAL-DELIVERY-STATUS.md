@@ -183,3 +183,8 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
   `cloud_build.ps1`、`cloud_verify_installed.py`、`T27-I-results.schema.json`）；一键打包
   `reports/cloud-vm-taskpack.zip`。用途：在云端 Windows VM 执行 T27 I 门禁 + 安装态工坊冒烟，
   回传后由 Lead 登记。
+
+## 11. 证据索引
+
+- `docs/ui-workshop/EVIDENCE-INDEX.md`（自动生成）：矩阵 62 行 → 证据文件/任务/结果/计数/复现命令；
+  同时列出 results JSON 缺说明 md、说明 md 未被引用等可维护性提示。

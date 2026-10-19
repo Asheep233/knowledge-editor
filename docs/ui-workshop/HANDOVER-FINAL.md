@@ -455,3 +455,9 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - 升级/如实：F07 NOT_RUN→**PARTIAL**（doc.save 真实保存+事件，自动保存/草稿恢复无受控通道）；
   10 行后端 API（/api/fs|modules|drafts|index|tags）**NOT_RUN**，原因=W06 网络边界（CSP connect-src 'none'，
   guest 不能直调后端 API）；不把官方 UI 通过映射成 pack 通过。证据 `P5-T26-F-pack-mapping.md`。
+
+## 证据索引（自动生成）
+
+- `docs/ui-workshop/EVIDENCE-INDEX.md`：按 `validation-matrix.csv` 行列出每个证据文件、任务/类型/结果/
+  passed-total/复现命令，并报告「results JSON 缺说明 md」「说明 md 未被交付文档引用」等可维护性提示
+  （生成：`python3 docs/ui-workshop/tools/build_evidence_index.py`）。最近一次：矩阵 62 行 / results JSON 47 / md 94。

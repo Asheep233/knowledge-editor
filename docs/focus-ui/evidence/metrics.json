@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T11:32:02.625Z",
+  "generatedAt": "2026-10-20T13:35:13.174Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -569,6 +569,54 @@
       "note": ""
     },
     {
+      "shot": "17-source",
+      "name": "源码模式 textarea 已渲染",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "17-source",
+      "name": "源码模式说明条可见",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "17-source",
+      "name": "源码编辑区不再塌陷（高度 ≥ 400）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "17-source",
+      "name": "源码编辑区占满纸面（父容器 ≥ 500）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "17-source",
+      "name": "长文档源码在编辑区内部滚动",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "17-source",
+      "name": "切回正文视图（ProseMirror 恢复）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
       "shot": "02-collapsed",
       "name": "侧栏已收起（DOM 无 .focus-files-bar）",
       "ok": true,
@@ -1053,7 +1101,7 @@
       "name": "面板含「最近文档」分组",
       "ok": true,
       "expected": "包含",
-      "actual": "ESC最近文档碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.md散射振幅与费曼规则Articles/量子场论/散射振幅与费曼规则.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md动量守",
+      "actual": "ESC最近文档碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md测度论·第 3 讲：可测函数Articles/数学分析/测度论·第 3 讲：",
       "note": ""
     },
     {
@@ -1442,8 +1490,8 @@
     }
   ],
   "summary": {
-    "total": 178,
-    "pass": 178,
+    "total": 184,
+    "pass": 184,
     "fail": 0
   }
 }

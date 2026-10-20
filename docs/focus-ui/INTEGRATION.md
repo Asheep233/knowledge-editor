@@ -59,6 +59,7 @@ node docs/focus-ui/verify-ui.cjs
 - **验证（最终快照）**：`tsc -b --noEmit` 0 错；全量 vitest **149/149 文件、2055 passed + 1 skipped**（`/tmp/focus-final-vitest8.log`）；`npm run build` exit 0（`/tmp/focus-build8.log`）；`KE_STRICT=1 node docs/focus-ui/verify-ui.cjs` → **16 张截图、178/178 断言 PASS、0 DIFF**（`/tmp/focus-verify11.log`）。
 - **独立验收**：qa-visual 两轮（`6c53695` §11、`472d861` §12）全 PASS；`fbc2461` 绿点修复由 Lead 自测并按同一脚本复验（16 图 178/178）。
 - **证据**：`docs/focus-ui/screenshots/`（01–16 + focus-ring）、`evidence/{metrics.json,summary.md,run-meta.json,a11y-probe.json,probe-round3/,probe-round4/}`。
+- **源码模式修复（2026-10-20，发布后用户实测）**：Focus 纸面为 auto 高度使 `SourceModeView` 的 `h-full` 链断裂，源码编辑框塌成 ~66px 一行；已加 `[data-testid='source-mode-view'] { min-height: max(360px, calc(100vh - 340px)); }`（1440×900 实测 textarea 66→498px，内部滚动正常），并在 `verify-ui.cjs` 增加源码模式回归段（1600×? 见下）：验收脚本扩展为 **17 图 / 184 断言全 PASS**。
 - **预发布（2026-10-20）**：已按发版流程在 Windows 侧打包并发布 **GitHub Pre-release** https://github.com/Asheep233/knowledge-editor/releases/tag/v1.3.0-pre.1
   （Pre-release，Latest 仍为 v1.2.18）。资产：`AstraNota_1.3.0-pre.1_x64-setup.exe`（51,129,095 B / sha256 `dbc8f0e9…21d7`）、
   sidecar（46,247,909 B / `35e3e8f0…bf70`）、`manifest.sha256`（79 产物）、`versions.json`；侧车运行时版本校验 = `1.3.0-pre.1`；

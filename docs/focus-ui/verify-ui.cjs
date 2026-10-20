@@ -865,6 +865,53 @@ async function main() {
         soft('01-editor-light', `侧栏含「${label}」`, sideText.includes(label), `包含「${label}」`, sideText.slice(0, 200))
       }
       await shot(page, '01-editor-light-1440x900')
+
+      // ---------- 源码模式：编辑区必须占满纸面高度（1.3.0-pre.1 用户实测回归：塌成 ~66px 一行） ----------
+      currentShot = '17-source-mode'
+      await page.locator(SELECTORS.moreBtn).first().click()
+      await page.waitForTimeout(500)
+      await page.evaluate(() => {
+        const panel = [...document.querySelectorAll('div.fixed.z-50')].find((el) =>
+          (el.textContent || '').includes('大纲与信息'),
+        )
+        const btn = panel ? [...panel.querySelectorAll('button')].find((b) => (b.textContent || '').includes('源码模式')) : null
+        if (btn) btn.click()
+      })
+      await page.waitForTimeout(1200)
+      const src = await page.evaluate(() => {
+        const ta = document.querySelector('[data-testid="source-textarea"]')
+        const banner = document.querySelector('[data-testid="source-mode-banner"]')
+        if (!ta) return { missing: true }
+        const r = ta.getBoundingClientRect()
+        return {
+          taHeight: Math.round(r.height),
+          taClient: ta.clientHeight,
+          taScroll: ta.scrollHeight,
+          bannerVisible: !!banner,
+          viewHeight: document.querySelector('[data-testid="source-mode-view"]')
+            ? Math.round(document.querySelector('[data-testid="source-mode-view"]').getBoundingClientRect().height)
+            : null,
+        }
+      })
+      eq('17-source', '源码模式 textarea 已渲染', !src.missing, true)
+      eq('17-source', '源码模式说明条可见', src.bannerVisible, true)
+      eq('17-source', '源码编辑区不再塌陷（高度 ≥ 400）', (src.taHeight || 0) >= 400, true)
+      eq('17-source', '源码编辑区占满纸面（父容器 ≥ 500）', (src.viewHeight || 0) >= 500, true)
+      eq('17-source', '长文档源码在编辑区内部滚动', (src.taScroll || 0) > (src.taClient || 0), true)
+      await shot(page, '17-source-mode-1440x900')
+      // 切回正文视图
+      await page.locator(SELECTORS.moreBtn).first().click()
+      await page.waitForTimeout(500)
+      await page.evaluate(() => {
+        const panel = [...document.querySelectorAll('div.fixed.z-50')].find((el) =>
+          (el.textContent || '').includes('大纲与信息'),
+        )
+        const btn = panel ? [...panel.querySelectorAll('button')].find((b) => (b.textContent || '').includes('源码模式')) : null
+        if (btn) btn.click()
+      })
+      await page.waitForTimeout(1000)
+      const backToPm = await page.evaluate(() => !!document.querySelector('.ke-editor-prose'))
+      eq('17-source', '切回正文视图（ProseMirror 恢复）', backToPm, true)
       const paperCenterLight = m.paper ? m.paper.cx : null
 
       // 收起侧栏

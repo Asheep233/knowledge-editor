@@ -41,6 +41,13 @@
 （`--prerelease`，Latest 仍为 v1.2.18；资产 4 件：安装包/侧车/manifest.sha256/versions.json；**未推 master**）。
 **未做**：NSIS 实机安装 + GUI 端到端验收、Authenticode 签名、Windows W 模式/DPI/IME 人工视觉回归（见发布说明「诚实说明」）。
 
+**发布后补丁（未随 pre.1 安装包，待下个 pre 版本）**
+- 用户实测：源码模式（⋯ 菜单 → 源码模式）编辑框只有 ~66px 高、需在小框内滚动。根因：Focus 纸面为 auto 高度，
+  `SourceModeView` 根节点 `h-full` 无法解析 → flex 高度塌陷。修复：`index.css` 给 `[data-testid='source-mode-view']`
+  加 `min-height: max(360px, calc(100vh - 340px))`；1440×900 实测 textarea 498px、内部滚动正常。
+- 回归防护：`docs/focus-ui/verify-ui.cjs` 新增源码模式断言（textarea ≥400、容器 ≥500、内部滚动、切回正文 ProseMirror 恢复）+
+  `17-source-mode-1440x900.png`；验收脚本扩展为 17 图 / **184/184 PASS**。全量 vitest 2055 绿、build exit 0。
+
 ## 2026-10-18（★ v1.2.18 已发布（Latest）：修复 v1.2.17「导出」按钮无反应回归）
 
 **回归（v1.2.17 引入）**：UI-01 修复把**整条**编辑器工具栏改成 `overflow-x-auto`（为修 1280px 下按钮被裁切）。

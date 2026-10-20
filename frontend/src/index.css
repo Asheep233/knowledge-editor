@@ -219,6 +219,14 @@ body {
 /* 2026-09-22（用户实测：「源码模式点击后外面出现边框」，与 F2 当年记录的同类问题）：
    源码模式 textarea 是**整块编辑面**，与正文编辑器同性质 —— 鼠标点击聚焦不该出现全局 focus 环。
    WebView2 下鼠标点击也会匹配 :focus-visible，因此这里按类名显式豁免（与 .ke-editor-prose 同口径）。 */
+/* 源码模式：编辑区必须占满纸面可用高度。
+ * Focus 纸面为 auto 高度（.focus-paper 仅 min-height），SourceModeView 根节点
+ * 的 `h-full` 在 auto 高度的父链下无法解析 → 编辑框曾塌成 ~66px 一行（1.3.0-pre.1 用户实测）。
+ * 用视口高度兜底最小高度，保证源码编辑区始终可读、内部滚动。 */
+[data-testid='source-mode-view'] {
+  min-height: max(360px, calc(100vh - 340px));
+}
+
 .ke-source-textarea:focus,
 .ke-source-textarea:focus-visible {
   outline: none !important;

@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-10-20T05:56:52.138Z",
-  "durationSec": 32,
+  "generatedAt": "2026-10-20T06:43:07.977Z",
+  "durationSec": 70.3,
   "repo": "/mnt/f/Work/KE Project/knowledge-editor",
   "git": {
     "branch": "focus-ui",
-    "head": "5ed8fa2",
-    "dirty": 6
+    "head": "41ad08f",
+    "dirty": 1
   },
-  "baseUrl": "http://127.0.0.1:5274",
+  "baseUrl": "http://127.0.0.1:5273",
   "backend": {
     "url": "http://127.0.0.1:8000",
-    "started": false
+    "started": true
   },
   "vite": {
-    "url": "http://127.0.0.1:5274",
+    "url": "http://127.0.0.1:5273",
     "started": true,
     "reused": false,
-    "port": 5274
+    "port": 5273
   },
   "playwrightCore": "/mnt/f/Work/Dev/npm/_npx/e41f203b7505f1fb/node_modules/playwright-core",
   "chromium": "/home/Asheep233/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome",
@@ -128,8 +128,8 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5274/api/workspace/recent-documents",
-        "403 http://127.0.0.1:5274/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents",
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -154,7 +154,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5274/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -179,7 +179,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5274/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -210,7 +210,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5274/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -235,7 +235,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5274/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     }
   ]

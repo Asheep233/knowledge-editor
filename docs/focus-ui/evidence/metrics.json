@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T05:56:52.138Z",
+  "generatedAt": "2026-10-20T06:43:07.977Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -829,7 +829,7 @@
       "name": "启动器含「打开已有工作区 / 创建新工作区」",
       "ok": true,
       "expected": "两操作卡可见",
-      "actual": "本地优先 · Markdown 为唯一事实源\nA\n让写作回到本地\n\n一个安静、快速的本地知识工作台。文档以 Markdown 保存在普通文件夹里，没有账户，也不会上传。\n\n打开已有工作区\n选择一个包含 Markdown 的文件夹\n创建新工作区\n从空白文件夹开始\n最近使用\n仅保存在本机\nfocus-ws\n/tmp/foc",
+      "actual": "A\n让写作回到本地\n打开已有工作区\n选择一个包含 Markdown 的文件夹\n创建新工作区\n从空白文件夹开始\n最近使用\n仅保存在本机\nfocus-ws\n/tmp/focus-ws",
       "note": ""
     },
     {

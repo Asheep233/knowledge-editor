@@ -3,7 +3,6 @@
  * - 品牌 Hero（KE 标 + 名称 + Alpha + 定位语）
  * - 两操作卡：打开已有工作区（主）/ 创建新工作区（次）
  * - 最近工作区（最多 3 条：名称 + mono 路径截断 + 失效置灰可移除）
- * - 底部声明（程序与数据分离 / 版本 / Markdown 为唯一事实源）
  */
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -15,7 +14,6 @@ import { isDesktop, pickDirectory } from '../../desktop'
 import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
-import { APP_VERSION } from '../../version'
 import { Icon } from '../icons'
 import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-light-800x200.png'
 import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
@@ -127,14 +125,11 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* 顶部品牌条（无整宽顶栏，只有一条极简品牌行） */}
-      <header className="flex h-[52px] shrink-0 items-center justify-between px-6">
+      <header className="flex h-[52px] shrink-0 items-center px-6">
         <div className="flex items-center gap-2">
           <img src={horizontalLogoLight} alt="AstraNota" className="an-logo-light h-5 w-auto" draggable={false} />
           <img src={horizontalLogoDark} alt="AstraNota" className="an-logo-dark h-5 w-auto" draggable={false} />
         </div>
-        <span className="text-[12px]" style={{ color: 'var(--text-3)' }}>
-          本地优先 · Markdown 为唯一事实源
-        </span>
       </header>
 
       <div className="flex flex-1 items-start justify-center px-6 pb-16 pt-[6vh]">
@@ -154,11 +149,6 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
             >
               让写作回到本地
             </h1>
-            <p className="mt-3 max-w-[430px] text-[13px] leading-[1.7]" style={{ color: 'var(--text-2)' }}>
-              {guide
-                ? '选择一个工作区开始写作——文档以 Markdown 保存在普通文件夹里，没有账户，也不会上传。'
-                : '一个安静、快速的本地知识工作台。文档以 Markdown 保存在普通文件夹里，没有账户，也不会上传。'}
-            </p>
           </div>
 
           {/* 两操作卡（主 = 蓝底白字；次 = 白底描边） */}
@@ -312,15 +302,6 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
           ) : null}
         </div>
       </div>
-
-      {/* 底部声明 */}
-      <footer
-        className="flex h-[52px] shrink-0 items-center justify-between px-6 text-[12px]"
-        style={{ color: 'var(--text-3)', borderTop: '1px solid var(--border)' }}
-      >
-        <span>程序与数据分离 · 卸载软件不删除数据</span>
-        <span>v{APP_VERSION} · Markdown 为唯一事实源 · 索引可整体重建</span>
-      </footer>
     </div>
   )
 }

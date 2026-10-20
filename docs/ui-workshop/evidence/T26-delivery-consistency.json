@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T17:27:34+0800",
-  "head": "1b7aaea",
+  "generatedAt": "2026-10-20T12:41:29+0800",
+  "head": "7ba017e",
   "branch": "feat/ui-workshop",
   "checks": [
     {
@@ -12,7 +12,7 @@
       "name": "DC-2 所有 results JSON 已被矩阵脚本收录",
       "pass": true,
       "detail": {
-        "count": 44,
+        "count": 48,
         "missing": []
       }
     },
@@ -20,7 +20,7 @@
       "name": "DC-3 交付文档 evidence 引用文件存在",
       "pass": true,
       "detail": {
-        "refs": 32,
+        "refs": 38,
         "missing": []
       }
     },
@@ -30,12 +30,13 @@
       "detail": []
     },
     {
-      "name": "DC-5 分支本地未推送（无 upstream）",
-      "pass": true,
+      "name": "DC-5 推送状态（已推送且远端 == HEAD）",
+      "pass": false,
       "detail": {
         "branch": "feat/ui-workshop",
-        "head": "1b7aaea",
-        "upstream": null
+        "head": "7ba017e",
+        "remote": "4860805b3c67",
+        "upstream": "origin/feat/ui-workshop"
       }
     },
     {
@@ -51,24 +52,41 @@
         "officialPass": 60,
         "officialFail": 0,
         "officialNotRun": 58,
-        "packAPass": 4,
-        "packBPass": 4
+        "packAPass": 26,
+        "packBPass": 27
       }
     },
     {
       "name": "DC-8 最终状态声明 EXPERIMENTAL_TRUSTED_PACKS 且不声明更高",
       "pass": true,
       "detail": null
+    },
+    {
+      "name": "DC-9 接口维护检查（接口级交付/版本一致/CHANGELOG/维护清单/UI 默认关闭）",
+      "pass": true,
+      "detail": {
+        "protocol": "1",
+        "packApiVersion": "1",
+        "sdkSource": "0.1.0",
+        "sdkPackage": "0.1.0",
+        "policyExists": true,
+        "changelogExists": true,
+        "sdkVersionConsistent": true,
+        "changelogHasCurrentVersions": true,
+        "guideReferencesPolicyAndChangelog": true,
+        "policyHasMaintenanceChecklist": true,
+        "uiEntryFlagGated": true
+      }
     }
   ],
   "passCount": 8,
-  "total": 8,
+  "total": 9,
   "featureBaselineStats": {
     "rows": 130,
     "officialPass": 60,
     "officialFail": 0,
     "officialNotRun": 58,
-    "packAPass": 4,
-    "packBPass": 4
+    "packAPass": 26,
+    "packBPass": 27
   }
 }

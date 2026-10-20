@@ -1,6 +1,6 @@
 # UI 工坊证据索引（自动生成）
 
-- 生成时间：2026-10-19T21:59:49+0800
+- 生成时间：2026-10-20T12:41:00+0800
 - 证据目录：`docs/ui-workshop/evidence/`（152 个文件；48 个 results JSON、95 个说明 md）
 - 由 `tools/build_evidence_index.py` 生成；验收结论以 `validation-matrix.csv` 与各证据文件为准。
 
@@ -74,10 +74,10 @@
 
 ## 2. results JSON 对应说明文件（可维护性）
 
-- `P0-S1-probe-results.json` → **缺少对应说明 md（仅原始 JSON）**
-- `P0-S1-windows-probe-results.json` → **缺少对应说明 md（仅原始 JSON）**
-- `P0-S2-probe-results.json` → **缺少对应说明 md（仅原始 JSON）**
-- `P0-S4-probe-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `P0-S1-probe-results.json` → `P0-S1-prototype.md`
+- `P0-S1-windows-probe-results.json` → `P0-S1b-windows-probe.md`
+- `P0-S2-probe-results.json` → `P0-S2-prototype.md`
+- `P0-S4-probe-results.json` → `P0-S4-prototype.md`
 - `T10-e2e-results.json` → `P1-T10-e2e.md`
 - `T11-transport-probe-results.json` → `P1-T11-transport-probe.md`
 - `T13-core-gate-results.json` → `P1-T13-core-gate.md`
@@ -86,7 +86,7 @@
 - `T14-byte-consistency-results.json` → `P2-T14-byte-consistency.md`
 - `T15-ime-zoom-probe-results.json` → `P2-T15-ime-zoom-probe.md`
 - `T18-broker-probe-results.json` → `P3-T18-broker-probe.md`
-- `T19-multiasset-probe-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `T19-multiasset-probe-results.json` → `P3-T19-multiasset-heartbeat-probe.md`
 - `T19-pack-entry-probe-results.json` → `P3-T19-pack-entry-probe.md`
 - `T19-package-host-probe-results.json` → `P3-T19-package-host-probe.md`
 - `T20-startup-recover-probe-results.json` → `P3-T20-startup-recover-probe.md`
@@ -102,25 +102,25 @@
 - `T26-G1G2-results.json` → `P5-T26-G1G2-content-io.md`
 - `T26-G3G4-results.json` → `P5-T26-G3G4-print-events.md`
 - `T26-G7-reference-packs-results.json` → `P5-T26-G7-reference-packs.md`
-- `T26-IME-DPI-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `T26-IME-DPI-results.json` → `P5-T26-ime-dpi.md`
 - `T26-W01-zip-results.json` → `P5-T26-W01-zip.md`
 - `T26-W02-form-results.json` → `P5-T26-W02-form.md`
 - `T26-W04-sdk-dist-results.json` → `P5-T26-W04-sdk-dist.md`
-- `T26-W04-sdk-results.json` → `P5-T26-W04-sdk-dist.md`
+- `T26-W04-sdk-results.json` → `P5-T26-W04-sdk.md`
 - `T26-W05-protocol-results.json` → `P5-T26-W05-protocol.md`
 - `T26-W06-boundary-results.json` → `P5-T26-W06-boundary.md`
-- `T26-W07-boot-results.json` → **缺少对应说明 md（仅原始 JSON）**
-- `T26-W07-bridge-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `T26-W07-boot-results.json` → `P5-T26-W07-fault-boot.md`
+- `T26-W07-bridge-results.json` → `P5-T26-W07-fault-bridge.md`
 - `T26-W07-fault-results.json` → `P5-T26-W07-fault-attempt.md`
-- `T26-W07-mem-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `T26-W07-mem-results.json` → `P5-T26-W07-fault-mem.md`
 - `T26-W09-perf-diag-results.json` → `P5-T26-W09-perf-diag.md`
 - `T26-W09-perf-plain-results.json` → `P5-T26-W09-perf-plain.md`
-- `T26-W09-perf-results.json` → `P5-T26-W09-perf-diag.md`
+- `T26-W09-perf-results.json` → `P5-T26-W09-perf.md`
 - `T26-W09-workshop-results.json` → `P5-T26-W09-workshop.md`
 - `T26-cloud-handoff-results.json` → `P5-T26-cloud-handoff-verification.md`
 - `T26-isolated-smoke-results.json` → `P5-T26-isolated-smoke.md`
-- `T26-pack-editor-cmd-results.json` → `P5-T26-pack-editor-cmd.md`
-- `T26-packA-editor-cmd-results.json` → **缺少对应说明 md（仅原始 JSON）**
+- `T26-pack-editor-cmd-results.json` → `P5-T26-F-ledger.md`
+- `T26-packA-editor-cmd-results.json` → `P5-T26-F-ledger.md`
 - `T27-I-preflight-results.json` → **缺少对应说明 md（仅原始 JSON）**
 
 ## 3. 说明 md 未被主要交付文档引用（提示，不阻塞）

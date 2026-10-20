@@ -240,13 +240,14 @@ SDK 封装：`conn.request(method, params)`（超时默认 5000ms，超时 `E_TI
 - 无参数（带非空 args → `E_BAD_PAYLOAD`）；
 - 语义与工具栏一致（EditorArea 执行器），作用于主窗口当前编辑器。
 
-### 8.2 无参动作（3）
+### 8.2 无参动作（2）
 
 | 协议名 | 语义 |
 | --- | --- |
-| `editor.table.insert` | 插入产品默认 3×3 带表头表格（等价于快捷键路径；参数化见下） |
 | `editor.footnote.insert` | 插入脚注 |
 | `editor.note.insert` | 插入信息块 |
+
+> `doc.save` 同为无参动作，单独列在 §8.4；`editor.table.insert` 已在 v12 升级为参数化命令（见 §8.3）。
 
 ### 8.3 参数化动作（4）
 
@@ -316,7 +317,7 @@ startupStatus? / uninstall? / tierOf? / grantTrust? / revokeTrust? / createGuest
 - guest 在 **独立 origin**（`workshop.localhost`）iframe 中运行；不继承宿主 window/Internals 权限；
 - **CSP 网络边界**（W06）：`connect-src 'none'`——guest 不能直调后端 `/api/*`，只能用受控协议；
 - 能力声明式 + tier 上限 + manifest 命令逐条声明；未声明/未授予一律拒绝（`E_FORBIDDEN`/`E_CAPABILITY`）；
-- 命令白名单最小化：只含切换/插入/历史/保存类 21 条；不暴露任意命令执行、不暴露对话框类；
+- 命令白名单最小化：21 条协议名（14 切换 + 4 参数化 + 2 无参动作）+ `doc.save`；不暴露任意命令执行、不暴露对话框类；
 - 写通道 CAS + 幂等 requestId + 真实落盘语义；打印页数不可得时为 null（不伪造）；
 - 信任等级持久化在宿主设置（`TrustStore`）；安装事务化（不留半成品）。
 
@@ -332,7 +333,7 @@ node docs/ui-workshop/tools/sign_pack.mjs --self-test
 
 # 仓库级验证
 python3 docs/ui-workshop/tools/build_validation_matrix.py --check          # MATRIX GATE: PASS
-python3 docs/ui-workshop/tools/verify_delivery_consistency.py              # 8/8 PASS
+python3 docs/ui-workshop/tools/verify_delivery_consistency.py              # 9/9 PASS（含 DC-9 接口维护）
 
 # 产品 W（仅 Windows，隔离构建；顺序执行、窗口独占、隔离 APPDATA/工作区）
 python tools/run_t26_pack_editor_cmd_probe.py --pack a    # 命令桥 36/36
@@ -361,7 +362,7 @@ python tools/run_reference_packs_probe.py                 # 参考包 24/24
 | 内容 | 位置 |
 | --- | --- |
 | 参考包 A（侧栏阅读器：读/打印/事件/21 命令） | `docs/ui-workshop/packs/pack-a/` |
-| 参考包 B（元数据表单 + 21 命令 + 参数化 UI） | `docs/ui-workshop/packs/pack-b/` |
+| 参考包 B（元数据表单 + 参数化 UI；23 条命令 = 21 条通用协议名 + 2 条 article.*） | `docs/ui-workshop/packs/pack-b/` |
 | guest SDK 源码与发布 dist | `docs/ui-workshop/sdk/` |
 | 协议/包/信任实现 | `frontend/src/core/protocol/types.ts`、`core/packs/{manifest,trustPolicy,packageHost,productHostAdapter}.ts`、`components/workshop/*` |
 | 产品 W 证据 | `docs/ui-workshop/evidence/`（G1/G2、G3/G4、G7、packA/B 命令桥、B 段冒烟等） |

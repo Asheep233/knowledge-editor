@@ -68,9 +68,12 @@ def main() -> int:
         counts = f"{res['passed']}/{res['total']}" if res and res.get("total") else ""
         lines.append(f"| {ev} | {r.get('task','')} | {r.get('kind','')} | {r.get('result','')} | {counts} | `{r.get('reproduce','')}` |")
     lines += ["", "## 2. results JSON 对应说明文件（可维护性）", ""]
+    md_text = {m: (EVID / m).read_text(encoding="utf-8", errors="ignore") for m in mds}
     for name in sorted(results):
         stem = name.replace("-results.json", "")
-        candidates = [x for x in mds if x.startswith("P5-" + stem) or stem in x]
+        candidates = [m for m in mds if name in md_text[m]]
+        if not candidates:
+            candidates = [x for x in mds if x.startswith("P5-" + stem) or stem in x]
         lines.append(f"- `{name}` → {('`' + candidates[0] + '`') if candidates else '**缺少对应说明 md（仅原始 JSON）**'}")
     lines += ["", "## 3. 说明 md 未被主要交付文档引用（提示，不阻塞）", ""]
     unreferenced = [m for m in mds if m not in referenced]

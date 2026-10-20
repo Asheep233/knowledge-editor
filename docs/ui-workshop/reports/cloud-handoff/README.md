@@ -16,6 +16,10 @@
 | `TASKS.md` | 原始 Windows 验收任务文档（U1–U6 + B 段） |
 | `T27-I-results.schema.json` | I 门禁证据 JSON 结构 |
 
+> **候选 HEAD 必须固定**：`sources.bundle` / `cloud-vm-taskpack.zip` 是构建产物（不入 git）。执行前在交付仓库运行
+> `python3 docs/ui-workshop/tools/build_cloud_handoff.py` 重建，确保 `git -C repo rev-parse HEAD` == 交接分支 HEAD；
+> 若 bundle 中分支 ref 落后，安装包会构建在旧提交上。（2026-10-20 复核：仓库内 bundle 曾落后 10 个提交，已重建。）
+
 ## Windows 执行前提
 
 - 专用 Windows 10/11 x64 VM，**先打快照**；管理员用户；只使用自建测试数据；不推送代码/不创建 Release。

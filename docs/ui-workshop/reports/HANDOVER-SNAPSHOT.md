@@ -47,6 +47,8 @@ python3 -m pytest docs/ui-workshop/reports/cloud-handoff/tests -q   # 39 passed�
 ```
 
 > 数字以实际运行为准；产品 W 探针仅 Windows 环境可跑（Linux/happy-dom 不能替代）。
+> `run_t27_gate_check.py` 是 **Windows 侧**脚本（`REPO`/NSIS bundle 为 `F:\...` 绝对路径 + powershell 检查用户实例），
+> WSL/Linux 上直接读 `evidence/T27-gate-readiness.json`；脚本报 FileNotFoundError 不代表结论变化。
 
 ## 5. 已交付功能（接口级）
 
@@ -54,7 +56,7 @@ python3 -m pytest docs/ui-workshop/reports/cloud-handoff/tests -q   # 39 passed�
   → 停用/回滚/卸载/启动恢复/safeMode（产品壳 W 证据）。
 - **协议**：5 方法（capabilities/snapshot/write/print/command）+ 5 宿主事件 + 11 错误码 + 心跳/超时/取消。
 - **能力**：7 能力 allowlist + 等级上限；独立 origin + CSP 网络边界（guest 不能直调后端）。
-- **编辑命令**：21 条协议名（14 切换 + 3 无参动作 + 4 参数化 link/math/table + `doc.save`），严格参数校验。
+- **编辑命令**：21 条协议名（14 切换 + 4 参数化 link/math/table + 2 无参动作 footnote/note + `doc.save`），严格参数校验。
 - **参考 UI**：pack A（侧栏阅读器）/ pack B（Dock/表单/命令），真实安装启用 W 24/24。
 - **SDK/工具**：发布形态 SDK、create/sign pack 工具、脚手架、兼容自检。
 

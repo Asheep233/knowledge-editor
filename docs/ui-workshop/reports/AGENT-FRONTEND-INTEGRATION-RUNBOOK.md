@@ -39,7 +39,7 @@ VITE_KE_WORKSHOP=1 VITE_KE_CORE_SAVE=1 npm run build
 ## 3. 后端验证
 
 ```bash
-python3 -m pytest backend/tests -q        # 期望：841 passed / 6 skipped（以实际为准）
+python3 -m pytest backend/tests -q        # 期望：841 passed + 6 skipped（847 collected）/ exit 0（2026-10-20 本机复核）
 ```
 
 ## 4. 工坊/协议/设备侧验证（Linux 可做）
@@ -47,7 +47,7 @@ python3 -m pytest backend/tests -q        # 期望：841 passed / 6 skipped（�
 ```bash
 # 4.1 验证矩阵与交付一致性（仓库自带检查器）
 python3 docs/ui-workshop/tools/build_validation_matrix.py --check   # 期望：MATRIX GATE: PASS
-python3 docs/ui-workshop/tools/verify_delivery_consistency.py       # 期望：8/8 PASS（只读；推送后 DC-5 允许「已推送」）
+python3 docs/ui-workshop/tools/verify_delivery_consistency.py       # 期望：9/9 PASS（只读；DC-5 允许「已推送且远端==HEAD」）
 python3 docs/ui-workshop/tools/build_evidence_index.py              # 证据索引可重建
 
 # 4.2 云端交接包脚本回归（39 项，Linux 可跑）
@@ -55,7 +55,7 @@ python3 -m pytest docs/ui-workshop/reports/cloud-handoff/tests -q   # 期望：3
 python3 docs/ui-workshop/tools/build_cloud_handoff.py               # 可重建 Windows VM 交接包
 
 # 4.3 SDK 与参考包（Node）
-node docs/ui-workshop/sdk/build.mjs && node docs/ui-workshop/sdk/selftest.mjs   # 期望：自检通过（4/4）
+node docs/ui-workshop/sdk/build.mjs && node docs/ui-workshop/sdk/self-test.mjs   # 期望：自检通过（4/4；脚本按自身目录解析，任意 cwd 可跑）
 node docs/ui-workshop/tools/build_reference_packs.mjs               # 需测试签名私钥；无则跳过并记录 NOT_RUN
 ```
 
@@ -65,10 +65,10 @@ node docs/ui-workshop/tools/build_reference_packs.mjs               # 需测试�
 # 构建隔离测试产品（详见 docs/ui-workshop/tools/t26_isolated_build.md）
 # 关键：前端用 VITE_KE_WORKSHOP=1 VITE_KE_CORE_SAVE=1 构建 dist-build，src-tauri 用隔离 identifier
 # 跑关键探针（顺序执行、窗口独占、隔离 APPDATA/工作区）：
-python tools/run_t26_save_probe.py            # A8 Core 保存 flag（期望 9/9）
-python tools/run_t26_protocol_probe.py        # W05 协议线（期望 7/7）
-python tools/run_t26_guest_io_probe.py        # G1/G2 内容读/写（期望 14/14）
-python tools/run_t26_pack_editor_cmd_probe.py --pack a   # 命令桥（期望 36/36）
+python docs/ui-workshop/tools/run_t26_save_probe.py            # A8 Core 保存 flag（期望 9/9）
+python docs/ui-workshop/tools/run_t26_protocol_probe.py        # W05 协议线（期望 7/7）
+python docs/ui-workshop/tools/run_t26_guest_io_probe.py        # G1/G2 内容读/写（期望 14/14）
+python docs/ui-workshop/tools/run_t26_pack_editor_cmd_probe.py --pack a   # 命令桥（期望 36/36）
 ```
 
 > **没有 Windows 环境时**：第 5 节必须记为 `NOT_RUN`，不得用 Linux/happy-dom 结果替代 Windows/WebView2 证据；
@@ -76,7 +76,7 @@ python tools/run_t26_pack_editor_cmd_probe.py --pack a   # 命令桥（期望 36
 
 ## 6. 验收判定（本仓库口径）
 
-- 矩阵 `--check` PASS、交付一致性 8/8、前端/后端测试通过、双 flag 构建成功 = **Linux 侧完整验证通过**；
+- 矩阵 `--check` PASS、交付一致性 9/9、前端/后端测试通过、双 flag 构建成功 = **Linux 侧完整验证通过**；
 - Windows 产品 W 探针全过 = 本机真实产品 W 证据通过；
 - 安装/升级/回滚（I 类）**必须**在专用 Windows VM 按 `reports/cloud-handoff/README.md` 执行，未执行即 NOT_RUN；
 - 最终交付状态按 TASK PACK 口径只能声明到有证据的那一档（当前：`EXPERIMENTAL_TRUSTED_PACKS`）。

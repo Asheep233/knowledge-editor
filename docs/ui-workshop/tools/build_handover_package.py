@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """生成 UI 工坊交接包（自包含 zip + sha256）。
 
-包含：交接说明、完整文档/证据（排除体积大的生成物）、SDK、参考包、工具、P0 原型、完整源码 bundle。
+包含：交接说明、完整文档/证据（排除体积大的生成物）、SDK、参考包、工具、P0 原型；源码不内嵌
+（分支已推送 GitHub，可 clone；cloud-handoff 的 sources.bundle/cloud-vm-taskpack.zip 为构建产物，
+按需用 tools/build_cloud_handoff.py 重建）。
 用法：python3 docs/ui-workshop/tools/build_handover_package.py
 产物：docs/ui-workshop/reports/AstraNota-UI-Workshop-Handover-<date>.zip（.sha256 同名）
 说明：zip 为构建产物（.gitignore 已忽略），可随时重建。
@@ -35,25 +37,24 @@ README = """# AstraNota UI 创意工坊 · 交接包
 最终交付状态：**`EXPERIMENTAL_TRUSTED_PACKS`**（接口级交付；宿主 UI 默认关闭；不声明正式发布/更高里程碑）
 T27 I 门禁：**NOT_RUN / BLOCKED**（无 Windows VM；Linux 预检 PASS 不能替代 I 证据）
 
-## 先读什么（按顺序）
+## 先读什么（按顺序；包内路径均相对 zip 根，即 `docs/…`）
 
-1. `WORKSHOP-INTEGRATION-GUIDE.md` —— 工坊接口怎么用（host/guest/SDK/协议/命令白名单/生命周期/接入点）
-2. `WORKSHOP-INTERFACE-POLICY.md` / `WORKSHOP-INTERFACE-CHANGELOG.md` —— 接口维护规则与变更记录（每次改接口必须维护）
-3. `reports/HANDOVER-SNAPSHOT.md` —— 一页式交接快照（仓库状态/快速验收命令/未闭环红线/恢复路径）
-4. `reports/TASK-STATUS-HANDOVER.md` —— T00–T28 逐任务状态（passed / in_progress / blocked 诚实口径）
-5. `reports/FINAL-DELIVERY-STATUS.md` / `HANDOVER-FINAL.md` —— 最终状态与完整交接
-6. `reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` —— 前端 UI Agent 接入与完整验证步骤
-7. `reports/DECISION-T27-I-gate-blocked.md` —— T27 环境阻塞决策
-8. `EVIDENCE-INDEX.md` / `validation-matrix.csv` —— 证据索引与验证矩阵
+1. `docs/WORKSHOP-INTEGRATION-GUIDE.md` —— 工坊接口怎么用（host/guest/SDK/协议/命令白名单/生命周期/接入点）
+2. `docs/WORKSHOP-INTERFACE-POLICY.md` / `docs/WORKSHOP-INTERFACE-CHANGELOG.md` —— 接口维护规则与变更记录（每次改接口必须维护）
+3. `docs/reports/HANDOVER-SNAPSHOT.md` —— 一页式交接快照（仓库状态/快速验收命令/未闭环红线/恢复路径）
+4. `docs/reports/TASK-STATUS-HANDOVER.md` —— T00–T28 逐任务状态（passed / in_progress / blocked 诚实口径）
+5. `docs/reports/FINAL-DELIVERY-STATUS.md` / `docs/HANDOVER-FINAL.md` —— 最终状态与完整交接
+6. `docs/reports/AGENT-FRONTEND-INTEGRATION-RUNBOOK.md` —— 前端 UI Agent 接入与完整验证步骤
+7. `docs/reports/DECISION-T27-I-gate-blocked.md` —— T27 环境阻塞决策
+8. `docs/EVIDENCE-INDEX.md` / `docs/validation-matrix.csv` —— 证据索引与验证矩阵
 
-## 包内目录
+## 包内目录（均在 `docs/` 下）
 
-- `WORKSHOP-*.md`、`HANDOVER-FINAL.md`、`README.md`、`EVIDENCE-INDEX.md`、`progress.md`、`feature-baseline.csv`、`validation-matrix.csv`、`known-failures.md`
-- `adr/`、`core/`、`fixtures/`、`prototypes/`、`tools/`、`packs/`、`sdk/`、`evidence/`、`reports/`
-- `reports/cloud-handoff/`（Windows VM 验收包：README/scripts/tests/test-pack/preflight；完整 `sources.bundle` 未在 zip 内，可用 `tools/build_cloud_handoff.py` 重建）
-- `repo-metadata.json` —— HEAD/远端/生成信息
+- `docs/WORKSHOP-*.md`、`docs/HANDOVER-FINAL.md`、`docs/README.md`、`docs/EVIDENCE-INDEX.md`、`docs/progress.md`、`docs/feature-baseline.csv`、`docs/validation-matrix.csv`、`docs/known-failures.md`
+- `docs/adr/`、`docs/core/`、`docs/fixtures/`、`docs/prototypes/`、`docs/tools/`、`docs/packs/`、`docs/sdk/`、`docs/evidence/`、`docs/reports/`
+- `docs/reports/cloud-handoff/`（Windows VM 验收包：README/scripts/tests/test-pack/preflight；完整 `sources.bundle`/`cloud-vm-taskpack.zip` 为构建产物、未在 zip 内，可用 `docs/tools/build_cloud_handoff.py` 重建）
+- `repo-metadata.json` / `SHA256SUMS` —— HEAD/远端/生成信息与包内文件校验
 - **源码获取**：`git clone --branch feat/ui-workshop https://github.com/Asheep233/knowledge-editor.git`（分支已推送、远端与交接快照一致）
-- `SHA256SUMS` —— 包内文件校验
 
 ## 快速验收（Linux 可做）
 

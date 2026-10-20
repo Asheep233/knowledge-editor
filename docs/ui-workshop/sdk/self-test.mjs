@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 
 // 先确保 dist 构建
-execFileSync(process.execPath, ['build.mjs'], { stdio: 'inherit' })
+execFileSync(process.execPath, ['build.mjs'], { stdio: 'inherit', cwd: import.meta.dirname })
 
 const messagesToHost = []
 const hostListeners = []

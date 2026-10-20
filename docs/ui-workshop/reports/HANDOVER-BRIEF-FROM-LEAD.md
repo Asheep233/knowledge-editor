@@ -74,6 +74,8 @@
 ## 7. 环境与工具备注（不可泄密项已省略）
 
 - 主工作环境：WSL（`/mnt/f/Work/KE Project`）；Windows Python 3.14、Node 24、cargo 在 `F:\Work\Dev\cargo`；
+- T27 就绪检查 `tools/run_t27_gate_check.py` 硬编码 Windows 路径（`F:\...`），仅 Windows 侧可跑；WSL 侧以
+  `evidence/T27-gate-readiness.json` 为准（不代表结论变化）。
   隔离测试构建：`C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe`（sha 以证据文件为准）。
 - 推送凭据：使用宿主 Windows 侧已登录的 `gh`（keyring），**仓库内无任何 token/私钥**；接手后如需推送请用
   自己的凭据，不要提交凭据。

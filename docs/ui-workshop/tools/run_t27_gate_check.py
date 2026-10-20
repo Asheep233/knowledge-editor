@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """T27/W08 I 门禁就绪检查（**只读 dry-run，绝不安装/绝不修改系统**）。
 
+平台：**仅 Windows 侧可跑**（REPO/BUNDLE 为 Windows 绝对路径，且用 powershell 检查用户实例）；
+WSL/Linux 上直接读 evidence/T27-gate-readiness.json，FileNotFoundError 不代表结论变化。
+
 I 门禁 = 安装/覆盖升级/回滚/重启的 Windows 证据。执行必须满足：
   1) 主理人明确授权（本脚本只检查，不执行）；
   2) 专用隔离环境（VM/独立机器）或明确允许的实验机；

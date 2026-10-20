@@ -1,10 +1,15 @@
 # UI 工坊交付状态（一页式最终状态 · 2026-10-19 末段）
 
-> 分支 `feat/ui-workshop`（**本地，未推送、未发布 Release**）。HEAD 以 `git log --oneline -1` 为准
+> 分支 `feat/ui-workshop`（**已推送 `origin/feat/ui-workshop`；未发布 Release**）。HEAD 以 `git log --oneline -1` 为准
 > （本文件所在提交；整理前 HEAD = `0737e7f`）。完整说明见 `HANDOVER-FINAL.md`；里程碑判定见
 > `reports/milestone-assessment.md`；逐任务台账见 `progress.md`。
 > **口径**：所有「通过」必须可追溯到 `docs/ui-workshop/evidence/` 下证据文件；部分通过标「部分」，
 > 未执行标 `NOT_RUN`；不把计划/结构性审计/就绪检查写成通过。
+>
+> **时点声明（2026-10-20 主 Agent 6 复核）**：本文 §1–§13 的数字为 2026-10-19 收敛时点；此后分支已推送
+> （主理人授权）并追加 §14–§18。**当前权威数值**：验证矩阵 **63 行**、交付一致性 **DC 9/9**、frontend
+> **143 files / 1981 passed + 1 skipped**、backend **847 collected / exit 0**、分支已推送且远端 == HEAD。
+> 文中残留的旧表述已同步修正；如再有出入，以本文末 §14–§18、`HANDOVER-SNAPSHOT.md` 与实际命令输出为准。
 
 ## 0. 一句话结论
 
@@ -23,13 +28,13 @@
 
 | 项 | 结果 | 说明 |
 | --- | --- | --- |
-| 分支/基线 | `feat/ui-workshop`（本地） | 基线 v1.2.18 `4c71233` + overlay `e54d37b`；未推送/未 Release |
+| 分支/基线 | `feat/ui-workshop`（已推送 origin） | 基线 v1.2.18 `4c71233` + overlay `e54d37b`；已推送 feat/ui-workshop、未 Release |
 | frontend `tsc -b --noEmit` | **0 错** | WSL |
 | frontend `vitest run --maxWorkers=2` | **143 files / 1981 passed + 1 skipped** | WSL/happy-dom（U 级）；本次收敛本地复跑确认 |
 | backend `pytest backend/tests -q` | **847 collected / exit 0** | WSL；本次收敛本地复跑确认（Windows Py3.10 曾全绿） |
 | 产品壳 `cargo test --release` | **67 passed** | Windows（Rust 单测，引自 `P6-final-verification.md`；WSL 未复跑） |
 | 原型 W 探针一键门禁 | **13/13 PASS** | `run_all_w_probes.py --check`（引自 `P5-T26-windows-witnesses.md`） |
-| 平台验证矩阵 | **59 行 / `--check` PASS** | `validation-matrix.csv`：44 个 `*-results.json` 全部纳入；另含 F16 结构性审计行（NOT_RUN）、T27 就绪检查 READINESS 行（NOT_READY 6/8，非验收）、W07 boot/bridge 与 F 台账 PASS_WITH_FINDINGS 行；基线本轮复核：protocol 19、print 36（去除重复/stale 的 14 行） |
+| 平台验证矩阵 | **63 行 / `--check` PASS** | `validation-matrix.csv`：44 个 `*-results.json` 全部纳入；另含 F16 结构性审计行（NOT_RUN）、T27 就绪检查 READINESS 行（NOT_READY 6/8，非验收）、W07 boot/bridge 与 F 台账 PASS_WITH_FINDINGS 行；基线本轮复核：protocol 19、print 36（去除重复/stale 的 14 行） |
 
 ## 2. 真实产品 W 证据全景（Windows 11 + WebView2 155，隔离构建 `com.astranota.uiws.e2e`）
 
@@ -109,7 +114,7 @@
 | --- | --- | --- |
 | T27 I 门禁（安装/覆盖升级/回滚） | 明确授权 + 云端/专用隔离 Windows VM（可快照）+ `KE_T27_AUTHORIZED=1`/`KE_T27_ISOLATED_ENV` | `reports/T27-CLOUD-EXECUTION-HANDOFF.md`（云端 Codex 执行单）、`reports/T27-I-GATE-RUNBOOK.md`、`reports/T27-ARTIFACTS.md`（28 个安装包 sha256）；**禁止在用户日常机执行** |
 | 人工真实 IME/多 DPI 验收 | 本机按清单逐步操作 + 截图记录 | `reports/MANUAL-IME-DPI-CHECKLIST.md`（隔离工作区 `C:\ke-tmp\uiws-manual\workspace`） |
-| 推送/发布 | 主理人明确授权 | 当前分支本地，未 push/未 Release |
+| 推送/发布 | 主理人明确授权 | 当前分支已推送 `feat/ui-workshop`；未 push master/未 Release |
 
 ## 5. 关键复现命令
 
@@ -120,7 +125,7 @@ python3 -m pytest backend/tests -q
 # 产品 Rust（Windows）
 cd desktop/src-tauri && cargo test --release && cargo build --release
 # 平台验证矩阵门禁（跨平台静态汇总）
-python3 docs/ui-workshop/tools/build_validation_matrix.py --check     # 59 行 PASS
+python3 docs/ui-workshop/tools/build_validation_matrix.py --check     # 63 行 PASS
 # 原型 W 门禁（Windows；先构建原型壳）
 python docs/ui-workshop/tools/run_all_w_probes.py --check              # 13/13
 # 产品 W 代表性探针（Windows；需隔离测试构建 C:\ke-tmp\uiws-t26\bin\knowledgeeditor.exe）
@@ -133,7 +138,7 @@ python docs/ui-workshop/tools/run_t27_gate_check.py                    # 就绪�
 
 ## 6. 事故与红线记录（必须披露）
 
-- **约束遵守**：分支本地**未推送、未发布 Release**；未用真实用户笔记做测试（全部隔离工作区/APPDATA）；
+- **约束遵守**：分支**已推送 `feat/ui-workshop`**（主理人授权）、**未发布 Release**；未用真实用户笔记做测试（全部隔离工作区/APPDATA）；
   工坊入口与 Core 保存分支默认关闭可回退；未把 happy-dom/Linux 结果冒充 W。
 - **两次误杀用户 App（已披露并补救）**：① 早期 runner 清理误用 `taskkill /IM knowledgeeditor.exe`；
   ② 一次清理误用 `Stop-Process -Id <用户 PID>`。均即时重启用户 App；红线：**测试进程只按自身 PID
@@ -157,25 +162,26 @@ python docs/ui-workshop/tools/run_t27_gate_check.py                    # 就绪�
 | `reports/F01-F16-COVERAGE.md` | F01–F16 guest 入口覆盖量化审计 |
 | `reports/T27-*.md` | T27 I 门禁计划/执行手册/云端交接/产物清单 |
 | `reports/MANUAL-IME-DPI-CHECKLIST.md` | 人工 IME/多 DPI 验收清单 |
-| `validation-matrix.csv` + `tools/build_validation_matrix.py` | 平台验证矩阵（59 行，`--check` 门禁） |
+| `validation-matrix.csv` + `tools/build_validation_matrix.py` | 平台验证矩阵（63 行，`--check` 门禁） |
 | `feature-baseline.csv` | F01–F16 逐项台账（130 行） |
 | `progress.md` | 逐任务台账（含历史表述，最终状态以本文/`HANDOVER-FINAL.md` 为准） |
 | `evidence/` | 全部证据（44 个 results JSON + 证据 md） |
 
 **一致性说明**：本文与 `HANDOVER-FINAL.md`、`milestone-assessment.md`、`T26-acceptance-status.md`、
-`validation-matrix.csv` 的数字口径一致（矩阵 59 行、frontend 1931/143 files、backend 847、cargo 67）；
+`validation-matrix.csv` 的数字口径一致（矩阵 63 行、frontend 1981/143 files、backend 847、cargo 67）；
 矩阵中 W07 boot/bridge 与 F 台账为 `PASS_WITH_FINDINGS`（显式缺口数），未按 FAIL 阻断也未写成全通过。
 
 ## 9. 交付一致性自动检查（可复跑）
 
 ```bash
-python3 docs/ui-workshop/tools/verify_delivery_consistency.py        # 只读，8 项检查
+python3 docs/ui-workshop/tools/verify_delivery_consistency.py        # 只读，9 项检查
 python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 evidence/T26-delivery-consistency.json
 ```
 
-8 项检查：矩阵 --check PASS、所有 results JSON 已被矩阵收录、交付文档 evidence 引用存在、仓库无测试私钥、
-分支本地未推送（无 upstream）、工作树干净、台账 CSV 可解析、最终状态声明 `EXPERIMENTAL_TRUSTED_PACKS`
-且不声明更高。**最近一次：8/8 PASS**（evidence/T26-delivery-consistency.json）。
+9 项检查：矩阵 --check PASS、所有 results JSON 已被矩阵收录、交付文档 evidence 引用存在、仓库无测试私钥、
+推送状态（未推送，或已推送且远端 == HEAD）、工作树干净、台账 CSV 可解析、最终状态声明
+`EXPERIMENTAL_TRUSTED_PACKS` 且不声明更高、接口维护 DC-9（策略/CHANGELOG/版本/UI 默认关闭）。
+**最近一次：9/9 PASS**（evidence/T26-delivery-consistency.json）。
 
 ## 10. 云端实机验收任务包
 
@@ -186,7 +192,7 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 
 ## 11. 证据索引
 
-- `docs/ui-workshop/EVIDENCE-INDEX.md`（自动生成）：矩阵 62 行 → 证据文件/任务/结果/计数/复现命令；
+- `docs/ui-workshop/EVIDENCE-INDEX.md`（自动生成）：矩阵 63 行 → 证据文件/任务/结果/计数/复现命令；
   同时列出 results JSON 缺说明 md、说明 md 未被引用等可维护性提示。
 
 ## 12. 参数化无头命令（v12）
@@ -213,7 +219,7 @@ python3 docs/ui-workshop/tools/verify_delivery_consistency.py --write  # 写入 
 `LOCAL_WORKSHOP_RELEASE_CANDIDATE`，也不在主理人真实机器上安装/升级/回滚。
 
 - 已完成：UI 工坊实现 + 本机 Windows/WebView2 真实 W 证据（A1–A8、W01–W09、G1–G7、F01–F16 部分）、
-  验证矩阵 63 行 PASS、交付一致性 8/8、全部证据/台账/ADR/交接文档；
+  验证矩阵 63 行 PASS、交付一致性 9/9、全部证据/台账/ADR/交接文档；
 - 未完成（环境阻塞）：T27 **I 类**安装/升级/回滚证据；F01–F16 guest 原生入口整体覆盖（部分域无受控协议）；
   W07 三项已定稿设计限制（重启/卸载可恢复）；
 - 恢复路径：获得 Windows 环境后使用 `reports/cloud-handoff/`（v2）执行并回传 → 复评里程碑。

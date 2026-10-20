@@ -1,10 +1,10 @@
 # UI 工坊最终交接（最终交付状态 · 2026-10-19 末段收敛）
 
-> **最终状态一句话**：代码与真实产品 W 证据已收敛（frontend **143 files/1931 passed + 1 skipped**、
+> **最终状态一句话**：代码与真实产品 W 证据已收敛（frontend **143 files/1981 passed + 1 skipped**、
 > tsc 0；backend **847**；产品 cargo **67**；矩阵 **61 行 --check PASS**）；里程碑
 > **`EXPERIMENTAL_TRUSTED_PACKS`**（ACCEPTANCE A 节），**明确不声明** `IMPLEMENTED_WINDOWS_PENDING`
 > 完成态 / `LOCAL_WORKSHOP_RELEASE_CANDIDATE`（T27 I 门禁未执行、人工 IME/多 DPI 未做、F 覆盖部分、
-> W07 3 项已知限制）；**T26 任务级最终认证未达成**。分支 `feat/ui-workshop` **本地，未推送、未 Release**。
+> W07 3 项已知限制）；**T26 任务级最终认证未达成**。分支 `feat/ui-workshop` **已推送 `origin/feat/ui-workshop`（主理人授权）、未 Release**。
 >
 > 本文是 **UI 创意工坊任务的最终交付状态文档**。完整阶段记录见 `HANDOVER.md`（阶段快照，数字已过时）、
 > `reports/SESSION-FINAL-SUMMARY.md`；逐任务台账见 `progress.md`；里程碑判定见
@@ -26,7 +26,7 @@
 | 原型 W 探针一键门禁 | **13/13 PASS** | `run_all_w_probes.py --check`（Windows/WebView2） |
 | 平台验证矩阵 | **61 行**，`--check` **PASS**（44 个 results JSON 全覆盖；另含 F16 结构性审计 NOT_RUN 行、T27 就绪检查 READINESS 行，显式 NOT_READY、非验收通过；W07 boot/bridge 与 F 台账为 PASS_WITH_FINDINGS） | `build_validation_matrix.py --check` |
 
-> 核对口径：frontend（tsc 0、143 files/1931 passed + 1 skipped）与 backend（847 collected/exit 0）在
+> 核对口径：frontend（tsc 0、143 files/1981 passed + 1 skipped）与 backend（847 collected/exit 0）在
 > 本轮收敛时本地复跑确认；产品 cargo 67、原型 W 13/13 引自 `P6-final-verification.md` 与
 > `P5-T26-windows-witnesses.md`（Windows 侧本轮未复跑，数字为最近一次记录）。
 
@@ -163,7 +163,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 ## 6. 事故与红线记录（必须披露）
 
-- **约束遵守**：分支本地**未推送、未发布 Release**；未用真实用户笔记做测试；未隐藏旧 App
+- **约束遵守**：分支**已推送 `feat/ui-workshop`**（主理人授权）、**未发布 Release**；未用真实用户笔记做测试；未隐藏旧 App
   （工坊入口/Core 保存分支均默认关闭，可回退）；未把 happy-dom/Linux 结果冒充 W。
 - **事故 1（已披露并补救）**：早期 runner 清理误用 `taskkill /IM knowledgeeditor.exe` → 误杀用户 App；
 - **事故 2（已披露并补救）**：一次清理误用 `Stop-Process -Id <用户 PID>`；
@@ -189,7 +189,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 | `reports/T27-CLOUD-EXECUTION-HANDOFF.md` | T27 云端 Codex 执行交接单（VM 由主理人安排） |
 | `reports/T27-ARTIFACTS.md` | 28 个安装包清单/sha256（候选 1.2.18） |
 | `reports/MANUAL-IME-DPI-CHECKLIST.md` | 人工真实 IME/多 DPI 验收清单与记录模板 |
-| `validation-matrix.csv` + `tools/build_validation_matrix.py` | 平台验证矩阵（59 行，自动生成 + `--check` 门禁） |
+| `validation-matrix.csv` + `tools/build_validation_matrix.py` | 平台验证矩阵（63 行，自动生成 + `--check` 门禁） |
 | `feature-baseline.csv` | F01–F16 逐项台账（130 行） |
 | `progress.md` | 逐任务台账（含历史表述与修正记录） |
 | `evidence/` | 全部证据（44 个 results JSON + 证据 md） |
@@ -376,7 +376,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 - `f4759a2` **真实产品缺陷修复**：`KeBlockJoin.ts` 的 `KeBlockquote.addKeyboardShortcuts()` 改为继承上游
   `{...this.parent?.()}` 并只覆盖自定义 `Backspace`，恢复被丢弃的 `Mod-Shift-b`（Ctrl+Shift+B 引用）；
-  新增 4 例单测（快捷键表/keydown toggle/Backspace 不回归/自定义 Backspace 优先），tsc 0、全量 1931 passed。
+  新增 4 例单测（快捷键表/keydown toggle/Backspace 不回归/自定义 Backspace 优先），tsc 0、全量 1981 passed。
 - `5289d6e` **修复后产品 W 复测 6/6 PASS**：折叠光标与选中文本 Ctrl+Shift+B 均真实 toggle（DOM bq 0→1→0）、
   工具栏「引用」不变、引用块内 atom 后空行 Backspace 不回归、Ctrl+B/I 与撤销重做正常。
 - **F03 台账 42/42 全 PASS（0 FAIL）**；官方 UI 累计 60 PASS / 0 FAIL / 70 NOT_RUN；原 v5 唯一
@@ -404,7 +404,7 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
   未做、F 覆盖部分、W07 3 项已知限制）。
 - **待主理人**：T27 云端 Codex 执行（`reports/T27-CLOUD-EXECUTION-HANDOFF.md` + `T27-I-GATE-RUNBOOK.md`
   + `T27-ARTIFACTS.md`；需授权 + 隔离 VM）与人工 IME/多 DPI（`reports/MANUAL-IME-DPI-CHECKLIST.md`）。
-- **约束**：分支本地未推送/未 Release；未改产品语义（blockquote 修复为审计确认的真实缺陷）；未触碰
+- **约束**：分支已推送 `feat/ui-workshop`（授权）/未 Release；未改产品语义（blockquote 修复为审计确认的真实缺陷）；未触碰
   用户 App；全部测试在隔离构建/隔离数据目录执行；事故（两次误杀用户 App、早期只读显示用户工作区）
   已披露并写入红线。
 - **本文与** `reports/FINAL-DELIVERY-STATUS.md`、`reports/milestone-assessment.md`、
@@ -413,8 +413,8 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 
 ## 交付一致性检查（2026-10-19）
 
-- `docs/ui-workshop/tools/verify_delivery_consistency.py`：只读 8 项检查（矩阵门禁/证据引用/私钥/未推送/
-  工作树/台账可解析/里程碑口径），`--write` 落 evidence；最近一次 **8/8 PASS**。
+- `docs/ui-workshop/tools/verify_delivery_consistency.py`：只读 9 项检查（矩阵门禁/证据引用/私钥/推送状态/
+  工作树/台账可解析/里程碑口径/接口维护 DC-9），`--write` 落 evidence；最近一次 **9/9 PASS**。
 
 ## 最终构建回归（2026-10-19 末段）
 

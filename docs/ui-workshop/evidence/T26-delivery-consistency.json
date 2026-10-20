@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T12:41:29+0800",
-  "head": "7ba017e",
+  "generatedAt": "2026-10-20T12:41:58+0800",
+  "head": "b4a4212",
   "branch": "feat/ui-workshop",
   "checks": [
     {
@@ -31,11 +31,11 @@
     },
     {
       "name": "DC-5 推送状态（已推送且远端 == HEAD）",
-      "pass": false,
+      "pass": true,
       "detail": {
         "branch": "feat/ui-workshop",
-        "head": "7ba017e",
-        "remote": "4860805b3c67",
+        "head": "b4a4212",
+        "remote": "b4a421278441",
         "upstream": "origin/feat/ui-workshop"
       }
     },
@@ -79,7 +79,7 @@
       }
     }
   ],
-  "passCount": 8,
+  "passCount": 9,
   "total": 9,
   "featureBaselineStats": {
     "rows": 130,

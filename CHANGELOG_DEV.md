@@ -4,6 +4,19 @@
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
 > 最后更新：2026-10-20（**v1.3.0-pre.1 预发布**：Focus UI 全面对齐，分支 `focus-ui` + tag `v1.3.0-pre.1`，未创建 Release）
 
+## 2026-10-20（★ v1.3.0-pre.2 预发布：源码模式/导出 PDF 卡顿两个发布后实测问题修复）
+
+**Tag** `v1.3.0-pre.2`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**修复**（相对 pre.1，用户实测反馈）：
+1. **源码模式编辑框塌陷**：Focus 纸面 auto 高度 → `SourceModeView` 的 `h-full` 链断裂，编辑框 66px；加 `min-height: max(360px, calc(100vh - 340px))` 后 498px（1440×900），并补验收脚本回归断言（17 图 / 184 断言）。
+2. **导出 PDF 卡顿**：长文档（41885 节点 / 720 KaTeX / 2.45MB HTML）点击导出后主线程冻结 >30s。根因：对话框打开即深克隆整篇 DOM + DOM 回退预览按页复制 N 份 + 桌面真预览生成期间同样渲染副本。修复：按需克隆、桌面生成期轻量占位、回退预览 8 页上限。实测对话框打开 567ms、生成期无副本爆炸、真 PDF 预览就绪 3.16s（短文档 83ms/800ms/304ms 不变）。证据 `docs/focus-ui/evidence/export-perf/measurements.json`。
+
+**验证**：tsc 0、前端全量 vitest 149 文件/2055 passed+1 skipped、视觉验收 17 图 184/184 PASS、侧车运行时版本 = `1.3.0-pre.2`。
+
+**发版动作**：`bump-version.mjs 1.3.0-pre.2`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest（79 产物）+ Tauri/NSIS 安装包 → tag `v1.3.0-pre.2` → push 分支 + tag → GitHub Pre-release（`--prerelease`，不设 Latest）。
+**资产**：安装包 51,127,924 B / sha256 `0c31e9e1…ef9a`；侧车 46,247,753 B / `568a7deb…80c5`；manifest 9,930 B；versions.json 16,026 B。**未做**：NSIS 实机安装 + GUI 端到端验收、签名、W/DPI/IME 人工视觉回归。
+
 ## 2026-10-20（★ v1.3.0-pre.1 预发布：Focus UI 全面对齐设计交接包 + 补齐缺失功能 · 分支 `focus-ui`）
 
 **Tag** `v1.3.0-pre.1`（预发布，**不创建 GitHub Release / 不设为 Latest**；按主理人指令先推送分支+打版本标记）

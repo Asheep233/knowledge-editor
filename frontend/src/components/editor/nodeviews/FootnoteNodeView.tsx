@@ -3,6 +3,9 @@
  * 上标 [n] 默认只读展示；点击进入编辑态，可自主修改编号数字。
  * 修改只更新上标自身的 attrs.n（正文显示），不影响底部参考栏（footnotes
  * 节点的 items 列表）——底部条目保持原样。
+ *
+ * Focus（task-3）：上标/编辑态改由 token 驱动（--primary / --card / --border / --foreground）；
+ * index.css 里的 .ke-footnote-* 是无级联层旧样式，内联 style 可安全覆盖其颜色。
  */
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { useEffect, useRef, useState } from 'react'
@@ -25,6 +28,7 @@ export default function FootnoteNodeView({ node, editor, getPos }: NodeViewProps
   const n = (node.attrs.n as number) || 0
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(n))
+  const [numHover, setNumHover] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   // 进入编辑态时聚焦输入框
@@ -52,6 +56,7 @@ export default function FootnoteNodeView({ node, editor, getPos }: NodeViewProps
       contentEditable={false}
       className="ke-footnote-ref"
       title="注释引用 [n]，点击可修改编号"
+      style={{ color: 'var(--primary)' }}
     >
       {editing ? (
         <input
@@ -71,10 +76,22 @@ export default function FootnoteNodeView({ node, editor, getPos }: NodeViewProps
             }
           }}
           className="ke-footnote-edit"
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            color: 'var(--foreground)',
+          }}
         />
       ) : (
         <span
           className="ke-footnote-num"
+          style={{
+            background: numHover ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
+            borderRadius: 4,
+          }}
+          onMouseEnter={() => setNumHover(true)}
+          onMouseLeave={() => setNumHover(false)}
           onClick={(e) => {
             e.preventDefault()
             setDraft(String(n))

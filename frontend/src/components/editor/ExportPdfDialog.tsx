@@ -436,150 +436,195 @@ export default function ExportPdfDialog({
 
   if (!open) return null
 
+  // ── Focus 视觉（task-2）：遮罩 --scrim / 卡片 --card + 24 圆角 + --elev-lg；
+  //    左选项 / 右 A4 预览两栏；按钮 8 圆角、输入 8 圆角 + 柔和 focus 环。
+  const overlay = 'fixed inset-0 z-50 flex items-center justify-center p-4'
+  const btnBase =
+    'inline-flex h-9 items-center justify-center gap-1.5 rounded-control px-3.5 text-[13px] font-medium transition-colors'
+  const btnSecondary = `${btnBase} border border-border bg-card text-foreground hover:bg-surface-2`
+  const btnPrimary = `${btnBase} bg-primary text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45`
+  const closeBtn =
+    'grid size-8 shrink-0 place-items-center rounded-control text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground'
+  const optionRow = 'flex min-h-[46px] items-center gap-2.5 border-b border-border last:border-b-0'
+  const colorRow = 'flex flex-col gap-2 border-b border-border py-3 last:border-b-0'
+  const optionKey = 'w-[88px] shrink-0 text-[13px] text-text-2'
+  const radio = 'size-3.5 shrink-0 cursor-pointer accent-[var(--primary)]'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="export-pdf-dialog">
-      <div className="flex max-h-[86vh] w-[900px] max-w-[94vw] overflow-hidden rounded-lg border border-border bg-card shadow-xl">
-        {/* 左：选项 */}
-        <div className="ke-scroll flex w-[320px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-border p-4">
-          <h3 className="text-[14px] font-semibold text-foreground">导出 PDF</h3>
-
-          <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-            主题
-            <select
-              data-testid="pdf-theme"
-              className="rounded border border-border bg-background px-2 py-1 text-[12px] text-foreground"
-              value={opts.theme}
-              onChange={(e) => update({ theme: e.target.value as PdfThemeChoice })}
-            >
-              <option value="current">跟随当前主题</option>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-            </select>
-          </label>
-
-          <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-            纸张底色
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="pdf-bg"
-                  data-testid="pdf-bg-theme"
-                  checked={opts.background === 'theme'}
-                  onChange={() => update({ background: 'theme' })}
-                />
-                主题默认
-              </label>
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="pdf-bg"
-                  data-testid="pdf-bg-custom"
-                  checked={opts.background !== 'theme'}
-                  onChange={() => update({ background: opts.background === 'theme' ? '#ffffff' : opts.background })}
-                />
-                自定义
-              </label>
-              <input
-                type="color"
-                aria-label="纸张底色"
-                data-testid="pdf-bg-color"
-                className="h-6 w-10 rounded border border-border bg-transparent"
-                value={opts.background === 'theme' ? previewVars['--background'] : opts.background}
-                onChange={(e) => update({ background: e.target.value })}
-              />
-            </div>
+    <div
+      className={overlay}
+      style={{ background: 'var(--scrim)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="导出 PDF"
+      data-testid="export-pdf-dialog"
+    >
+      <div className="flex max-h-[88vh] w-[min(960px,96vw)] flex-col overflow-hidden rounded-dialog border border-border bg-card shadow-overlay">
+        {/* 头部：标题 + 说明 + 关闭 */}
+        <div className="flex items-start gap-3 border-b border-border px-6 pb-4 pt-5">
+          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-control bg-primary-soft text-accent-foreground">
+            <Icon name="download" className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px] font-semibold leading-snug tracking-[-0.02em] text-foreground">导出 PDF</div>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-text-2">选择纸张与颜色；预览与导出使用同一套打印排版。</p>
           </div>
-
-          <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-            强调色（标题 / 链接 / 引用条）
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="pdf-accent"
-                  data-testid="pdf-accent-theme"
-                  checked={opts.accent === 'theme'}
-                  onChange={() => update({ accent: 'theme' })}
-                />
-                主题默认
-              </label>
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="pdf-accent"
-                  data-testid="pdf-accent-custom"
-                  checked={opts.accent !== 'theme'}
-                  onChange={() => update({ accent: opts.accent === 'theme' ? '#2563eb' : opts.accent })}
-                />
-                自定义
-              </label>
-              <input
-                type="color"
-                aria-label="强调色"
-                data-testid="pdf-accent-color"
-                className="h-6 w-10 rounded border border-border bg-transparent"
-                value={opts.accent === 'theme' ? previewVars['--primary'] ?? '#2563eb' : opts.accent}
-                onChange={(e) => update({ accent: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-            正文文字色
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="pdf-fg"
-                  data-testid="pdf-fg-theme"
-                  checked={opts.foreground === 'theme'}
-                  onChange={() => update({ foreground: 'theme' })}
-                />
-                主题默认
-              </label>
-              <label className="flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="pdf-fg"
-                  data-testid="pdf-fg-custom"
-                  checked={opts.foreground !== 'theme'}
-                  onChange={() => update({ foreground: opts.foreground === 'theme' ? '#111111' : opts.foreground })}
-                />
-                自定义
-              </label>
-              <input
-                type="color"
-                aria-label="正文文字色"
-                data-testid="pdf-fg-color"
-                className="h-6 w-10 rounded border border-border bg-transparent"
-                value={opts.foreground === 'theme' ? previewVars['--foreground'] : opts.foreground}
-                onChange={(e) => update({ foreground: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
-            <input
-              type="checkbox"
-              data-testid="pdf-remember"
-              checked={opts.remember}
-              onChange={(e) => update({ remember: e.target.checked })}
-            />
-            记住我的选择
-          </label>
-
-          <p className="text-[11px] leading-relaxed text-muted-foreground/80">
-            预览与导出使用<strong>同一套打印排版</strong>；导出只读当前渲染结果，不修改文档、不触发保存。
-          </p>
+          <button type="button" aria-label="关闭" className={closeBtn} onClick={onClose}>
+            <Icon name="close" className="size-4" />
+          </button>
         </div>
 
-        {/* 右：预览区 —— 桌面态显示**真 PDF**（task-76）；否则/失败时回退 DOM 预览 */}
-        <div className="flex min-w-0 flex-1 flex-col bg-muted/40">
-          <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-1.5 text-[11px] text-muted-foreground">
-            <span>A4 预览（按纸张比例缩放）</span>
-            <span className="opacity-70">所见即所得</span>
+        {/* 主体：左选项 / 右 A4 预览 */}
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          {/* 左：选项 */}
+          <div className="ke-scroll flex max-h-[46vh] w-full shrink-0 flex-col overflow-y-auto border-b border-border p-5 md:max-h-none md:w-[340px] md:border-b-0 md:border-r">
+            <div className="mb-2 text-[12px] font-semibold text-text-3">版式</div>
+
+            <div className={optionRow}>
+              <span className={optionKey}>主题</span>
+              <select
+                data-testid="pdf-theme"
+                className="h-9 min-w-0 flex-1 rounded-control border border-border bg-card px-2.5 text-[13px] text-foreground outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-primary/20"
+                value={opts.theme}
+                onChange={(e) => update({ theme: e.target.value as PdfThemeChoice })}
+              >
+                <option value="current">跟随当前主题</option>
+                <option value="light">浅色</option>
+                <option value="dark">深色</option>
+              </select>
+            </div>
+
+            <div className={colorRow}>
+              <span className="text-[13px] text-text-2">纸张底色</span>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-[12.5px] text-text-2">
+                  <input
+                    type="radio"
+                    name="pdf-bg"
+                    data-testid="pdf-bg-theme"
+                    className={radio}
+                    checked={opts.background === 'theme'}
+                    onChange={() => update({ background: 'theme' })}
+                  />
+                  主题默认
+                </label>
+                <label className="flex items-center gap-1.5 text-[12.5px] text-text-2">
+                  <input
+                    type="radio"
+                    name="pdf-bg"
+                    data-testid="pdf-bg-custom"
+                    className={radio}
+                    checked={opts.background !== 'theme'}
+                    onChange={() => update({ background: opts.background === 'theme' ? '#ffffff' : opts.background })}
+                  />
+                  自定义
+                </label>
+                <input
+                  type="color"
+                  aria-label="纸张底色"
+                  data-testid="pdf-bg-color"
+                  className="ml-auto h-7 w-11 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card p-0.5"
+                  value={opts.background === 'theme' ? previewVars['--background'] : opts.background}
+                  onChange={(e) => update({ background: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className={colorRow}>
+              <span className="text-[13px] text-text-2">强调色</span>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-[12.5px] text-text-2">
+                  <input
+                    type="radio"
+                    name="pdf-accent"
+                    data-testid="pdf-accent-theme"
+                    className={radio}
+                    checked={opts.accent === 'theme'}
+                    onChange={() => update({ accent: 'theme' })}
+                  />
+                  主题默认
+                </label>
+                <label className="flex items-center gap-1.5 text-[12.5px] text-text-2">
+                  <input
+                    type="radio"
+                    name="pdf-accent"
+                    data-testid="pdf-accent-custom"
+                    className={radio}
+                    checked={opts.accent !== 'theme'}
+                    onChange={() => update({ accent: opts.accent === 'theme' ? '#2563eb' : opts.accent })}
+                  />
+                  自定义
+                </label>
+                <input
+                  type="color"
+                  aria-label="强调色"
+                  data-testid="pdf-accent-color"
+                  className="ml-auto h-7 w-11 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card p-0.5"
+                  value={opts.accent === 'theme' ? previewVars['--primary'] ?? '#2563eb' : opts.accent}
+                  onChange={(e) => update({ accent: e.target.value })}
+                />
+              </div>
+              <p className="text-[11.5px] leading-relaxed text-text-3">用于标题 / 链接 / 引用条</p>
+            </div>
+
+            <div className={colorRow}>
+              <span className="text-[13px] text-text-2">正文文字色</span>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 text-[12.5px] text-text-2">
+                  <input
+                    type="radio"
+                    name="pdf-fg"
+                    data-testid="pdf-fg-theme"
+                    className={radio}
+                    checked={opts.foreground === 'theme'}
+                    onChange={() => update({ foreground: 'theme' })}
+                  />
+                  主题默认
+                </label>
+                <label className="flex items-center gap-1.5 text-[12.5px] text-text-2">
+                  <input
+                    type="radio"
+                    name="pdf-fg"
+                    data-testid="pdf-fg-custom"
+                    className={radio}
+                    checked={opts.foreground !== 'theme'}
+                    onChange={() => update({ foreground: opts.foreground === 'theme' ? '#111111' : opts.foreground })}
+                  />
+                  自定义
+                </label>
+                <input
+                  type="color"
+                  aria-label="正文文字色"
+                  data-testid="pdf-fg-color"
+                  className="ml-auto h-7 w-11 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card p-0.5"
+                  value={opts.foreground === 'theme' ? previewVars['--foreground'] : opts.foreground}
+                  onChange={(e) => update({ foreground: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <label className="mt-4 flex cursor-pointer items-center gap-2 text-[13px] text-text-2">
+              <input
+                type="checkbox"
+                data-testid="pdf-remember"
+                className="size-3.5 cursor-pointer accent-[var(--primary)]"
+                checked={opts.remember}
+                onChange={(e) => update({ remember: e.target.checked })}
+              />
+              记住这些设置
+            </label>
+
+            <p className="mt-3 rounded-menu bg-surface-2 px-3 py-2 text-[12px] leading-relaxed text-text-3">
+              预览与导出使用<strong className="font-medium text-text-2">同一套打印排版</strong>；导出只读当前渲染结果，不修改文档、不触发保存。
+            </p>
           </div>
+
+          {/* 右：预览区 —— 桌面态显示**真 PDF**（task-76）；否则/失败时回退 DOM 预览 */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-2">
+            <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2 text-[12px] text-text-3">
+              <span>A4 预览（按纸张比例缩放）</span>
+              <span>所见即所得</span>
+            </div>
           {previewUrl ? (
             <div className="relative flex min-h-0 flex-1 flex-col">
               <iframe
@@ -591,7 +636,7 @@ export default function ExportPdfDialog({
               {previewBusy ? (
                 <span
                   data-testid="pdf-preview-busy"
-                  className="absolute right-2 top-2 rounded bg-black/60 px-2 py-1 text-[11px] text-white"
+                  className="absolute right-3 top-3 rounded-control bg-black/60 px-2.5 py-1 text-[11px] text-white"
                 >
                   正在生成预览…
                 </span>
@@ -601,7 +646,7 @@ export default function ExportPdfDialog({
           {previewError ? (
             <p
               data-testid="pdf-preview-error"
-              className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700"
+              className="shrink-0 border-b border-border bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-warn"
             >
               真 PDF 预览不可用（{previewError}），已回退为 DOM 预览
             </p>
@@ -646,13 +691,13 @@ export default function ExportPdfDialog({
             <div key={previewKey} data-testid="pdf-pages" className="flex flex-col items-center gap-4">
             {Array.from({ length: pageCount }, (_v, i) => (
               <div key={i} className="flex shrink-0 flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground" data-testid={`pdf-page-label-${i}`}>
+                <span className="text-[10.5px] text-text-3" data-testid={`pdf-page-label-${i}`}>
                   第 {i + 1} / {pageCount} 页
                 </span>
                 <div
                   data-testid="pdf-preview-page"
                   data-page-index={i}
-                  className="ke-print-surface shadow-lg"
+                  className="ke-print-surface shadow-float"
                   {...(opts.accent !== 'theme' ? { 'data-ke-pdf-accent': '' } : {})}
                   style={{
                     ...previewVars,
@@ -685,27 +730,27 @@ export default function ExportPdfDialog({
             </div>
           </div>
           )}
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
-            <button
-              type="button"
-              data-testid="pdf-cancel"
-              className="rounded border border-border px-3 py-1.5 text-[12px] text-foreground/80 hover:bg-muted"
-              onClick={onClose}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              data-testid="pdf-export"
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-[12px] font-medium text-primary-foreground disabled:opacity-50"
-              style={{ backgroundColor: 'var(--primary)' }}
-              onClick={() => void handleExport()}
-            >
-              <Icon name="download" className="size-3.5" />
-              {busy ? '导出中…' : '导出 PDF'}
-            </button>
           </div>
+        </div>
+
+        {/* 底部操作栏：左侧提示 + 取消 / 导出 PDF */}
+        <div className="flex shrink-0 items-center gap-2.5 border-t border-border px-6 py-3.5">
+          <span className="mr-auto hidden truncate text-[12px] text-text-3 sm:block">
+            导出只读当前渲染结果；不修改文档、不触发保存。
+          </span>
+          <button type="button" data-testid="pdf-cancel" className={btnSecondary} onClick={onClose}>
+            取消
+          </button>
+          <button
+            type="button"
+            data-testid="pdf-export"
+            disabled={busy}
+            className={btnPrimary}
+            onClick={() => void handleExport()}
+          >
+            <Icon name="download" className="size-3.5" />
+            {busy ? '导出中…' : '导出 PDF'}
+          </button>
         </div>
       </div>
     </div>

@@ -75,7 +75,13 @@ function ruleBodies(selector: string): string[] {
 /** 注入真实样式表（去掉 Tailwind 指令，happy-dom 不认） */
 function injectRealCss(): void {
   const style = document.createElement('style')
-  style.textContent = CSS_TEXT.replace(/@import[^;]+;/g, '').replace(/@theme[^{]*\{[^}]*\}/g, '')
+  style.textContent = CSS_TEXT
+    // 先去掉注释再删 Tailwind 块：index.css 注释里出现过「Tailwind @theme 映射」字样，
+    // 若先跑 @theme 正则会把注释当成块起点、连带吃掉 :root 的收尾大括号（整张表解析失败，
+    // 表现为 getComputedStyle 全空——2026-10-20 定位）。
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/@import[^;]+;/g, '')
+    .replace(/@theme[^{]*\{[^}]*\}/g, '')
   document.head.appendChild(style)
 }
 

@@ -40,7 +40,7 @@ import {
   setTabTitle,
   type TabItem,
 } from './components/layout/TabBar'
-import { registerActionHandler, registerActionHandlers } from './state/shortcuts'
+import { registerActionHandler, registerActionHandlers, shouldIgnoreKeyEvent } from './state/shortcuts'
 import { AppShell } from './components/shell/AppShell'
 import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
@@ -603,6 +603,8 @@ export default function App() {
 
   useEffect(() => {
     const onToggleSidebarKey = (e: KeyboardEvent) => {
+      // IME 组词中的按键不触发壳层快捷键（与既有键盘入口同一守卫）
+      if (shouldIgnoreKeyEvent(e)) return
       if ((e.metaKey || e.ctrlKey) && (e.key === '\\' || e.code === 'Backslash')) {
         e.preventDefault()
         toggleSidebar()
@@ -1253,13 +1255,20 @@ export default function App() {
 
       {/* 外部修改提示（Phase 4.3） */}
       {extModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25" onClick={handleKeepLocal}>
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center"
+          style={{ background: 'var(--scrim)' }}
+          onClick={handleKeepLocal}
+        >
           <div
-            className="w-[420px] rounded-lg bg-white p-5 shadow-xl"
+            className="w-[440px] rounded-[24px] border p-6"
+            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', boxShadow: 'var(--elev-lg)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="mb-1 text-sm font-semibold text-gray-800">文档已被外部修改</h3>
-            <p className="mb-4 break-all text-xs text-gray-500">
+            <h3 className="mb-1 text-[15px] font-semibold" style={{ color: 'var(--foreground)' }}>
+              文档已被外部修改
+            </h3>
+            <p className="mb-4 break-all text-[12.5px]" style={{ color: 'var(--text-2)' }}>
               {extModal.rel}
               <br />
               该文件在工作区外被修改（例如其他编辑器）。
@@ -1268,7 +1277,8 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleKeepLocal}
-                className="rounded border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                className="rounded-[8px] border px-3.5 py-1.5 text-[13px] text-foreground transition-colors hover:bg-surface-2"
+                style={{ borderColor: 'var(--border)' }}
               >
                 保留当前编辑内容
               </button>
@@ -1286,21 +1296,30 @@ export default function App() {
 
       {/* 异常退出恢复提示（Phase 6.2） */}
       {recoveryModal && recoveryModal.length > 0 && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25">
-          <div className="w-[460px] rounded-lg bg-white p-5 shadow-xl">
-            <h3 className="mb-1 text-sm font-semibold text-gray-800">检测到未恢复的编辑内容</h3>
-            <p className="mb-3 text-xs text-gray-500">
+        <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: 'var(--scrim)' }}>
+          <div
+            className="w-[480px] rounded-[24px] border p-6"
+            style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', boxShadow: 'var(--elev-lg)' }}
+          >
+            <h3 className="mb-1 text-[15px] font-semibold" style={{ color: 'var(--foreground)' }}>
+              检测到未恢复的编辑内容
+            </h3>
+            <p className="mb-3 text-[12.5px]" style={{ color: 'var(--text-2)' }}>
               上次退出时以下文档存在未保存修改，是否恢复？
             </p>
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {recoveryModal.map((item) => (
-                <div key={item.doc_path} className="rounded border border-gray-100 bg-gray-50 p-2">
+                <div
+                  key={item.doc_path}
+                  className="rounded-[10px] border p-2.5"
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface-2)' }}
+                >
                   <div className="flex items-center gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[12px] font-medium text-gray-700">
+                      <div className="truncate text-[12.5px] font-medium" style={{ color: 'var(--foreground)' }}>
                         {item.doc_path}
                       </div>
-                      <div className="text-[11px] text-gray-400">
+                      <div className="text-[11.5px]" style={{ color: 'var(--text-3)' }}>
                         保存于 {formatTime(item.saved_at)}
                       </div>
                     </div>
@@ -1314,7 +1333,8 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => void handleRecoveryDiscard(item.doc_path)}
-                      className="rounded border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-600 hover:bg-gray-100"
+                      className="rounded-[8px] border bg-card px-2.5 py-1 text-[12px] text-foreground transition-colors hover:bg-surface-2"
+                      style={{ borderColor: 'var(--border)' }}
                     >
                       丢弃
                     </button>
@@ -1326,14 +1346,16 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => void handleRecoveryDiscardAll()}
-                className="text-[11px] text-gray-400 hover:text-rose-500"
+                className="text-[11.5px] transition-colors hover:text-rose-500"
+                style={{ color: 'var(--text-3)' }}
               >
                 全部丢弃
               </button>
               <button
                 type="button"
                 onClick={() => setRecoveryModal(null)}
-                className="rounded border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                className="rounded-[8px] border px-3.5 py-1.5 text-[13px] text-foreground transition-colors hover:bg-surface-2"
+                style={{ borderColor: 'var(--border)' }}
               >
                 稍后处理
               </button>

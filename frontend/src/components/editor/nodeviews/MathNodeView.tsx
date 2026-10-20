@@ -10,7 +10,7 @@
  * B `2.` 右侧「看不见的块」 —— ⋮ 菜单的「点击外部关闭」遮罩改为 pointer-events:none，
  *   点击穿透到正文，关闭动作由下面的 document 捕获监听处理。
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
@@ -60,6 +60,33 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
   const latex = (node.attrs.latex as string) ?? ''
   // task-49：⋮ 更多菜单开合（本组件只发请求，不碰 PM 事务）
   const [moreOpen, setMoreOpen] = useState(false)
+
+  // Focus（task-3）：公式 hover 工具条 token 化 —— 背景 --card、边框 --border、
+  // 文字 --text-2、hover --primary（删除类按钮 hover --danger），圆角 6。
+  // 三个按钮的 className 已被 MathNodeView.hover.test.tsx 精确断言（task-52 结构回归点），
+  // 不能追加 Tailwind 工具类；而 index.css 的 .ke-math-*-btn 是**无级联层**样式，
+  // 会被内联 style 压过 —— 所以基础态用内联样式覆盖，hover 态用 React 状态切换。
+  const [hoverTool, setHoverTool] = useState<'edit' | 'del' | 'more' | null>(null)
+  // 渲染体 hover 高亮也由状态驱动（index.css 里旧的 #eff6ff 蓝底由内联样式压过）
+  const [renderHover, setRenderHover] = useState(false)
+  const toolStyle = (kind: 'edit' | 'del' | 'more'): CSSProperties => {
+    const hovered = hoverTool === kind
+    const interaction = kind === 'del' ? 'var(--danger)' : 'var(--primary)'
+    return {
+      background: 'var(--card)',
+      border: '1px solid var(--border)',
+      borderRadius: 6,
+      color: hovered ? interaction : 'var(--text-2)',
+      ...(hovered ? { borderColor: interaction } : null),
+    }
+  }
+  const toolHandlers = (kind: 'edit' | 'del' | 'more') => ({
+    onMouseEnter: () => setHoverTool(kind),
+    onMouseLeave: () => setHoverTool((cur) => (cur === kind ? null : cur)),
+    onFocus: () => setHoverTool(kind),
+    onBlur: () => setHoverTool((cur) => (cur === kind ? null : cur)),
+  })
+  const renderHoverStyle = { background: renderHover ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent' }
 
   // v1.1.7：不再「空内容自动弹窗」——Ctrl+Z 撤销回空内容会误弹。
   // 新建插入由 editor/index.ts 的 openMathEditorById 显式派发编辑请求。
@@ -130,10 +157,13 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             overflowWrap: 'anywhere',
-            color: '#dc2626',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            color: 'var(--danger)',
+            fontFamily: 'var(--font-family-mono)',
             fontSize: '0.9em',
+            ...renderHoverStyle,
           }}
+          onMouseEnter={() => setRenderHover(true)}
+          onMouseLeave={() => setRenderHover(false)}
           onDoubleClick={(e) => {
             e.preventDefault()
             openEdit()
@@ -145,6 +175,9 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
         <span
           className="ke-math-render"
           title="双击编辑公式"
+          style={renderHoverStyle}
+          onMouseEnter={() => setRenderHover(true)}
+          onMouseLeave={() => setRenderHover(false)}
           onDoubleClick={(e) => {
             e.preventDefault()
             openEdit()
@@ -164,6 +197,8 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
           role="button"
           tabIndex={0}
           title="编辑公式"
+          style={toolStyle('edit')}
+          {...toolHandlers('edit')}
           onClick={(e) => {
             e.preventDefault()
             openEdit()
@@ -176,6 +211,8 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
           role="button"
           tabIndex={0}
           title="删除公式"
+          style={toolStyle('del')}
+          {...toolHandlers('del')}
           onClick={(e) => {
             e.preventDefault()
             deleteNode()
@@ -192,6 +229,8 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
           data-testid="math-more-btn"
           aria-haspopup="menu"
           aria-expanded={moreOpen}
+          style={toolStyle('more')}
+          {...toolHandlers('more')}
           onClick={(e) => {
             e.preventDefault()
             setMoreOpen((v) => !v)
@@ -213,14 +252,14 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
             role="menu"
             data-testid="math-more-menu"
             contentEditable={false}
-            className="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-md border border-border bg-card py-1 shadow-md"
+            className="absolute right-0 top-full z-50 mt-1 w-36 overflow-hidden rounded-menu border border-border bg-card py-1 shadow-float"
           >
             <button
               type="button"
               role="menuitem"
               data-testid="math-convert-block"
               disabled={isBlock}
-              className="block w-full px-3 py-1.5 text-left text-[12px] text-foreground/80 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              className="block w-full px-3 py-1.5 text-left text-[12.5px] text-foreground transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
               onClick={(e) => {
                 e.preventDefault()
                 setMoreOpen(false)
@@ -241,7 +280,7 @@ export default function MathNodeView({ node, getPos, deleteNode }: NodeViewProps
               role="menuitem"
               data-testid="math-convert-inline"
               disabled={!isBlock}
-              className="block w-full px-3 py-1.5 text-left text-[12px] text-foreground/80 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+              className="block w-full px-3 py-1.5 text-left text-[12.5px] text-foreground transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
               onClick={(e) => {
                 e.preventDefault()
                 setMoreOpen(false)

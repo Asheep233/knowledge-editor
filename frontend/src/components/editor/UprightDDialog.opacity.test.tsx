@@ -77,11 +77,13 @@ describe('task-74 视觉回归：面板必须不透明（主理人真机截图 b
     }
   })
 
-  it('遮罩仍用 bg-black/40（浮层本身允许半透明，面板不允许）', async () => {
+  it('遮罩仍用半透明遮罩（浮层本身允许半透明，面板不允许）', async () => {
     await mount()
     const overlay = container.querySelector('[aria-label="微分 d 转正体预览"]') as HTMLElement
     expect(overlay.className).toContain('fixed inset-0')
-    expect(overlay.className).toContain('bg-black/40')
+    // task-2（Focus 浮层重排）：遮罩改用设计令牌 `var(--scrim)`（Tailwind 无对应色阶，走内联 style）。
+    // 原断言锁定的意图是「遮罩是半透明层」，这里断言令牌来源；面板不透明度断言未动。
+    expect(overlay.getAttribute('style') ?? '').toContain('var(--scrim)')
     // 遮罩与面板是两层，互不嵌套混淆
     expect(overlay.querySelector('[data-ke-upright-panel]')).toBeTruthy()
   })

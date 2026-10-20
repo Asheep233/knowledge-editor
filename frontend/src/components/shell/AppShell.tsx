@@ -64,7 +64,7 @@ export function AppShell({
             <button
               type="button"
               className="focus-sidebar-reopen"
-              title="展开文件侧栏（Ctrl/Cmd+\\）"
+              title="展开文件侧栏（Ctrl/Cmd+\）"
               aria-label="展开文件侧栏"
               onClick={onToggleSidebar}
             >

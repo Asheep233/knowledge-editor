@@ -128,8 +128,9 @@ describe('AppearanceSection', () => {
     expect(previewBar()?.parentElement).toBe(document.body)
     expect(previewBar()?.hasAttribute('data-ke-toolbar')).toBe(true)
     container.style.display = 'none'
-    expect(previewBar()?.style.backgroundColor).toBe('#ffffff')
-    expect(previewBar()?.style.color).toBe('#111827')
+    // 视觉断言同步（Focus §4）：预览确认条硬编码 hex 已改为设计令牌，断言值随之改为令牌字符串。
+    expect(previewBar()?.style.backgroundColor).toBe('var(--card)')
+    expect(previewBar()?.style.color).toBe('var(--foreground)')
     await act(async () => vi.advanceTimersByTime(1000))
     expect(previewBar()?.textContent).toContain('29 秒后自动恢复')
     await type('未完成的下一份草稿')
@@ -199,8 +200,10 @@ describe('AppearanceSection', () => {
     await render()
 
     expect(button('回滚上一个').disabled).toBe(false)
-    expect(button('恢复默认').style.color).toBe('#111827')
-    expect(button('恢复默认').style.backgroundColor).toBe('#ffffff')
+    // 视觉断言同步（Focus §4）：恢复默认按钮的固定高对比色改为令牌（--foreground / --card），
+    // 仍以 inline style 表达；断言值同步为令牌字符串（仅视觉断言更新，行为断言未改）。
+    expect(button('恢复默认').style.color).toBe('var(--foreground)')
+    expect(button('恢复默认').style.backgroundColor).toBe('var(--card)')
     await click('回滚上一个')
     expect(controller.rollback).toHaveBeenCalledOnce()
   })

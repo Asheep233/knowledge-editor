@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 // F5：Enter/Escape 必须避让输入法 —— 组词中的回车 = 上屏候选词、Escape = 取消组词，
 // 不是「确定/取消弹窗」（否则中文输入时弹窗会被半截输入误关/误提交）。
 import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
+import { Icon } from '../icons'
 
 interface PromptState {
   title: string
@@ -218,16 +219,32 @@ export function PromptHost() {
 
   if (!state) return null
 
-  const overlay = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/40'
+  // ── Focus 视觉（task-2）：遮罩 --scrim、卡片 --card + 24px 圆角 + --elev-lg、
+  //    按钮 8px 圆角（主 bg-primary / 次 border+bg-card）、输入 8px 圆角 + 柔和 focus 环。
+  const overlay = 'fixed inset-0 z-[100] flex items-center justify-center p-4'
+  const overlayStyle = { background: 'var(--scrim)' }
+  const card =
+    'flex max-h-[86vh] w-[420px] max-w-[92vw] flex-col overflow-hidden rounded-dialog border border-border bg-card shadow-overlay'
+  const btnBase = 'inline-flex h-9 items-center justify-center rounded-control px-3.5 text-[13px] font-medium transition-colors'
+  const btnSecondary = `${btnBase} border border-border bg-card text-foreground hover:bg-surface-2`
+  const btnPrimary = `${btnBase} bg-primary text-white hover:bg-primary-hover`
+  const btnDanger = `${btnBase} bg-[var(--danger-soft)] text-danger hover:brightness-95`
+  const closeBtn =
+    'grid size-8 shrink-0 place-items-center rounded-control text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground'
 
   if (state.kind === 'confirm') {
     return (
-      <div className={overlay} role="dialog" aria-modal="true" aria-label={state.message}>
-        <div className="w-[420px] max-w-[90vw] rounded-xl border border-border bg-popover p-5 shadow-lg">
-          <div className="mb-4 whitespace-pre-wrap text-[13px] leading-relaxed text-foreground">
-            {state.message}
+      <div className={overlay} style={overlayStyle} role="dialog" aria-modal="true" aria-label={state.message}>
+        <div className={card}>
+          <div className="flex items-start gap-3 px-6 pb-1 pt-5">
+            <p className="min-w-0 flex-1 whitespace-pre-wrap text-[13.5px] leading-relaxed text-foreground">
+              {state.message}
+            </p>
+            <button type="button" aria-label="关闭" className={closeBtn} onClick={() => closeConfirm(false)}>
+              <Icon name="close" className="size-4" />
+            </button>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-end gap-2.5 px-6 pb-5 pt-4">
             <button
               type="button"
               autoFocus={state.danger}
@@ -236,7 +253,7 @@ export function PromptHost() {
                 if (shouldIgnoreReactKeyEvent(e)) return
                 if (e.key === 'Escape') closeConfirm(false)
               }}
-              className="h-8 rounded-md border border-border bg-background px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted"
+              className={btnSecondary}
             >
               {state.cancelText}
             </button>
@@ -249,11 +266,7 @@ export function PromptHost() {
                 if (e.key === 'Enter') closeConfirm(true)
                 else if (e.key === 'Escape') closeConfirm(false)
               }}
-              className={
-                state.danger
-                  ? 'h-8 rounded-md bg-rose-600 px-3 text-[13px] font-medium text-white transition-all hover:brightness-95'
-                  : 'h-8 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-all hover:brightness-95'
-              }
+              className={state.danger ? btnDanger : btnPrimary}
             >
               {state.confirmText}
             </button>
@@ -264,34 +277,35 @@ export function PromptHost() {
   }
 
   return (
-    <div className={overlay} role="dialog" aria-modal="true">
-      <div className="w-[420px] max-w-[90vw] rounded-xl border border-border bg-popover p-5 shadow-lg">
-        <div className="mb-3 text-[14px] font-semibold text-foreground">{state.title}</div>
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onFocus={(e) => e.target.select()}
-          onKeyDown={(e) => {
-            if (shouldIgnoreReactKeyEvent(e)) return
-            if (e.key === 'Enter') closePrompt(value || null)
-            else if (e.key === 'Escape') closePrompt(null)
-          }}
-          className="h-9 w-full rounded-md border border-border bg-background px-2.5 text-[13px] text-foreground outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => closePrompt(null)}
-            className="h-8 rounded-md border border-border bg-background px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted"
-          >
+    <div className={overlay} style={overlayStyle} role="dialog" aria-modal="true">
+      <div className={card}>
+        <div className="flex items-start gap-3 px-6 pb-3.5 pt-5">
+          <div className="min-w-0 flex-1 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            {state.title}
+          </div>
+          <button type="button" aria-label="关闭" className={closeBtn} onClick={() => closePrompt(null)}>
+            <Icon name="close" className="size-4" />
+          </button>
+        </div>
+        <div className="px-6">
+          <input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            onKeyDown={(e) => {
+              if (shouldIgnoreReactKeyEvent(e)) return
+              if (e.key === 'Enter') closePrompt(value || null)
+              else if (e.key === 'Escape') closePrompt(null)
+            }}
+            className="h-10 w-full rounded-control border border-input bg-card px-3 text-[13.5px] text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2.5 px-6 pb-5 pt-4">
+          <button type="button" onClick={() => closePrompt(null)} className={btnSecondary}>
             取消
           </button>
-          <button
-            type="button"
-            onClick={() => closePrompt(value || null)}
-            className="h-8 rounded-md bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-all hover:brightness-95"
-          >
+          <button type="button" onClick={() => closePrompt(value || null)} className={btnPrimary}>
             确定
           </button>
         </div>

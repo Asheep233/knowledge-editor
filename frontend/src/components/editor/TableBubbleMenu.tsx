@@ -22,6 +22,7 @@ function TBtn({
   onClick: () => void
   disabled?: boolean
 }) {
+  // Focus 视觉（task-2）：菜单项走 --text-2 / --surface-2 hover；禁用用 --text-3 + 降透明度。
   return (
     <button
       type="button"
@@ -30,8 +31,10 @@ function TBtn({
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={[
-        'rounded px-2 py-1 text-[11px] transition-colors',
-        disabled ? 'cursor-not-allowed text-gray-300' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800',
+        'rounded-control px-2 py-1 text-[12px] transition-colors',
+        disabled
+          ? 'cursor-not-allowed text-text-3 opacity-40'
+          : 'text-text-2 hover:bg-surface-2 hover:text-foreground',
       ].join(' ')}
     >
       {label}
@@ -40,7 +43,7 @@ function TBtn({
 }
 
 function MenuDivider() {
-  return <span className="mx-0.5 h-4 w-px shrink-0 bg-gray-200" />
+  return <span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
 }
 
 function TableBubbleMenuInner({ editor }: { editor: Editor }) {
@@ -70,7 +73,7 @@ function TableBubbleMenuInner({ editor }: { editor: Editor }) {
         ed.isEditable && ed.isActive('table') && (view.hasFocus() || element.contains(document.activeElement))
       }
       options={{ placement: 'top', offset: 8 }}
-      className="z-50 flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white px-1 py-0.5 shadow-lg"
+      className="z-50 flex items-center gap-0.5 rounded-menu border border-border bg-card px-1.5 py-1 shadow-float"
     >
       <TBtn label="上插行" title="在上方插入一行" onClick={() => editor.chain().focus().addRowBefore().run()} />
       <TBtn label="下插行" title="在下方插入一行" onClick={() => editor.chain().focus().addRowAfter().run()} />

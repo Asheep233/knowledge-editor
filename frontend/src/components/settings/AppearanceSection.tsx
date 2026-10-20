@@ -14,10 +14,14 @@ import {
   rollbackAppearance,
 } from '../../appearance/controller'
 
-const BUTTON = 'rounded-md border border-border bg-background px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50'
+/** Focus 风格次级按钮：颜色/圆角全部走语义令牌，不硬编码 hex。 */
+const BUTTON =
+  'rounded-control border border-border bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-surface-3 disabled:cursor-not-allowed disabled:opacity-50'
+
+/** 预览确认条按钮（portal 到 body）：颜色取自设计令牌，Focus §4 不允许硬编码 hex。 */
 const PREVIEW_BUTTON: CSSProperties = {
-  border: '1px solid #6b7280', borderRadius: 6, padding: '6px 12px',
-  backgroundColor: '#ffffff', color: '#111827', font: 'inherit', cursor: 'pointer',
+  border: '1px solid var(--line-2)', borderRadius: 'var(--radius-control)', padding: '6px 12px',
+  backgroundColor: 'var(--surface-2)', color: 'var(--foreground)', font: 'inherit', cursor: 'pointer',
 }
 
 /** The draft is deliberately independent from controller events, including preview expiry. */
@@ -176,10 +180,10 @@ export default function AppearanceSection() {
   const currentLabel = state.current ? `${state.current.name} · ${state.current.version}` : '内置默认外观'
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-card" data-testid="appearance-section">
-      <div className="border-b border-border px-4 py-3.5">
-        <h3 className="text-[14px] font-medium text-foreground">自定义 UI 外观</h3>
-        <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+    <div data-testid="appearance-section" className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm">
+      <header className="px-5 pb-3.5 pt-5">
+        <h3 className="font-display text-[15px] font-semibold tracking-tight text-foreground">自定义 UI 外观</h3>
+        <p className="mt-1 text-[12px] leading-5 text-text-3">
           通过外观包调整颜色、字体、控件圆角、侧栏宽度及左右布局。文档内容与编辑、搜索等已有功能不受影响。
           将外观 JSON 交给 agent 修改，再导入这里即可使用。
         </p>
@@ -190,9 +194,9 @@ export default function AppearanceSection() {
           <section aria-label="外观预览确认" data-testid="appearance-preview-bar" data-ke-toolbar="" style={{
             position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10_000,
             width: 'min(680px, calc(100vw - 24px))', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto',
-            boxSizing: 'border-box', border: '1px solid #6b7280', borderRadius: 10, padding: 16,
-            backgroundColor: '#ffffff', color: '#111827', boxShadow: '0 8px 32px #00000033',
-            fontFamily: 'system-ui, sans-serif', fontSize: 13, lineHeight: 1.5,
+            boxSizing: 'border-box', border: '1px solid var(--line-2)', borderRadius: 'var(--radius-menu)', padding: 16,
+            backgroundColor: 'var(--card)', color: 'var(--foreground)', boxShadow: 'var(--elev-lg)',
+            fontFamily: 'var(--font-family-sans)', fontSize: 13, lineHeight: 1.5,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <p style={{ margin: 0 }}>
@@ -203,27 +207,27 @@ export default function AppearanceSection() {
                 <button type="button" disabled={busy} style={{ ...PREVIEW_BUTTON, opacity: busy ? 0.5 : 1 }}
                   onClick={cancelPreview}>取消预览</button>
                 <button type="button" autoFocus disabled={busy} onClick={keepPreview}
-                  style={{ ...PREVIEW_BUTTON, backgroundColor: '#111827', color: '#ffffff', opacity: busy ? 0.5 : 1 }}>
+                  style={{ ...PREVIEW_BUTTON, backgroundColor: 'var(--primary)', borderColor: 'var(--primary)', color: 'var(--primary-foreground)', opacity: busy ? 0.5 : 1 }}>
                   {busy ? '正在保存…' : '保留此外观'}
                 </button>
               </div>
             </div>
             {errors.length > 0 && (
-              <ul role="alert" style={{ margin: '8px 0 0', paddingLeft: 20, color: '#b91c1c' }}>
+              <ul role="alert" style={{ margin: '8px 0 0', paddingLeft: 20, color: 'var(--danger)' }}>
                 {errors.map((error, index) => <li key={index}>{error}</li>)}
               </ul>
             )}
           </section>, document.body,
         )}
         {status.mode === 'fallback' && (
-          <p role="alert" className="mt-2 text-[12px] leading-5 text-rose-600" data-testid="appearance-fallback">
+          <p role="alert" className="mt-2 text-[12px] leading-5 text-danger" data-testid="appearance-fallback">
             当前未启用自定义外观，已使用默认外观。{status.reason ? `原因：${status.reason}。` : ''}
             原始配置已保留，可导出备份交给 agent 更新后重新导入。
           </p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" className={BUTTON} disabled={busy || status.mode === 'default'}
-            style={{ color: '#111827', backgroundColor: '#ffffff', borderColor: '#6b7280' }}
+            style={{ color: 'var(--foreground)', backgroundColor: 'var(--card)', borderColor: 'var(--line-2)' }}
             onClick={() => { void run(resetAppearance, '已恢复默认外观，可回滚到上一个外观。') }}>恢复默认</button>
           <button type="button" className={BUTTON} disabled={busy || (!state.current && !state.previous)}
             onClick={() => { void run(rollbackAppearance, '已回滚到上一个外观。') }}>回滚上一个</button>
@@ -232,11 +236,11 @@ export default function AppearanceSection() {
           </button>
           <button type="button" className={BUTTON} disabled={busy} onClick={() => download(true)}>导出原始备份</button>
         </div>
-      </div>
+      </header>
 
-      <div className="px-4 py-3.5">
+      <div className="border-t border-border px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label htmlFor="appearance-json" className="text-[13px] font-medium text-foreground">外观包 JSON</label>
+          <label htmlFor="appearance-json" className="text-[12.5px] font-medium text-foreground">外观包 JSON</label>
           <div className="flex flex-wrap gap-2">
             <input ref={fileRef} type="file" accept=".json,application/json" aria-label="导入外观 JSON 文件"
               className="hidden" disabled={busy} onChange={(event) => {
@@ -254,28 +258,28 @@ export default function AppearanceSection() {
         </div>
         <textarea id="appearance-json" value={draft} disabled={busy} spellCheck={false}
           aria-describedby="appearance-json-help" aria-invalid={errors.length > 0}
-          className="mt-2 min-h-48 w-full resize-y rounded-md border border-border bg-background p-3 font-mono text-[12px] leading-5 text-foreground outline-none focus:ring-2 focus:ring-ring"
+          className="mt-2 min-h-48 w-full resize-y rounded-[12px] border border-border bg-background p-3 font-mono text-[12px] leading-5 text-foreground outline-none focus:ring-2 focus:ring-ring"
           placeholder="粘贴 agent 生成的外观 JSON，或载入示例。"
           onChange={(event) => {
             setDraft(event.target.value)
             setErrors([])
             setFeedback('')
           }} />
-        <p id="appearance-json-help" className="mt-1 text-[11px] leading-5 text-muted-foreground">
+        <p id="appearance-json-help" className="mt-1 text-[11px] leading-5 text-text-3">
           仅支持外观包格式（接口版本 {APPEARANCE_CONTRACT.appearanceApi}，最大 {APPEARANCE_CONTRACT.maxBytes / 1024} KB）。
           更新时自动检查兼容性；不兼容则恢复默认并保留原配置。备份用于保留原始配置，导入时请使用外观包 JSON。
         </p>
         {errors.length > 0 && (
-          <ul role="alert" className="mt-2 list-inside list-disc text-[12px] leading-5 text-rose-600">
+          <ul role="alert" className="mt-2 list-inside list-disc text-[12px] leading-5 text-danger">
             {errors.map((error, index) => <li key={index}>{error}</li>)}
           </ul>
         )}
-        {feedback && <p role="status" className="mt-2 text-[12px] leading-5 text-muted-foreground">{feedback}</p>}
+        {feedback && <p role="status" className="mt-2 text-[12px] leading-5 text-text-3">{feedback}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
           <button type="button" className={BUTTON} disabled={busy || !draft.trim()} onClick={check}>校验</button>
           <button ref={previewButtonRef} type="button" className={BUTTON} disabled={busy || !draft.trim()} onClick={preview}>预览 30 秒</button>
           <button type="button" disabled={busy || !draft.trim()} onClick={apply}
-            className="rounded-md bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+            className="rounded-control bg-primary px-3 py-1.5 text-[12px] font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
             {busy ? '处理中…' : '应用外观'}
           </button>
         </div>

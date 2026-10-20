@@ -622,7 +622,7 @@ export default function LeftSidebar({
             type="button"
             className="grid size-7 shrink-0 place-items-center rounded-[6px] transition-colors hover:bg-surface-2"
             style={{ color: 'var(--text-2)' }}
-            title="收起文件侧栏（Ctrl/Cmd+\\）"
+            title="收起文件侧栏（Ctrl/Cmd+\）"
             aria-label="收起文件侧栏"
             onClick={onCollapse}
           >

@@ -274,99 +274,120 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     return g
   }, [])
 
+  // ── Focus 视觉（task-2）：遮罩 --scrim / 卡片 --card + 24 圆角 + --elev-lg /
+  //    输入框 8 圆角 + 柔和 focus 环；左右分区（输入 + 预览 ｜ 模板）。逻辑不动。
+  const btnPrimary =
+    'inline-flex h-8 items-center justify-center rounded-control bg-primary px-3 text-[12.5px] font-medium text-white transition-colors hover:bg-primary-hover'
+  const closeBtn =
+    'grid size-8 shrink-0 place-items-center rounded-control text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground'
+
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.45)' }}>
-      <div className="flex w-[min(860px,100%)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl" style={{ maxHeight: '92vh' }}>
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <span className="text-[14px] font-semibold text-foreground">{isBlock ? '块级公式' : '行内公式'}</span>
-          <span className="text-[12px] text-muted-foreground">Enter=换行 · Esc=保存（空=删除）· Tab=补全/跳槽</span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => close(true)}
-              className="rounded-md bg-primary px-3 py-1 text-[12px] font-medium text-primary-foreground hover:brightness-95"
-            >
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" style={{ background: 'var(--scrim)' }}>
+      <div
+        className="flex max-h-[92vh] w-[min(860px,100%)] flex-col overflow-hidden rounded-dialog border border-border bg-card shadow-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-label="公式编辑器"
+      >
+        <div className="flex items-start gap-3 border-b border-border px-6 py-4">
+          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-control bg-primary-soft text-accent-foreground">
+            <Icon name="formula" className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px] font-semibold leading-snug tracking-[-0.02em] text-foreground">
+              {isBlock ? '块级公式' : '行内公式'}
+            </div>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-text-2">
+              Enter = 换行 · Esc = 保存（空 = 删除）· Tab = 补全 / 跳槽
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => close(true)} className={btnPrimary}>
               完成
             </button>
-            <button type="button" title="关闭" onClick={() => close(true)} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <button type="button" title="关闭" aria-label="关闭" onClick={() => close(true)} className={closeBtn}>
               <Icon name="close" className="size-4" />
             </button>
           </div>
         </div>
         <div className="flex min-h-0 flex-1">
-          {/* 主区：输入 + 预览 */}
-          <div className="flex min-w-0 flex-1 flex-col gap-2 p-4">
-            {mode === 'latex' ? (
-              <div className="relative">
-                <textarea
-                  ref={(el) => {
-                    textareaRef.current = el
-                  }}
-                  defaultValue={initialValue}
-                  className="w-full resize-none rounded-lg border border-border bg-background p-3 font-mono text-[16px] leading-[1.7] outline-none focus:ring-2 focus:ring-ring/20"
-                  style={{ color: 'var(--foreground)', minHeight: isBlock ? 180 : 72 }}
-                  rows={isBlock ? 6 : 2}
-                  spellCheck={false}
-                  placeholder="输入 LaTeX，例如 E=mc^2"
-                  onInput={onTextareaInput}
-                  onKeyDown={onKeyDown}
-                  onBlur={() => setTimeout(() => setSuggOpen(false), 200)}
-                  onFocus={() => {
-                    const t = textareaRef.current
-                    if (t) {
-                      const before = t.value.slice(0, t.selectionStart ?? 0)
-                      // task-63 A08：必须**同时**查开关 —— 修复前这里只判前缀，
-                      // 于是「关掉自动补全 → 焦点移到完成再回来」候选照样弹出、Tab 照样补全
-                      setSuggOpen(completionsEnabled && /\\[a-zA-Z]+$/.test(before))
-                    }
-                  }}
-                />
-                {menuOpen && (
-                  <div className="absolute left-2 top-full z-10 mt-1 max-h-56 w-[340px] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-lg">
-                    <div className="border-b border-border px-3 py-1 text-[11px] text-muted-foreground">
-                      ↑↓ 切换 · <span className="font-medium">Tab</span> 插入 · Esc 关闭
+          {/* 主区：输入 + 预览 + 原始 LaTeX */}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-5">
+            <div>
+              <div className="mb-1.5 text-[12px] font-medium text-text-3">输入</div>
+              {mode === 'latex' ? (
+                <div className="relative">
+                  <textarea
+                    ref={(el) => {
+                      textareaRef.current = el
+                    }}
+                    defaultValue={initialValue}
+                    className="w-full resize-none rounded-menu border border-border bg-surface-2 p-3 font-mono text-[15px] leading-[1.7] text-foreground outline-none transition-[border-color,box-shadow,background-color] placeholder:text-text-3 focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/20"
+                    style={{ minHeight: isBlock ? 180 : 72 }}
+                    rows={isBlock ? 6 : 2}
+                    spellCheck={false}
+                    placeholder="输入 LaTeX，例如 E=mc^2"
+                    onInput={onTextareaInput}
+                    onKeyDown={onKeyDown}
+                    onBlur={() => setTimeout(() => setSuggOpen(false), 200)}
+                    onFocus={() => {
+                      const t = textareaRef.current
+                      if (t) {
+                        const before = t.value.slice(0, t.selectionStart ?? 0)
+                        // task-63 A08：必须**同时**查开关 —— 修复前这里只判前缀，
+                        // 于是「关掉自动补全 → 焦点移到完成再回来」候选照样弹出、Tab 照样补全
+                        setSuggOpen(completionsEnabled && /\\[a-zA-Z]+$/.test(before))
+                      }
+                    }}
+                  />
+                  {menuOpen && (
+                    <div className="absolute left-0 top-full z-10 mt-1 max-h-56 w-[340px] overflow-y-auto rounded-menu border border-border bg-popover py-1 shadow-float">
+                      <div className="border-b border-border px-3 py-1.5 text-[11.5px] text-text-3">
+                        ↑↓ 切换 · <span className="font-medium text-text-2">Tab</span> 插入 · Esc 关闭
+                      </div>
+                      {suggestions.map((item, i) => (
+                        <button
+                          key={item.label + i}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            setSuggIdx(i)
+                            applyCompletion(item.insert)
+                          }}
+                          className={[
+                            'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[13px] transition-colors',
+                            i === suggIdx
+                              ? 'bg-primary-soft text-accent-foreground ring-1 ring-inset ring-primary'
+                              : 'text-foreground hover:bg-surface-2',
+                          ].join(' ')}
+                        >
+                          <span className="font-mono">{item.label}</span>
+                          <span className="text-[11.5px] text-text-3">{item.detail}</span>
+                        </button>
+                      ))}
                     </div>
-                    {suggestions.map((item, i) => (
-                      <button
-                        key={item.label + i}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          setSuggIdx(i)
-                          applyCompletion(item.insert)
-                        }}
-                        className={[
-                          'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-[13px]',
-                          i === suggIdx ? 'bg-accent ring-1 ring-inset ring-[var(--primary)]' : '',
-                        ].join('')}
-                        style={{ color: 'var(--foreground)' }}
-                      >
-                        <span className="font-mono">{item.label}</span>
-                        <span className="text-[11px] text-muted-foreground">{item.detail}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-border bg-background p-3">
-                <span className="text-[12px] text-muted-foreground">可视化编辑（MathLive）</span>
-                {/* MathLive 通过 NodeView 原有能力保留该模式切换；此处以源码回显示意（实时预览下方仍生效） */}
-                <div className="mt-2 text-[13px] text-foreground/80">可视化模式仍由节点视图组件提供——本模态 v1 聚焦源码+模板体验。</div>
-              </div>
-            )}
-            <div className="min-h-[60px] flex-1 rounded-lg border border-border bg-background/60 p-3">
-              <div className="mb-1 text-[12px] text-muted-foreground">渲染预览</div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-menu border border-border bg-surface-2 p-3">
+                  <span className="text-[12px] text-text-3">可视化编辑（MathLive）</span>
+                  {/* MathLive 通过 NodeView 原有能力保留该模式切换；此处以源码回显示意（实时预览下方仍生效） */}
+                  <div className="mt-2 text-[13px] text-foreground/80">可视化模式仍由节点视图组件提供——本模态 v1 聚焦源码+模板体验。</div>
+                </div>
+              )}
+            </div>
+            <div className="min-h-[60px] flex-1 rounded-menu border border-border bg-surface-2 p-3">
+              <div className="mb-1.5 text-[12px] font-medium text-text-3">渲染预览</div>
               {overBudget ? (
                 /* task-63 A10：超预算**不渲染**，给明确提示 + 原文以纯文本呈现（React 文本节点，
                    不经 innerHTML）。提示里说明「内容仍会原样保存」，避免用户以为会被截断。 */
                 <div data-ke-math-budget-notice="" className="text-left">
-                  <div className="mb-1 text-[12px]" style={{ color: '#d97706' }}>
+                  <div className="mb-1 text-[12px]" style={{ color: 'var(--warn)' }}>
                     {budgetNotice(latex)}
                   </div>
                   <div
                     className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[12px]"
-                    style={{ color: 'var(--muted-foreground)' }}
+                    style={{ color: 'var(--text-2)' }}
                   >
                     {fallbackDisplayText(latex)}
                   </div>
@@ -374,18 +395,26 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
               ) : (
                 <div
                   className="overflow-x-auto text-center"
-                  style={{ color: renderFailed ? '#f87171' : 'var(--foreground)', fontSize: isBlock ? 20 : 16 }}
+                  style={{ color: renderFailed ? 'var(--danger)' : 'var(--foreground)', fontSize: isBlock ? 20 : 16 }}
                   dangerouslySetInnerHTML={{ __html: renderFailed ? '（无效公式）' : previewHtml }}
                 />
               )}
             </div>
+            <div>
+              <div className="mb-1 text-[12px] font-medium text-text-3">原始 LaTeX</div>
+              {/* 视觉分区（Focus）：原始输入单行回显；超长公式截断展示，避免把整段 12k 字符塞进预览 DOM */}
+              <div className="overflow-x-auto whitespace-pre-wrap break-all rounded-control bg-surface-2 px-2.5 py-1.5 font-mono text-[12px] leading-relaxed text-text-2">
+                {(latex || '\\;').slice(0, 600)}
+                {latex.length > 600 ? '…' : ''}
+              </div>
+            </div>
           </div>
           {/* 模板面板（常驻右栏） */}
-          <div className="hidden w-[240px] shrink-0 overflow-y-auto border-l border-border p-3 md:block">
-            <div className="mb-2 text-[12px] font-semibold text-foreground">常用公式模板</div>
+          <div className="hidden w-[260px] shrink-0 overflow-y-auto border-l border-border bg-card p-4 md:block">
+            <div className="mb-2.5 text-[12.5px] font-semibold text-foreground">常用公式模板</div>
             {Object.entries(groups).map(([gname, items]) => (
               <div key={gname} className="mb-3">
-                <div className="mb-1 text-[11px] text-muted-foreground">{gname}</div>
+                <div className="mb-1.5 text-[11.5px] font-medium text-text-3">{gname}</div>
                 <div className="flex flex-col gap-1">
                   {items.map((t) => (
                     <button
@@ -393,8 +422,7 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => insertTemplate(t.latex)}
-                      className="rounded-md border border-border bg-muted/50 px-2 py-1.5 text-left font-mono text-[12px] transition-colors hover:bg-accent"
-                      style={{ color: 'var(--foreground)' }}
+                      className="rounded-control border border-border bg-card px-2.5 py-1.5 text-left font-mono text-[12px] text-foreground transition-colors hover:border-line-2 hover:bg-surface-2"
                     >
                       {t.label}
                     </button>

@@ -11,6 +11,9 @@
  * - 正文中出现「## 参考」标题不影响脚注
  * - 多次打开不会重复生成（区域是唯一表示）
  * - 脚注内容就地编辑（contentEditable），支持删除条目
+ *
+ * Focus（task-3）：对齐参考稿 .doc-footnotes —— 顶部 1px 细线分区、
+ * 正文 --text-2 13.5px、编号/说明 --text-3；不再用灰底卡片与灰色胶囊标签。
  */
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
 import { useRef } from 'react'
@@ -38,22 +41,20 @@ export default function FootnotesNodeView({ node, updateAttributes, deleteNode }
   return (
     <NodeViewWrapper
       contentEditable={false}
-      className="ke-footnotes my-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+      className="ke-footnotes mt-10 border-t border-border pt-4"
       data-ke-footnotes="true"
     >
-      <div className="mb-1 flex items-center gap-2">
-        <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
-          脚注
-        </span>
-        <span className="text-[11px] text-gray-400">点击条目可编辑内容</span>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="shrink-0 text-[12.5px] font-semibold text-text-3">脚注</span>
+        <span className="text-[11.5px] text-text-3">点击条目可编辑内容</span>
       </div>
       {items.length === 0 ? (
-        <div className="py-1 text-[12px] text-gray-400">暂无脚注条目</div>
+        <div className="py-1 text-[12.5px] text-text-3">暂无脚注条目</div>
       ) : (
-        <ol className="space-y-1">
+        <ol className="space-y-1.5">
           {items.map((it, idx) => (
-            <li key={it.id} className="group flex items-start gap-2 text-[13px] leading-relaxed text-gray-700">
-              <span className="mt-0.5 shrink-0 select-none font-mono text-[11px] text-gray-400">[{it.n}]</span>
+            <li key={it.id} className="group flex items-start gap-2 text-[13.5px] leading-[1.7] text-text-2">
+              <span className="mt-0.5 shrink-0 select-none font-mono text-[11.5px] text-text-3">[{it.n}]</span>
               <div
                 ref={(el) => {
                   refs.current[idx] = el
@@ -77,7 +78,7 @@ export default function FootnotesNodeView({ node, updateAttributes, deleteNode }
               <button
                 type="button"
                 title="删除该脚注"
-                className="mt-0.5 shrink-0 text-xs text-gray-300 opacity-0 transition-opacity hover:text-rose-500 group-hover:opacity-100"
+                className="mt-0.5 shrink-0 text-xs text-text-3 opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
                 onClick={(e) => {
                   e.preventDefault()
                   remove(idx)
@@ -89,11 +90,11 @@ export default function FootnotesNodeView({ node, updateAttributes, deleteNode }
           ))}
         </ol>
       )}
-      <div className="mt-1 flex justify-end">
+      <div className="mt-2 flex justify-end">
         <button
           type="button"
           title="删除整个脚注区域"
-          className="text-[11px] text-gray-400 hover:text-rose-500"
+          className="text-[11.5px] text-text-3 transition-colors hover:text-danger"
           onClick={(e) => {
             e.preventDefault()
             deleteNode()

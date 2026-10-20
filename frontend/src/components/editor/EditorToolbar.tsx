@@ -379,6 +379,7 @@ export default function EditorToolbar({
   const [listOpen, setListOpen] = useState(false)
   const [moduleOpen, setModuleOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
+  const [insertOpen, setInsertOpen] = useState(false)
   const [footnoteOpen, setFootnoteOpen] = useState(false)
   const [modules, setModules] = useState<ModuleInfo[]>([])
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -561,9 +562,6 @@ export default function EditorToolbar({
         <MenuItem active={st.orderedList} onClick={() => applyList('ordered')}>有序列表</MenuItem>
         <MenuItem active={!st.bulletList && !st.orderedList} onClick={() => applyList('none')}>无（清除格式）</MenuItem>
       </Dropdown>
-      <ToolIcon title="有序列表" active={st.orderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-        <Icon name="ordered-list" className="size-4" />
-      </ToolIcon>
       <ToolIcon title="引用" active={st.blockquote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <Icon name="quote" className="size-4" />
       </ToolIcon>
@@ -581,9 +579,6 @@ export default function EditorToolbar({
         editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
       }}>
         <Icon name="link" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="插入图片" onClick={() => fileRef.current?.click()}>
-        <Icon name="image" className="size-4" />
       </ToolIcon>
       <ToolIcon title="插入公式" onClick={() => {
         // v1.1.7：有选区不吞文本（折叠到末尾）+ 插入后按 id 派发全屏编辑
@@ -659,19 +654,66 @@ export default function EditorToolbar({
         )}
       </Dropdown>
 
-      {/* 更多格式（展平为图标按钮，左右滑可见；隐藏较不常用功能但均可达） */}
-      <ToolIcon title="代码块" active={st.codeBlock} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
-        <Icon name="code" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="注释（脚注）" onClick={() => setFootnoteOpen(true)}>
-        <Icon name="note" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="信息块（ke-note）" onClick={() => editor.chain().focus().insertNote('', 'blue').run()}>
-        <Icon name="bulb" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="表格…" onClick={() => setTableOpen(true)}>
-        <Icon name="table" className="size-4" />
-      </ToolIcon>
+      {/* 插入 ▾（Focus §2.4：图片/模块/代码块/脚注/信息块/表格收进插入菜单，命令条保持克制） */}
+      <Dropdown
+        open={insertOpen}
+        onClose={() => setInsertOpen(false)}
+        trigger={
+          <button
+            type="button"
+            title="插入"
+            aria-label="插入"
+            onClick={() => setInsertOpen((v) => !v)}
+            className="flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[8px] px-2 text-[13px] text-foreground transition-[background-color,color] duration-150 hover:bg-muted focus-visible:outline-none motion-reduce:transition-none"
+          >
+            <Icon name="plus" className="size-4" />
+            <span>插入</span>
+            <Icon name="chevron-down" className="size-3.5 text-muted-foreground" />
+          </button>
+        }
+      >
+        <MenuItem
+          active={st.codeBlock}
+          onClick={() => {
+            setInsertOpen(false)
+            editor.chain().focus().toggleCodeBlock().run()
+          }}
+        >
+          代码块
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setInsertOpen(false)
+            fileRef.current?.click()
+          }}
+        >
+          图片 / 附件…
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setInsertOpen(false)
+            setFootnoteOpen(true)
+          }}
+        >
+          脚注 / 注释…
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setInsertOpen(false)
+            editor.chain().focus().insertNote('', 'blue').run()
+          }}
+        >
+          信息块
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setInsertOpen(false)
+            setTableOpen(true)
+          }}
+        >
+          表格…
+        </MenuItem>
+      </Dropdown>
 
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
 
@@ -687,6 +729,21 @@ export default function EditorToolbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 px-2">
+        {/* Focus：搜索（聚焦左侧栏全局搜索框，与 Ctrl/Cmd+K 同一入口） */}
+        <button
+          type="button"
+          title="搜索全部文档（Ctrl/Cmd+K）"
+          aria-label="搜索全部文档"
+          data-testid="focus-search"
+          onClick={() => {
+            const el = document.getElementById('ke-global-search') as HTMLInputElement | null
+            el?.focus()
+            el?.select()
+          }}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none motion-reduce:transition-none"
+        >
+          <Icon name="search" className="size-4" />
+        </button>
         {/* task-41：视图通道切换（正文 ⇄ 源码）。只读/版本预览/无文档时禁用并给出原因 */}
         {onToggleViewMode ? (
           <button

@@ -122,64 +122,109 @@ export default function UprightDDialog({
 
   if (!open) return null
 
+  // ── Focus 视觉（task-2）：遮罩 --scrim / 卡片 --card + 24 圆角 + 柔和阴影 /
+  //    差异行用 success·danger soft 语义色；功能与 data-* 契约保持不变。
+  const overlay = 'fixed inset-0 z-50 flex items-center justify-center p-4'
+  const overlayStyle = { background: 'var(--scrim)' }
+  const closeBtn =
+    'grid size-8 shrink-0 place-items-center rounded-control text-text-3 transition-colors hover:bg-[var(--surface-2)] hover:text-foreground'
+  const btnBase =
+    'inline-flex h-9 items-center justify-center gap-1.5 rounded-control px-3.5 text-[13px] font-medium transition-colors'
+  const btnSecondary = `${btnBase} border border-border bg-card text-foreground hover:bg-[var(--surface-2)]`
+  const btnPrimary = `${btnBase} bg-primary text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-45`
+
   const changedCount = selected.length
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-label="微分 d 转正体预览">
+    <div className={overlay} style={overlayStyle} role="dialog" aria-modal="true" aria-label="微分 d 转正体预览">
       <div
-        className="flex max-h-[80vh] w-[min(760px,92vw)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[84vh] w-[min(760px,94vw)] flex-col overflow-hidden rounded-dialog border border-border bg-card shadow-xl"
         data-ke-upright-panel
       >
-        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
-          <div className="flex items-center gap-2 text-[15px] font-medium">
-            <Icon name="sigma" className="h-4 w-4" />
-            微分 d 转正体（\mathrm{'{'}d{'}'}）
+        <header className="flex items-start gap-3 border-b border-border bg-card px-6 py-4">
+          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-control bg-primary-soft text-accent-foreground">
+            <Icon name="sigma" className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px] font-semibold leading-snug tracking-[-0.02em] text-foreground">微分 d 转正体</div>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-text-2">
+              将斜体微分 d 替换为正体 <span className="font-mono text-text-3">{'\\mathrm{d}'}</span>，另存为新文件，原件不改动。
+            </p>
           </div>
-          <button type="button" className="rounded px-2 py-1 text-muted-foreground hover:bg-accent" onClick={onClose} aria-label="关闭">
-            <Icon name="close" className="h-4 w-4" />
+          <button type="button" aria-label="关闭" className={closeBtn} onClick={onClose}>
+            <Icon name="close" className="size-4" />
           </button>
         </header>
 
-        <div className="flex items-center gap-3 border-b border-border bg-card px-4 py-2 text-[13px]">
-          <span data-ke-upright-summary>
-            将修改 <b>{changedCount}</b> 处 / 跳过 <b>{analysis.skips.length}</b> 处
+        <div className="flex items-center gap-3 border-b border-border bg-card px-6 py-2.5 text-[13px]">
+          <span data-ke-upright-summary className="text-foreground">
+            将修改 <b className="font-semibold text-accent-foreground">{changedCount}</b> 处 / 跳过{' '}
+            <b className="font-semibold text-text-2">{analysis.skips.length}</b> 处
           </span>
-          <span className="text-muted-foreground">（共 {analysis.mathNodes} 个公式节点）</span>
-          <span className="ml-auto flex gap-2">
-            <button type="button" className="rounded px-2 py-0.5 text-accent hover:bg-accent" onClick={() => toggleAll(true)}>
+          <span className="text-[12px] text-text-3">（共 {analysis.mathNodes} 个公式节点）</span>
+          <span className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded-control px-2 py-0.5 text-[12.5px] font-medium text-accent-foreground transition-colors hover:bg-[var(--surface-2)]"
+              onClick={() => toggleAll(true)}
+            >
               全选
             </button>
-            <button type="button" className="rounded px-2 py-0.5 text-muted-foreground hover:bg-accent" onClick={() => toggleAll(false)}>
+            <button
+              type="button"
+              className="rounded-control px-2 py-0.5 text-[12.5px] text-text-2 transition-colors hover:bg-[var(--surface-2)] hover:text-foreground"
+              onClick={() => toggleAll(false)}
+            >
               全不选
             </button>
           </span>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto px-4 py-2">
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
           {analysis.hits.length === 0 ? (
-            <p className="py-6 text-center text-[13px] text-muted-foreground">没有发现「微分场景」的斜体 d（d 后紧跟字母或命令）。</p>
+            <p className="py-8 text-center text-[13px] text-text-3">没有发现「微分场景」的斜体 d（d 后紧跟字母或命令）。</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="flex flex-col gap-1.5">
               {analysis.hits.map((h) => {
                 const checked = !unchecked.has(h.id)
                 return (
-                  <li key={h.id} className="flex items-start gap-2 rounded px-1 py-1 hover:bg-accent">
+                  <li
+                    key={h.id}
+                    className={[
+                      'flex items-start gap-3 rounded-menu border px-3 py-2.5 transition-colors',
+                      checked
+                        ? 'border-border bg-[var(--surface-2)]'
+                        : 'border-transparent bg-transparent opacity-70',
+                    ].join(' ')}
+                  >
                     <input
                       type="checkbox"
-                      className="mt-0.5"
+                      className="mt-1 size-4 shrink-0 cursor-pointer accent-[var(--primary)]"
                       checked={checked}
                       onChange={() => toggle(h.id)}
                       aria-label={`第 ${h.id} 处`}
                       data-ke-upright-hit={h.id}
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-mono text-[12px] text-muted-foreground">
-                        {h.nodeType === 'mathBlock' ? '块级公式' : '行内公式'} · {h.reason}
+                      <div className="flex items-center gap-2 text-[12px] text-text-3">
+                        <span className="rounded-full border border-border bg-card px-2 py-px text-[11.5px]">
+                          {h.nodeType === 'mathBlock' ? '块级公式' : '行内公式'}
+                        </span>
+                        <span className="truncate">{h.reason}</span>
                       </div>
-                      <div className="truncate font-mono text-[12px]" data-ke-upright-before={h.id}>
-                        {h.before}
-                      </div>
-                      <div className="truncate font-mono text-[12px] text-emerald-700" data-ke-upright-after={h.id}>
-                        {h.after}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 font-mono text-[12px]">
+                        <span
+                          className="max-w-full truncate rounded-[6px] bg-[var(--danger-soft)] px-1.5 py-0.5 text-danger"
+                          data-ke-upright-before={h.id}
+                        >
+                          {h.before}
+                        </span>
+                        <span className="text-text-3">→</span>
+                        <span
+                          className="max-w-full truncate rounded-[6px] bg-[var(--success-soft)] px-1.5 py-0.5 text-success"
+                          data-ke-upright-after={h.id}
+                        >
+                          {h.after}
+                        </span>
                       </div>
                     </div>
                   </li>
@@ -189,11 +234,17 @@ export default function UprightDDialog({
           )}
 
           {analysis.skips.length > 0 && (
-            <details className="mt-2 rounded border border-border px-2 py-1">
-              <summary className="cursor-pointer text-[12px] text-muted-foreground">跳过的 {analysis.skips.length} 处（变量 / 孤立 d，保持斜体）</summary>
-              <ul className="mt-1 space-y-0.5">
+            <details className="mt-3 rounded-menu border border-border bg-card px-3 py-2">
+              <summary className="cursor-pointer text-[12px] text-text-2">
+                跳过的 {analysis.skips.length} 处（变量 / 孤立 d，保持斜体）
+              </summary>
+              <ul className="mt-1.5 flex flex-col gap-0.5">
                 {analysis.skips.map((s) => (
-                  <li key={s.id} className="truncate font-mono text-[12px] text-muted-foreground" data-ke-upright-skip={s.id}>
+                  <li
+                    key={s.id}
+                    className="truncate font-mono text-[12px] text-text-3"
+                    data-ke-upright-skip={s.id}
+                  >
                     {s.before}
                   </li>
                 ))}
@@ -203,41 +254,40 @@ export default function UprightDDialog({
         </div>
 
         {done && (
-          <p className="border-t border-border px-4 py-2 text-[12px] text-emerald-700" data-ke-upright-done>
+          <p
+            className="border-t border-border bg-[var(--success-soft)] px-6 py-2 text-[12.5px] text-success"
+            data-ke-upright-done
+          >
             {done}
           </p>
         )}
 
         {error && (
-          <p className="border-t border-border px-4 py-2 text-[12px] text-red-600" data-ke-upright-error>
+          <p
+            className="border-t border-border bg-[var(--danger-soft)] px-6 py-2 text-[12.5px] text-danger"
+            data-ke-upright-error
+          >
             {error}
           </p>
         )}
 
-        <footer className="flex items-center justify-between gap-2 border-t border-border bg-card px-4 py-3 text-[13px]">
-          <span className="truncate text-muted-foreground">
+        <footer className="flex items-center justify-between gap-3 border-t border-border bg-card px-6 py-3.5 text-[13px]">
+          <span className="min-w-0 truncate text-text-3">
             另存为 <span className="font-mono" data-ke-upright-target>{uprightDFileName(fileName, existingNames)}</span>
             （原件不改动）
           </span>
-          <span className="flex gap-2">
-            <button type="button" className="rounded border border-border px-3 py-1 hover:bg-accent" onClick={onClose}>
+          <span className="flex shrink-0 gap-2">
+            <button type="button" className={btnSecondary} onClick={onClose}>
               取消
             </button>
             {done ? (
-              <button
-                type="button"
-                className="rounded px-3 py-1 font-medium text-primary-foreground"
-                style={{ backgroundColor: 'var(--primary)' }}
-                onClick={onClose}
-                data-ke-upright-close
-              >
+              <button type="button" className={btnPrimary} onClick={onClose} data-ke-upright-close>
                 关闭
               </button>
             ) : (
               <button
                 type="button"
-                className="rounded px-3 py-1 font-medium text-primary-foreground disabled:opacity-50"
-                style={{ backgroundColor: 'var(--primary)' }}
+                className={btnPrimary}
                 onClick={save}
                 disabled={busy || selected.length === 0}
                 data-ke-upright-save

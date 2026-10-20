@@ -230,7 +230,7 @@ body {
   height: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #c9ced6;
+  background: var(--line-2);
   border-radius: 4px;
 }
 *::-webkit-scrollbar-track {
@@ -442,7 +442,7 @@ body {
    line-height 不可设为 0：0 行高会使上标数字字形溢出当前行框，
    在行尾（光标后紧跟 PM 的 trailingBreak）时数字视觉错位、像被挤到下一行。 */
 .ke-footnote-ref {
-  color: #2563eb;
+  color: var(--primary);
   font-weight: 600;
   cursor: default;
   margin: 0 1px;
@@ -458,14 +458,14 @@ body {
   padding: 0 1px;
 }
 .ke-footnote-num:hover {
-  background: #dbeafe;
+  background: var(--primary-soft);
 }
 /* 上标编号编辑框 */
 .ke-footnote-edit {
   width: 2.2em;
   min-width: 2.2em;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--primary-soft);
+  border: 1px solid var(--line-2);
   border-radius: 3px;
   font-size: inherit;
   line-height: 1;
@@ -476,8 +476,8 @@ body {
   padding: 0 1px;
 }
 .ke-footnote-edit:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 1px #60a5fa;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 /* 公式节点 */
@@ -505,7 +505,7 @@ body {
   border-radius: 4px;
 }
 .ke-math-render:hover {
-  background: #eff6ff;
+  background: var(--primary-soft);
 }
 .ke-math-render .katex-display {
   margin: 0;
@@ -541,22 +541,22 @@ body {
   line-height: 1.2;
   border-radius: 4px;
   padding: 1px 5px;
-  background: #fff;
-  border: 1px solid #e2e5ea;
-  color: #6b7280;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-2);
 }
 .ke-math-edit-btn:hover {
-  color: #2563eb;
-  border-color: #2563eb;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .ke-math-del-btn:hover {
-  color: #e11d48;
-  border-color: #e11d48;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 /* task-49：⋮ 更多按钮（互转菜单入口） */
 .ke-math-more-btn:hover {
-  color: #2563eb;
-  border-color: #2563eb;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .ProseMirror-selectednode > .ke-math .ke-math-tools,
 .ke-math:hover .ke-math-tools {
@@ -596,16 +596,16 @@ body {
 .ke-math-field {
   width: 100%;
   min-width: 120px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--line-2);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 15px;
-  background: #fff;
+  background: var(--card);
   outline: none;
 }
 .ke-math-field:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px #2563eb22;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 13%, transparent);
 }
 .ke-math-hint {
   display: flex;
@@ -614,18 +614,18 @@ body {
   gap: 8px;
   margin-top: 4px;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--text-2);
 }
 .ke-math-exit {
-  color: #2563eb;
+  color: var(--primary);
   font-weight: 600;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--line-2);
   border-radius: 4px;
   padding: 1px 8px;
-  background: #eff6ff;
+  background: var(--primary-soft);
 }
 .ke-math-exit:hover {
-  background: #dbeafe;
+  background: var(--primary-soft);
 }
 
 /* 公式编辑器（UX 优化 2：上方 LaTeX 源码 + 下方实时渲染） */
@@ -638,20 +638,20 @@ body {
   width: 100%;
   min-height: 32px;
   resize: vertical;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--line-2);
   border-radius: 6px;
   padding: 6px 10px;
   font-family: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
   font-size: 13px;
   line-height: 1.5;
-  color: #1e293b;
-  background: #f8fafc;
+  color: var(--foreground);
+  background: var(--surface-2);
   outline: none;
 }
 .ke-math-latex-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px #2563eb22;
-  background: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 13%, transparent);
+  background: var(--card);
 }
 .ke-math-preview {
   display: flex;
@@ -660,14 +660,14 @@ body {
   margin-top: 6px;
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px dashed #e2e5ea;
+  border: 1px dashed var(--border);
   border-radius: 6px;
-  background: #fafbfc;
+  background: var(--surface-2);
 }
 .ke-math-preview-label {
   flex-shrink: 0;
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--text-3);
   writing-mode: vertical-lr;
   letter-spacing: 0.1em;
 }
@@ -677,27 +677,27 @@ body {
   overflow-x: auto;
 }
 .ke-math-tool {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 11px;
-  border: 1px solid #e2e5ea;
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 8px;
-  background: #fff;
+  background: var(--card);
 }
 .ke-math-tool:hover {
-  color: #2563eb;
-  border-color: #2563eb;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .ke-math-del-inline {
-  color: #e11d48;
+  color: var(--danger);
   font-size: 11px;
-  border: 1px solid #fecdd3;
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
   border-radius: 4px;
   padding: 1px 8px;
-  background: #fff;
+  background: var(--card);
 }
 .ke-math-del-inline:hover {
-  background: #fff1f2;
+  background: var(--danger-soft);
 }
 
 /* 空文档占位（点击直接输入正文） */
@@ -1135,32 +1135,32 @@ body {
 /* 强调色 */
 [data-theme='dark'] .text-blue-600 { color: var(--accent-foreground); }
 [data-theme='dark'] .text-blue-700 { color: var(--accent-foreground); }
-[data-theme='dark'] .text-emerald-600 { color: #4ade80; }
-[data-theme='dark'] .text-rose-500 { color: #fb7185; }
-[data-theme='dark'] .text-rose-600 { color: #f87171; }
-[data-theme='dark'] .text-rose-700 { color: #fca5a5; }
-[data-theme='dark'] .text-red-500 { color: #f87171; }
-[data-theme='dark'] .text-red-600 { color: #ef4444; }
-[data-theme='dark'] .text-red-700 { color: #fca5a5; }
-[data-theme='dark'] .text-amber-700 { color: #fbbf24; }
-[data-theme='dark'] .text-violet-700 { color: #c4b5fd; }
-[data-theme='dark'] .text-sky-700 { color: #7dd3fc; }
+[data-theme='dark'] .text-emerald-600 { color: var(--success); }
+[data-theme='dark'] .text-rose-500 { color: var(--danger); }
+[data-theme='dark'] .text-rose-600 { color: var(--danger); }
+[data-theme='dark'] .text-rose-700 { color: var(--danger); }
+[data-theme='dark'] .text-red-500 { color: var(--danger); }
+[data-theme='dark'] .text-red-600 { color: var(--danger); }
+[data-theme='dark'] .text-red-700 { color: var(--danger); }
+[data-theme='dark'] .text-amber-700 { color: var(--warn); }
+[data-theme='dark'] .text-violet-700 { color: var(--text-2); }
+[data-theme='dark'] .text-sky-700 { color: var(--accent-foreground); }
 
 /* 边框 */
 [data-theme='dark'] .border-gray-100 { border-color: var(--border); }
 [data-theme='dark'] .border-gray-200 { border-color: var(--border); }
 [data-theme='dark'] .border-gray-300 { border-color: var(--line-2); }
-[data-theme='dark'] .border-rose-200 { border-color: rgba(244, 63, 94, 0.35); }
-[data-theme='dark'] .border-blue-300 { border-color: rgba(59, 130, 246, 0.45); }
-[data-theme='dark'] .border-blue-400 { border-color: rgba(59, 130, 246, 0.55); }
-[data-theme='dark'] .border-blue-500 { border-color: #3b82f6; }
+[data-theme='dark'] .border-rose-200 { border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+[data-theme='dark'] .border-blue-300 { border-color: color-mix(in srgb, var(--primary) 45%, transparent); }
+[data-theme='dark'] .border-blue-400 { border-color: color-mix(in srgb, var(--primary) 55%, transparent); }
+[data-theme='dark'] .border-blue-500 { border-color: var(--primary); }
 
 /* hover 反馈（保持可辨识） */
 [data-theme='dark'] .hover\:bg-gray-50:hover { background-color: var(--surface-2); }
 [data-theme='dark'] .hover\:bg-gray-100:hover { background-color: var(--surface-3); }
 [data-theme='dark'] .hover\:bg-blue-50:hover { background-color: color-mix(in srgb, var(--primary) 18%, transparent); }
-[data-theme='dark'] .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.16); }
-[data-theme='dark'] .hover\:bg-rose-100:hover { background-color: rgba(244, 63, 94, 0.2); }
+[data-theme='dark'] .hover\:bg-red-50:hover { background-color: color-mix(in srgb, var(--danger) 16%, transparent); }
+[data-theme='dark'] .hover\:bg-rose-100:hover { background-color: color-mix(in srgb, var(--danger) 20%, transparent); }
 
 /* 禁用态适应深色 */
 [data-theme='dark'] .disabled\:opacity-40:disabled { opacity: 0.35; }
@@ -1177,8 +1177,8 @@ body {
 [data-theme='dark'] .ke-editor-prose td { border-color: var(--border); }
 [data-theme='dark'] .ke-editor-prose th { background-color: var(--surface-2); }
 [data-theme='dark'] .ke-editor-prose .selectedCell::after,
-[data-theme='dark'] .ke-editor-prose .selectedCell::before { background: rgba(59, 130, 246, 0.18); }
-[data-theme='dark'] .ke-editor-prose .column-resize-handle { background: #60a5fa; }
+[data-theme='dark'] .ke-editor-prose .selectedCell::before { background: color-mix(in srgb, var(--primary) 18%, transparent); }
+[data-theme='dark'] .ke-editor-prose .column-resize-handle { background: var(--primary); }
 
 /* 滚动条（深色适配） */
 [data-theme='dark'] ::-webkit-scrollbar-track { background: transparent; }
@@ -1220,8 +1220,8 @@ body {
   border-color: var(--primary);
 }
 [data-theme='dark'] .ke-math-del-btn:hover {
-  color: #f87171;
-  border-color: #f87171;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 /* ===== v1.1.5 ⑤：列表标记（数字/圆点）浅灰色（Obsidian 式弱化标记） ===== */

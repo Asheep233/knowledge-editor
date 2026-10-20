@@ -32,11 +32,11 @@ export default function ImageLightbox({ src, alt, caption, onClose }: Props) {
       <img
         src={src}
         alt={alt || ''}
-        className="max-h-[85vh] max-w-[92vw] rounded object-contain shadow-2xl"
+        className="max-h-[85vh] max-w-[92vw] rounded-control object-contain shadow-overlay"
         onClick={(e) => e.stopPropagation()}
       />
       <div className="mt-3 flex items-center gap-2">
-        <p className="max-w-[80vw] truncate text-sm text-white/85">
+        <p className="max-w-[80vw] truncate text-[13px] text-white/80">
           {caption || alt || ''}
         </p>
         <button

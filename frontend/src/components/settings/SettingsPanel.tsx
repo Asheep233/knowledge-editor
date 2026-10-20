@@ -22,8 +22,6 @@ import {
 } from '../../settings'
 import { Icon } from '../icons'
 import { APP_VERSION } from '../../version'
-import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-light-800x200.png'
-import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
 import { askConfirm } from '../common/PromptDialog'
 import ShortcutsSection from './ShortcutsSection'
 import AppearanceSection from './AppearanceSection'
@@ -242,40 +240,64 @@ export default function SettingsPanel({ open, onClose }: Props) {
   }
 
   return (
-    <div data-ke-slot="settings" data-ke-appearance-scope="chrome" className="fixed inset-0 z-50 flex flex-col bg-background"
-      style={previewing ? { display: 'none' } : undefined} aria-hidden={previewing || undefined}>
-      {/* 顶栏：标题行 */}
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-2">
-          <Icon name="settings" className="size-[18px] text-muted-foreground" />
-          <span className="text-[16px] font-semibold tracking-tight text-foreground">设置</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] text-muted-foreground">AstraNota v{APP_VERSION} · Alpha</span>
-          <button
-            type="button"
-            data-action="close-settings"
-            onClick={onClose}
-            title="返回编辑器"
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Icon name="close" className="size-4" />
-          </button>
-        </div>
-      </header>
-      <div className="flex min-h-0 flex-1">
-        {/* 左分组栏（参考稿 §3.6：220px popover 底 + 34px rounded-lg 按钮，点击锚点跳转） */}
-        <aside
-          className="flex w-[220px] shrink-0 flex-col border-r p-3"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--popover)' }}
-        >
-          <div className="flex flex-col gap-1">
-            {([
-              ['general', '常规'],
-              ['appearance', '外观'],
-              ['shortcuts', '快捷键'],
-              ['maintenance', '维护'],
-            ] as const).map(([g, label]) => (
+    <div
+      data-ke-slot="settings"
+      data-ke-appearance-scope="chrome"
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      style={previewing ? { display: 'none' } : undefined}
+      aria-hidden={previewing || undefined}
+    >
+      {/* 遮罩：点击空白处返回编辑器（阻断式浮层，scrim 取设计令牌） */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className="absolute inset-0"
+        style={{ backgroundColor: 'var(--scrim)' }}
+      />
+
+      {/* 居中设置浮层：宽 min(760px, 100vw-48px)、高 ≤ 85vh、24px 圆角卡片 */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        className="relative z-10 flex max-h-[85vh] flex-col overflow-hidden rounded-[24px] border border-border bg-card"
+        style={{ width: 'min(760px, calc(100vw - 48px))', boxShadow: 'var(--elev-lg)' }}
+      >
+        {/* 头部：返回 / 标题 / 版本号 */}
+        <div className="shrink-0 border-b border-border">
+          <header className="flex flex-wrap items-start gap-3 px-6 pb-3 pt-5">
+            <button
+              type="button"
+              data-action="close-settings"
+              onClick={onClose}
+              title="返回编辑器"
+              aria-label="返回编辑器"
+              className="grid size-8 shrink-0 place-items-center rounded-control border border-border bg-card text-text-2 shadow-sm transition-colors hover:bg-surface-2 hover:text-foreground motion-reduce:transition-none"
+            >
+              <Icon name="chevron-left" className="size-4" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <h1 id="settings-title" className="font-display text-[21px] font-semibold tracking-tight text-foreground">
+                设置
+              </h1>
+              <p className="mt-0.5 text-[12px] leading-5 text-text-3">所有偏好只保存在本机，修改后立即生效。</p>
+            </div>
+            <span className="whitespace-nowrap pt-1 text-[12px] text-text-3">
+              AstraNota v{APP_VERSION} · Alpha
+            </span>
+          </header>
+
+          {/* 分组导航：卡片内顶部横向分段；点击滚动到对应分组
+              （button[data-nav-group] / aria-current="page" 契约保留，供滚动联动与读屏） */}
+          <nav aria-label="设置分组" className="flex flex-wrap items-center gap-1 px-6 pb-3">
+            {(
+              [
+                ['general', '常规'],
+                ['appearance', '外观'],
+                ['shortcuts', '快捷键'],
+                ['maintenance', '维护'],
+              ] as const
+            ).map(([g, label]) => (
               <button
                 key={g}
                 type="button"
@@ -284,230 +306,211 @@ export default function SettingsPanel({ open, onClose }: Props) {
                 data-nav-group={g}
                 onClick={() => jumpToGroup(g)}
                 className={[
-                  'flex h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.97] focus-visible:outline-none motion-reduce:transition-none',
+                  'flex h-8 items-center rounded-menu px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.98] motion-reduce:transition-none',
                   group === g
-                    ? ''
-                    : 'hover:bg-accent hover:text-accent-foreground',
+                    ? 'bg-primary-soft text-accent-foreground'
+                    : 'text-text-2 hover:bg-surface-2 hover:text-foreground',
                 ].join(' ')}
-                style={
-                  group === g
-                    ? { backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }
-                    : { color: 'var(--foreground)' }
-                }
               >
                 {label}
               </button>
             ))}
-          </div>
-        </aside>
+          </nav>
+        </div>
 
-        {/* 右内容区：全量多组滚动（参考稿：一页从上到下全部设置项，卡片式） */}
+        {/* 内容区：全量多组滚动（一页从上到下全部设置项，分组卡片式）
+            class 保持 min-h-0 flex-1 overflow-y-auto bg-background —— 是 task-37 滚动联动的根节点契约 */}
         <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
           {!ready ? (
-            <p className="py-8 text-center text-muted-foreground">加载设置中…</p>
+            <p className="py-10 text-center text-[13px] text-text-3">加载设置中…</p>
           ) : (
-            <div className="mx-auto flex w-full max-w-[680px] flex-col gap-7 px-6 py-6">
-              {/* AstraNota 品牌横幅（右内容区顶端；浅/深双版本按 data-theme 切换） */}
-              <div className="flex flex-col items-center gap-2">
-                <img
-                  src={horizontalLogoLight}
-                  alt="AstraNota"
-                  className="an-logo-light h-[76px] w-auto"
-                  draggable={false}
-                />
-                <img
-                  src={horizontalLogoDark}
-                  alt="AstraNota"
-                  className="an-logo-dark h-[76px] w-auto"
-                  draggable={false}
-                />
-              </div>
+            <div className="mx-auto flex w-full flex-col gap-5 px-6 py-6">
               {/* 常规：启动、恢复与保存偏好（锚点 general） */}
-              <div id="settings-group-general" data-group="general" className="scroll-mt-4">
-                <section aria-labelledby="section-general">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 id="section-general" className="text-[14px] font-semibold whitespace-nowrap text-foreground">常规</h2>
-                    <p className="text-[12px] text-muted-foreground">启动、恢复与保存偏好</p>
-                  </div>
-                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
-                    <div className="flex flex-col divide-y divide-border">
-                      <SettingRow label="启动时恢复上次打开的文档" desc="继续上次的写作现场">
-                        <Switch
-                          checked={settings.startup.restoreLastState}
-                          ariaLabel="启动时恢复上次打开的文档"
-                          onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
-                        />
-                      </SettingRow>
-                      <SettingRow label="切换工作区…" desc="打开工作区选择窗口（与菜单「文件 → 打开工作区」等效）">
-                        <button
-                          type="button"
-                          onClick={() => window.dispatchEvent(new CustomEvent('ke:open-workspace-dialog'))}
-                          className="rounded-md border border-border bg-muted px-3 py-1 text-[12px] text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
-                        >
-                          切换…
-                        </button>
-                      </SettingRow>
-                      <SettingRow label="启动时自动打开最近 Workspace" desc="自动打开最近使用的工作区">
-                        <Switch
-                          checked={settings.startup.autoOpenRecentWorkspace}
-                          ariaLabel="启动时自动打开最近 Workspace"
-                          onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
-                        />
-                      </SettingRow>
-                      <SettingRow label="公式自动补全" desc="输入 \\ 命令时悬浮建议，Tab 选择（如 \\fr → \\frac）">
-                        <Switch
-                          checked={settings.editor.mathAutocomplete !== false}
-                          ariaLabel="公式自动补全"
-                          onChange={(v) => void patchAndSave({ editor: { mathAutocomplete: v } })}
-                        />
-                      </SettingRow>
-                      <SettingRow label="自动保存间隔" desc="停止输入后延迟保存">
-                        <Select
-                          value={String(settings.editor.autosaveIntervalMs)}
-                          ariaLabel="自动保存间隔"
-                          options={[
-                            { value: '1000', label: '1 秒' },
-                            { value: '3000', label: '3 秒（默认）' },
-                            { value: '5000', label: '5 秒' },
-                            { value: '30000', label: '30 秒' },
-                            { value: '60000', label: '1 分钟' },
-                          ]}
-                          onChange={(v) => void setNumber('editor', 'autosaveIntervalMs', Number(v))}
-                        />
-                      </SettingRow>
-                      <SettingRow label="历史版本保留数量" desc="每篇文档保留的备份份数（1–999）">
-                        <NumberInput
-                          value={settings.editor.historyRetentionCount}
-                          onBlur={(v) => void handleRetentionBlur(v)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              const target = e.currentTarget as HTMLInputElement
-                              target.blur()
-                            }
-                          }}
-                        />
-                      </SettingRow>
-                    </div>
+              <GroupAnchor group="general">
+                <section
+                  aria-labelledby="section-general"
+                  className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm"
+                >
+                  <GroupHeading id="section-general" title="常规" desc="启动、恢复与保存偏好" />
+                  <div className="flex flex-col divide-y divide-border border-t border-border">
+                    <SettingRow label="启动时恢复上次打开的文档" desc="继续上次的写作现场">
+                      <Switch
+                        checked={settings.startup.restoreLastState}
+                        ariaLabel="启动时恢复上次打开的文档"
+                        onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
+                      />
+                    </SettingRow>
+                    <SettingRow label="切换工作区…" desc="打开工作区选择窗口（与菜单「文件 → 打开工作区」等效）">
+                      <button
+                        type="button"
+                        onClick={() => window.dispatchEvent(new CustomEvent('ke:open-workspace-dialog'))}
+                        className="h-9 rounded-control bg-surface-2 px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-3"
+                      >
+                        切换…
+                      </button>
+                    </SettingRow>
+                    <SettingRow label="启动时自动打开最近 Workspace" desc="自动打开最近使用的工作区">
+                      <Switch
+                        checked={settings.startup.autoOpenRecentWorkspace}
+                        ariaLabel="启动时自动打开最近 Workspace"
+                        onChange={(v) => void patchAndSave({ startup: { autoOpenRecentWorkspace: v } })}
+                      />
+                    </SettingRow>
+                    <SettingRow label="公式自动补全" desc="输入 \\ 命令时悬浮建议，Tab 选择（如 \\fr → \\frac）">
+                      <Switch
+                        checked={settings.editor.mathAutocomplete !== false}
+                        ariaLabel="公式自动补全"
+                        onChange={(v) => void patchAndSave({ editor: { mathAutocomplete: v } })}
+                      />
+                    </SettingRow>
+                    <SettingRow label="自动保存间隔" desc="停止输入后延迟保存">
+                      <Select
+                        value={String(settings.editor.autosaveIntervalMs)}
+                        ariaLabel="自动保存间隔"
+                        options={[
+                          { value: '1000', label: '1 秒' },
+                          { value: '3000', label: '3 秒（默认）' },
+                          { value: '5000', label: '5 秒' },
+                          { value: '30000', label: '30 秒' },
+                          { value: '60000', label: '1 分钟' },
+                        ]}
+                        onChange={(v) => void setNumber('editor', 'autosaveIntervalMs', Number(v))}
+                      />
+                    </SettingRow>
+                    <SettingRow label="历史版本保留数量" desc="每篇文档保留的备份份数（1–999）">
+                      <NumberInput
+                        value={settings.editor.historyRetentionCount}
+                        onBlur={(v) => void handleRetentionBlur(v)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const target = e.currentTarget as HTMLInputElement
+                            target.blur()
+                          }
+                        }}
+                      />
+                    </SettingRow>
                   </div>
                 </section>
-              </div>
+              </GroupAnchor>
 
               {/* 外观：主题 + 自定义强调色（锚点 appearance） */}
-              <div id="settings-group-appearance" data-group="appearance" className="scroll-mt-4">
-                <section aria-labelledby="section-appearance">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 id="section-appearance" className="text-[14px] font-semibold whitespace-nowrap text-foreground">外观</h2>
-                    <p className="text-[12px] text-muted-foreground">主题、强调色与自定义外观包</p>
-                  </div>
-                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
-                    <div className="flex flex-col divide-y divide-border">
-                      <SettingRow label="主题" desc="深色主题跟随系统（v1.0.1+）">
-                        <div role="group" aria-label="主题模式" className="inline-flex shrink-0 items-center rounded-lg border border-border bg-muted p-0.5">
-                          {THEME_OPTIONS.map((opt) => (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              aria-pressed={settings.ui.theme === opt.value}
-                              onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
-                              className={[
-                                'flex h-7 items-center justify-center rounded-md px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
-                                settings.ui.theme === opt.value
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'text-foreground hover:bg-card hover:text-accent-foreground',
-                              ].join(' ')}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </SettingRow>
-                      <SettingRow label="强调色 · 浅色" desc="自定义浅色主题强调色（留空用默认）">
-                        <AccentControl
-                          value={settings.ui.accentColor?.light}
-                          fallback={DEFAULT_ACCENT.light}
-                          ariaLabel="强调色 · 浅色"
-                          onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
-                        />
-                      </SettingRow>
-                      <SettingRow label="强调色 · 深色" desc="自定义深色主题强调色（留空用默认）">
-                        <AccentControl
-                          value={settings.ui.accentColor?.dark}
-                          fallback={DEFAULT_ACCENT.dark}
-                          ariaLabel="强调色 · 深色"
-                          onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
-                        />
-                      </SettingRow>
-                      <SettingRow label="信息块背景透明度" desc="ke-note 背景不透明度（100% = 不透明）">
-                        <OpacityControl
-                          value={settings.editor.noteBgOpacity ?? 100}
-                          ariaLabel="信息块背景透明度"
-                          onChange={(v) => void patchAndSave({ editor: { noteBgOpacity: v } })}
-                        />
-                      </SettingRow>
-                      <SettingRow label="引用块背景透明度" desc="引用块背景不透明度（100% = 不透明）">
-                        <OpacityControl
-                          value={settings.editor.quoteBgOpacity ?? 100}
-                          ariaLabel="引用块背景透明度"
-                          onChange={(v) => void patchAndSave({ editor: { quoteBgOpacity: v } })}
-                        />
-                      </SettingRow>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <AppearanceSection />
+              <GroupAnchor group="appearance">
+                <section
+                  aria-labelledby="section-appearance"
+                  className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm"
+                >
+                  <GroupHeading id="section-appearance" title="外观" desc="主题、强调色与自定义外观包" />
+                  <div className="flex flex-col divide-y divide-border border-t border-border">
+                    <SettingRow label="主题" desc="深色主题跟随系统（v1.0.1+）">
+                      <div
+                        role="group"
+                        aria-label="主题模式"
+                        className="inline-flex shrink-0 items-center gap-0.5 rounded-control bg-surface-2 p-0.5"
+                      >
+                        {THEME_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            aria-pressed={settings.ui.theme === opt.value}
+                            onClick={() => void patchAndSave({ ui: { theme: opt.value } })}
+                            className={[
+                              'flex h-8 items-center justify-center rounded-[6px] px-3 text-[12.5px] font-medium whitespace-nowrap transition-colors',
+                              settings.ui.theme === opt.value
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-text-2 hover:text-foreground',
+                            ].join(' ')}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </SettingRow>
+                    <SettingRow label="强调色 · 浅色" desc="自定义浅色主题强调色（留空用默认）">
+                      <AccentControl
+                        value={settings.ui.accentColor?.light}
+                        fallback={DEFAULT_ACCENT.light}
+                        ariaLabel="强调色 · 浅色"
+                        onChange={(v) => void patchAndSave({ ui: { accentColor: { light: v ?? '' } } })}
+                      />
+                    </SettingRow>
+                    <SettingRow label="强调色 · 深色" desc="自定义深色主题强调色（留空用默认）">
+                      <AccentControl
+                        value={settings.ui.accentColor?.dark}
+                        fallback={DEFAULT_ACCENT.dark}
+                        ariaLabel="强调色 · 深色"
+                        onChange={(v) => void patchAndSave({ ui: { accentColor: { dark: v ?? '' } } })}
+                      />
+                    </SettingRow>
+                    <SettingRow label="信息块背景透明度" desc="ke-note 背景不透明度（100% = 不透明）">
+                      <OpacityControl
+                        value={settings.editor.noteBgOpacity ?? 100}
+                        ariaLabel="信息块背景透明度"
+                        onChange={(v) => void patchAndSave({ editor: { noteBgOpacity: v } })}
+                      />
+                    </SettingRow>
+                    <SettingRow label="引用块背景透明度" desc="引用块背景不透明度（100% = 不透明）">
+                      <OpacityControl
+                        value={settings.editor.quoteBgOpacity ?? 100}
+                        ariaLabel="引用块背景透明度"
+                        onChange={(v) => void patchAndSave({ editor: { quoteBgOpacity: v } })}
+                      />
+                    </SettingRow>
                   </div>
                 </section>
-              </div>
+                <div className="mt-4">
+                  <AppearanceSection />
+                </div>
+              </GroupAnchor>
 
               {/* 快捷键：自定义动作键位（锚点 shortcuts；task-29） */}
-              <div id="settings-group-shortcuts" data-group="shortcuts" className="scroll-mt-4">
-                <section aria-labelledby="section-shortcuts">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 id="section-shortcuts" className="text-[14px] font-semibold whitespace-nowrap text-foreground">快捷键</h2>
-                    <p className="text-[12px] text-muted-foreground">为动作绑定自定义键位（默认沿用内置键位）</p>
-                  </div>
-                  <div className="mt-3">
-                    <ShortcutsSection
-                      bindings={settings.editor.shortcuts ?? {}}
-                      onBind={(actionId, spec) => handleShortcutBind(actionId, spec)}
-                    />
-                  </div>
+              <GroupAnchor group="shortcuts">
+                <section
+                  aria-labelledby="section-shortcuts"
+                  className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm"
+                >
+                  <GroupHeading id="section-shortcuts" title="快捷键" desc="为动作绑定自定义键位（默认沿用内置键位）" />
+                  <ShortcutsSection
+                    bindings={settings.editor.shortcuts ?? {}}
+                    onBind={(actionId, spec) => handleShortcutBind(actionId, spec)}
+                  />
                 </section>
-              </div>
+              </GroupAnchor>
 
               {/* 维护：索引、数据目录与应用更新（锚点 maintenance） */}
-              <div id="settings-group-maintenance" data-group="maintenance" className="scroll-mt-4">
-                <section aria-labelledby="section-maintenance">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 id="section-maintenance" className="text-[14px] font-semibold whitespace-nowrap text-foreground">维护</h2>
-                    <p className="text-[12px] text-muted-foreground">索引、数据目录与应用更新</p>
-                  </div>
-                  <div className="mt-3 overflow-hidden rounded-lg border border-border bg-card">
-                    <div className="flex flex-col divide-y divide-border">
-                      <SettingRow label="重建索引" desc="重建全文索引（搜索 / 历史恢复依据）">
-                        <Button
-                          onClick={() => void handleRebuildIndex()}
-                          disabled={indexBusy}
-                          status={indexResult ?? undefined}
-                        >
-                          {indexBusy ? '重建中…' : '重建索引'}
-                        </Button>
-                      </SettingRow>
-                      <SettingRow label="查看日志" desc={desktop ? '打开日志目录（%APPDATA%\\KnowledgeEditor\\logs）' : '桌面版功能'}>
-                        <Button disabled={!desktop} onClick={() => void handleOpenDir('open_log_dir')}>查看日志</Button>
-                      </SettingRow>
-                      <SettingRow label="打开数据目录" desc={desktop ? '打开 Workspace 目录（%APPDATA%\\KnowledgeEditor\\workspace）' : '桌面版功能'}>
-                        <Button disabled={!desktop} onClick={() => void handleOpenDir('open_data_dir')}>打开数据目录</Button>
-                      </SettingRow>
-                      <SettingRow label="检查更新" desc="当前使用的应用版本">
-                        <span className="inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-[12px] text-secondary-foreground">
-                          已是最新
-                        </span>
-                      </SettingRow>
-                    </div>
+              <GroupAnchor group="maintenance">
+                <section
+                  aria-labelledby="section-maintenance"
+                  className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm"
+                >
+                  <GroupHeading id="section-maintenance" title="维护" desc="索引、数据目录与应用更新" />
+                  <div className="flex flex-col divide-y divide-border border-t border-border">
+                    <SettingRow label="重建索引" desc="重建全文索引（搜索 / 历史恢复依据）">
+                      <Button
+                        onClick={() => void handleRebuildIndex()}
+                        disabled={indexBusy}
+                        status={indexResult ?? undefined}
+                      >
+                        {indexBusy ? '重建中…' : '重建索引'}
+                      </Button>
+                    </SettingRow>
+                    <SettingRow
+                      label="查看日志"
+                      desc={desktop ? '打开日志目录（%APPDATA%\\KnowledgeEditor\\logs）' : '桌面版功能'}
+                    >
+                      <Button disabled={!desktop} onClick={() => void handleOpenDir('open_log_dir')}>查看日志</Button>
+                    </SettingRow>
+                    <SettingRow
+                      label="打开数据目录"
+                      desc={desktop ? '打开 Workspace 目录（%APPDATA%\\KnowledgeEditor\\workspace）' : '桌面版功能'}
+                    >
+                      <Button disabled={!desktop} onClick={() => void handleOpenDir('open_data_dir')}>打开数据目录</Button>
+                    </SettingRow>
+                    <SettingRow label="检查更新" desc="当前使用的应用版本">
+                      <span className="text-[12.5px] font-medium text-success">已是最新</span>
+                    </SettingRow>
                   </div>
                 </section>
-              </div>
+              </GroupAnchor>
             </div>
           )}
         </div>
@@ -516,7 +519,28 @@ export default function SettingsPanel({ open, onClose }: Props) {
   )
 }
 
-/** 卡片行：左侧 14px 标题 + 12px 描述，右侧控件，px-4 py-3.5（参考稿行结构） */
+/** 分组锚点：id / data-group 是滚动联动（task-37）与测试的契约，必须保留 */
+function GroupAnchor({ group, children }: { group: Group; children: ReactNode }) {
+  return (
+    <div id={`settings-group-${group}`} data-group={group} className="scroll-mt-6">
+      {children}
+    </div>
+  )
+}
+
+/** 分组卡头部：17px display 标题 + 12px text-3 说明（Focus 分组卡） */
+function GroupHeading({ id, title, desc }: { id: string; title: string; desc: string }) {
+  return (
+    <header className="px-5 pb-2.5 pt-5">
+      <h2 id={id} className="font-display text-[17px] font-semibold tracking-tight text-foreground">
+        {title}
+      </h2>
+      <p className="mt-0.5 text-[12px] leading-5 text-text-3">{desc}</p>
+    </header>
+  )
+}
+
+/** 卡片行：左侧 14px 标题 + 12px 描述，右侧控件（Focus §6 分组卡行结构） */
 function SettingRow({
   label,
   desc,
@@ -527,12 +551,12 @@ function SettingRow({
   children: ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+    <div className="flex items-start justify-between gap-4 px-5 py-3.5">
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-medium leading-5 text-foreground">{label}</p>
-        {desc ? <p className="mt-0.5 text-[12px] leading-4 text-muted-foreground">{desc}</p> : null}
+        {desc ? <p className="mt-0.5 text-[12px] leading-4 text-text-3">{desc}</p> : null}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className="flex shrink-0 items-center pt-0.5">{children}</div>
     </div>
   )
 }
@@ -549,14 +573,14 @@ function OpacityControl({ value, onChange, ariaLabel }: { value: number; onChang
         step={5}
         value={pct}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-28 accent-[var(--primary)]"
+        className="h-1.5 w-28 accent-primary"
       />
-      <span className="w-9 text-right text-[12px] tabular-nums text-muted-foreground">{pct}%</span>
+      <span className="w-9 text-right text-[12px] tabular-nums text-text-3">{pct}%</span>
       <button
         type="button"
         title="恢复默认（100%）"
         onClick={() => onChange(100)}
-        className="grid h-6 w-6 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:text-foreground"
+        className="grid h-7 w-7 place-items-center rounded-[6px] border border-border text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground"
       >
         <Icon name="undo" className="size-3" />
       </button>
@@ -564,7 +588,7 @@ function OpacityControl({ value, onChange, ariaLabel }: { value: number; onChang
   )
 }
 
-/** 开关（h-5 w-9 rounded-full，开 = --primary 底白圆钮；参考稿） */
+/** 开关（44×26 圆角胶囊，开 = --primary 底白圆钮；参考稿） */
 function Switch({
   checked,
   ariaLabel,
@@ -582,21 +606,21 @@ function Switch({
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
       className={[
-        'relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200',
-        checked ? 'bg-primary' : 'bg-muted',
+        'relative h-[26px] w-11 shrink-0 rounded-full transition-colors duration-200 motion-reduce:transition-none',
+        checked ? 'bg-primary' : 'bg-surface-3',
       ].join(' ')}
     >
       <span
         className={[
-          'absolute top-0.5 size-4 rounded-full bg-white shadow transition-all duration-200',
-          checked ? 'left-[18px]' : 'left-0.5',
+          'absolute top-0.5 size-[22px] rounded-full bg-white shadow-sm transition-all duration-200 motion-reduce:transition-none',
+          checked ? 'left-[20px]' : 'left-0.5',
         ].join(' ')}
       />
     </button>
   )
 }
 
-/** 下拉（h-8 rounded-md border-input bg-popover，右侧 chevron；参考稿） */
+/** 下拉（36px 灰底胶囊 + 右侧 chevron；参考稿 select） */
 function Select({
   value,
   options,
@@ -614,7 +638,7 @@ function Select({
         aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 cursor-pointer appearance-none rounded-md border border-input bg-popover py-0 pl-3 pr-8 text-[13px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        className="h-9 cursor-pointer appearance-none rounded-control bg-surface-2 py-0 pl-3 pr-8 text-[13px] text-foreground outline-none transition-colors hover:bg-surface-3 focus:ring-2 focus:ring-ring/20"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -622,12 +646,12 @@ function Select({
           </option>
         ))}
       </select>
-      <Icon name="chevron-down" className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Icon name="chevron-down" className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-text-3" />
     </div>
   )
 }
 
-/** 数字输入（h-8 rounded-md border-input bg-card；参考稿） */
+/** 数字输入（36px 灰底胶囊；参考稿 stepper 的数值位） */
 function NumberInput({
   value,
   onBlur,
@@ -641,7 +665,7 @@ function NumberInput({
   return (
     <input
       type="number"
-      className="w-24 rounded-md border border-input bg-card px-2 py-1 text-[13px] text-right text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+      className="h-9 w-24 rounded-control bg-surface-2 px-3 text-right text-[13px] tabular-nums text-foreground outline-none transition-colors hover:bg-surface-3 focus:ring-2 focus:ring-ring/20"
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={(e) => {
@@ -680,7 +704,7 @@ function AccentControl({
     debounceRef.current = window.setTimeout(() => onChange(v), 300)
   }
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-2">
       <input
         type="color"
         value={current || fallback}
@@ -689,7 +713,7 @@ function AccentControl({
           setDraft(e.target.value)
           schedulePersist(e.target.value)
         }}
-        className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent p-0"
+        className="h-7 w-9 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card p-0"
       />
       <input
         type="text"
@@ -711,7 +735,7 @@ function AccentControl({
         onKeyDown={(e) => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
         }}
-        className="w-[74px] shrink-0 rounded border border-input bg-card px-1.5 py-1 font-mono text-[11px] text-foreground/80 outline-none focus:border-ring/60 focus:ring-2 focus:ring-ring/20"
+        className="w-[78px] shrink-0 rounded-control bg-surface-2 px-2 py-1.5 font-mono text-[11px] text-foreground outline-none transition-colors hover:bg-surface-3 focus:ring-2 focus:ring-ring/20"
       />
       <button
         type="button"
@@ -719,7 +743,7 @@ function AccentControl({
         aria-label={`${ariaLabel} 重置`}
         disabled={!value}
         onClick={() => onChange(null)}
-        className="shrink-0 rounded p-1 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground/80 disabled:cursor-not-allowed disabled:opacity-40"
+        className="shrink-0 rounded-[6px] p-1.5 text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Icon name="rebuild" className="size-3.5" />
       </button>
@@ -727,7 +751,7 @@ function AccentControl({
   )
 }
 
-/** 维护操作按钮（h-8 rounded-md border bg-card，右侧可选 status 小字） */
+/** 维护操作按钮（36px 灰底胶囊，右侧可选 status 小字） */
 function Button({
   children,
   onClick,
@@ -746,15 +770,15 @@ function Button({
         disabled={disabled}
         onClick={onClick}
         className={[
-          'flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-[13px] font-medium whitespace-nowrap transition-colors',
+          'flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-control px-3.5 text-[12.5px] font-medium whitespace-nowrap transition-colors',
           disabled
-            ? 'cursor-not-allowed border-border/50 bg-muted/40 text-muted-foreground/50'
-            : 'border-border bg-card text-foreground/80 hover:bg-muted',
+            ? 'cursor-not-allowed bg-surface-2/50 text-text-3/50'
+            : 'bg-surface-2 text-foreground hover:bg-surface-3',
         ].join(' ')}
       >
         {children}
       </button>
-      {status ? <p className="max-w-[220px] truncate text-[11px] text-muted-foreground" title={status}>{status}</p> : null}
+      {status ? <p className="max-w-[220px] truncate text-[11px] text-text-3" title={status}>{status}</p> : null}
     </div>
   )
 }

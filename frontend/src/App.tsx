@@ -694,16 +694,15 @@ export default function App() {
   }, [])
 
   /** Focus：专注模式顶栏保存状态文案（与命令条一致：dirty/saving/saved/error） */
-  const focusSaveStatus =
-    saveState === 'dirty'
+  const focusSaveStatus = !article
+    ? ''
+    : saveState === 'dirty'
       ? '未保存…'
       : saveState === 'saving'
         ? '保存中…'
-        : saveState === 'saved'
-          ? '已保存'
-          : saveState === 'error'
-            ? '保存失败'
-            : ''
+        : saveState === 'error'
+          ? '保存失败'
+          : '已保存'
 
   /** Focus：⌘K/⋯ 菜单动作 → 编辑器内部事件（打印预览复用 PDF 导出对话框；导入复用隐藏 input） */
   useEffect(() => {
@@ -1146,11 +1145,14 @@ export default function App() {
   const inspectorButton = article ? (
     <button
       type="button"
-      title="文档信息（大纲 / 属性 / 标签 / 历史）"
-      aria-label="文档信息"
+      title="文档属性（标题 / 标签 / 时间 / 位置）"
+      aria-label="文档属性"
       aria-pressed={rightOpen}
       data-testid="open-inspector"
-      onClick={() => toggleRight(!rightOpen)}
+      onClick={() => {
+        toggleRight(true)
+        window.dispatchEvent(new CustomEvent('ke:attributes-open'))
+      }}
       className={[
         'flex w-full items-center gap-2.5 rounded-[8px] px-3 py-1.5 text-left text-[13px] transition-colors',
         rightOpen ? 'text-primary' : 'text-foreground hover:bg-accent',
@@ -1158,7 +1160,7 @@ export default function App() {
       ].join(' ')}
     >
       <Icon name="file-text" className="size-4" />
-      <span>文档信息</span>
+      <span>文档属性</span>
     </button>
   ) : null
 
@@ -1176,7 +1178,11 @@ export default function App() {
           onOpened={applyWorkspace}
           guide={!!workspace?.open && firstRun}
           onUseDefault={handleUseDefaultWorkspace}
+          onToggleTheme={toggleTheme}
+          themeIsDark={themeIsDark}
+          onOpenHelp={() => setSettingsOpen(true)}
         />
+        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         {backendDown && (
           <div className="fixed inset-x-0 top-0 z-50 bg-red-100 px-4 py-1 text-center text-xs text-red-700">
             后端服务未连接，请启动 backend（uvicorn app.main:app）

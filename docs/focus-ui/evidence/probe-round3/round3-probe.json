@@ -1,0 +1,177 @@
+{
+  "generatedAt": "2026-10-20T08:07:55.364Z",
+  "checks": {
+    "moreMenu": {
+      "itemCount": 10,
+      "items": [
+        "大纲与信息",
+        "文档信息",
+        "历史快照",
+        "源码模式",
+        "微分 d 转正体…",
+        "打印预览",
+        "导入…",
+        "专注模式⌘.",
+        "切换外观",
+        "设置⌘,"
+      ],
+      "rect": {
+        "x": 908,
+        "y": 55,
+        "w": 240,
+        "h": 343
+      }
+    },
+    "inspector": {
+      "sheet": {
+        "x": 1050,
+        "y": 10,
+        "w": 380,
+        "h": 880
+      },
+      "titleSnippet": "文档信息 大纲 2 折叠至一级 ##动量守恒 ##质心参考系 属性 标题 标签 #物理 #习题 类型 文档 字数 341 创建时间 2026/10/20 12:50:29 修改时间 2026/10/20 12:50:29 大小 1.4 KB",
+      "firstSectionIsOutline": true,
+      "titles": []
+    },
+    "history": {
+      "clicked": true,
+      "candidates": [
+        {
+          "w": 420,
+          "h": 880,
+          "x": 1010,
+          "y": 10,
+          "text": "历史版本 最近 30 份自动快照，可随时恢复。快照保存在文档旁，不进入索引。 刷新 关闭 当前版本当前 2026/10/20 12:50:29 暂无历史版本 点击左侧版本查看内容预览"
+        }
+      ],
+      "bodyHasHistory": true
+    },
+    "focusMode": {
+      "pageLayerBeforeFocus": true,
+      "pageLayerNow": false,
+      "mode": "1",
+      "top": {
+        "h": 44,
+        "text": "← 碰撞动力学：质心系与动量",
+        "w": 1440,
+        "buttons": [
+          {
+            "label": "退出专注模式",
+            "text": "←碰撞动力学：质心系与动量"
+          },
+          {
+            "label": "切换到深色外观",
+            "text": ""
+          }
+        ]
+      },
+      "barBottomGap": 16,
+      "barW": 720
+    },
+    "palette": {
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 1440,
+        "h": 900
+      },
+      "groups": [
+        "最近文档",
+        "命令",
+        "打开的文档"
+      ],
+      "itemCount": 17,
+      "items": [
+        "散射振幅与费曼规则Articles/量子场论/散射振幅与费曼规则.md",
+        "拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md",
+        "测度论·第 3 讲：可测函数Articles/数学分析/测度论·第 3 讲：可测函数.md",
+        "动量守恒·例题整理Articles/普通物理学（上）/动量守恒·例题整理.md",
+        "第 6 章·碰撞Articles/普通物理学（上）/第 6 章·碰撞.md",
+        "新建文档⌘N",
+        "导出 PDF…⌘⇧E",
+        "切换到源码模式⌘/",
+        "进入专注模式⌘.",
+        "切换外观",
+        "打开设置⌘,",
+        "知识库",
+        "搜索",
+        "模块",
+        "资料",
+        "回收站",
+        "碰撞动力学：质心系与动量当前"
+      ],
+      "scrollHeight": 900,
+      "clientHeight": 900
+    },
+    "library": {
+      "page": "library",
+      "title": "知识库",
+      "titleSize": "40px",
+      "hasStats": false,
+      "textSnippet": "知识库 10 篇文档 · 4 个文件夹 · 1 个模块 导入 新建文档 继续写作 散射振幅与费曼规则 今天 16:03 · 10 字 继续写作 最近编辑 6 篇 按修改时间 清空 散射振幅与费曼规则 量子场论 16:03 拉格朗日力学：变分原理 理论力学 16:03 测度论·第 3 讲：可测函数 数学分析 16:03 动量守恒·例题整理 普通物理学（上） 16:03 第 6 章·碰撞 普通物理学（上） 16:03 碰撞动力学：质心系与动量 根目录 16:03 标签 2 个 习题 1 物理 1 文件夹 4 个 全部文档 数学分析 2 篇 · 测度论·第 3 讲：可测函数 普通物理学（上） 3 篇 · 动量守恒·例题整理 理论力学 2 篇 · 拉格朗日力学：变分原理 量子场论 2 篇 · 散射振幅与费曼规则",
+      "buttons": [
+        "导入",
+        "新建文档",
+        "继续写作",
+        "清空",
+        "散射振幅与费曼规则量子场论16:03",
+        "拉格朗日力学：变分原理理论力学16:03",
+        "测度论·第 3 讲：可测函数数学分析16:03",
+        "动量守恒·例题整理普通物理学（上）16:03",
+        "第 6 章·碰撞普通物理学（上）16:03",
+        "碰撞动力学：质心系与动量根目录16:03",
+        "习题1",
+        "物理1",
+        "全部文档",
+        "数学分析2 篇 · 测度论·第 3 讲：可测函数",
+        "普通物理学（上）3 篇 · 动量守恒·例题整理",
+        "理论力学2 篇 · 拉格朗日力学：变分原理",
+        "量子场论2 篇 · 散射振幅与费曼规则"
+      ],
+      "sections": [
+        "继续写作",
+        "最近编辑",
+        "标签",
+        "文件夹"
+      ]
+    },
+    "sidebarBehavior": {
+      "hasFileTree": true,
+      "hasSearchInput": false,
+      "text": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件理论力学1量子场论1普通物理学（上）2数学分析1碰撞动力学-质心系与动量.md设置专注模式切换外观"
+    },
+    "settingsPage": {
+      "exists": true,
+      "title": "设置",
+      "hasBackToLibrary": true,
+      "buttons": [
+        "知识库",
+        "常规",
+        "外观",
+        "快捷键",
+        "维护",
+        "切换工作区",
+        "跟随系统",
+        "浅色",
+        "深色",
+        "恢复默认",
+        "回滚上一个",
+        "导出外观 JSON",
+        "导出原始备份",
+        "导入 JSON 文件",
+        "载入示例"
+      ],
+      "textSnippet": "知识库 设置 所有偏好只保存在本机，修改后立即生效。 常规 外观 快捷键 维护 常规 启动、恢复与保存偏好 启动时恢复上次打开的文档 继续上次的写作现场 切换工作区 打开工作区选择窗口（与菜单「文件 → 打开工作区」等效） 切换工作区 启动时自动打开最近 Workspace 自动打开最近使用的工作区 公式自动补全 输入 \\\\ 命令时悬浮建议，Tab 选择（如 \\\\fr → \\\\frac） 自动保存"
+    }
+  },
+  "pageErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task"
+  ]
+}

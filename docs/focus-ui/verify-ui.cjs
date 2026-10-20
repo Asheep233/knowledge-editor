@@ -906,10 +906,31 @@ async function main() {
       near('03-inspector', '浮层不挤占布局：纸面中心不动', m.paper ? m.paper.cx : NaN, paperCenterLight, 1)
       await shot(page, '03-editor-inspector-sheet-1440x900')
 
-      // 关闭浮层 → 设置
-      currentShot = 'A-settings'
+      // 关闭浮层 → ⋯ 更多菜单截图（参考稿 overlays；与 16 设置页去重）
+      currentShot = 'A-more-menu'
       await page.click(SELECTORS.inspectorScrim, { timeout: DEFAULT_TIMEOUTS.click })
       await page.waitForTimeout(500)
+      await page.click(SELECTORS.moreBtn, { timeout: DEFAULT_TIMEOUTS.click })
+      await page.waitForTimeout(500)
+      const moreMenuItems = await page.evaluate(() => {
+        // Dropdown 通过 portal 渲染在 body 下的 `div.fixed.z-50` 面板（无 role=menu）
+        const panel = [...document.querySelectorAll('div.fixed.z-50')].find((el) =>
+          (el.textContent || '').includes('大纲与信息'),
+        )
+        if (!panel) return []
+        const buttons = [...panel.querySelectorAll('button')]
+        return buttons.map((b) => (b.textContent || '').trim()).filter(Boolean)
+      })
+      eq('06-more-menu', '⋯ 菜单十条目', moreMenuItems.length, 10)
+      for (const label of ['大纲与信息', '文档属性', '历史快照', '源码模式', '打印预览', '导入', '专注模式', '切换外观', '设置']) {
+        soft('06-more-menu', `⋯ 菜单含「${label}」`, moreMenuItems.some((t) => t.includes(label)), `包含「${label}」`, moreMenuItems.slice(0, 12).join(' / '))
+      }
+      await shot(page, '06-more-menu-1440x900')
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(400)
+
+      // 设置（独立页形态；截图在 16，此处只做断言）
+      currentShot = 'A-settings'
       await page.click(SELECTORS.settingsBtn, { timeout: DEFAULT_TIMEOUTS.click })
       await page.waitForTimeout(1200)
       m = await measure(page)
@@ -921,7 +942,6 @@ async function main() {
         eq('06-settings', '设置页覆盖整个视口（宽）', false, true)
       }
       soft('06-settings', '设置页含「设置」标题', m.settingsText ? m.settingsText.includes('设置') : false, '包含「设置」', m.settingsText ? m.settingsText.slice(0, 120) : 'missing')
-      await shot(page, '06-settings-1440x900')
       // 清理：关闭设置（失败则 Esc / 直接关 context）
       try {
         await page.click(SELECTORS.settingsClose, { timeout: 5000 })

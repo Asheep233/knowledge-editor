@@ -21,6 +21,12 @@ import { askPrompt } from '../common/PromptDialog'
 
 interface Props {
   onOpened: (ws: WorkspaceState) => void
+  /** Focus launcher：右上切换外观 */
+  onToggleTheme?: () => void
+  /** Focus launcher：当前是否深色（决定 moon/sun 图标） */
+  themeIsDark?: boolean
+  /** Focus launcher：右上帮助（打开设置/关于） */
+  onOpenHelp?: () => void
   /** 首启引导模式：桌面版首次使用（默认 workspace 为空且无最近记录）时，
    * 显示「使用已有工作区」与「创建新工作区」引导 */
   guide?: boolean
@@ -36,7 +42,14 @@ function wsName(path: string): string {
   return seg || path
 }
 
-export default function WorkspacePicker({ onOpened, guide = false, onUseDefault }: Props) {
+export default function WorkspacePicker({
+  onOpened,
+  guide = false,
+  onUseDefault,
+  onToggleTheme,
+  themeIsDark = false,
+  onOpenHelp,
+}: Props) {
   const [path, setPath] = useState('')
   const [recent, setRecent] = useState<RecentWorkspace[]>([])
   const [error, setError] = useState('')
@@ -131,6 +144,32 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
         <span className="text-[15px] font-[650] tracking-[-0.02em]" style={{ color: 'var(--foreground)' }}>
           AstraNota
         </span>
+        <div className="ml-auto flex items-center gap-1">
+          {onToggleTheme ? (
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              title={themeIsDark ? '切换到浅色' : '切换到深色'}
+              aria-label={themeIsDark ? '切换到浅色外观' : '切换到深色外观'}
+              className="grid size-8 place-items-center rounded-[8px] transition-colors hover:bg-surface-2"
+              style={{ color: 'var(--text-3)' }}
+            >
+              <Icon name={themeIsDark ? 'sun' : 'moon'} className="size-[18px]" />
+            </button>
+          ) : null}
+          {onOpenHelp ? (
+            <button
+              type="button"
+              onClick={onOpenHelp}
+              title="关于 / 设置"
+              aria-label="关于与设置"
+              className="grid size-8 place-items-center rounded-[8px] transition-colors hover:bg-surface-2"
+              style={{ color: 'var(--text-3)' }}
+            >
+              <Icon name="help" className="size-[18px]" />
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <div className="flex flex-1 items-start justify-center px-6 pb-16 pt-[6vh]">
@@ -174,6 +213,48 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
               disabled={busy}
               onClick={() => (guide && onUseDefault ? onUseDefault() : setCreating((v) => !v))}
             />
+          </div>
+
+          {/* 常驻路径条（参考稿 launcher .path-hint：硬盘图标 + 路径输入 + 浏览…） */}
+          <div
+            className="mt-3 flex h-11 items-center gap-2.5 rounded-[13px] border px-3.5"
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)', boxShadow: 'var(--elev-sm)' }}
+          >
+            <Icon name="hard-drive" className="size-4 shrink-0" style={{ color: 'var(--text-3)' }} />
+            <input
+              type="text"
+              value={path}
+              onChange={(e) => {
+                setPath(e.target.value)
+                setError('')
+              }}
+              onKeyDown={(e) => {
+                if (shouldIgnoreReactKeyEvent(e)) return
+                if (e.key === 'Enter' && path.trim()) void open(path.trim())
+              }}
+              placeholder="输入工作区路径，或点击「浏览…」选择文件夹"
+              aria-label="工作区路径"
+              className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+              style={{ color: 'var(--foreground)' }}
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void (isDesktop() ? browse() : browseAndOpen())}
+              className="h-7 shrink-0 rounded-[7px] px-2 text-[12.5px] font-medium transition-colors hover:bg-surface-2 disabled:opacity-50"
+              style={{ color: 'var(--text-3)' }}
+            >
+              浏览…
+            </button>
+            <button
+              type="button"
+              disabled={busy || !path.trim()}
+              onClick={() => void open(path.trim())}
+              className="h-7 shrink-0 rounded-[7px] px-2 text-[12.5px] font-medium transition-colors hover:bg-surface-2 disabled:opacity-40"
+              style={{ color: 'var(--accent-foreground)' }}
+            >
+              打开
+            </button>
           </div>
 
           {/* 手动路径输入（打开失败/新建时展开） */}

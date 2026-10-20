@@ -71,6 +71,8 @@ export type IconName =
   | 'chevrons-right'
   | 'arrow-left'
   | 'panel-left'
+  | 'hard-drive'
+  | 'help'
 
 const PATHS: Partial<Record<IconName, ReactNode>> = {
   search: (
@@ -335,6 +337,20 @@ const PATHS24: Partial<Record<IconName, ReactNode>> = {
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M9 4v16" />
+    </>
+  ),
+  'hard-drive': (
+    <>
+      <path d="M22 12H2" />
+      <path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z" />
+      <path d="M6 16h.01M10 16h.01" />
+    </>
+  ),
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
     </>
   ),
 }

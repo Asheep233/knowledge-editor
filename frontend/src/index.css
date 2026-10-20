@@ -1302,6 +1302,10 @@ body {
   height: 44px;
   box-shadow: var(--elev-lg);
 }
+/* 专注模式底栏只留格式组（参考稿 focus.png 的极简工具条：搜索/⋯/保存/导出 不出现） */
+.focus-shell[data-focus-mode='1'] .focus-toolbar-actions {
+  display: none !important;
+}
 
 /* ==========================================================================
  * Focus · 主画布页面（知识库/搜索/模块/资料/回收站）

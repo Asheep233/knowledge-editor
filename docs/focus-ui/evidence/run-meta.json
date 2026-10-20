@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-20T07:46:00.654Z",
-  "durationSec": 41.5,
+  "generatedAt": "2026-10-20T08:16:37.431Z",
+  "durationSec": 69.8,
   "repo": "/mnt/f/Work/KE Project/knowledge-editor",
   "git": {
     "branch": "focus-ui",
-    "head": "de13f2d",
-    "dirty": 30
+    "head": "6c53695",
+    "dirty": 37
   },
   "baseUrl": "http://127.0.0.1:5273",
   "backend": {
@@ -47,8 +47,8 @@
       }
     },
     {
-      "name": "06-settings-1440x900",
-      "file": "/tmp/focus-shots/06-settings-1440x900.png",
+      "name": "06-more-menu-1440x900",
+      "file": "/tmp/focus-shots/06-more-menu-1440x900.png",
       "viewport": {
         "width": 1440,
         "height": 900

@@ -384,25 +384,23 @@ export function SearchPage({ onOpenArticle, refreshToken }: FocusPageProps) {
 
   const filtersRow = (
     <div className="mb-[26px] mt-[22px] flex flex-wrap items-center gap-2">
-      {hasResults
-        ? KIND_TABS.map((tab) => {
-            const active = kind === tab.id
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                data-testid="kind-chip"
-                data-kind={tab.id}
-                aria-pressed={active}
-                className={active ? CHIP_ACTIVE : CHIP_IDLE}
-                onClick={() => setKind(tab.id)}
-              >
-                {tab.label}
-                <span className="tabular-nums text-[12px] text-text-3">{counts[tab.id]}</span>
-              </button>
-            )
-          })
-        : null}
+      {KIND_TABS.map((tab) => {
+        const active = kind === tab.id
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            data-testid="kind-chip"
+            data-kind={tab.id}
+            aria-pressed={active}
+            className={active ? CHIP_ACTIVE : CHIP_IDLE}
+            onClick={() => setKind(tab.id)}
+          >
+            {tab.label}
+            {hasResults ? <span className="tabular-nums text-[12px] text-text-3">{counts[tab.id]}</span> : null}
+          </button>
+        )
+      })}
       <div className="ml-auto">
         <button
           type="button"

@@ -839,7 +839,7 @@ export default function EditorToolbar({
       {/* Focus §2.4 动作组：搜索 | ⋯更多 | 保存（浅底 + 状态文字）| 导出（描边，App 注入原节点）。
           视图切换 / 历史快照 / 微分 d 转正体 / 文档信息（extraActions）均收进「⋯ 更多」菜单，
           可见条只保留设计稿的四个动作入口。 */}
-      <div className="flex shrink-0 items-center gap-1.5 px-2">
+      <div className="focus-toolbar-actions flex shrink-0 items-center gap-1.5 px-2">
         {/* 搜索：聚焦全局搜索（与 Ctrl/Cmd+K 同一入口；优先走快捷键动作，未注册时兜底聚焦搜索框） */}
         <button
           type="button"

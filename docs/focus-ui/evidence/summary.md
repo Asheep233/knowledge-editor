@@ -1,20 +1,20 @@
 # Focus 视觉验收 · 运行摘要（verify-ui.cjs 自动生成）
 
-- 时间：2026-10-20T07:46:00.654Z（耗时 41.5s）
+- 时间：2026-10-20T08:16:37.431Z（耗时 69.8s）
 - 仓库：/mnt/f/Work/KE Project/knowledge-editor
-- git：focus-ui @ de13f2d（脏文件 30 个）
-- 前端：http://127.0.0.1:5273（脚本独立拉起 pid=109248）
+- git：focus-ui @ 6c53695（脏文件 37 个）
+- 前端：http://127.0.0.1:5273（脚本独立拉起 pid=130475）
 - 后端：http://127.0.0.1:8000（复用现有）
 - 截图：16 张 → /tmp/focus-shots/
 
-## 断言：168/168 PASS，0 DIFF
+## 断言：178/178 PASS，0 DIFF
 
 ## 截图清单
 
 - `/tmp/focus-shots/01-editor-light-1440x900.png`（1440×900）
 - `/tmp/focus-shots/02-editor-collapsed-sidebar-1440x900.png`（1440×900）
 - `/tmp/focus-shots/03-editor-inspector-sheet-1440x900.png`（1440×900）
-- `/tmp/focus-shots/06-settings-1440x900.png`（1440×900）
+- `/tmp/focus-shots/06-more-menu-1440x900.png`（1440×900）
 - `/tmp/focus-shots/09-focus-mode-1440x900.png`（1440×900）
 - `/tmp/focus-shots/10-library-page-1440x900.png`（1440×900）
 - `/tmp/focus-shots/11-search-page-1440x900.png`（1440×900）

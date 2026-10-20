@@ -49,6 +49,8 @@ function sameTags(a: readonly string[], b: readonly string[]): boolean {
 export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHistory, lastSnapshotAt, onDirtyChange }: Props) {
   // 参考稿无 tab：三卡堆叠（属性 / 大纲[可折叠] / 历史快照）
   const [outlineOpen, setOutlineOpen] = useState(true)
+  /** 属性卡锚点：「文档属性」入口滚动定位（与「大纲与信息」区分） */
+  const attributesRef = useRef<HTMLDivElement | null>(null)
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
@@ -88,8 +90,16 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
   // 本面板收到即展开大纲（浮层首次挂载时 outlineOpen 默认已为 true，此监听覆盖「已打开但被收起」）。
   useEffect(() => {
     const onOutlineOpen = () => setOutlineOpen(true)
+    // 「文档属性」入口：滚到属性卡（与「大纲与信息」区分）
+    const onAttributesOpen = () => {
+      requestAnimationFrame(() => attributesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    }
     window.addEventListener('ke:outline-open', onOutlineOpen)
-    return () => window.removeEventListener('ke:outline-open', onOutlineOpen)
+    window.addEventListener('ke:attributes-open', onAttributesOpen)
+    return () => {
+      window.removeEventListener('ke:outline-open', onOutlineOpen)
+      window.removeEventListener('ke:attributes-open', onAttributesOpen)
+    }
   }, [])
 
   // 切换文档时同步元信息表单（F4）。
@@ -267,7 +277,11 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
         </div>
 
         {/* ============ 2. DocPropertiesCard（参考稿字段行堆叠；属性卡在大纲之后） ============ */}
-        <div className="rounded-[8px] border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}>
+        <div
+          ref={attributesRef}
+          className="rounded-[8px] border"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}
+        >
           {/* 卡头：与大纲/历史卡同级视觉（也避免「折叠至一级」与下面字段标签在纯文本上粘连） */}
           <div className="flex items-center px-3.5 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
             <span className="text-[13px] font-semibold" style={{ color: 'var(--foreground)' }}>属性</span>

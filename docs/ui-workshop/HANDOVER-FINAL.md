@@ -512,3 +512,8 @@ python docs/ui-workshop/tools/run_all_w_probes.py --check
 - 一页式交接：`reports/HANDOVER-SNAPSHOT.md`（仓库状态/交付入口/快速验收/未闭环红线/恢复路径）；
 - 逐任务状态：`reports/TASK-STATUS-HANDOVER.md`（T00–T28：T01/T07/T08 passed、T27 blocked、T26 认证未达成、
   其余 in_progress；最终状态 `EXPERIMENTAL_TRUSTED_PACKS`，不把部分实现写成 passed）。
+
+## 主 Agent 交接说明（2026-10-20）
+
+- `reports/HANDOVER-BRIEF-FROM-LEAD.md`：以主 Agent 身份出具的正式交接（我接手了什么/做到哪一步/
+  重要决策/红线/待办优先级/环境备注/下一任继续步骤/交接声明）。

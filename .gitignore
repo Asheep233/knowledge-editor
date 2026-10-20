@@ -64,3 +64,8 @@ docs/ui-workshop/core/packs/probe/w02-guest-code.txt
 docs/ui-workshop/reports/cloud-handoff/sources.bundle
 docs/ui-workshop/reports/cloud-vm-taskpack*.zip
 docs/ui-workshop/reports/cloud-handoff/**/__pycache__/
+
+# UI 工坊交付交接包（由 tools/build_handover_package.py 生成）
+docs/ui-workshop/reports/AstraNota-UI-Workshop-Handover-*.zip
+docs/ui-workshop/reports/AstraNota-UI-Workshop-Handover-*.zip.sha256
+docs/ui-workshop/reports/_tmp_*

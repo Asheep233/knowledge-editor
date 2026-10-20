@@ -882,7 +882,7 @@ body {
   width: min(var(--focus-paper-w), 100%);
   min-height: calc(100% - 20px);
   margin: 0 auto;
-  padding: var(--focus-paper-pad-top) clamp(24px, calc((100% - var(--focus-read-w)) / 2), 90px) 40px;
+  padding: var(--focus-paper-pad-top) clamp(24px, calc((100% - var(--focus-read-w)) / 2), 89px) 40px;
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   background: var(--card);
@@ -960,6 +960,17 @@ body {
 }
 
 /* 窄屏（≤1279）：侧栏改抽屉（覆盖在画布上，不再挤占纸面） */
+/* 减少动效偏好：壳层自定义过渡一并降级（组件层 Tailwind motion-reduce: 已生效） */
+@media (prefers-reduced-motion: reduce) {
+  .focus-body-row,
+  .focus-sidebar-collapse,
+  .focus-sidebar-reopen,
+  .focus-shell [data-ke-toolbar] > div,
+  .focus-inspector-sheet {
+    transition: none !important;
+  }
+}
+
 /* 窄屏抽屉：命令条前置「文件」按钮 + 内容区遮罩 */
 .focus-drawer-scrim,
 .focus-bar-drawer-btn {

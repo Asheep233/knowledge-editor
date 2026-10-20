@@ -1,0 +1,977 @@
+{
+  "generatedAt": "2026-10-20T05:56:52.138Z",
+  "thresholds": {
+    "sidebarW": 256,
+    "sideMargin": 10,
+    "sideReserve": 280,
+    "paperW": 860,
+    "readW": 680,
+    "barH": 46,
+    "barTop": 12,
+    "paperTop": 68,
+    "radiusPanel": 18,
+    "radiusBar": 13,
+    "radiusControl": 8,
+    "radiusMenu": 12,
+    "radiusDialog": 24
+  },
+  "checks": [
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --background",
+      "ok": true,
+      "expected": "#f5f5f7",
+      "actual": "#f5f5f7",
+      "note": "期望 #f5f5f7"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --card",
+      "ok": true,
+      "expected": "#ffffff",
+      "actual": "#ffffff",
+      "note": "期望 #ffffff"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --foreground",
+      "ok": true,
+      "expected": "#1d1d1f",
+      "actual": "#1d1d1f",
+      "note": "期望 #1d1d1f"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --border",
+      "ok": true,
+      "expected": "#e8e8ed",
+      "actual": "#e8e8ed",
+      "note": "期望 #e8e8ed"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --primary",
+      "ok": true,
+      "expected": "#0071e3",
+      "actual": "#0071e3",
+      "note": "期望 #0071e3"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --text-2",
+      "ok": true,
+      "expected": "#6e6e73",
+      "actual": "#6e6e73",
+      "note": "期望 #6e6e73"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --text-3",
+      "ok": true,
+      "expected": "#8e8e93",
+      "actual": "#8e8e93",
+      "note": "期望 #8e8e93"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --line-2",
+      "ok": true,
+      "expected": "#d2d2d7",
+      "actual": "#d2d2d7",
+      "note": "期望 #d2d2d7"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --radius-panel",
+      "ok": true,
+      "expected": "18px",
+      "actual": "18px",
+      "note": "期望 18px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --radius-bar",
+      "ok": true,
+      "expected": "13px",
+      "actual": "13px",
+      "note": "期望 13px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --radius-control",
+      "ok": true,
+      "expected": "8px",
+      "actual": "8px",
+      "note": "期望 8px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --radius-menu",
+      "ok": true,
+      "expected": "12px",
+      "actual": "12px",
+      "note": "期望 12px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --radius-dialog",
+      "ok": true,
+      "expected": "24px",
+      "actual": "24px",
+      "note": "期望 24px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-sidebar-w",
+      "ok": true,
+      "expected": "256px",
+      "actual": "256px",
+      "note": "期望 256px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-side-reserve",
+      "ok": true,
+      "expected": "280px",
+      "actual": "280px",
+      "note": "期望 280px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-paper-w",
+      "ok": true,
+      "expected": "860px",
+      "actual": "860px",
+      "note": "期望 860px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-read-w",
+      "ok": true,
+      "expected": "680px",
+      "actual": "680px",
+      "note": "期望 680px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-bar-h",
+      "ok": true,
+      "expected": "46px",
+      "actual": "46px",
+      "note": "期望 46px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-bar-top",
+      "ok": true,
+      "expected": "12px",
+      "actual": "12px",
+      "note": "期望 12px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-paper-top",
+      "ok": true,
+      "expected": "68px",
+      "actual": "68px",
+      "note": "期望 68px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "浅色 令牌 --focus-paper-pad-top",
+      "ok": true,
+      "expected": "100px",
+      "actual": "100px",
+      "note": "期望 100px"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "字体栈 --font-family-sans 含「Inter」",
+      "ok": true,
+      "expected": "包含 Inter",
+      "actual": "\"Inter\", \"Noto Sans SC\", \"Source Han Sans SC\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "note": "字体加载需人工确认实际字形（可能回退系统字体）"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "字体栈 --font-family-sans 含「Noto Sans SC」",
+      "ok": true,
+      "expected": "包含 Noto Sans SC",
+      "actual": "\"Inter\", \"Noto Sans SC\", \"Source Han Sans SC\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "note": "字体加载需人工确认实际字形（可能回退系统字体）"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "字体栈 --font-family-display 含「Inter Tight」",
+      "ok": true,
+      "expected": "包含 Inter Tight",
+      "actual": "\"Inter Tight\", \"Inter\", \"Noto Sans SC\", \"PingFang SC\", sans-serif",
+      "note": "字体加载需人工确认实际字形（可能回退系统字体）"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "字体栈 --font-family-display 含「Inter」",
+      "ok": true,
+      "expected": "包含 Inter",
+      "actual": "\"Inter Tight\", \"Inter\", \"Noto Sans SC\", \"PingFang SC\", sans-serif",
+      "note": "字体加载需人工确认实际字形（可能回退系统字体）"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "字体栈 --font-family-mono 含「IBM Plex Mono」",
+      "ok": true,
+      "expected": "包含 IBM Plex Mono",
+      "actual": "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Consolas, monospace",
+      "note": "字体加载需人工确认实际字形（可能回退系统字体）"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏宽 256",
+      "ok": true,
+      "expected": "256 ±1",
+      "actual": 256,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏左间距 10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏上间距 10（无顶栏）",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏下间距 10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏圆角 18",
+      "ok": true,
+      "expected": "18px",
+      "actual": "18px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "左右对称留白 280",
+      "ok": true,
+      "expected": "280 ±1",
+      "actual": 280,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "右侧留白 280",
+      "ok": true,
+      "expected": "280 ±1",
+      "actual": 280,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面宽 860",
+      "ok": true,
+      "expected": "860 ±1.5",
+      "actual": 860,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面上边距 68（命令条下方）",
+      "ok": true,
+      "expected": "68 ±2",
+      "actual": 68,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面圆角 18",
+      "ok": true,
+      "expected": "18px",
+      "actual": "18px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面 1px 边框",
+      "ok": true,
+      "expected": "1px",
+      "actual": "1px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面底色 = --card",
+      "ok": true,
+      "expected": "rgb(255, 255, 255)",
+      "actual": "rgb(255, 255, 255)",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面水平居中（中心=窗口中心）",
+      "ok": true,
+      "expected": "720 ±2",
+      "actual": 720,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "纸面左边缘 = 290（280 留白 + 10）",
+      "ok": true,
+      "expected": "290 ±2",
+      "actual": 290,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "阅读列宽 680",
+      "ok": true,
+      "expected": "680 ±3",
+      "actual": 680,
+      "note": "实测受 padding clamp 上限影响可能为 678（-2px，视觉不可辨）"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "阅读列居中（x = 纸面内）",
+      "ok": true,
+      "expected": "720 ±2",
+      "actual": 720,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "正文 17px",
+      "ok": true,
+      "expected": "17px",
+      "actual": "17px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "正文行高 1.8（30.6px）",
+      "ok": true,
+      "expected": "30.6 ±0.6",
+      "actual": 30.6,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "标题 42px",
+      "ok": true,
+      "expected": "42px",
+      "actual": "42px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "标题行高 1.1（46.2px）",
+      "ok": true,
+      "expected": "46.2 ±0.8",
+      "actual": 46.2,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "标题字距 -0.045em（-1.89px）",
+      "ok": true,
+      "expected": "-1.89 ±0.35",
+      "actual": -1.9,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "标题字重 650",
+      "ok": true,
+      "expected": "650",
+      "actual": "650",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "H2 28px",
+      "ok": true,
+      "expected": "28px",
+      "actual": "28px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条高 46",
+      "ok": true,
+      "expected": "46 ±1",
+      "actual": 46,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条顶部 12",
+      "ok": true,
+      "expected": "12 ±1",
+      "actual": 12,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条圆角 13",
+      "ok": true,
+      "expected": "13px",
+      "actual": "13px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条 1px 边框",
+      "ok": true,
+      "expected": "1px",
+      "actual": "1px",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条与纸面等宽（860）",
+      "ok": true,
+      "expected": "860 ±1.5",
+      "actual": 860,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条与纸面对齐（x 相同）",
+      "ok": true,
+      "expected": "290 ±2",
+      "actual": 290,
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "禁止回退：无常驻标签栏（tab-strip display:none）",
+      "ok": true,
+      "expected": "none",
+      "actual": "none",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "禁止回退：无常驻状态条（display:none）",
+      "ok": true,
+      "expected": "none",
+      "actual": "none",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "禁止回退：无常驻右侧信息栏（inspector 默认关闭）",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "禁止回退：文件名不省略号截断",
+      "ok": true,
+      "expected": "textOverflow !== ellipsis",
+      "actual": "{\"text\":\"碰撞动力学-质心系与动量.md\",\"textOverflow\":\"clip\",\"whiteSpace\":\"normal\"}",
+      "note": "文件名应可见完整内容或可横向滚动"
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "页面主题 = light",
+      "ok": true,
+      "expected": "light",
+      "actual": "light",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "保存按钮有浅底（非透明）",
+      "ok": true,
+      "expected": "非透明背景",
+      "actual": "{\"bg\":\"rgb(242, 242, 244)\",\"borderWidth\":\"1px\",\"borderColor\":\"rgb(232, 232, 237)\",\"label\":\"保存\"}",
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "侧栏已收起（DOM 无 .focus-files-bar）",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "展开浮块（»）34×38",
+      "ok": true,
+      "expected": "34 ±1",
+      "actual": 34,
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "展开浮块高 38",
+      "ok": true,
+      "expected": "38 ±1",
+      "actual": 38,
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "展开浮块位置 left:10 top:10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "展开浮块位置 top:10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "收起后左右留白归零",
+      "ok": true,
+      "expected": "0 ±0.5",
+      "actual": 0,
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "禁止回退：开合侧栏纸面中心不动",
+      "ok": true,
+      "expected": "720 ±1",
+      "actual": 720,
+      "note": ""
+    },
+    {
+      "shot": "02-collapsed",
+      "name": "收起后纸面宽仍 860",
+      "ok": true,
+      "expected": "860 ±1.5",
+      "actual": 860,
+      "note": ""
+    },
+    {
+      "shot": "03-inspector",
+      "name": "文档信息浮层已渲染",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "03-inspector",
+      "name": "浮层宽 380",
+      "ok": true,
+      "expected": "380 ±2",
+      "actual": 380,
+      "note": ""
+    },
+    {
+      "shot": "03-inspector",
+      "name": "浮层右间距 10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "03-inspector",
+      "name": "浮层上间距 10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "03-inspector",
+      "name": "浮层圆角 18",
+      "ok": true,
+      "expected": "18px",
+      "actual": "18px",
+      "note": ""
+    },
+    {
+      "shot": "03-inspector",
+      "name": "浮层不挤占布局：纸面中心不动",
+      "ok": true,
+      "expected": "720 ±1",
+      "actual": 720,
+      "note": ""
+    },
+    {
+      "shot": "06-settings",
+      "name": "设置页已渲染（[data-ke-slot=\"settings\"]）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "06-settings",
+      "name": "设置页覆盖整个视口（宽）",
+      "ok": true,
+      "expected": "1440 ±1",
+      "actual": 1440,
+      "note": ""
+    },
+    {
+      "shot": "06-settings",
+      "name": "设置页覆盖整个视口（高）",
+      "ok": true,
+      "expected": "900 ±1",
+      "actual": 900,
+      "note": ""
+    },
+    {
+      "shot": "06-settings",
+      "name": "设置页含「设置」标题",
+      "ok": true,
+      "expected": "包含「设置」",
+      "actual": "设置\n\n所有偏好只保存在本机，修改后立即生效。\n\nAstraNota v1.2.18 · Alpha\n常规\n外观\n快捷键\n维护\n常规\n\n启动、恢复与保存偏好\n\n启动时恢复上次打开的文档\n\n继续上次的写作现场\n\n切换工作区…\n\n打开工作区选择",
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "页面主题 = dark",
+      "ok": true,
+      "expected": "dark",
+      "actual": "dark",
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --background",
+      "ok": true,
+      "expected": "#000000",
+      "actual": "#000000",
+      "note": "期望 #000000"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --card",
+      "ok": true,
+      "expected": "#0e0e10",
+      "actual": "#0e0e10",
+      "note": "期望 #0e0e10"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --foreground",
+      "ok": true,
+      "expected": "#f5f5f7",
+      "actual": "#f5f5f7",
+      "note": "期望 #f5f5f7"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --border",
+      "ok": true,
+      "expected": "#232325",
+      "actual": "#232325",
+      "note": "期望 #232325"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --primary",
+      "ok": true,
+      "expected": "#0a84ff",
+      "actual": "#0a84ff",
+      "note": "期望 #0a84ff"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --text-2",
+      "ok": true,
+      "expected": "#a1a1a6",
+      "actual": "#a1a1a6",
+      "note": "期望 #a1a1a6"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --text-3",
+      "ok": true,
+      "expected": "#6e6e73",
+      "actual": "#6e6e73",
+      "note": "期望 #6e6e73"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色 令牌 --line-2",
+      "ok": true,
+      "expected": "#333336",
+      "actual": "#333336",
+      "note": "期望 #333336"
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色底层背景 #000",
+      "ok": true,
+      "expected": "rgb(0, 0, 0)",
+      "actual": "rgb(0, 0, 0)",
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色纸面 = --card #0e0e10",
+      "ok": true,
+      "expected": "rgb(14, 14, 16)",
+      "actual": "rgb(14, 14, 16)",
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色布局仍居中",
+      "ok": true,
+      "expected": "720 ±2",
+      "actual": 720,
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色纸面宽 860",
+      "ok": true,
+      "expected": "860 ±1.5",
+      "actual": 860,
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色侧栏 = --card #0e0e10",
+      "ok": true,
+      "expected": "rgb(14, 14, 16)",
+      "actual": "rgb(14, 14, 16)",
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色侧栏宽 256",
+      "ok": true,
+      "expected": "256 ±1",
+      "actual": 256,
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色标题文字 #f5f5f7",
+      "ok": true,
+      "expected": "rgb(245, 245, 247)",
+      "actual": "rgb(245, 245, 247)",
+      "note": ""
+    },
+    {
+      "shot": "04-dark",
+      "name": "深色阴影独立（--elev-sm 与浅色不同）",
+      "ok": true,
+      "expected": "深色阴影 rgba(0,0,0,...)",
+      "actual": "0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.35)",
+      "note": ""
+    },
+    {
+      "shot": "05-launcher",
+      "name": "启动器页已渲染（无编辑器壳）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "05-launcher",
+      "name": "启动器页不是编辑器（无 .focus-shell）",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "05-launcher",
+      "name": "启动器 hero 标题 32px",
+      "ok": true,
+      "expected": "32 ±1",
+      "actual": 32,
+      "note": ""
+    },
+    {
+      "shot": "05-launcher",
+      "name": "启动器内容列宽 560",
+      "ok": true,
+      "expected": "560 ±2",
+      "actual": 560,
+      "note": ""
+    },
+    {
+      "shot": "05-launcher",
+      "name": "主操作卡为蓝底（--primary #0071e3）",
+      "ok": true,
+      "expected": "rgb(0, 113, 227)",
+      "actual": "rgb(0, 113, 227)",
+      "note": ""
+    },
+    {
+      "shot": "05-launcher",
+      "name": "启动器含「打开已有工作区 / 创建新工作区」",
+      "ok": true,
+      "expected": "两操作卡可见",
+      "actual": "本地优先 · Markdown 为唯一事实源\nA\n让写作回到本地\n\n一个安静、快速的本地知识工作台。文档以 Markdown 保存在普通文件夹里，没有账户，也不会上传。\n\n打开已有工作区\n选择一个包含 Markdown 的文件夹\n创建新工作区\n从空白文件夹开始\n最近使用\n仅保存在本机\nfocus-ws\n/tmp/foc",
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "<1280 默认侧栏收起（抽屉）",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "命令条「文件与导航」按钮可见（display:grid）",
+      "ok": true,
+      "expected": "display: grid",
+      "actual": "{\"display\":\"grid\",\"visibility\":\"visible\",\"x\":97,\"y\":19,\"w\":32,\"h\":32}",
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "1024 纸面仍居中（中心=512）",
+      "ok": true,
+      "expected": "512 ±2",
+      "actual": 512,
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "1024 纸面宽 860",
+      "ok": true,
+      "expected": "860 ±1.5",
+      "actual": 860,
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "抽屉模式下主体区无左右留白",
+      "ok": true,
+      "expected": "0 ±0.5",
+      "actual": 0,
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "抽屉浮层宽 256",
+      "ok": true,
+      "expected": "256 ±1",
+      "actual": 256,
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "抽屉浮层 left:10",
+      "ok": true,
+      "expected": "10 ±1",
+      "actual": 10,
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "抽屉浮层圆角 18",
+      "ok": true,
+      "expected": "18px",
+      "actual": "18px",
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "抽屉遮罩可见",
+      "ok": true,
+      "expected": "遮罩存在",
+      "actual": "{\"x\":0,\"y\":0,\"w\":1024,\"h\":800,\"cx\":512,\"radius\":\"0px\",\"borderWidth\":\"0px\",\"borderStyle\":\"none\",\"borderColor\":\"rgb(29, 29, 31)\",\"bg\":\"rgba(20, 20, 22, 0.3)\",\"color\":\"rgb(29, 29, 31)\",\"display\":\"block\",\"boxShadow\":\"none\",\"fontSize\":\"16px\",\"lineHeight\":\"24px\",\"letterSpacing\":\"normal\",\"fontWeight\":\"400\"",
+      "note": ""
+    },
+    {
+      "shot": "07-drawer",
+      "name": "禁止回退：抽屉开合纸面中心不动",
+      "ok": true,
+      "expected": "512 ±1",
+      "actual": 512,
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "800 纸面 = min(860,100%) = 800",
+      "ok": true,
+      "expected": "800 ±2",
+      "actual": 800,
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "800 纸面居中（中心=400）",
+      "ok": true,
+      "expected": "400 ±2",
+      "actual": 400,
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "800 > 760：纸面仍保留圆角（≤760 才去圆角，HANDOFF §2.3）",
+      "ok": true,
+      "expected": "18px（800 档）",
+      "actual": "18px",
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "≤960：命令条宽 = 100%-20px = 780",
+      "ok": true,
+      "expected": "780 ±2",
+      "actual": 780,
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "<1280：默认侧栏收起",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "窄屏命令条出现文件抽屉按钮",
+      "ok": true,
+      "expected": "grid",
+      "actual": "grid",
+      "note": ""
+    },
+    {
+      "shot": "08-narrow",
+      "name": "窄屏正文可读（阅读列 ≤ 窗口宽）",
+      "ok": true,
+      "expected": "≤800",
+      "actual": "678",
+      "note": ""
+    }
+  ],
+  "summary": {
+    "total": 119,
+    "pass": 119,
+    "fail": 0
+  }
+}

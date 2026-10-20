@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-10-20T05:54:37.135Z",
+  "evidence": [],
+  "focusVisible": {
+    "pass": true,
+    "samples": [
+      {
+        "tag": "BUTTON",
+        "label": "收起文件侧栏",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(1, 113, 226)",
+        "outlineOffset": "2px",
+        "rect": {
+          "x": 225,
+          "y": 24,
+          "w": 28,
+          "h": 28
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "label": "新建文档",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(0, 113, 227)",
+        "outlineOffset": "2px",
+        "rect": {
+          "x": 23,
+          "y": 69,
+          "w": 230,
+          "h": 38
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "label": "重建全文索引",
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(0, 113, 227)",
+        "outlineOffset": "2px",
+        "rect": {
+          "x": 214,
+          "y": 123,
+          "w": 28,
+          "h": 28
+        }
+      }
+    ],
+    "expected": "outline: 2px solid var(--ring)（accent），键盘 Tab 可达"
+  },
+  "reducedMotion": {
+    "normal": {
+      "motionReduceClassEl": {
+        "transitionDuration": "0.15s",
+        "transitionProperty": "background-color, color, transform"
+      },
+      "shellCollapseBtn": null,
+      "paper": {
+        "transitionDuration": "0s",
+        "transitionProperty": "all"
+      },
+      "mediaQueryReduce": false
+    },
+    "reduce": {
+      "motionReduceClassEl": {
+        "transitionDuration": "0.15s",
+        "transitionProperty": "none"
+      },
+      "shellCollapseBtn": null,
+      "paper": {
+        "transitionDuration": "0s",
+        "transitionProperty": "all"
+      },
+      "mediaQueryReduce": true
+    }
+  }
+}

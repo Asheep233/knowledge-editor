@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-20T10:49:42.837Z",
-  "durationSec": 53,
+  "generatedAt": "2026-10-20T11:32:02.625Z",
+  "durationSec": 52.2,
   "repo": "/mnt/f/Work/KE Project/knowledge-editor",
   "git": {
     "branch": "focus-ui",
-    "head": "98a57ad",
-    "dirty": 1
+    "head": "fdafcea",
+    "dirty": 10
   },
   "baseUrl": "http://127.0.0.1:5273",
   "backend": {

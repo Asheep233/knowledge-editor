@@ -2,7 +2,40 @@
 
 > 开发日志。每次 Bug 修复、功能完成、架构调整、数据格式变化、API 变化、测试结果、性能优化、重要风险发现后追加记录。
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
-> 最后更新：2026-10-18（**v1.2.18 已发布（Latest）**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.2.18）
+> 最后更新：2026-10-20（**v1.3.0-pre.1 预发布**：Focus UI 全面对齐，分支 `focus-ui` + tag `v1.3.0-pre.1`，未创建 Release）
+
+## 2026-10-20（★ v1.3.0-pre.1 预发布：Focus UI 全面对齐设计交接包 + 补齐缺失功能 · 分支 `focus-ui`）
+
+**Tag** `v1.3.0-pre.1`（预发布，**不创建 GitHub Release / 不设为 Latest**；按主理人指令先推送分支+打版本标记）
+
+**来源**：主理人交接的 `AstraNota-Focus-Handoff.zip` 设计交接包（HANDOFF.md / MIGRATION-CHECKLIST.md / prototype / design-tokens.css），
+目标是把 `knowledge-editor` 前端从旧三栏 UI 深度重构为 Focus 新版，并「全部对齐参考稿、缺少的功能补上」。
+
+**主要交付**
+- **壳层**：无顶栏/标签栏/常驻右栏；256px 浮动侧栏、860px 居中纸面 + 680px 阅读列、46px 浮动命令条、右侧按需 InspectorSheet；窄屏抽屉。
+- **页面化**：知识库 / 搜索 / 模块 / 资料 / 回收站改为独立主画布页面（`AppPage` 路由 + `PageShell`），侧栏导航只切页。
+- **⌘K 命令面板**：最近文档 / 命令（新建/导出 PDF/源码/专注/外观/设置/页面导航）/ 打开的文档（当前标记+关闭），替代常驻标签栏。
+- **设置页**：独立页形态（← 知识库 / 40px 标题 / 分组 tab / 分组卡 / 关于）。
+- **浮层**：文档信息（标题「文档信息」、大纲优先、折叠至一级）；历史版本改右侧 420px sheet；⋯ 菜单十条目（大纲与信息/文档属性/历史/源码/微分 d/打印预览/导入/专注/外观/设置）。
+- **专注模式**：顶栏「← 文档标题｜● 已保存 ☾」+ 极简格式底栏（沉底居中）+ Esc 退出；进入时自动切回编辑器页。
+- **启动器**：官方品牌标 84px + 46px 标题 + 720 列；常驻路径条（浏览…/打开）；右上主题切换/帮助。
+- **其它**：引用块改纯左竖线无底色、元信息「今天 HH:mm · N 字 · 物理 / 习题」、空态/装饰小字清理、`ar` 窄窗口命令条隐藏横向滚动条、`⋯` 双入口行为区分、回收站恢复刷新侧栏。
+- 保留 1.2.18 全部功能（Tiptap 编辑器/导出/历史/回收站/附件/模块/外观包/快捷键/打印/工坊入口），无删除功能语义。
+
+**验证（最终快照 `fdafcea`，HEAD 含版本 bump 后重跑）**
+- `tsc -b --noEmit`：0 错；`npm run build`：exit 0（dist-build ≈3.1MB）。
+- 全量 vitest：**149/149 文件、2055 passed + 1 skipped**、EXIT=0。
+- 视觉验收 `KE_STRICT=1 node docs/focus-ui/verify-ui.cjs`：**16 张截图、178/178 断言 PASS、0 DIFF**（含 5 个整页、命令面板、设置页、专注模式顶栏/极简底栏、⋯ 十条目、启动器路径条）。
+- **独立验收（qa-visual）两轮全 PASS**：`6c53695`（§11）、`472d861`（§12）；证据与差异清单见 `docs/focus-ui/{VERIFICATION-REPORT,VISUAL-ACCEPTANCE,INTEGRATION}.md` 与 `docs/focus-ui/{screenshots,evidence}`。
+
+**已知残留（P3，详见 VERIFICATION-REPORT §12.4）**
+- 模块页筛选口径为标签而非原型「类型」、卡片缺「被 N 篇引用」（需后端模块 API 扩展字段）；
+- 设置独立页保留顶部分组 tab（可用性保留，基线单列）；
+- 启动器「最近使用」行无时间列（后端 recent-workspaces 仅 path/exists）；
+- Windows/Tauri 真机 W 模式/DPI/IME 未人工复验（Linux/headless 证据不得冒充 W 证据）。
+
+**发版动作**（本次）：`bump-version.mjs 1.3.0-pre.1`（9 处版本源）→ 前端 build → `git tag v1.3.0-pre.1` → push 分支 `focus-ui` + tag；
+**未打包、未建 Release、未推 master、未动已发布的 v1.2.18**。
 
 ## 2026-10-18（★ v1.2.18 已发布（Latest）：修复 v1.2.17「导出」按钮无反应回归）
 

@@ -1,9 +1,9 @@
 # Focus 视觉验收 · 运行摘要（verify-ui.cjs 自动生成）
 
-- 时间：2026-10-20T10:49:42.837Z（耗时 53s）
+- 时间：2026-10-20T11:32:02.625Z（耗时 52.2s）
 - 仓库：/mnt/f/Work/KE Project/knowledge-editor
-- git：focus-ui @ 98a57ad（脏文件 1 个）
-- 前端：http://127.0.0.1:5273（脚本独立拉起 pid=178610）
+- git：focus-ui @ fdafcea（脏文件 10 个）
+- 前端：http://127.0.0.1:5273（脚本独立拉起 pid=199276）
 - 后端：http://127.0.0.1:8000（复用现有）
 - 截图：16 张 → /tmp/focus-shots/
 

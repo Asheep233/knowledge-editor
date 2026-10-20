@@ -34,8 +34,12 @@
 - 启动器「最近使用」行无时间列（后端 recent-workspaces 仅 path/exists）；
 - Windows/Tauri 真机 W 模式/DPI/IME 未人工复验（Linux/headless 证据不得冒充 W 证据）。
 
-**发版动作**（本次）：`bump-version.mjs 1.3.0-pre.1`（9 处版本源）→ 前端 build → `git tag v1.3.0-pre.1` → push 分支 `focus-ui` + tag；
-**未打包、未建 Release、未推 master、未动已发布的 v1.2.18**。
+**发版动作**（本次）：`bump-version.mjs 1.3.0-pre.1`（9 处版本源）→ Windows 侧后端 pytest + 前端 tsc/vite build + PyInstaller 侧车
+（运行时 `/api/health.version` 校验 = `1.3.0-pre.1`）→ manifest（79 产物）→ Tauri/NSIS 安装包
+`AstraNota_1.3.0-pre.1_x64-setup.exe`（51,129,095 B，sha256 `dbc8f0e9…21d7`）→ `git tag v1.3.0-pre.1` → push 分支 `focus-ui` + tag
+→ **GitHub Pre-release**：https://github.com/Asheep233/knowledge-editor/releases/tag/v1.3.0-pre.1
+（`--prerelease`，Latest 仍为 v1.2.18；资产 4 件：安装包/侧车/manifest.sha256/versions.json；**未推 master**）。
+**未做**：NSIS 实机安装 + GUI 端到端验收、Authenticode 签名、Windows W 模式/DPI/IME 人工视觉回归（见发布说明「诚实说明」）。
 
 ## 2026-10-18（★ v1.2.18 已发布（Latest）：修复 v1.2.17「导出」按钮无反应回归）
 

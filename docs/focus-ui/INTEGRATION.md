@@ -59,6 +59,10 @@ node docs/focus-ui/verify-ui.cjs
 - **验证（最终快照）**：`tsc -b --noEmit` 0 错；全量 vitest **149/149 文件、2055 passed + 1 skipped**（`/tmp/focus-final-vitest8.log`）；`npm run build` exit 0（`/tmp/focus-build8.log`）；`KE_STRICT=1 node docs/focus-ui/verify-ui.cjs` → **16 张截图、178/178 断言 PASS、0 DIFF**（`/tmp/focus-verify11.log`）。
 - **独立验收**：qa-visual 两轮（`6c53695` §11、`472d861` §12）全 PASS；`fbc2461` 绿点修复由 Lead 自测并按同一脚本复验（16 图 178/178）。
 - **证据**：`docs/focus-ui/screenshots/`（01–16 + focus-ring）、`evidence/{metrics.json,summary.md,run-meta.json,a11y-probe.json,probe-round3/,probe-round4/}`。
+- **预发布（2026-10-20）**：已按发版流程在 Windows 侧打包并发布 **GitHub Pre-release** https://github.com/Asheep233/knowledge-editor/releases/tag/v1.3.0-pre.1
+  （Pre-release，Latest 仍为 v1.2.18）。资产：`AstraNota_1.3.0-pre.1_x64-setup.exe`（51,129,095 B / sha256 `dbc8f0e9…21d7`）、
+  sidecar（46,247,909 B / `35e3e8f0…bf70`）、`manifest.sha256`（79 产物）、`versions.json`；侧车运行时版本校验 = `1.3.0-pre.1`；
+  详见 `docs/release-notes-v1.3.0-pre.1.md`。未做 NSIS 实机安装/GUI 端到端验收与签名。
 - **剩余 P3（已在 VERIFICATION-REPORT §12.4 记录）**：模块页筛选口径（类型 chips + 被引用数，需后端字段）、设置页顶部分组 tab（可用性保留）、短文档下 ⋯ 双入口表现相近、专注基线为深色截图。
 - **收尾小修**：浮动命令条在窄窗口下格式组溢出会显示灰色横向滚动条（页面化后命令条宽度跟随纸面宽度收缩导致）——已隐藏滚动条（`scrollbar-width:none` + `::-webkit-scrollbar{display:none}`，滚动能力保留）并对 <1360px 压缩内边距；`KE_STRICT=1 verify-ui.cjs` 复跑 178/178 PASS、全量测试 2055 绿、build exit 0。
 

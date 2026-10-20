@@ -1,13 +1,41 @@
 @import "tailwindcss";
 
 /* ==========================================================================
- * v1.0.3 UI 重构·设计令牌层（来源：knowledge-editor-ui/colors_and_type.css，handoff §2）
+ * AstraNota Focus · 本地字体（Inter / Inter Tight / IBM Plex Mono，woff2，来自
+ * AstraNota-Focus-Handoff 设计交接包；不使用 CDN）。中文回退系统 Noto Sans SC / 苹方 / 微软雅黑。
+ * ========================================================================== */
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-italic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter Tight";
+  src: url("./assets/fonts/inter-tight.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face { font-family: "IBM Plex Mono"; src: url("./assets/fonts/plex-mono-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("./assets/fonts/plex-mono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("./assets/fonts/plex-mono-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+
+/* ==========================================================================
+ * AstraNota Focus · 设计令牌层（来源：AstraNota-Focus-Handoff/design-tokens.css）
  *
- * - 选择器保留现有 data-theme（浅色=根、深色=[data-theme='dark']），
- *   深色强调色按主理人拍板采用蓝系（#3b82f6），不采用 handoff 的 #fc2c50；
- * - 语义变量 = 运行时可换肤的单点出口（阶段二「用户自定义强调色」直接覆写 --primary）；
- * - 派生令牌用 color-mix 联动 --primary（hover/淡蓝辅助底），随自定义自动变化；
- * - 硬性纪律：阴影透明度 0（层级只靠边框与色块）；圆角 4/6/8/12；胶囊仅搜索/徽章/分段控件。
+ * - 选择器保留现有 data-theme（浅色=根、深色=[data-theme='dark']），运行时换肤/外观包契约依赖；
+ * - 语义变量 = 运行时可换肤的单点出口（用户自定义强调色直接覆写 --primary 并派生 hover/soft）；
+ * - Focus 纪律：单一蓝色强调色 + 中性灰阶；允许柔和阴影三级（旧「阴影=0 / 圆角 4-6-8-12」作废）；
+ *   圆角规范 控件 8 / 菜单 12 / 命令条 13 / 面板 18 / 弹窗 24。
  * ========================================================================== */
 
 /* Tailwind v4：语义变量 → 工具类映射（bg-primary / text-foreground / border-border / ring-ring …） */
@@ -17,7 +45,7 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
-  --color-popover-foreground: var(--foreground);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
@@ -39,15 +67,50 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --font-sans: "DM Sans", "Segoe UI", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Focus 扩展语义色（供新壳层/新组件使用） */
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-line-2: var(--line-2);
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  /* Focus 圆角规范：控件 8 / 菜单 12 / 面板 18 / 弹窗 24（旧「4-6-8-12」纪律作废） */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+  --radius-control: 8px;
+  --radius-menu: 12px;
+  --radius-bar: 13px;
+  --radius-panel: 18px;
+  --radius-dialog: 24px;
+  --font-sans: var(--font-family-sans);
+  --font-display: var(--font-family-display);
+  --font-mono: var(--font-family-mono);
+  /* Focus 高程：三级柔和阴影（旧「阴影透明度必须为 0」纪律作废） */
+  --shadow-soft: var(--elev-sm);
+  --shadow-float: var(--elev-md);
+  --shadow-overlay: var(--elev-lg);
+  /* 把 Tailwind 标准 shadow-* 阶梯也重映射到 Focus 三级柔和高程 */
+  --shadow-2xs: var(--elev-sm);
+  --shadow-xs: var(--elev-sm);
+  --shadow-sm: var(--elev-sm);
+  --shadow-md: var(--elev-md);
+  --shadow-lg: var(--elev-md);
+  --shadow-xl: var(--elev-lg);
+  --shadow-2xl: var(--elev-lg);
 }
 
-/* 浅色（设计基准 colors_and_type.css :root；页面底=纯白卡片风，来自 handoff §2） */
+/* ==========================================================================
+ * AstraNota Focus · 设计令牌（light）
+ * 来源：AstraNota-Focus-Handoff/design-tokens.css（最终设计版）
+ * 纪律：保留既有语义变量名（组件/运行时换肤/外观包契约依赖它们），只替换值；
+ *       新增 Focus 扩展令牌（文本/边框/高程/布局/字体）供新壳层使用。
+ * ========================================================================== */
 :root {
   color-scheme: light;
   /* 既有桥接变量（存量组件渐进迁移中，仍被大面积引用） */
@@ -56,34 +119,75 @@
   --ke-accent: var(--primary);
 
   /* ===== 语义令牌（浅色 / light） ===== */
-  --background: #ffffff;
-  --foreground: #0e1115;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
   --card: #ffffff;
-  --card-foreground: #0e1115;
-  /* 浮层底色对齐设计 #f9f9fa（引用块/搜索胶囊/下拉微灰，与纯白卡片形成极淡层次） */
-  --popover: #f9f9fa;
-  --primary: #4285f4;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+  --primary: #0071e3;
   --primary-foreground: #ffffff;
-  --primary-hover: color-mix(in srgb, var(--primary) 86%, #000000);
-  --primary-soft: color-mix(in srgb, var(--primary) 12%, #ffffff);
-  --secondary: #dbeafe;
-  --secondary-foreground: #003e8f;
-  --muted: #eff1f4;
-  --muted-foreground: #7f8d9f;
-  /* hover/选中辅助底对齐设计：淡蓝 accent（谷歌语言），而非中性灰 */
-  --accent: #dbeafe;
-  --accent-foreground: #003e8f;
-  --border: #ebebeb;
-  --input: #e2e3e4;
+  --primary-hover: #0077ed;
+  --primary-soft: #eef6ff;
+  --secondary: #f2f2f4;
+  --secondary-foreground: #1d1d1f;
+  --muted: #f2f2f4;
+  --muted-foreground: #6e6e73;
+  --accent: #eef6ff;
+  --accent-foreground: #0066cc;
+  --border: #e8e8ed;
+  --input: #d2d2d7;
   --ring: var(--primary);
-  --sidebar: #f0f6ff;
-  --sidebar-foreground: #0e1115;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1d1d1f;
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #dbeafe;
-  --sidebar-accent-foreground: #003e8f;
-  --sidebar-border: #e7eaef;
+  --sidebar-accent: #eef6ff;
+  --sidebar-accent-foreground: #0066cc;
+  --sidebar-border: #e8e8ed;
   --sidebar-ring: var(--ring);
+
+  /* ===== Focus 扩展令牌（浅色） ===== */
+  --surface-2: #f2f2f4;
+  --surface-3: #e8e8ed;
+  --text-2: #6e6e73;
+  --text-3: #8e8e93;
+  --line-2: #d2d2d7;
+  --success: #1f8f3a;
+  --success-soft: #e9f7ee;
+  --warn: #b25000;
+  --warn-soft: #fff4e5;
+  --danger: #d7263d;
+  --danger-soft: #fdecef;
+  --selection-bg: rgba(0, 113, 227, 0.18);
+  --hover-bg: rgba(0, 0, 0, 0.04);
+  --hover-bg-strong: rgba(0, 0, 0, 0.07);
+  --scrim: rgba(20, 20, 22, 0.3);
+  --elev-sm: 0 1px 2px rgba(18, 18, 24, 0.04), 0 8px 22px rgba(18, 18, 24, 0.045);
+  --elev-md: 0 2px 6px rgba(18, 18, 24, 0.05), 0 18px 44px rgba(18, 18, 24, 0.07);
+  --elev-lg: 0 10px 30px rgba(18, 18, 24, 0.09), 0 36px 80px rgba(18, 18, 24, 0.12);
+
+  /* 布局（Focus 壳层） */
+  --focus-sidebar-w: 256px;
+  --focus-side-reserve: 280px;
+  --focus-paper-w: 860px;
+  --focus-read-w: 680px;
+  --focus-bar-h: 46px;
+  --focus-bar-top: 12px;
+  --focus-paper-top: 68px;
+  --focus-paper-pad-top: 100px;
+
+  /* 圆角（与 Tailwind @theme 映射一致） */
+  --radius-panel: 18px;
+  --radius-bar: 13px;
+  --radius-menu: 12px;
+  --radius-control: 8px;
+  --radius-dialog: 24px;
+
+  /* 字体 */
+  --font-family-sans: "Inter", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-family-display: "Inter Tight", "Inter", "Noto Sans SC", "PingFang SC", sans-serif;
+  --font-family-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 html,
@@ -147,40 +251,50 @@ body {
 
 /* ============ 编辑器排版（Phase 2） ============ */
 .ke-editor-prose {
-  max-width: 780px;
+  /* Focus 阅读列：680px（纸面 860 内居中）；正文 17px / 1.8 */
+  max-width: var(--focus-read-w);
   margin: 0 auto;
-  padding: 28px 32px 160px;
-  font-family: 'KE Digits', var(--font-sans);
+  padding: 0 0 140px;
+  font-family: 'KE Digits', var(--font-family-sans);
   font-feature-settings: 'tnum' 1;
-  font-size: 15px;
-  line-height: 1.75;
-  color: #1f2937;
+  font-size: var(--an-body, 17px);
+  font-size: 17px;
+  line-height: 1.8;
+  color: var(--foreground);
   outline: none;
 }
 .ke-editor-prose > :first-child {
   margin-top: 0;
 }
 .ke-editor-prose p {
-  margin: 0.55em 0;
+  margin: 1em 0;
 }
 .ke-editor-prose h1 {
-  font-size: 1.75em;
-  font-weight: 700;
-  margin: 1.2em 0 0.5em;
-  line-height: 1.3;
+  font-family: var(--font-family-display);
+  font-size: var(--an-h1, 32px);
+  font-size: 32px;
+  font-weight: 650;
+  margin: 1.3em 0 0.55em;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 .ke-editor-prose h2 {
-  font-size: 1.4em;
-  font-weight: 700;
-  margin: 1.1em 0 0.45em;
-  line-height: 1.35;
-  padding-bottom: 0.2em;
-  border-bottom: 1px solid #eef0f3;
+  font-family: var(--font-family-display);
+  font-size: var(--an-h2, 28px);
+  font-size: 28px;
+  font-weight: 650;
+  margin: 1.35em 0 0.5em;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
 }
 .ke-editor-prose h3 {
-  font-size: 1.18em;
-  font-weight: 600;
-  margin: 0.9em 0 0.4em;
+  font-family: var(--font-family-display);
+  font-size: var(--an-h3, 22px);
+  font-size: 22px;
+  font-weight: 650;
+  margin: 1.2em 0 0.45em;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 .ke-editor-prose ul,
 .ke-editor-prose ol {
@@ -198,34 +312,35 @@ body {
 }
 .ke-editor-prose blockquote {
   margin: 1.5em 0;
-  padding: 0.75em 1em;
-  /* 参考稿：3px 主色左缘 + popover 底 + 圆角 2px 8px 8px 2px
-     v1.1.5 ④：颜色经 color-mix 按 --quote-bg-alpha（0-1）透明化（设置项）*/
-  border-left: 3px solid var(--primary);
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--popover) calc(var(--quote-bg-alpha, 1) * 100%), transparent);
-  border-radius: 2px 8px 8px 2px;
+  padding: 0.2em 0 0.2em 1.1em;
+  /* Focus §5：左侧 3px 竖线 + 略大字号；底色透明度仍受设置项 --quote-bg-alpha 控制 */
+  border-left: 3px solid var(--line-2);
+  color: var(--text-2);
+  font-size: 1.02em;
+  background: color-mix(in srgb, var(--surface-2) calc(var(--quote-bg-alpha, 0) * 100%), transparent);
+  border-radius: 0;
 }
 [data-theme='dark'] .ke-editor-prose blockquote {
   background: color-mix(in srgb, var(--popover) calc(var(--quote-bg-alpha, 1) * 100%), transparent);
 }
 .ke-editor-prose code {
-  font-family: "Cascadia Code", Consolas, "JetBrains Mono", monospace;
-  font-size: 0.88em;
-  background: #f1f5f9;
-  padding: 0.15em 0.4em;
-  border-radius: 4px;
-  color: #be123c;
+  font-family: var(--font-family-mono);
+  font-size: 0.86em;
+  background: var(--surface-2);
+  padding: 0.16em 0.42em;
+  border-radius: 6px;
+  color: var(--foreground);
 }
 .ke-editor-prose pre {
-  margin: 0.7em 0;
-  padding: 12px 14px;
-  background: #0f172a;
-  color: #e2e8f0;
-  border-radius: 8px;
+  margin: 1.1em 0;
+  padding: 14px 16px;
+  background: #161618;
+  color: #e9e9ec;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
   overflow-x: auto;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 .ke-editor-prose pre code {
   background: transparent;
@@ -234,17 +349,17 @@ body {
   font-size: inherit;
 }
 .ke-editor-prose a {
-  color: #2563eb;
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 .ke-editor-prose hr {
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
   margin: 1.5em 0;
 }
 .ke-editor-prose .ProseMirror-selectednode {
-  outline: 2px solid #2563eb55;
+  outline: 2px solid color-mix(in srgb, var(--primary) 34%, transparent);
   border-radius: 6px;
 }
 
@@ -264,14 +379,14 @@ body {
 .ke-editor-prose th,
 .ke-editor-prose td {
   position: relative;
-  border: 1px solid #e2e8f0;
-  padding: 5px 10px;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
   vertical-align: top;
   text-align: left;
   min-width: 2.5em;
 }
 .ke-editor-prose th {
-  background: #f8fafc;
+  background: var(--surface-2);
   font-weight: 600;
 }
 /* Tiptap 单元格选择高亮（拖选 / Shift+方向键） */
@@ -279,7 +394,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(37, 99, 235, 0.12);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
   pointer-events: none;
 }
 /* 列宽拖拽手柄（仅拖动时出现） */
@@ -289,7 +404,7 @@ body {
   top: 0;
   bottom: 0;
   width: 4px;
-  background: #93c5fd;
+  background: var(--primary);
   pointer-events: none;
 }
 
@@ -601,11 +716,331 @@ body {
    仅当该空段是编辑器的唯一内容时显示（文档有内容——如信息块——即隐藏，防叠层） */
 .ke-editor-prose .is-empty[data-placeholder]:only-child::before {
   content: attr(data-placeholder);
-  color: #9ca3af;
+  color: var(--text-3);
   pointer-events: none;
   float: left;
   height: 0;
+  font-size: 17px;
+}
+
+
+/* ==========================================================================
+ * AstraNota Focus · 壳层与布局（2026-10-20）
+ * 参考：AstraNota-Focus-Handoff/HANDOFF.md §2（无顶栏 / 浮动侧栏 / 居中纸面 / 浮动命令条 / 按需浮层）
+ * ========================================================================== */
+
+.focus-shell {
+  display: flex;
+  height: 100vh;
+  min-height: 640px;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-sans);
+}
+
+/* 主体行：侧栏开合只改变左右灰边，纸面中心不移动 */
+.focus-body-row {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  padding-left: 0;
+  padding-right: 0;
+  transition: padding-left 220ms ease, padding-right 220ms ease;
+}
+.focus-body-row[data-focus-sidebar='open'] {
+  padding-left: var(--focus-side-reserve);
+  padding-right: var(--focus-side-reserve);
+}
+
+/* 浮动文件侧栏：256px 圆角卡片 */
+.focus-files-bar {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  bottom: 10px;
+  z-index: 44;
+  display: flex;
+  width: var(--focus-sidebar-w);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--card);
+  box-shadow: var(--elev-sm);
+}
+.focus-files-bar > aside {
+  width: 100% !important;
+  height: 100%;
+  border-right: 0;
+  background: transparent;
+}
+
+/* 侧栏收起/展开控件 */
+.focus-sidebar-collapse {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--text-3);
   font-size: 15px;
+  line-height: 1;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.focus-sidebar-collapse:hover {
+  color: var(--foreground);
+  background: var(--surface-2);
+}
+.focus-sidebar-reopen {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 44;
+  display: flex;
+  width: 34px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text-2);
+  box-shadow: var(--elev-sm);
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.focus-sidebar-reopen:hover {
+  color: var(--foreground);
+  background: var(--surface-2);
+}
+
+/* 主列 */
+.focus-main-col {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.focus-main-col > main {
+  height: 100%;
+  background: transparent;
+}
+
+/* 标签栏：Focus 版不常驻（文档切换进命令面板/文档菜单；DOM 保留给逻辑与测试） */
+.focus-shell [data-testid='tab-strip'] {
+  display: none !important;
+}
+
+/* 浮动命令条：把 EditorToolbar 从行内工具栏改造成纸面上方的浮动条（HANDOFF §2.4） */
+.focus-shell [data-ke-toolbar] > div {
+  position: absolute;
+  top: var(--focus-bar-top);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 36;
+  width: min(var(--focus-paper-w), calc(100% - 20px));
+  height: var(--focus-bar-h);
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-bar);
+  background: var(--card);
+  box-shadow: var(--elev-md);
+}
+.focus-shell [data-ke-toolbar] > div > div:last-child {
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+/* 阅读区：顶部让出命令条；隐藏滚动条避免纸面横向位移 */
+.focus-main-col > main > .ke-scroll {
+  padding-top: var(--focus-paper-top);
+  scrollbar-width: none;
+}
+.focus-main-col > main > .ke-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+/* 侧栏文件区可横向滚动（长文件名不省略） */
+.focus-files-bar > aside > div.flex-1 {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+
+/* 纸面卡片：最大 860，居中；阅读列 680 由 .ke-editor-prose / 页眉 CSS 控制 */
+.focus-paper {
+  width: min(var(--focus-paper-w), 100%);
+  min-height: calc(100% - 20px);
+  margin: 0 auto;
+  padding: var(--focus-paper-pad-top) clamp(24px, calc((100% - var(--focus-read-w)) / 2), 90px) 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--card);
+  box-shadow: var(--elev-sm);
+}
+.focus-paper [data-ke-doc-header],
+.focus-paper .ke-print-header {
+  max-width: var(--focus-read-w) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.focus-paper [data-ke-doc-header] {
+  padding-top: 0 !important;
+  padding-bottom: 4px !important;
+}
+.focus-paper [data-ke-doc-header] input[aria-label='文档标题'] {
+  margin-top: 20px;
+  font-family: var(--font-family-display);
+  font-size: 42px;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+}
+.focus-paper [data-ke-doc-header] > div:first-child {
+  font-size: 12.5px;
+}
+.focus-paper [data-ke-doc-header] > div:nth-of-type(2) {
+  font-size: 12.5px;
+}
+.focus-paper .ke-source-textarea,
+.focus-paper .ke-source-view {
+  max-width: var(--focus-read-w) !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* 右侧信息浮层（InspectorSheet） */
+.focus-inspector-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+}
+.focus-inspector-scrim {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: 0;
+  cursor: default;
+}
+.focus-inspector-sheet {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: 380px;
+  max-width: calc(100% - 20px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--card);
+  box-shadow: var(--elev-lg);
+}
+.focus-inspector-sheet > aside {
+  width: 100% !important;
+  height: 100%;
+  border-left: 0;
+  background: transparent;
+}
+
+/* 状态条：Focus 版不常驻（保存状态在命令条右侧；路径等进文档信息浮层） */
+.focus-status-hidden {
+  display: none !important;
+}
+
+/* 窄屏（≤1279）：侧栏改抽屉（覆盖在画布上，不再挤占纸面） */
+/* 窄屏抽屉：命令条前置「文件」按钮 + 内容区遮罩 */
+.focus-drawer-scrim,
+.focus-bar-drawer-btn {
+  display: none;
+}
+@media (max-width: 1279px) {
+  .focus-body-row[data-focus-sidebar='open'] {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .focus-files-bar {
+    box-shadow: var(--elev-lg);
+  }
+  .focus-drawer-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 43;
+    border: 0;
+    background: var(--scrim);
+    cursor: default;
+  }
+  .focus-bar-drawer-btn {
+    display: grid;
+  }
+}
+
+/* ≤960：命令条动作按钮只留图标（按钮文字在组件内已按 tailwind 断点控制） */
+@media (max-width: 960px) {
+  .focus-shell [data-ke-toolbar] > div {
+    width: calc(100% - 20px);
+  }
+}
+
+/* ≤760：纸面全宽、去边框圆角；命令条左右 12px */
+@media (max-width: 760px) {
+  .focus-paper {
+    padding: 88px 24px 40px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100%;
+  }
+  .focus-shell [data-ke-toolbar] > div {
+    width: calc(100% - 24px);
+  }
+}
+
+/* 打印：纸面卡片不打印边框/阴影，交给 print.css 的正文规则 */
+@media print {
+  .focus-shell {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .focus-body-row {
+    padding: 0 !important;
+    overflow: visible;
+    display: block;
+  }
+  .focus-files-bar,
+  .focus-sidebar-reopen,
+  .focus-sidebar-collapse,
+  .focus-inspector-layer,
+  .focus-status-hidden {
+    display: none !important;
+  }
+  .focus-main-col {
+    overflow: visible;
+    display: block;
+  }
+  .focus-paper {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
 }
 
 /* ==========================================================================
@@ -619,38 +1054,54 @@ body {
   --ke-border: var(--border);
   --ke-accent: var(--primary);
 
-  /* ===== 语义令牌（深色 / dark；强调色沿用蓝系 #3b82f6，主理人拍板，非 #fc2c50） ===== */
-  --background: #161616;
-  --foreground: #eff1f4;
-  --card: #1d1d1c;
-  --card-foreground: #eff1f4;
-  /* 浮层比卡片亮一档（设计 dark popover=#2e2e2e），下拉/弹窗/引用块层级更清晰 */
-  --popover: #2e2e2e;
-  --primary: #3b82f6;
+  /* ===== 语义令牌（深色 / dark · Focus；深色为中性黑，强调色 #0A84FF） ===== */
+  --background: #000000;
+  --foreground: #f5f5f7;
+  --card: #0e0e10;
+  --card-foreground: #f5f5f7;
+  --popover: #1c1c1e;
+  --popover-foreground: #f5f5f7;
+  --primary: #0a84ff;
   --primary-foreground: #ffffff;
-  --primary-hover: color-mix(in srgb, var(--primary) 82%, #000000);
-  /* 强调色全链路一致：深色 --primary-soft 跟随 --primary（透明混合，观感更和谐） */
-  --primary-soft: color-mix(in srgb, var(--primary) 16%, transparent);
-  --secondary: color-mix(in srgb, var(--primary) 18%, transparent);
-  --secondary-foreground: color-mix(in srgb, var(--primary) 60%, #ffffff);
-  --muted: #232323;
-  --muted-foreground: #9aa2af;
-  /* 深色辅助底对齐设计：暖调暗红 #4a2026（深色一抹暖色），而非中性灰 */
-  --accent: #4a2026;
-  --accent-foreground: #ffb4bd;
-  --border: #333333;
-  --input: #3c3c3c;
+  --primary-hover: #409cff;
+  --primary-soft: #10243a;
+  --secondary: #1c1c1e;
+  --secondary-foreground: #f5f5f7;
+  --muted: #1c1c1e;
+  --muted-foreground: #a1a1a6;
+  --accent: #10243a;
+  --accent-foreground: #6cb4ff;
+  --border: #232325;
+  --input: #333336;
   --ring: var(--primary);
-  --sidebar: #171717;
-  --sidebar-foreground: #e5e5e5;
-  /* 侧栏主色独立为设计值 #0065fd（左栏激活项比主 CTA 更深更饱和，贴合设计深色侧栏激活态） */
-  --sidebar-primary: #0065fd;
+  --sidebar: #0e0e10;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: #ffffff;
-  /* 侧栏辅助/悬停底：跟随主色（color-mix），自定义强调色时全链路一致 */
-  --sidebar-accent: color-mix(in srgb, var(--primary) 18%, transparent);
-  --sidebar-accent-foreground: #bfdbfe;
-  --sidebar-border: #333333;
+  --sidebar-accent: #10243a;
+  --sidebar-accent-foreground: #6cb4ff;
+  --sidebar-border: #232325;
   --sidebar-ring: var(--ring);
+
+  /* ===== Focus 扩展令牌（深色） ===== */
+  --surface-2: #1c1c1e;
+  --surface-3: #2c2c2e;
+  --text-2: #a1a1a6;
+  --text-3: #6e6e73;
+  --line-2: #333336;
+  --success: #30d158;
+  --success-soft: #10261a;
+  --warn: #ff9f0a;
+  --warn-soft: #2b2010;
+  --danger: #ff453a;
+  --danger-soft: #2c1517;
+  --selection-bg: rgba(10, 132, 255, 0.3);
+  --hover-bg: rgba(255, 255, 255, 0.06);
+  --hover-bg-strong: rgba(255, 255, 255, 0.1);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --elev-sm: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --elev-md: 0 2px 8px rgba(0, 0, 0, 0.55), 0 22px 54px rgba(0, 0, 0, 0.45);
+  --elev-lg: 0 12px 36px rgba(0, 0, 0, 0.6), 0 44px 100px rgba(0, 0, 0, 0.55);
 }
 
 /* 面板/背景 */
@@ -658,32 +1109,32 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
-[data-theme='dark'] .bg-white { background-color: #1b1e24; }
-[data-theme='dark'] .bg-\[\#f6f7f9\] { background-color: #14161a; }
-[data-theme='dark'] .bg-gray-50 { background-color: #22262e; }
-[data-theme='dark'] .bg-gray-100 { background-color: #292e37; }
-[data-theme='dark'] .bg-gray-200 { background-color: #343b47; }
-[data-theme='dark'] .bg-blue-50 { background-color: rgba(37, 99, 235, 0.16); }
-[data-theme='dark'] .bg-blue-100 { background-color: rgba(37, 99, 235, 0.26); }
-[data-theme='dark'] .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12); }
-[data-theme='dark'] .bg-rose-50 { background-color: rgba(244, 63, 94, 0.12); }
-[data-theme='dark'] .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
-[data-theme='dark'] .bg-amber-100 { background-color: rgba(245, 158, 11, 0.2); }
-[data-theme='dark'] .bg-blue-50\/70 { background-color: rgba(37, 99, 235, 0.14); }
+[data-theme='dark'] .bg-white { background-color: var(--card); }
+[data-theme='dark'] .bg-\[\#f6f7f9\] { background-color: var(--surface-2); }
+[data-theme='dark'] .bg-gray-50 { background-color: var(--surface-2); }
+[data-theme='dark'] .bg-gray-100 { background-color: var(--surface-3); }
+[data-theme='dark'] .bg-gray-200 { background-color: var(--line-2); }
+[data-theme='dark'] .bg-blue-50 { background-color: color-mix(in srgb, var(--primary) 14%, transparent); }
+[data-theme='dark'] .bg-blue-100 { background-color: color-mix(in srgb, var(--primary) 22%, transparent); }
+[data-theme='dark'] .bg-emerald-50 { background-color: color-mix(in srgb, var(--success) 14%, transparent); }
+[data-theme='dark'] .bg-rose-50 { background-color: color-mix(in srgb, var(--danger) 14%, transparent); }
+[data-theme='dark'] .bg-amber-50 { background-color: color-mix(in srgb, var(--warn) 14%, transparent); }
+[data-theme='dark'] .bg-amber-100 { background-color: color-mix(in srgb, var(--warn) 22%, transparent); }
+[data-theme='dark'] .bg-blue-50\/70 { background-color: color-mix(in srgb, var(--primary) 12%, transparent); }
 
-/* 文字（中性色 → 亮色阶梯） */
-[data-theme='dark'] .text-gray-900 { color: #f3f4f6; }
-[data-theme='dark'] .text-gray-800 { color: #e5e7eb; }
-[data-theme='dark'] .text-gray-700 { color: #d1d5db; }
-[data-theme='dark'] .text-gray-600 { color: #aab2bf; }
-[data-theme='dark'] .text-gray-500 { color: #96a0ae; }
-[data-theme='dark'] .text-gray-400 { color: #717b8a; }
-[data-theme='dark'] .text-gray-300 { color: #565e6d; }
-[data-theme='dark'] .text-gray-200 { color: #3f4550; }
+/* 文字（中性色 → Focus 中性亮色阶梯） */
+[data-theme='dark'] .text-gray-900 { color: var(--foreground); }
+[data-theme='dark'] .text-gray-800 { color: var(--foreground); }
+[data-theme='dark'] .text-gray-700 { color: var(--foreground); }
+[data-theme='dark'] .text-gray-600 { color: var(--text-2); }
+[data-theme='dark'] .text-gray-500 { color: var(--text-2); }
+[data-theme='dark'] .text-gray-400 { color: var(--text-3); }
+[data-theme='dark'] .text-gray-300 { color: var(--text-3); }
+[data-theme='dark'] .text-gray-200 { color: var(--line-2); }
 
 /* 强调色 */
-[data-theme='dark'] .text-blue-600 { color: #7db1f7; }
-[data-theme='dark'] .text-blue-700 { color: #9cc3f9; }
+[data-theme='dark'] .text-blue-600 { color: var(--accent-foreground); }
+[data-theme='dark'] .text-blue-700 { color: var(--accent-foreground); }
 [data-theme='dark'] .text-emerald-600 { color: #4ade80; }
 [data-theme='dark'] .text-rose-500 { color: #fb7185; }
 [data-theme='dark'] .text-rose-600 { color: #f87171; }
@@ -696,18 +1147,18 @@ body {
 [data-theme='dark'] .text-sky-700 { color: #7dd3fc; }
 
 /* 边框 */
-[data-theme='dark'] .border-gray-100 { border-color: #303540; }
-[data-theme='dark'] .border-gray-200 { border-color: #3a3f4a; }
-[data-theme='dark'] .border-gray-300 { border-color: #454c59; }
+[data-theme='dark'] .border-gray-100 { border-color: var(--border); }
+[data-theme='dark'] .border-gray-200 { border-color: var(--border); }
+[data-theme='dark'] .border-gray-300 { border-color: var(--line-2); }
 [data-theme='dark'] .border-rose-200 { border-color: rgba(244, 63, 94, 0.35); }
 [data-theme='dark'] .border-blue-300 { border-color: rgba(59, 130, 246, 0.45); }
 [data-theme='dark'] .border-blue-400 { border-color: rgba(59, 130, 246, 0.55); }
 [data-theme='dark'] .border-blue-500 { border-color: #3b82f6; }
 
 /* hover 反馈（保持可辨识） */
-[data-theme='dark'] .hover\:bg-gray-50:hover { background-color: #272c35; }
-[data-theme='dark'] .hover\:bg-gray-100:hover { background-color: #2f3540; }
-[data-theme='dark'] .hover\:bg-blue-50:hover { background-color: rgba(37, 99, 235, 0.2); }
+[data-theme='dark'] .hover\:bg-gray-50:hover { background-color: var(--surface-2); }
+[data-theme='dark'] .hover\:bg-gray-100:hover { background-color: var(--surface-3); }
+[data-theme='dark'] .hover\:bg-blue-50:hover { background-color: color-mix(in srgb, var(--primary) 18%, transparent); }
 [data-theme='dark'] .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.16); }
 [data-theme='dark'] .hover\:bg-rose-100:hover { background-color: rgba(244, 63, 94, 0.2); }
 
@@ -715,28 +1166,27 @@ body {
 [data-theme='dark'] .disabled\:opacity-40:disabled { opacity: 0.35; }
 
 /* 编辑器正文与 NodeView（灰底块） */
-[data-theme='dark'] .ke-editor-prose { color: #e5e7eb; }
+[data-theme='dark'] .ke-editor-prose { color: var(--foreground); }
 [data-theme='dark'] .ke-html,
 [data-theme='dark'] .ke-html-inline,
 [data-theme='dark'] .ke-scroll pre,
-[data-theme='dark'] .bg-gray-50 pre { background-color: #22262e; color: #c9d1dc; }
-[data-theme='dark'] .bg-gray-50 { background-color: #22262e; }
+[data-theme='dark'] .bg-gray-50 pre { background-color: var(--surface-2); color: var(--foreground); }
 
 /* 正文表格（深色：边框/表头/内容与底色协调，内容区仍保持表格纸面语义） */
 [data-theme='dark'] .ke-editor-prose th,
-[data-theme='dark'] .ke-editor-prose td { border-color: #3c414c; }
-[data-theme='dark'] .ke-editor-prose th { background-color: #262b34; }
+[data-theme='dark'] .ke-editor-prose td { border-color: var(--border); }
+[data-theme='dark'] .ke-editor-prose th { background-color: var(--surface-2); }
 [data-theme='dark'] .ke-editor-prose .selectedCell::after,
 [data-theme='dark'] .ke-editor-prose .selectedCell::before { background: rgba(59, 130, 246, 0.18); }
 [data-theme='dark'] .ke-editor-prose .column-resize-handle { background: #60a5fa; }
 
 /* 滚动条（深色适配） */
 [data-theme='dark'] ::-webkit-scrollbar-track { background: transparent; }
-[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #3a3f4a; }
-[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: #4a5160; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb { background: var(--line-2); }
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 
 /* 占位文本（编辑器 placeholder） */
-[data-theme='dark'] .is-editor-empty::before { color: #565e6d; }
+[data-theme='dark'] .is-editor-empty::before { color: var(--text-3); }
 
 /* ============ AstraNota 品牌资产（浅/深主题双版本） ============ */
 /* 默认（浅色）显示 light 版；data-theme=dark 切换 dark 版 */

@@ -23,9 +23,9 @@ describe('task-70 打印样式契约', () => {
     expect(hex, `出现硬编码 hex 颜色：${hex.join(', ')}`).toEqual([])
     expect(rgb, `出现硬编码 rgb()：${rgb.join(', ')}`).toEqual([])
     expect(hsl, `出现硬编码 hsl()：${hsl.join(', ')}`).toEqual([])
-    // 至少确实用到了主题变量
-    expect(cssCode).toContain('var(--background)')
-    expect(cssCode).toContain('var(--background)')
+    // 至少确实用到了主题变量（Focus：PDF 纸面 = --card，避免 #F5F5F7 灰纸）
+    expect(cssCode).toContain('var(--card)')
+    expect(cssCode).toContain('var(--card)')
     // 不得强制覆盖**文字颜色**：`--foreground` 是 #0e1115，而编辑器正文字色是 #1f2937，
     // 强制会让 PDF 文字颜色与编辑器不一致（实测 ΔE 13.68）。文字颜色必须沿用编辑器自身规则。
     expect(cssCode).not.toMatch(/color:\s*var\(--foreground\)/)
@@ -37,7 +37,7 @@ describe('task-70 打印样式契约', () => {
   })
 
   it('③ 主题底色铺满整页：html/body 上色 + @page 边距归零', () => {
-    expect(cssCode).toMatch(/html,\s*body\s*\{[^}]*background:\s*var\(--background\)/s)
+    expect(cssCode).toMatch(/html,\s*body\s*\{[^}]*background:\s*var\(--card\)/s)
     expect(cssCode).toMatch(/@page\s*\{[^}]*margin:\s*0/s)
   })
 

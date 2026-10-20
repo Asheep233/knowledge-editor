@@ -1,47 +1,115 @@
 /**
- * 应用共享壳（handoff §3.1）：三栏桌面窗口布局，全部令牌化（零硬编码色值）。
+ * 应用壳（AstraNota Focus 版 · 设计交接包 HANDOFF.md §2 / MIGRATION-CHECKLIST Phase 2）
  *
- * 布局常量（handoff §3.1）：
- * - 左侧导航 w-[280px]，背景 --sidebar，右侧 1px --sidebar-border；
- * - 中央 flex-1 min-w-0，背景 --background；
- * - 右侧属性栏 w-[300px]，背景 --background，左侧 1px --border；
- * - 底部可选状态条（StatusBar）。
+ * 结构：
+ * - 没有顶栏；页面从窗口顶部开始。
+ * - 左侧是浮在画布上的 256px 圆角卡片（浮动文件侧栏），可收起（«）与重新展开（» / Ctrl+\\）。
+ * - 中央是最大 860px、阅读列 680px 的居中纸面卡片（由 EditorArea 内的 .focus-paper 承载）。
+ * - 格式工具 / 保存 / 导出浮在纸面上方的浮动命令条（EditorArea 内的 EditorToolbar 经 CSS 浮起）。
+ * - 右侧不设常驻信息栏：`right` 内容按需渲染为右侧浮层（InspectorSheet）。
+ * - 底部状态条不再常驻；`statusBar` 仅保留在隐藏容器内（保存状态已进入浮动命令条）。
  *
- * 说明：菜单栏/窗口控件交给 Tauri 原生（menu.rs），本组件不含 mock 菜单栏。
+ * 兼容：保留原 AppShell props 形状（header/left/main/right/statusBar），业务状态仍由 App 持有。
  */
 import type { ReactNode } from 'react'
 
 export interface AppShellProps {
-  /** 顶栏（可选：应用头，如工作区选择 / 版本徽标区域） */
+  /** 顶栏（可选：如隐藏的导入 input；Focus 版不渲染可视顶栏） */
   header?: ReactNode
-  /** 左侧导航（FileSidebar / 工作区选择页不传，则不渲染侧栏列） */
+  /** 左侧浮动文件侧栏内容 */
   left?: ReactNode
   /** 中央列（编辑器 / 页面内容） */
   main: ReactNode
-  /** 右侧属性栏（InspectorPanel；null = 不渲染右列，如设置页/启动器页） */
+  /** 右侧信息浮层内容（`inspectorOpen` 为 true 时渲染为浮层，否则不渲染） */
   right?: ReactNode
-  /** 底部状态条（StatusBar 组件） */
+  /** 底部状态条（Focus 版放入隐藏容器，仅用于保持 DOM/逻辑兼容） */
   statusBar?: ReactNode
+  /** Focus：侧栏是否展开（桌面 ≥1280 保留左右对称留白，纸面中心不移动） */
+  sidebarOpen?: boolean
+  onToggleSidebar?: () => void
+  /** Focus：右侧信息浮层是否展开 */
+  inspectorOpen?: boolean
+  onCloseInspector?: () => void
 }
 
-export function AppShell({ header, left, main, right, statusBar }: AppShellProps) {
+export function AppShell({
+  header,
+  left,
+  main,
+  right,
+  statusBar,
+  sidebarOpen = true,
+  onToggleSidebar,
+  inspectorOpen = false,
+  onCloseInspector,
+}: AppShellProps) {
   return (
-    <div data-ke-slot="shell-root" className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      {header}
-      <div data-ke-slot="shell-body" className="flex min-h-0 flex-1">
+    <div data-ke-slot="shell-root" className="focus-shell">
+      <div
+        data-ke-slot="shell-body"
+        className="focus-body-row"
+        data-focus-sidebar={sidebarOpen ? 'open' : 'closed'}
+      >
         {left ? (
-          <aside data-ke-slot="shell-navigation" data-ke-appearance-scope="chrome" className="flex h-full w-[280px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-            {left}
-          </aside>
+          sidebarOpen ? (
+            <aside
+              data-ke-slot="shell-navigation"
+              data-ke-appearance-scope="chrome"
+              className="focus-files-bar"
+              aria-label="文件与导航"
+            >
+              {left}
+            </aside>
+          ) : onToggleSidebar ? (
+            <button
+              type="button"
+              className="focus-sidebar-reopen"
+              title="展开文件侧栏（Ctrl/Cmd+\\）"
+              aria-label="展开文件侧栏"
+              onClick={onToggleSidebar}
+            >
+              »
+            </button>
+          ) : null
         ) : null}
-        <main data-ke-slot="shell-main" className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-background">{main}</main>
-        {right ? (
-          <aside data-ke-slot="shell-inspector" data-ke-appearance-scope="chrome" className="flex h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
-            {right}
-          </aside>
+
+        <main data-ke-slot="shell-main" className="focus-main-col">
+          {main}
+        </main>
+
+        {sidebarOpen ? (
+          <button
+            type="button"
+            className="focus-drawer-scrim"
+            aria-label="关闭文件抽屉"
+            onClick={onToggleSidebar}
+          />
+        ) : null}
+
+        {inspectorOpen && right ? (
+          <div className="focus-inspector-layer">
+            <button
+              type="button"
+              className="focus-inspector-scrim"
+              aria-label="关闭文档信息"
+              onClick={onCloseInspector}
+            />
+            <div
+              data-ke-slot="shell-inspector"
+              data-ke-appearance-scope="chrome"
+              className="focus-inspector-sheet"
+            >
+              {right}
+            </div>
+          </div>
         ) : null}
       </div>
-      {statusBar}
+      {header}
+      {statusBar ? (
+        <div className="focus-status-hidden" aria-hidden="true">
+          {statusBar}
+        </div>
+      ) : null}
     </div>
   )
 }

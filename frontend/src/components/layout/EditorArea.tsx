@@ -6,7 +6,7 @@
 import { EditorContent, EditorContext, type Editor } from '@tiptap/react'
 import { type MarkdownExtensionStorage } from '@tiptap/markdown'
 import { TextSelection } from '@tiptap/pm/state'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   discardRecovery,
   getArticle,
@@ -236,6 +236,10 @@ interface Props {
   autosavePaused?: boolean
   /** M-10：「保留本地」被选择时 App +1 → 立即把本地版本落盘（用户明确选择覆盖外部） */
   flushToken?: number
+  /** Focus 壳层：注入浮动命令条右侧的额外动作（如「文档信息」浮层开关） */
+  toolbarExtra?: ReactNode
+  /** Focus 壳层：注入浮动命令条左侧的前置动作（窄屏文件抽屉按钮） */
+  toolbarLeading?: ReactNode
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -248,7 +252,7 @@ const SAVE_LABEL: Record<SaveState, { text: string; cls: string; kind: SaveState
   error: { text: '保存失败', cls: 'text-rose-600 font-medium', kind: 'error' },
 }
 
-export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0, autosavePaused = false, flushToken = 0 }: Props) {
+export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0, autosavePaused = false, flushToken = 0, toolbarExtra, toolbarLeading }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   /** M-10：外部修改冲突弹窗期间暂停自动保存（读取用 ref，避免 handleUpdate 闭包陈旧） */
   const autosavePausedRef = useRef(false)
@@ -1503,8 +1507,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         type="button"
         onClick={() => setExportOpen((o) => !o)}
         disabled={exporting}
-        className="flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-3 text-[13px] font-medium text-primary-foreground transition-[filter,color,transform] duration-150 hover:brightness-95 active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40"
-        style={{ backgroundColor: 'var(--primary)' }}
+        className="flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-3 text-[13px] font-medium text-foreground transition-[background-color,border-color,color] duration-150 hover:bg-surface-2 active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40"
+        style={{ borderColor: 'var(--line-2)', backgroundColor: 'var(--card)' }}
       >
         <Icon name="download" className="size-4" />
         <span>{exporting ? '打包中…' : '导出'}</span>
@@ -1619,6 +1623,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             onOpenHistory={handleOpenHistory}
             // task-74：有文档才渲染按钮（无文档/只读时不给入口）
             onOpenUprightD={article ? () => void openUprightD() : undefined}
+            extraActions={toolbarExtra}
+            leadingActions={toolbarLeading}
             exportButton={exportButton}
             // task-41：视图通道切换（只读/无文档时禁用并给出原因，规范 §6.2-8）
             viewMode={viewMode}
@@ -1660,8 +1666,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 释放以添加附件（图片 / 视频 / 文件）
               </div>
             )}
-            {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown）
-                与 EditorContent 的 ke-editor-prose 同一列宽/内边距（780px / 32px），保证标题与正文对齐 */}
+            {/* Focus 纸面卡片（HANDOFF §2.3）：最大 860px 居中卡片；阅读列 680px 由 CSS 控制 */}
+            <div className="focus-paper" data-focus-paper="true">
+            {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown） */}
             <article data-ke-doc-header className="mx-auto w-full max-w-[780px] px-[32px] pb-2 pt-10">
               <div className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>
                 <Icon name="folder" className="size-3.5" />
@@ -1722,14 +1729,15 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               ) : null}
             </article>
             {/* task-70：打印/导出 PDF 专用页眉（屏幕态 display:none，见 print.css）
-                目的：**PDF 里必须有标题**（与编辑器页眉同排版：28px 粗体标题 + 13px 元信息行）。
+                目的：**PDF 里必须有标题**；Focus 版与屏幕页眉同排版（42px Inter Tight 标题 + 12.5px 元信息行），
+                保证「PDF 与编辑器渲染完全一致」的既有红线。
                 只读展示，不参与序列化、不改文档内容、不触发保存。 */}
-            <div className="ke-print-header mx-auto w-full max-w-[780px] px-[32px] pt-10" data-ke-print-header>
-              <h1 className="text-[28px] font-bold leading-[1.25]" style={{ color: 'var(--foreground)' }}>
+            <div className="ke-print-header mx-auto w-full max-w-[var(--focus-read-w)] px-0 pt-10" data-ke-print-header>
+              <h1 className="text-[42px] font-[650] leading-[1.1] tracking-[-0.045em]" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-family-display)' }}>
                 {article?.title ?? ''}
               </h1>
               {docMeta ? (
-                <div className="mt-3 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
+                <div className="mt-3 text-[12.5px]" style={{ color: 'var(--muted-foreground)' }}>
                   {docMeta.updatedAt ? <span>更新于 {formatTime(docMeta.updatedAt)} · </span> : null}
                   <span>{docMeta.words}</span>
                   <span> · KE v{KE_VERSION}</span>
@@ -1750,6 +1758,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             ) : (
               <EditorContent editor={editor} />
             )}
+            </div>
             {/* task-72：导出 PDF 对话框（选项 + A4 缩略预览；预览用独立容器渲染 getHTML 快照） */}
       {uprightDCtx && (
         <UprightDDialog

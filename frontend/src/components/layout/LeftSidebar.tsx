@@ -44,8 +44,6 @@ import { registerActionHandlers, shouldIgnoreKeyEvent, shouldIgnoreReactKeyEvent
 import { Icon } from '../icons'
 import TrashPanel from '../trash/TrashPanel'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
-import iconLogoLight from '../../assets/astranota/astranota-icon-light-256.png'
-import iconLogoDark from '../../assets/astranota/astranota-icon-dark-256.png'
 
 interface Props {
   activeId: string | null
@@ -61,6 +59,8 @@ interface Props {
   workspaceRoot?: string | null
   /** 回收站恢复成功（App 侧刷新文件树；恢复的是删除前的当前文档时重新打开） */
   onTrashRestored?: (restoredTo: string) => void
+  /** Focus 壳层：收起浮动侧栏 */
+  onCollapse?: () => void
 }
 
 interface CtxMenu {
@@ -109,16 +109,16 @@ function NavItem({
       title={title}
       onClick={onClick}
       className={[
-        'flex h-8 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+        'flex h-[34px] w-full items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
         active
-          ? ''
-          : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          ? 'font-medium'
+          : 'hover:bg-surface-2 hover:text-foreground',
         disabled ? 'cursor-not-allowed opacity-50' : '',
       ].join(' ')}
       style={
         active
-          ? { backgroundColor: 'var(--sidebar-primary)', color: 'var(--sidebar-primary-foreground)' }
-          : { color: 'var(--sidebar-foreground)' }
+          ? { backgroundColor: 'var(--sidebar-accent)', color: 'var(--sidebar-accent-foreground)' }
+          : { color: 'var(--text-2)' }
       }
     >
       {icon}
@@ -136,8 +136,14 @@ export default function LeftSidebar({
   onOpenSettings,
   workspaceRoot,
   onTrashRestored,
+  onCollapse,
 }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
+  /** Focus 工作区头：展示工作区目录名 */
+  const workspaceName = (() => {
+    const seg = (workspaceRoot ?? '').split(/[\\/]/).filter(Boolean)
+    return seg[seg.length - 1] ?? '工作区'
+  })()
   // P2-8：文件树加载失败不再是「空」，而是明确错误提示
   const [treeError, setTreeError] = useState(false)
   const [recent, setRecent] = useState<RecentDocument[]>([])
@@ -515,7 +521,7 @@ export default function LeftSidebar({
           >
             <span className="w-3.5 text-muted-foreground">{isOpen ? <Icon name="chevron-down" className="size-3.5" /> : <Icon name="chevron-right" className="size-3.5" />}</span>
             <Icon name={isOpen ? 'folder' : 'folder'} className="size-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1 truncate">{node.name}</span>
+            <span className="flex-1 whitespace-nowrap">{node.name}</span>
             {count > 0 ? (
               <span className="shrink-0 text-[11px] text-muted-foreground">{count}</span>
             ) : null}
@@ -567,7 +573,7 @@ export default function LeftSidebar({
         ) : (
           <Icon name="file-text" className="size-4 shrink-0 text-muted-foreground" />
         )}
-        <span className="flex-1 truncate">{node.name}</span>
+        <span className="flex-1 whitespace-nowrap">{node.name}</span>
         {ver != null ? (
           <span className="shrink-0 text-[10px] text-muted-foreground/70">v{ver}</span>
         ) : null}
@@ -594,20 +600,47 @@ export default function LeftSidebar({
   // ---------- 渲染 ----------
   return (
     <aside className="flex h-full w-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* BrandBlock（handoff §3.2：KE 方块 + 名称/Alpha 两行） */}
-      <div className="flex h-[52px] shrink-0 items-center gap-2.5 px-3">
-        <span className="relative block size-8 shrink-0 overflow-hidden rounded-[8px]">
-          <img src={iconLogoLight} alt="AstraNota" className="an-logo-light absolute inset-0 size-full" draggable={false} />
-          <img src={iconLogoDark} alt="AstraNota" className="an-logo-dark absolute inset-0 size-full" draggable={false} />
+      {/* 工作区头（Focus §3：30px 头像 + 工作区名 + 副标题 + « 收起） */}
+      <div className="flex h-[54px] shrink-0 items-center gap-2.5 px-3">
+        <span
+          className="grid size-[30px] shrink-0 place-items-center rounded-[8px] text-[13px] font-semibold text-white"
+          style={{ backgroundColor: 'var(--foreground)' }}
+          aria-hidden="true"
+        >
+          研
         </span>
-        <div className="min-w-0">
-          <div className="truncate text-[14px] font-semibold leading-tight" style={{ color: 'var(--sidebar-foreground)' }}>
-            AstraNota
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-semibold leading-tight" style={{ color: 'var(--foreground)' }}>
+            {workspaceName}
           </div>
-          <div className="text-[11px] leading-tight" style={{ color: 'var(--muted-foreground)' }}>
-            Alpha
+          <div className="text-[11px] leading-tight" style={{ color: 'var(--text-3)' }}>
+            本地工作区
           </div>
         </div>
+        {onCollapse ? (
+          <button
+            type="button"
+            className="grid size-7 shrink-0 place-items-center rounded-[6px] transition-colors hover:bg-surface-2"
+            style={{ color: 'var(--text-2)' }}
+            title="收起文件侧栏（Ctrl/Cmd+\\）"
+            aria-label="收起文件侧栏"
+            onClick={onCollapse}
+          >
+            <Icon name="chevron-left" className="size-4" />
+          </button>
+        ) : null}
+      </div>
+      {/* 新建文档主按钮（Focus §3：全宽蓝色主按钮，高 38） */}
+      <div className="shrink-0 px-3 pb-1 pt-1">
+        <button
+          type="button"
+          className="flex h-[38px] w-full items-center justify-center gap-1.5 rounded-[8px] text-[13px] font-medium text-white transition-[filter] duration-150 hover:brightness-105 focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{ backgroundColor: 'var(--primary)', outlineColor: 'var(--ring)' }}
+          onClick={() => void handleNewDoc(TOP_ARTICLES)}
+        >
+          <Icon name="plus" className="size-4" />
+          <span>新建文档</span>
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto">
         {/* GlobalSearchBox（handoff §3.2：胶囊搜索 + Ctrl K 提示 + 重建按钮） */}
@@ -851,7 +884,7 @@ export default function LeftSidebar({
 
         {/* 附件（task-12：附件能力的家；task-22：默认收起）—— 可折叠小节；行点击看「附属情况与附属记录」；
             行右侧独立「打开文件」<a>（不嵌套在行按钮内）；孤儿附件仅手动删除 */}
-        <div className="border-b border-border py-2">
+        <div className="py-1.5">
           <div className="mb-1 flex items-center justify-between gap-1 px-3">
             <div className="flex min-w-0 items-center gap-1">
               <button
@@ -1090,7 +1123,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="border-b border-border py-2">
+    <div className="py-1.5">
       <div className="mb-1 flex items-center justify-between px-3">
         <span className="text-[12px] font-normal text-sidebar-foreground">{title}</span>
         {action}

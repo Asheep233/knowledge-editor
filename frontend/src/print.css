@@ -45,7 +45,7 @@
   html,
   body {
     /* 主题底色铺满整页（含页边距区域） */
-    background: var(--background) !important;
+    background: var(--card) !important;
     /* 注意：**不得**在这里强制 color —— `--foreground` 是 #0e1115，而编辑器正文字色是 #1f2937；
        强制会改变文字颜色（实测 ΔE 13.68），与「完全一致」相悖。文字颜色一律沿用编辑器自身规则。 */
     /* 保留背景色/前景色，不做打印管线的“省墨”替换 */
@@ -241,7 +241,7 @@
   /* A4 纸面：底色/文字色来自 CSS 变量（主题选择与自定义色都由变量覆盖实现） */
   width: 210mm;
   min-height: 297mm;
-  background: var(--background);
+  background: var(--card);
   /* 注意：**不在此处写 color** —— 编辑器正文字色并非 --foreground（实测强制会带来 ΔE 13.68 偏差）。
      预览容器由对话框以内联 style 注入「编辑器实际文字色」或用户自定义色。 */
   print-color-adjust: exact;

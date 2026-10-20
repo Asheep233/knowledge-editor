@@ -223,8 +223,10 @@ describe('C. App/工具栏接线守卫（防只改组件不接线）', () => {
     expect(toolbar).not.toMatch(/title="附件"/)
   })
 
-  it('C5 G-3：右栏展开按钮 title 不再含「附件」', () => {
-    expect(app).toContain('title="展开右侧面板（大纲 / 属性）"')
+  it('C5 G-3：右侧信息入口移入浮动命令条（不再有「附件」入口）', () => {
+    // Focus 壳层：去掉常驻右栏与 6px 展开导轨；文档信息改为命令条按钮（右侧 InspectorSheet）
+    expect(app).toContain('data-testid="open-inspector"')
+    expect(app).toContain('title="文档信息（大纲 / 属性 / 标签 / 历史）"')
     expect(app).not.toContain('大纲 / 属性 / 附件')
   })
 })

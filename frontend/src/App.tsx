@@ -89,10 +89,17 @@ export default function App() {
   const [workspaceChecked, setWorkspaceChecked] = useState(false)
   /** Phase 7 M4：首启引导（桌面首次使用：默认 workspace 为空且无最近记录） */
   const [firstRun, setFirstRun] = useState(false)
-  // 右侧面板折叠状态：初始值从 localStorage 恢复（折叠后释放编辑区宽度）
+  // Focus：右侧信息浮层默认关闭（按需从浮动命令条的「文档信息」按钮打开）
   const [rightOpen, setRightOpen] = useState(
-    () => (typeof localStorage !== 'undefined' ? localStorage.getItem('ke.rightOpen') !== '0' : true),
+    () => (typeof localStorage !== 'undefined' ? localStorage.getItem('ke.rightOpen') === '1' : false),
   )
+  // Focus：左侧浮动文件侧栏开合（桌面默认展开；<1280 默认收起为抽屉；Ctrl/Cmd+\ 切换）
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof localStorage === 'undefined') return true
+    const saved = localStorage.getItem('ke.sidebarOpen')
+    if (saved !== null) return saved !== '0'
+    return typeof window !== 'undefined' ? window.matchMedia('(min-width: 1280px)').matches : true
+  })
   const [article, setArticle] = useState<ArticleMeta | null>(null)
   const [loading, setLoading] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -581,6 +588,30 @@ export default function App() {
     }
   }, [])
 
+  /** Focus：切换左侧浮动文件侧栏（⌘\ / Ctrl+\） */
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('ke.sidebarOpen', next ? '1' : '0')
+      } catch {
+        /* localStorage 不可用时忽略 */
+      }
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    const onToggleSidebarKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === '\\' || e.code === 'Backslash')) {
+        e.preventDefault()
+        toggleSidebar()
+      }
+    }
+    window.addEventListener('keydown', onToggleSidebarKey)
+    return () => window.removeEventListener('keydown', onToggleSidebarKey)
+  }, [toggleSidebar])
+
   // 外部修改弹窗：重新加载 / 保留当前编辑
   // R2：用户选择「重新加载外部版本」= 以磁盘内容为准。
   // 1) abortPending 取消未决**并中止在途**保存（否则自动保存把本地旧内容写回、覆盖外部版本）；
@@ -988,6 +1019,39 @@ export default function App() {
     toggleRight,
   ])
 
+  /** Focus：浮动命令条前置「文件」按钮（仅 <1280 抽屉模式可见，由 CSS 控制显隐） */
+  const fileDrawerButton = article ? (
+    <button
+      type="button"
+      title="文件与导航（Ctrl/Cmd+\）"
+      aria-label="文件与导航"
+      data-testid="open-file-drawer"
+      onClick={toggleSidebar}
+      className="focus-bar-drawer-btn h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none"
+    >
+      <Icon name="file-text" className="size-4" />
+    </button>
+  ) : null
+
+  /** Focus：浮动命令条右侧的「文档信息」入口（打开右侧 InspectorSheet） */
+  const inspectorButton = article ? (
+    <button
+      type="button"
+      title="文档信息（大纲 / 属性 / 标签 / 历史）"
+      aria-label="文档信息"
+      aria-pressed={rightOpen}
+      data-testid="open-inspector"
+      onClick={() => toggleRight(!rightOpen)}
+      className={[
+        'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
+        rightOpen ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+        'active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
+      ].join(' ')}
+    >
+      <Icon name="file-text" className="size-4" />
+    </button>
+  ) : null
+
   // ---------- 渲染 ----------
   // R08（2026-10-02 独立审查）：PromptHost 必须在**所有分支**下都已挂载。
   // 此前工作区选择页分支在 <PromptRoot> 之外渲染，而 WorkspacePicker 的 Web 回退要
@@ -1052,6 +1116,10 @@ export default function App() {
       }}
     >
     <AppShell
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={toggleSidebar}
+      inspectorOpen={rightOpen && !!article}
+      onCloseInspector={() => toggleRight(false)}
       header={
         <>
         {/* 菜单栏由桌面壳 Tauri 原生菜单（menu.rs）提供，前端不再 mock，避免重复 */}
@@ -1077,11 +1145,14 @@ export default function App() {
           onOpenSettings={() => setSettingsOpen(true)}
           workspaceRoot={workspace?.root ?? null}
           onTrashRestored={handleTrashRestored}
+          onCollapse={toggleSidebar}
         />
 
       }
       main={
         <EditorArea
+          toolbarLeading={fileDrawerButton}
+          toolbarExtra={inspectorButton}
           article={article}
           loading={loading}
           reloadToken={reloadToken}
@@ -1113,16 +1184,7 @@ export default function App() {
             onOpenHistory={() => window.dispatchEvent(new CustomEvent('ke:open-history'))}
             lastSnapshotAt={article ? new Date(lastSavedAt.current.get(article.id) ?? Date.now()).toISOString() : undefined}
           />
-        ) : (
-          <button
-            type="button"
-            onClick={() => toggleRight(true)}
-            title="展开右侧面板（大纲 / 属性）"
-            className="flex w-6 shrink-0 items-center justify-center self-stretch border-l border-gray-200 bg-white text-xs text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-          >
-            <Icon name="chevron-left" className="size-4" />
-          </button>
-        )
+        ) : null
       }
       statusBar={
         <StatusBar>

@@ -324,6 +324,10 @@ export interface EditorToolbarProps {
   onOpenHistory?: () => void
   /** 导出主按钮（--primary 底白字） */
   exportButton?: ReactNode
+  /** Focus 壳层注入的额外动作（如「文档信息」浮层开关），渲染在右侧动作组内 */
+  extraActions?: ReactNode
+  /** Focus 壳层注入的前置动作（窄屏文件抽屉按钮），渲染在左侧格式组最前 */
+  leadingActions?: ReactNode
   /** 立即保存（显式「保存」图标按钮） */
   onSave?: () => void
   /**
@@ -343,6 +347,8 @@ export default function EditorToolbar({
   viewModeDisabledReason,
   uploadGuard,
   onOpenUprightD,
+  extraActions,
+  leadingActions,
 }: EditorToolbarProps = {}) {
   const { editor } = useCurrentEditor()
   // 编辑器状态快照（激活态实时更新）
@@ -476,6 +482,8 @@ export default function EditorToolbar({
           本容器内的 `absolute` 子元素 → 被滚动容器裁剪（菜单不可见/点「导出」无反应）。
           回归守卫见 `EditorToolbar.structure.test.tsx`（断言导出按钮祖先链无裁剪容器）。 */}
       <div className="ke-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
+
+      {leadingActions}
 
       {/* 样式下拉：正文 / 标题1~6（参考稿「正文 ▾」第一段；单行纯图标 → 文字下拉） */}
       <Dropdown
@@ -706,9 +714,17 @@ export default function EditorToolbar({
           </button>
         ) : null}
         {onSave ? (
-          <ToolIcon title="保存（Ctrl+S）" onClick={onSave}>
+          <button
+            type="button"
+            title="保存（Ctrl+S）"
+            aria-label="保存"
+            onClick={onSave}
+            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-2.5 text-[13px] font-medium text-foreground transition-[background-color,border-color] duration-150 hover:bg-surface-3 focus-visible:outline-none motion-reduce:transition-none"
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}
+          >
             <Icon name="save" className="size-4" />
-          </ToolIcon>
+            <span className="hidden min-[960px]:inline">保存</span>
+          </button>
         ) : null}
         {saveLabel ? (
           <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
@@ -723,6 +739,7 @@ export default function EditorToolbar({
             <Icon name="history" className="size-4" />
           </ToolIcon>
         ) : null}
+        {extraActions}
         {exportButton}
       </div>
 

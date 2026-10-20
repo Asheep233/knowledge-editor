@@ -298,10 +298,25 @@ export function applyTheme(theme: UiSettings['theme'], accent?: UiSettings['acce
     el.style.setProperty('--primary', custom)
     el.style.setProperty('--sidebar-primary', custom)
     el.style.setProperty('--ring', custom)
+    // Focus：hover/soft 由 --primary 派生（与默认设计值同向：hover 略亮、soft 极淡底）
+    el.style.setProperty(
+      '--primary-hover',
+      effective === 'dark'
+        ? 'color-mix(in srgb, var(--primary) 82%, #ffffff)'
+        : 'color-mix(in srgb, var(--primary) 88%, #ffffff)',
+    )
+    el.style.setProperty(
+      '--primary-soft',
+      effective === 'dark'
+        ? 'color-mix(in srgb, var(--primary) 18%, #000000)'
+        : 'color-mix(in srgb, var(--primary) 8%, #ffffff)',
+    )
   } else {
     el.style.removeProperty('--primary')
     el.style.removeProperty('--sidebar-primary')
     el.style.removeProperty('--ring')
+    el.style.removeProperty('--primary-hover')
+    el.style.removeProperty('--primary-soft')
     // 派生 token 依赖 --primary 的 color-mix，自动随变量变化；无需处理
   }
   // v1.1.5 ④：信息块/引用块背景透明度（0-1 alpha 变量）

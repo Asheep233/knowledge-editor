@@ -1307,6 +1307,29 @@ body {
   display: none !important;
 }
 
+/* 浮动命令条：隐藏横向滚动条（窗口较窄时格式组可横向滚动，但不显示灰色条；
+ * 参考稿 toolbar 无滚动条。滚动能力保留：触控板横滑 / Shift+滚轮）。 */
+.focus-shell [data-ke-toolbar] .ke-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.focus-shell [data-ke-toolbar] .ke-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+/* 窄窗口（<1360）处压缩命令条内边距与间距，减少格式组溢出 */
+@media (max-width: 1360px) {
+  .focus-shell [data-ke-toolbar] > div {
+    padding: 0 4px;
+  }
+  .focus-shell [data-ke-toolbar] .ke-scroll {
+    gap: 0;
+    padding-left: 6px;
+    padding-right: 2px;
+  }
+}
+
 /* ==========================================================================
  * Focus · 主画布页面（知识库/搜索/模块/资料/回收站）
  * 参考稿 page-area / page-inner / page-head / page-title / page-sub / page-actions

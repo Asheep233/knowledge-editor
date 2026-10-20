@@ -60,6 +60,7 @@ node docs/focus-ui/verify-ui.cjs
 - **独立验收**：qa-visual 两轮（`6c53695` §11、`472d861` §12）全 PASS；`fbc2461` 绿点修复由 Lead 自测并按同一脚本复验（16 图 178/178）。
 - **证据**：`docs/focus-ui/screenshots/`（01–16 + focus-ring）、`evidence/{metrics.json,summary.md,run-meta.json,a11y-probe.json,probe-round3/,probe-round4/}`。
 - **剩余 P3（已在 VERIFICATION-REPORT §12.4 记录）**：模块页筛选口径（类型 chips + 被引用数，需后端字段）、设置页顶部分组 tab（可用性保留）、短文档下 ⋯ 双入口表现相近、专注基线为深色截图。
+- **收尾小修**：浮动命令条在窄窗口下格式组溢出会显示灰色横向滚动条（页面化后命令条宽度跟随纸面宽度收缩导致）——已隐藏滚动条（`scrollbar-width:none` + `::-webkit-scrollbar{display:none}`，滚动能力保留）并对 <1360px 压缩内边距；`KE_STRICT=1 verify-ui.cjs` 复跑 178/178 PASS、全量测试 2055 绿、build exit 0。
 
 ## 6. 回滚与后续
 

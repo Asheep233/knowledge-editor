@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T09:14:14.554Z",
+  "generatedAt": "2026-10-20T10:49:42.837Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -1053,7 +1053,7 @@
       "name": "面板含「最近文档」分组",
       "ok": true,
       "expected": "包含",
-      "actual": "ESC最近文档散射振幅与费曼规则Articles/量子场论/散射振幅与费曼规则.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md测度论·第 3 讲：可测函数Articles/数学分析/测度论·第 3 讲：可",
+      "actual": "ESC最近文档碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.md散射振幅与费曼规则Articles/量子场论/散射振幅与费曼规则.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md动量守",
       "note": ""
     },
     {
@@ -1317,7 +1317,7 @@
       "name": "命令条「文件与导航」按钮可见（display:grid）",
       "ok": true,
       "expected": "display: grid",
-      "actual": "{\"display\":\"grid\",\"visibility\":\"visible\",\"x\":97,\"y\":19,\"w\":32,\"h\":32}",
+      "actual": "{\"display\":\"grid\",\"visibility\":\"visible\",\"x\":93,\"y\":19,\"w\":32,\"h\":32}",
       "note": ""
     },
     {

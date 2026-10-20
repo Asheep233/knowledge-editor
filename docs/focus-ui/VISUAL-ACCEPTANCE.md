@@ -30,7 +30,7 @@ KE_REUSE_VITE=1 node docs/focus-ui/verify-ui.cjs
 | `06-more-menu-1440x900.png` | ⋯ 更多菜单（十条目；设置页见 `16-settings-page-1440x900.png`） |
 | `07-editor-drawer-1024x800.png` | 1024 窄屏抽屉（遮罩 + 256px 浮层） |
 | `08-editor-narrow-800x900.png` | 800 窄屏（纸面 = min(860,100%)，命令条 100%-20px） |
-| `09-focus-mode-1440x900.png` | 专注模式（侧栏隐藏、顶栏、命令条沉底 720@距底16、纸面去边框） |
+| `09-focus-mode-1440x900.png` | 专注模式（侧栏隐藏、顶栏含已保存/主题、**极简格式底栏**、命令条沉底 720@距底16、纸面去边框） |
 | `10-library-page-1440x900.png` | 知识库整页（标题/统计/导入·新建/继续写作/最近编辑/标签/文件夹） |
 | `11-search-page-1440x900.png` | 搜索整页（搜索框/重建索引/空态） |
 | `12-modules-page-1440x900.png` | 模块整页（统计/新建/筛选/卡片） |
@@ -70,7 +70,7 @@ KE_REUSE_VITE=1 node docs/focus-ui/verify-ui.cjs
 | L14 | 二级页面整页（全面对齐轮） | 知识库/搜索/模块/资料/回收站为主画布整页：`.focus-page-layer[data-page]`、页面标题 40px、页激活时隐藏命令条、侧栏保留文件树 | 断言 `10-pages` 20 项 + `10–14` 截图 | PASS（上轮 §9-9 已解决） |
 | L15 | ⌘K 命令面板 | 最近文档（前 5）/命令/打开的三组；输入框自动聚焦；替代常驻标签栏 | 断言 `15-palette` 5 项 + `15` 截图 + 补充探针 | PASS（三组齐全，17 项） |
 | L16 | 历史右侧浮层 | 右侧 420px sheet（标题历史版本、刷新/关闭、当前版本） | 探针 + `evidence/probe-round3/18-history-sheet` | PASS（420×880 @右侧10） |
-| L17 | 专注模式顶栏 | 「← 文档标题」+ 主题切换；进入专注自动切回编辑器页 | 断言 `09-focus` 11 项 + 探针 | PASS（保存态 idle 时为空 → §9-10） |
+| L17 | 专注模式顶栏 + 极简底栏 | 「← 文档标题」+「● 已保存」（含绿点）+ 主题切换；底栏仅格式组；进入专注自动切回编辑器页 | 断言 `09-focus` 11 项 + 探针（`.focus-toolbar-actions display:none`、可见按钮仅格式组） | PASS（收尾轮已解决；绿点亦于 `fbc2461` 补齐） |
 
 ## 2. 设计令牌（对照 `design-tokens.css` / HANDOFF §4）
 
@@ -148,9 +148,9 @@ KE_REUSE_VITE=1 node docs/focus-ui/verify-ui.cjs
 | `editor.png`（浅色 1440） | `01-editor-light-1440x900.png` | **保真第二轮后：侧栏 5 导航 + footer 三段 + 主题图标、命令条右侧 搜索/⋯/保存/导出、元信息格式、引用块无底色均与基线对齐；布局/令牌/字号一致** | ~~§9-1 侧栏 IA~~ 已解决；仅剩数据驱动差异（测试工作区 1 文档/1 模块）与命令条图标集合差异（功能保留） |
 | `editor-dark.png`（深色 1440） | `04-editor-dark-1440x900.png` | 深色令牌、纸面、命令条、侧栏均一致 | 侧栏 IA 已在保真第二轮对齐（同 editor.png） |
 | `overlays.png`（23 组状态目录） | `03-editor-inspector-sheet-1440x900.png` | 文档信息浮层形态（右侧 sheet、380、圆角 18）一致；入口已按第二轮设计移入命令条「⋯ 更多」菜单 | 结构顺序差异：基线「文档信息」= 大纲优先；当前「文档属性」= 属性优先、大纲在后（含「折叠至一级」）→ 见 §9-2 |
-| `settings.png` | `16-settings-page-1440x900.png`（另 `06`） | **PASS**：已改为独立设置页（← 知识库 + 设置 40px + 分组卡片），内容分组一致 | 保留顶部分组 tab（基线为单列分组标题）→ §9-11 |
-| `launcher.png` | `05-launcher-1440x900.png` | **PASS**：官方品牌标 84px + 46px 标题 + 720 内容列 + 两操作卡/最近使用；全面对齐轮补上**常驻路径输入（浏览…/打开）**与右上主题/信息图标 | 最近使用条数依真实数据 → §9-4 已基本解决 |
-| `focus.png` | `09-focus-mode-1440x900.png` | **PASS（布局）**：无侧栏、命令条沉底居中 720@距底16、纸面去边框/圆角/阴影、Esc 退出；全面对齐轮已补**顶栏（← 文档标题 + 主题）**与「进入专注自动切回编辑器」 | 残差 P3：默认（未编辑）不显示保存态；底栏仍是完整命令条（基线为极简格式条）；基线为深色截图 → 见 §9-8/§9-10 |
+| `settings.png` | `16-settings-page-1440x900.png` | **PASS**：独立设置页（← 知识库 + 设置 40px + 分组卡片），内容分组一致 | 保留顶部分组 tab（基线为单列分组标题）→ §9-11 |
+| `launcher.png` | `05-launcher-1440x900.png` | **PASS**：品牌标 84px + 46px 标题 + 720 列 + 两操作卡 + **常驻路径条（hard-drive 图标 + 输入 + 浏览…/打开）** + 右上主题/帮助；主题切换即时生效 | 仅「最近使用」条数依真实数据（数据驱动）→ §9-4 已解决 |
+| `focus.png` | `09-focus-mode-1440x900.png` | **PASS**：无侧栏、顶栏 ←+文档标题+「● 已保存」（绿点已补齐 `fbc2461`）+主题、**底栏仅格式组（动作组 display:none）**、命令条沉底 720@距底16、纸面去边框阴影、Esc 退出 | 仅剩基线为深色截图（P3 说明） |
 | `library.png` | `10-library-page-1440x900.png` | **PASS**：完整知识库页（标题/统计/导入+新建/继续写作/最近编辑/标签/文件夹） | 数据量差异属测试工作区数据；**§9-9 已解决** |
 | `overlays.png`（补充） | `03`/`15`/`17`/`18`（`17–19` 见 `evidence/probe-round3/`） | **PASS**：文档信息大纲优先 + 折叠至一级、⌘K 三组、⋯ 十条目、历史 420 右侧 sheet | 细节差异：⋯ 同时有「大纲与信息」「文档信息」两相近入口 → §9-13 |
 
@@ -164,13 +164,16 @@ KE_REUSE_VITE=1 node docs/focus-ui/verify-ui.cjs
 6. **设置页「切换工作区」按钮文字可能被截断**（截图中显示「切换...」）：建议设置专项目检确认按钮宽度/文案。
 7. ~~**壳层自定义过渡未适配 `prefers-reduced-motion`**~~ **已修复并复验**：Lead 补充了 `@media (prefers-reduced-motion: reduce)`（`.focus-body-row / .focus-sidebar-collapse / .focus-sidebar-reopen / 命令条 / inspector-sheet` 过渡置 none）；实测 reduce 下 `.focus-body-row transitionDuration 0.22s → 0s`。
 
-8. **专注模式与基线 `focus.png` 的细节差异（P3，部分解决）**：全面对齐轮已补**顶栏（← 文档标题 + 主题切换）**并实现「进入专注自动切回编辑器」；仍余：默认（尚未编辑，`saveState=idle`）不显示保存态（基线恒显「已保存」）、底部工具条仍是完整命令条（基线为极简格式条）、基线为深色截图。见 `VERIFICATION-REPORT.md` §11.4-1/2。
+8. ~~**专注模式与基线 `focus.png` 的细节差异**~~ **已于收尾轮解决并复验**：顶栏补「已保存」+主题；底栏动作组（搜索/⋯/保存/导出）`display:none`，只剩格式组（对齐基线极简底栏）；纸面去边框阴影、命令条 720@距底16 不变。仅剩「绿点」细节 → §9-14。
 9. ~~**二级页面「整页」形态未实现**~~ **已于全面对齐轮解决并复验**：知识库/搜索/模块/资料/回收站均为主画布整页（`.focus-page-layer[data-page]`、标题 40px、激活时隐藏命令条），截图 `10–14`；旧侧栏内视图已移除（导航只 `onNavigate`）。见 `VERIFICATION-REPORT.md` §11.2-1。
 
-10. **专注模式默认不显示保存态（P3，全面对齐轮新增观察）**：`focusSaveStatus` 在 `saveState=idle`（打开文档后未编辑）时为空，顶栏不渲染保存状态；基线 `focus.png` 右上恒显「已保存」。dirty/saving/saved/error 四态均已实现，仅初始态不同。见 `VERIFICATION-REPORT.md` §11.4-1。
+10. ~~**专注模式默认不显示保存态**~~ **已于收尾轮解决**：idle 恒显「已保存」（dirty/saving/saved/error 四态均实现）。仅绿点显示细节见 §9-14。
 11. **设置独立页保留顶部分组 tab（P3）**：基线 `settings.png` 为单列「分组标题 + 卡片」；当前为「顶部分组 tab + 卡片」。形态已对齐独立页，tab 行是否保留待设计定稿。见 `VERIFICATION-REPORT.md` §11.4-5。
-12. **模块页筛选维度/引用数（P3）**：原型 `modules.html` 的 chips 为模块**类型**（定义/公式/定理/模板）且卡片显示「被 N 篇引用」；当前为**标签** chips、卡片显示 v1/大小/路径（未展示引用数）。搜索页空态不显示类型筛选 chips（仅在有结果时出现，数据依赖）。见 `VERIFICATION-REPORT.md` §11.4-3/4。
-13. **⋯ 菜单两条相近入口（P3）**：同时存在「大纲与信息」（聚焦大纲）与「文档信息」（打开信息浮层），当前浮层已大纲优先，二者视觉结果接近；建议产品确认是否合并。见 `VERIFICATION-REPORT.md` §11.4-6。
+12. **模块页筛选维度/引用数（P3）**：原型 `modules.html` 的 chips 为模块**类型**（定义/公式/定理/模板）且卡片显示「被 N 篇引用」；当前为**标签** chips、卡片显示 v1/大小/路径（未展示引用数）。~~搜索页空态不显示类型 chips~~ **收尾轮已解决**：空态常显 全部/文档/模块/附件，有结果时显示计数。见 `VERIFICATION-REPORT.md` §12.4-3。
+13. ~~**⋯ 菜单两条相近入口**~~ **已于收尾轮解决**：入口二文案改为「**文档属性**」（App inspectorButton），两个入口分派不同事件：「大纲与信息」→ `ke:outline-open`（展开大纲）、「文档属性」→ `ke:attributes-open`（滚动到属性卡）；短文档下运行时表现相近属预期（§12.4-2）。见 `VERIFICATION-REPORT.md` §12.2-3。
+14. ~~**专注模式「已保存」绿点（P3，收尾轮新观察）**~~ **已修复**（`fbc2461`）：idle 态顶栏显示「● 已保存」（`showFocusSavedDot` 兼容 `idle`），与基线 `focus.png` 一致。见 `VERIFICATION-REPORT.md` §12.4-1。
+15. **短文档下 ⋯ 双入口表现相近（P3/预期）**：两入口打开同一信息浮层，短文档内容一屏内、scrollTop 均 0，视觉差异不显著；差异体现在事件分派与长文档滚动路径。见 `VERIFICATION-REPORT.md` §12.4-2。
+
 
 ### 11. 证据隔离说明（全面对齐轮）
 独立验收期间主工作树出现 Lead 下一轮并行改动，为保证证据 = 已提交快照，最终截图/断言来自 `git archive HEAD`（`6c53695`）独立副本 + 独立 vite（`:5285`）；共享测试工作区数据在此期间被扩充（1→21 文档），已在数据稳定后重跑取证。详见 `VERIFICATION-REPORT.md` §11 开头说明。
@@ -183,6 +186,7 @@ KE_REUSE_VITE=1 node docs/focus-ui/verify-ui.cjs
 | 最终（task-5） | 2026-10-20 13:47 | `5ed8fa2`（1–3 任务已集成，工作树干净） | 8 张截图，119/119 断言 PASS | 证据：`/tmp/focus-shots/summary.md`、`metrics.json`、`run-meta.json` |
 | 保真第二轮（task-8） | 2026-10-20 15:22 | `ffe3ffe`（工作树干净） | 9 张截图（含 09 专注模式），**135/135 断言 PASS（KE_STRICT=1）** | 证据：`docs/focus-ui/evidence/`、`screenshots/`；详见 `VERIFICATION-REPORT.md` §10 |
 | 全面对齐轮（task-15） | 2026-10-20 16:04 | `6c53695`（独立 HEAD 副本；主工作树并行编辑已隔离） | **16 张截图，168/168 断言 PASS（KE_STRICT=1，0 DIFF）** | 证据：`docs/focus-ui/evidence/`、`screenshots/`、`evidence/probe-round3/`；详见 `VERIFICATION-REPORT.md` §11 |
+| 收尾对齐轮（增量复验） | 2026-10-20 17:0x | `472d861`（工作树干净，dirty=0） | **16 张截图，178/178 断言 PASS（KE_STRICT=1，0 DIFF）** | 证据：`docs/focus-ui/evidence/`、`screenshots/`、`evidence/probe-round4/`；详见 `VERIFICATION-REPORT.md` §12 |
 
 > 注：`verify-ui.cjs` 默认自行拉起**全新 vite 进程**截图（见 §0 环境注意）；`05-launcher` 通过拦截
 > `GET /api/workspace/current` 返回 `{open:false}` 到达启动器页，其余页面均为真实后端数据（测试工作区 `/tmp/focus-ws`）。

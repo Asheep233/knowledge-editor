@@ -384,3 +384,81 @@ node docs/focus-ui/verify-ui.cjs
   ⋯ 菜单两条相近入口），无功能性问题、无阻塞项、无测试回归。
 - 证据已刷新：`docs/focus-ui/screenshots/`（16 张，含 10–16 页面/面板/设置页）、`docs/focus-ui/evidence/`
   （`metrics.json` 168 项断言 / `summary.md` / `run-meta.json`）、`docs/focus-ui/evidence/probe-round3/`（补充探针 JSON + 17/18/19 截图）。
+
+---
+
+## 12. 收尾对齐轮独立复验（快照 `focus-ui` @ `472d861`）
+
+> 触发：Lead 完成「收尾对齐」轮后提交 `472d861`（工作树干净），要求对 6 项变化做增量独立复验。
+> 执行者 qa-visual（只读产品代码，只写 `docs/focus-ui/`；**docs 改动未 commit**，未 checkout/push）。
+> 本轮验收时主工作树保持干净（`git status` 空；脚本 `run-meta.json` 记录 `head=472d861 dirty=0`），
+> 无需再隔离工作树副本。
+
+### 12.1 命令与结果
+
+| 项 | 命令 | 结果 | 证据 |
+|---|---|---|---|
+| TypeScript | `cd frontend && npx tsc -b --noEmit` | **PASS**（0 错，无输出） | 本次独立实测 |
+| 全量测试 | 解析 Lead 在 `472d861` 执行的全量日志（未并行重跑） | **PASS**：`Test Files 149 passed (149)`；`Tests 2055 passed \| 1 skipped (2056)`；`EXIT=0`；Start 16:50:31，Duration 468.96s | `/tmp/focus-final-vitest7.log` |
+| 生产构建 | `cd frontend && npm run build` | **PASS**：`BUILD_EXIT=0`，`✓ built in 8.41s`，`dist-build` 3.1 MB | `/tmp/focus-final-build8.log` |
+| 视觉验收 | `KE_STRICT=1 node docs/focus-ui/verify-ui.cjs` | **PASS**：**16 张截图、178/178 断言 PASS、0 DIFF**、`EXIT=0` | `/tmp/focus-qa-round4-verify.log`、`docs/focus-ui/evidence/` |
+
+> 脚本本轮变化：`06` 号截图由「重复设置页」改为 `06-more-menu-1440x900`（⋯ 十条目断言），设置页只保留 `16`；
+> 断言总数 168 → **178**；旧 `06-settings-1440x900.png` 已删。QA 独立复跑结果与 Lead 实测一致（16 图 178/178）。
+
+### 12.2 本轮 6 项变化逐项核验
+
+| # | 变化点 | 核验方式 | 结论 |
+|---|---|---|---|
+| 1 | 启动器：右上主题切换（moon/sun）+ 帮助入口；操作卡下方常驻路径条（hard-drive 图标 + 路径输入 + 浏览… + 打开）对齐 `.path-hint` | `05` 截图 + 补充探针（DOM/行为） | **PASS**：header 两个按钮 `切换到深色外观` / `关于与设置`；路径条 720×44（y=395，位于操作卡下方）：placeholder「输入工作区路径，或点击「浏览…」选择文件夹」+ `浏览…`/`打开` + hard-drive 图标；点主题按钮 `data-theme` 由 light→dark 立即生效（补充截图 `23-launcher-dark`）。与基线 `launcher.png` 的 `.path-hint` 结构一致 |
+| 2 | 专注模式：右侧动作组隐藏 → 底栏只剩格式组（对齐 focus.png 极简底栏）；保存态 idle 恒显「已保存」 | `09` 截图 + 探针（计算样式/可见性） | **PASS**：`.focus-toolbar-actions` 计算样式 `display:none`、宽度 0；底栏可见按钮仅格式组（样式/B/I/U/S/代码/链接/列表/引用/Σ/Σ/插入/撤销/重做），`搜索全部文档/更多/保存/导出` 均不可见；顶栏右侧显示「已保存」（idle 恒显，对齐基线）。纸面仍无边框/阴影、命令条 720@距底16。**（上轮 §9-8/§9-10 已解决）** |
+| 3 | ⋯ 菜单：十条目保持；「大纲与信息」= 展开大纲，「文档属性」= 文案更新并派发 `ke:attributes-open` 滚动到属性卡；App 的 inspectorButton 现为菜单项文案「文档属性」 | `06-more-menu` 截图 + 源码核对 + 补充探针 | **PASS**：菜单恰 10 项且第 2 项已由「文档信息」改为「**文档属性**」；App `inspectorButton` `aria-label="文档属性"`、onClick = `toggleRight(true)` + dispatch `ke:attributes-open`；App 向 EditorToolbar 注入 `onOpenOutline = toggleRight(true)` + dispatch `ke:outline-open`；RightPanel 分别监听两个事件（`ke:outline-open` → 展开大纲；`ke:attributes-open` → `attributesRef.scrollIntoView`）。运行时两入口均能打开 380 信息浮层（补充截图 `24/25`）；短文档下两入口可见结果相近（内容一屏内、scrollTop 均 0），行为差异以源码 + 长文档滚动路径为准 |
+| 4 | 搜索页：类型 chips 空态常显（有结果时显示计数） | `11` 截图 + 探针（空态/输入关键词） | **PASS**：空态即显示 `全部 / 文档 / 模块 / 附件` 四个 chips；输入「动量」后 chips 变为 `全部3 / 文档2 / 模块1 / 附件0`（计数随结果更新），结果列表正常（补充截图 `22-search-results`）。**（上轮 §9-12 搜索部分已解决）** |
+| 5 | 验收脚本：06 改 `06-more-menu`（十条目断言），设置页只留 16；168→178 断言；旧 06-settings 已删 | 独立复跑 + 文件清单 | **PASS**：16 图 178/178；`screenshots/` 现为 01–16 + evidence-focus-ring（无 06-settings）；`06-more-menu` 断言十条目。**（上轮 §9-13/§11.4-7 脚本冗余已解决）** |
+| 6 | 测试契约：TabBar C5 源守卫随入口更新；shortcuts 契约把 Ctrl+K/搜索/回收站注册点迁到 App | 源码/测试 diff + 全量测试 | **PASS**：`TabBar.test.tsx` C5 断言更新为 `aria-label="文档属性"` + `'ke:attributes-open'`；App 注册 `'app.search.focus': () => setPage('search')`、`'app.trash.open': () => setPage('trash')`；全量测试 149 文件全绿（含契约测试） |
+
+### 12.3 对照基线（本轮重点两张）
+
+| 基线 | 对应截图 | 结论 | 说明 |
+|---|---|---|---|
+| `launcher.png` | `05-launcher-1440x900.png` | **PASS** | 品牌标 84px + 46px 标题 + 720 列 + 两操作卡 + **常驻路径条** + 右上主题/帮助；仅「最近使用」条数依真实数据（数据驱动） |
+| `focus.png` | `09-focus-mode-1440x900.png` | **PASS** | 无侧栏、顶栏 ←+文档标题+右侧「已保存」+主题、底栏极简格式组、命令条 720@距底16、纸面去边框阴影；与基线唯一可见差异：基线右上「已保存」带绿色圆点，当前 idle 仅文字（圆点按 `saveState==='saved'` 显示，见 §12.4-1）；基线为深色截图 |
+
+### 12.4 差异清单（只记录，未改产品代码）
+
+| # | 优先级 | 差异 | 证据 | 建议 |
+|---|---|---|---|---|
+| 1 | P3 | ~~专注模式「已保存」**绿点**在 idle 态不显示~~ **已修复**：Lead 收尾提交 `fbc2461` 将 `showFocusSavedDot` 扩展为 `saveState==='saved' || saveState==='idle'`，idle 恒显「● 已保存」；`09` 截图已刷新（Lead 自测 verify 16 图 178/178 PASS、全量测试 2055 绿、build exit 0） | `09` 截图（修复后） | 已解决 |
+| 2 | P3 | ⋯ 菜单两入口在**短文档**下运行时表现相近（均打开同一浮层，scrollTop 均 0，属性卡本来就在视口内）；差异仅在源码事件分派与长文档滚动路径 | 探针 `24/25`、`scrollTop=0` | 属合理的渐进增强；若产品希望视觉差异更明显，可在大纲很长时验证（无需改码） |
+| 3 | P3（承上轮） | 模块页筛选维度/引用数：原型 chips 为模块**类型**（定义/公式/定理/模板）且卡片带「被 N 篇引用」；当前为**标签** chips、卡片未展示引用数 | `12-modules-page` 截图 vs prototype | 待产品确认筛选口径；本轮未涉及 |
+| 4 | P3（承上轮） | 设置独立页保留顶部分组 tab（基线为单列分组标题） | `16-settings-page` 截图 vs `settings.png` | 待设计定稿 |
+| 5 | 环境 | 验收期间共享测试工作区数据为 21 文档/4 文件夹（较上轮扩充），截图数据量随工作区数据；断言均为结构/尺寸断言，不受影响 | `10-library-page` 统计行、`find /tmp/focus-ws -name "*.md"`=21 | 演示/截图前固定测试工作区数据 |
+
+### 12.5 旧遗留项状态更新
+
+- **§9-8「专注模式与基线细节差异」→ 已解决**：底栏动作组已隐藏（极简格式条），顶栏保存态已显示、主题切换在顶栏右侧。
+- **§9-10「专注默认不显示保存态」→ 已解决**：idle 恒显「已保存」（仅绿点细节见 §12.4-1）。
+- **§9-12「搜索空态 chips」→ 已解决**（空态常显、有结果显示计数）；模块页筛选维度/引用数仍为 P3 待产品确认。
+- **§9-13「⋯ 菜单两条相近入口」→ 已按设计区分**：大纲与信息（展开大纲）/ 文档属性（滚动到属性卡），文案与事件分派均已落地。
+- **§11.4-7「06/16 重复截图」→ 已解决**：06 改为 `06-more-menu`。
+- **§12.4-1「专注绿点」→ 已修复**：Lead 收尾提交 `fbc2461`（idle 也显示绿点）；备份验证：`KE_STRICT=1 verify-ui.cjs` 178/178 PASS、全量 vitest 2055 passed+1 skipped、tsc 0、build exit 0（日志 `/tmp/focus-final-vitest8.log`、`/tmp/focus-verify11.log`、`/tmp/focus-tsc-final.log`、`/tmp/focus-build8.log`）。
+
+### 12.6 结论
+
+- **`472d861` 通过收尾对齐轮增量独立复验**：TypeScript 0 错、全量测试 149/149 文件（2055 passed + 1 skipped，EXIT=0）、
+  生产构建成功（独立跑，✓8.41s）、视觉脚本 **16 图 178/178 断言 PASS（KE_STRICT=1，0 DIFF）**。
+- 本轮 6 项变化（启动器路径条/右上按钮、专注模式极简底栏+恒显保存态、⋯ 双入口分派、搜索 chips 常显、
+  验收脚本去重与 178 断言、测试契约更新）**全部验证通过**；上一轮 5 项 P3 差异中 4 项已解决。
+- 剩余差异均为 P3 视觉细节（专注绿点、短文档双入口近似、模块筛选口径、设置 tabs）与环境数据提示，无功能性问题、无回归、无阻塞。
+
+### 12.7 证据索引（本轮新增/刷新）
+
+| 证据 | 路径 |
+|---|---|
+| 视觉验收日志（178 断言） | `/tmp/focus-qa-round4-verify.log` |
+| 全量测试日志（解析） | `/tmp/focus-final-vitest7.log` |
+| 独立构建日志 | `/tmp/focus-final-build8.log` |
+| 截图（16 张，含 `06-more-menu`） | `docs/focus-ui/screenshots/` |
+| 断言明细（178 项） | `docs/focus-ui/evidence/metrics.json` |
+| 运行环境（head=472d861 dirty=0） | `docs/focus-ui/evidence/run-meta.json` |
+| 补充探针（启动器/专注/菜单/搜索） | `docs/focus-ui/evidence/probe-round4/`（JSON + 20–25 截图） |

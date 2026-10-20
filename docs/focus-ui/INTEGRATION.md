@@ -53,8 +53,16 @@ node docs/focus-ui/verify-ui.cjs
 6. **设置页头**（P3）：固定头部 + 滚动内容（保证分组 tab 常驻），参考稿为整页滚动；首屏视觉一致。
 7. **Windows/Tauri 真机**：视觉证据均为 WSL/headless Chromium，Windows 100% 缩放/W 模式/DPI/IME 需人工复验（红线：不得以 Linux 证据冒充）。
 
-## 5. 回滚与后续
+## 5. 交付快照（2026-10-20 收尾）
+
+- **分支/提交**：`focus-ui`（本地，未 push）→ 收尾修复 `fbc2461`（专注绿点）；此前面板/页面/浮层全量实现见 `6c53695`、收尾对齐见 `472d861`，基线 `feat/ui-workshop` @ `25efaf2`（已推送）。
+- **验证（最终快照）**：`tsc -b --noEmit` 0 错；全量 vitest **149/149 文件、2055 passed + 1 skipped**（`/tmp/focus-final-vitest8.log`）；`npm run build` exit 0（`/tmp/focus-build8.log`）；`KE_STRICT=1 node docs/focus-ui/verify-ui.cjs` → **16 张截图、178/178 断言 PASS、0 DIFF**（`/tmp/focus-verify11.log`）。
+- **独立验收**：qa-visual 两轮（`6c53695` §11、`472d861` §12）全 PASS；`fbc2461` 绿点修复由 Lead 自测并按同一脚本复验（16 图 178/178）。
+- **证据**：`docs/focus-ui/screenshots/`（01–16 + focus-ring）、`evidence/{metrics.json,summary.md,run-meta.json,a11y-probe.json,probe-round3/,probe-round4/}`。
+- **剩余 P3（已在 VERIFICATION-REPORT §12.4 记录）**：模块页筛选口径（类型 chips + 被引用数，需后端字段）、设置页顶部分组 tab（可用性保留）、短文档下 ⋯ 双入口表现相近、专注基线为深色截图。
+
+## 6. 回滚与后续
 
 - **回滚**：`focus-ui` 分支为独立分支，`git checkout feat/ui-workshop` 即回到旧三栏 UI（旧实现仍在历史中）；本轮未 force-push、未改 master。
 - **推送/合并**：当前仅在本地提交（未 push）。如需分发/合并，请主理人明确授权后推 `focus-ui`（或合并回 `feat/ui-workshop`）。
-- **后续优先**：① 侧栏 IA + 命令面板（⌘K）+ 专注模式（P2）；② 知识库/搜索/模块/资料独立页（P2）；③ 历史浮层化、工坊视觉、≤760 截图取证（P3）；④ Windows/Tauri 真机做一次人工视觉与 IME/DPI 回归（Linux/headless 结果不能替代 W 证据）。
+- **后续优先**：① 模块筛选口径/引用数（需后端 API 扩展）与工坊视觉；② `≤760` 截图取证；③ Windows/Tauri 真机做一次人工视觉与 IME/DPI 回归（Linux/headless 结果不能替代 W 证据）；④ 若需分发，走交接/打包流程（不建 Release，红线）。

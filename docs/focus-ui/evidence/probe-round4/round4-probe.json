@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-10-20T09:02:38.799Z",
+  "checks": {
+    "focusMode": {
+      "topText": "← 碰撞动力学：质心系与动量 已保存",
+      "saveText": "已保存",
+      "hasSavedDot": false,
+      "bar": {
+        "x": 360,
+        "y": 840,
+        "w": 720,
+        "h": 44,
+        "bottomGap": 16
+      },
+      "buttonLabels": [
+        "文件与导航",
+        "样式 / 标题",
+        "加粗",
+        "斜体",
+        "下划线",
+        "删除线",
+        "行内代码",
+        "插入链接",
+        "列表类型",
+        "引用",
+        "插入公式",
+        "插入块级公式",
+        "插入",
+        "撤销",
+        "重做",
+        "搜索全部文档",
+        "更多",
+        "保存",
+        "导出"
+      ],
+      "actionGroupVisible": true,
+      "groupCount": 3
+    },
+    "menuItems": {
+      "count": 10,
+      "items": [
+        "大纲与信息",
+        "文档属性",
+        "历史快照",
+        "源码模式",
+        "微分 d 转正体…",
+        "打印预览",
+        "导入…",
+        "专注模式⌘.",
+        "切换外观",
+        "设置⌘,"
+      ]
+    },
+    "outlineEntry": {
+      "clicked": false,
+      "inspector": null
+    },
+    "attrsEntry": {
+      "clicked": true,
+      "inspector": null
+    },
+    "search": {
+      "emptyState": {
+        "chips": [
+          "全部",
+          "文档",
+          "模块",
+          "附件"
+        ],
+        "chipCount": 4
+      },
+      "withResults": {
+        "chips": [
+          "全部3",
+          "文档2",
+          "模块1",
+          "附件0"
+        ],
+        "textSnippet": "搜索 在文档、模块与附件中全文检索 ESC 全部 3 文档 2 模块 1 附件 0 重建索引 普通物理学（上） 动量守恒·例题整理 文档 Articles/普通物理学（上）/动量守恒·例题整理.md 今天 16:03 Articles 碰撞动力学：质心系与动量 两体碰撞的实验室系计算往往冗长；换到质心系之后，对称性会让动量与动能的关系立刻显现。本文整理第六周讲义的主线：先确认动量守恒，再引入质心系与约化质量，最后用两个数值例子检验结论。 动量守恒 对由 n 个质点组成的系统， 文档 Articles/碰撞动力学-质"
+      }
+    },
+    "launcher": {
+      "headerButtons": [
+        {
+          "aria": "切换到深色外观",
+          "title": "切换到深色"
+        },
+        {
+          "aria": "关于与设置",
+          "title": "关于 / 设置"
+        }
+      ],
+      "pathBar": {
+        "placeholder": "输入工作区路径，或点击「浏览…」选择文件夹",
+        "rect": {
+          "x": 360,
+          "y": 395,
+          "w": 720,
+          "h": 44
+        },
+        "buttons": [
+          "浏览…",
+          "打开"
+        ],
+        "hasHardDriveIcon": true
+      },
+      "theme": "light",
+      "themeAfterToggle": "dark"
+    }
+  },
+  "pageErrors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving",
+    "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving"
+  ]
+}

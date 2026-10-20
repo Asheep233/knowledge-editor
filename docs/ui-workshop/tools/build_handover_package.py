@@ -85,16 +85,20 @@ def main() -> int:
     out = OUT_DIR / f"AstraNota-UI-Workshop-Handover-{date}.zip"
     bundle = OUT_DIR / ".." / "handover-SOURCE.bundle"
 
+    out_resolved = out.resolve()
     entries: list[tuple[Path, str]] = []  # (abs path, zip name)
     for p in sorted(DOCS.rglob("*")):
         if not p.is_file():
+            continue
+        # 关键：绝不把输出包自身/自身的临时文件收进包里（否则写入时自包含、体积爆炸）
+        if p.resolve() == out_resolved or p.name.startswith("AstraNota-UI-Workshop-Handover-"):
+            continue
+        if p.suffix in {".sha256", ".pyc"}:
             continue
         rel_parts = p.relative_to(DOCS).parts
         if any(part in EXCLUDE_DIR_PARTS for part in rel_parts):
             continue
         if p.name in EXCLUDE_NAMES or p.name.startswith("_tmp_"):
-            continue
-        if p.suffix == ".pyc":
             continue
         entries.append((p, f"docs/{p.relative_to(DOCS).as_posix()}"))
 
@@ -107,6 +111,8 @@ def main() -> int:
     readme_tmp = OUT_DIR / "_tmp_readme.md"
     readme_tmp.write_text(README.format(ts=ts, head=head[:12]), encoding="utf-8")
 
+    if out.exists():
+        out.unlink()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("README-交接说明.md", readme_tmp.read_text(encoding="utf-8"))
         z.writestr("repo-metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))

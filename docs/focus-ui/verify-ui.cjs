@@ -112,6 +112,8 @@ const SELECTORS = {
   reopenBtn: '[aria-label="展开文件侧栏"]',
   drawerBtn: '[data-testid="open-file-drawer"]',
   inspectorBtn: '[data-testid="open-inspector"]',
+  moreBtn: '[aria-label="更多"]',
+  focusModeBtn: 'button:has-text("专注模式")',
   inspectorSheet: '.focus-inspector-sheet',
   inspectorScrim: '.focus-inspector-scrim',
   drawerScrim: '.focus-drawer-scrim',
@@ -852,6 +854,16 @@ async function main() {
       assertDesktopGeometry('01-editor-light', m, 1440, 900)
       eq('01-editor-light', '页面主题 = light', m.theme, 'light')
       soft('01-editor-light', '保存按钮有浅底（非透明）', m.saveBtn ? m.saveBtn.bg !== 'rgba(0, 0, 0, 0)' : 'not-measured', '非透明背景', m.saveBtn ? JSON.stringify(m.saveBtn) : '未找到保存按钮')
+      // Focus 保真：侧栏 5 导航 + footer 三段（设计 .fb-nav / .fb-foot）
+      const sideText = await page.evaluate(() => {
+        const bar = document.querySelector('.focus-files-bar')
+        return bar ? (bar.textContent || '') : ''
+      })
+      const navChecks = ['知识库', '搜索', '模块', '资料', '回收站']
+      const footChecks = ['设置', '专注模式', '切换外观']
+      for (const label of [...navChecks, ...footChecks]) {
+        soft('01-editor-light', `侧栏含「${label}」`, sideText.includes(label), `包含「${label}」`, sideText.slice(0, 200))
+      }
       await shot(page, '01-editor-light-1440x900')
       const paperCenterLight = m.paper ? m.paper.cx : null
 
@@ -878,6 +890,9 @@ async function main() {
       currentShot = 'A-inspector'
       await page.click(SELECTORS.reopenBtn, { timeout: DEFAULT_TIMEOUTS.click })
       await page.waitForTimeout(600)
+      // Focus 保真：文档信息入口移入命令条「⋯ 更多」菜单
+      await page.click(SELECTORS.moreBtn, { timeout: DEFAULT_TIMEOUTS.click })
+      await page.waitForTimeout(400)
       await page.click(SELECTORS.inspectorBtn, { timeout: DEFAULT_TIMEOUTS.click })
       await page.waitForTimeout(800)
       m = await measure(page)
@@ -913,6 +928,48 @@ async function main() {
       } catch {
         await page.keyboard.press('Escape').catch(() => {})
       }
+
+      // ---------- Focus 保真：专注模式（侧栏隐藏 / 命令条沉底 / Esc 退出）----------
+      currentShot = 'G-focus-mode'
+      await page.waitForTimeout(600)
+      const sideText2 = await page.evaluate(() => {
+        const btn = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').includes('专注模式'))
+        ;btn && btn.click()
+        return btn ? 'clicked' : 'missing'
+      })
+      soft('09-focus', '侧栏 footer「专注模式」可点击', sideText2 === 'clicked', 'clicked', sideText2)
+      await page.waitForTimeout(700)
+      const fm = await page.evaluate(() => {
+        const bar = document.querySelector('[data-ke-toolbar] > div')
+        const paper = document.querySelector('.focus-paper')
+        const sidebar = document.querySelector('.focus-files-bar')
+        const shell = document.querySelector('.focus-shell')
+        const b = bar ? bar.getBoundingClientRect() : null
+        const p = paper ? getComputedStyle(paper) : null
+        const pb = paper ? paper.getBoundingClientRect() : null
+        return {
+          mode: shell ? shell.getAttribute('data-focus-mode') : null,
+          sidebarVisible: !!(sidebar && getComputedStyle(sidebar).display !== 'none'),
+          bar: b ? { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), bottomGap: Math.round(window.innerHeight - b.bottom) } : null,
+          paperBorder: p ? p.borderTopWidth : null,
+          paperShadow: p ? p.boxShadow : null,
+          paperWidth: pb ? Math.round(pb.width) : null,
+        }
+      })
+      eq('09-focus', '专注模式激活（data-focus-mode=1）', fm.mode, '1')
+      eq('09-focus', '专注模式隐藏侧栏', fm.sidebarVisible, false)
+      near('09-focus', '命令条沉到窗口底部（距底 16）', fm.bar ? fm.bar.bottomGap : NaN, 16, 3)
+      near('09-focus', '命令条宽度 720 上限', fm.bar ? fm.bar.w : NaN, 720, 3)
+      eq('09-focus', '专注模式纸面去边框', fm.paperBorder, '0px')
+      eq('09-focus', '专注模式纸面无阴影', fm.paperShadow, 'none')
+      await shot(page, '09-focus-mode-1440x900')
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(500)
+      const fmExit = await page.evaluate(() => {
+        const shell = document.querySelector('.focus-shell')
+        return shell ? shell.getAttribute('data-focus-mode') : 'missing'
+      })
+      eq('09-focus', 'Esc 退出专注模式', fmExit, null)
       await context.close()
     }
 

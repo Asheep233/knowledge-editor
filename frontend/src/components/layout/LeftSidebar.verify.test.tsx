@@ -187,6 +187,20 @@ let container: HTMLDivElement
 let openSpy: ReturnType<typeof vi.fn<(id: string) => void>>
 let alertSpy: AnyMock
 
+/**
+ * Focus IA（入口变化，行为判据未改）：附件/孤儿 DOM 已从默认视图迁入侧栏「资料」视图。
+ * 本套件全部用例都针对附件区，故脚手架在挂载后统一切到「资料」视图；
+ * 之后所有断言（默认收起/展开/详情/孤儿/刷新…）与迁移前逐条一致。
+ */
+async function openAssetsView(): Promise<void> {
+  const nav = findClickable('资料')
+  if (!nav) throw new Error('未找到「资料」导航项')
+  await act(async () => {
+    nav.click()
+  })
+  await settle()
+}
+
 interface RenderOpts {
   attachments?: AttachmentItem[]
   orphans?: OrphanItem[]
@@ -214,6 +228,8 @@ async function render(opts: RenderOpts = {}): Promise<void> {
   })
   await settle()
   await settle()
+  // Focus IA：进入「资料」视图后再做附件断言（见 openAssetsView 注释）
+  await openAssetsView()
 }
 
 async function update(opts: RenderOpts = {}): Promise<void> {

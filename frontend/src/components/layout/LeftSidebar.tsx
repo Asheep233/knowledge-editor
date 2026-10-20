@@ -1,14 +1,18 @@
-/** 左侧栏（Phase 4 重构）：
- * - 最近文档（4.8）：软件配置存储，点击快速重新打开
- * - 标签（4.5）：标签列表 + 点击筛选
- * - 文件树（4.2）：文件夹/文档 新建、重命名、删除（文档=单次确认+可在回收站恢复；文件夹=二次确认）、移动
- * - 模块：点击打开
- * - 附件（task-12 迁入，task-22 默认收起）：可折叠小节（默认收起，收起态只留表头）——行点击就地展开「附属情况与附属记录」
- *   （全部 referenced_by 逐条可跳转；未引用显示自身详情）+ 行右侧「打开文件」独立 <a> + 孤儿附件手动删除。
- *   数据源 = listAttachments() / listOrphans()（不再依赖 tree.attachments）。
- * - 回收站（MVP）：启用导航项，恢复 / 彻底删除 / 清空（契约 docs/design-trash-mvp.md）
+/** 左侧栏（Focus IA 版 · 设计交接包 HANDOFF.md §3）：
+ * - 工作区头 + 头像 + « 收起；新建文档主按钮
+ * - 5 项主导航：知识库(book) / 搜索(search) / 模块(layers) / 资料(paperclip) / 回收站(trash)
+ *   （34px 行 / 17px 图标 / 激活态 bg-sidebar-accent + text-sidebar-accent-foreground）
+ * - 视图：library=文章文件树（「文件」label + 新建文档/新建文件夹 + 最近更新/标签紧凑入口）；
+ *   search=全局搜索输入(id=ke-global-search)+重建索引+结果（Ctrl/Cmd+K 切入并聚焦）；
+ *   modules=模块树；assets=附件区；trash=回收站（MVP，契约 docs/design-trash-mvp.md）
+ * - 底部 footer：设置 / 专注模式 / 切换外观（图标依主题 moon/sun）
+ * - 保留既有行为：文件夹/文档 新建、重命名、删除（文档=单次确认+可在回收站恢复；文件夹=二次确认）、移动；
+ *   右键菜单、附件 data 钩子、aria/data-testid、加载/错误/空态
+ * - 附件（task-12 迁入，task-22 默认收起）：可折叠小节（默认收起，收起态只留表头）——行点击就地展开
+ *   「附属情况与附属记录」（全部 referenced_by 逐条可跳转；未引用显示自身详情）+ 行右侧「打开文件」独立
+ *   <a> + 孤儿附件手动删除。数据源 = listAttachments() / listOrphans()（不依赖 tree.attachments）。
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   attachmentUrl,
   clearRecentDocuments,
@@ -41,7 +45,7 @@ import type {
 } from '../../types'
 import { buildFileTree, type TreeNode } from '../../utils/tree'
 import { registerActionHandlers, shouldIgnoreKeyEvent, shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
-import { Icon } from '../icons'
+import { Icon, type IconName } from '../icons'
 import TrashPanel from '../trash/TrashPanel'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
 
@@ -61,6 +65,12 @@ interface Props {
   onTrashRestored?: (restoredTo: string) => void
   /** Focus 壳层：收起浮动侧栏 */
   onCollapse?: () => void
+  /** Focus footer：切换专注模式（App 侧 toggleFocusMode） */
+  onToggleFocusMode?: () => void
+  /** Focus footer：切换浅色/深色外观（App 侧 toggleTheme） */
+  onToggleTheme?: () => void
+  /** 当前是否为深色主题 —— 决定 footer「切换外观」图标显示 moon（浅色）还是 sun（深色） */
+  themeIsDark?: boolean
 }
 
 interface CtxMenu {
@@ -71,6 +81,19 @@ interface CtxMenu {
 
 const TOP_ARTICLES = 'Articles'
 const TOP_MODULES = 'Modules'
+
+/** Focus IA：侧栏视图（5 项主导航 + library 内的 最近/标签 子视图） */
+type View = 'library' | 'search' | 'modules' | 'assets' | 'trash' | 'recent' | 'tags'
+type NavId = 'library' | 'search' | 'modules' | 'assets' | 'trash'
+
+/** 主设计交接包 §3：导航 5 项（知识库默认激活） */
+const NAV_ITEMS: ReadonlyArray<{ id: NavId; label: string; icon: IconName }> = [
+  { id: 'library', label: '知识库', icon: 'book' },
+  { id: 'search', label: '搜索', icon: 'search' },
+  { id: 'modules', label: '模块', icon: 'layers' },
+  { id: 'assets', label: '资料', icon: 'paperclip' },
+  { id: 'trash', label: '回收站', icon: 'trash' },
+]
 
 function fmtSize(n?: number): string {
   if (n == null) return '—'
@@ -85,43 +108,65 @@ function fmtTime(iso?: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('zh-CN', { hour12: false })
 }
 
-/** QuickNav 导航项（参考稿：激活态 = sidebar-primary 底白字） */
+/** 主导航项（参考稿 .fb-nav-item：34px 行 / 17px 图标 / 激活 = accent-soft 底 + accent 字 + 550 字重） */
 function NavItem({
   active,
-  disabled,
-  title,
-  icon,
   label,
+  icon,
   onClick,
 }: {
   active?: boolean
-  disabled?: boolean
-  title?: string
-  icon: ReactNode
   label: string
+  icon: IconName
   onClick?: () => void
 }) {
   return (
     <button
       type="button"
       aria-current={active ? 'page' : undefined}
-      disabled={disabled}
-      title={title}
       onClick={onClick}
       className={[
-        'flex h-[34px] w-full items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+        'flex h-[34px] w-full items-center gap-[9px] rounded-[8px] px-[9px] text-[13px] transition-[background-color,color] duration-150 focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
         active
-          ? 'font-medium'
-          : 'hover:bg-surface-2 hover:text-foreground',
-        disabled ? 'cursor-not-allowed opacity-50' : '',
+          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+          : 'text-text-2 hover:bg-surface-2 hover:text-foreground',
       ].join(' ')}
-      style={
-        active
-          ? { backgroundColor: 'var(--sidebar-accent)', color: 'var(--sidebar-accent-foreground)' }
-          : { color: 'var(--text-2)' }
-      }
+      style={active ? { color: 'var(--sidebar-accent-foreground)', fontWeight: 550 } : undefined}
     >
-      {icon}
+      <Icon
+        name={icon}
+        className={`size-[17px] shrink-0 ${active ? 'text-primary' : 'text-text-3'}`}
+      />
+      <span>{label}</span>
+    </button>
+  )
+}
+
+/** footer 行（参考稿 .fb-foot a：32px 行 / 13px / 17px 图标 / text-2） */
+function FootItem({
+  icon,
+  label,
+  ariaLabel,
+  title,
+  onClick,
+}: {
+  icon: IconName
+  label: string
+  ariaLabel?: string
+  title?: string
+  onClick?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      title={title ?? label}
+      onClick={onClick}
+      className="flex h-8 w-full items-center gap-[9px] rounded-[8px] px-[9px] text-left text-[13px] text-text-2 transition-[background-color,color] duration-150 hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
+    >
+      <span className="grid size-[17px] shrink-0 place-items-center text-text-3">
+        <Icon name={icon} className="size-[17px]" />
+      </span>
       <span>{label}</span>
     </button>
   )
@@ -137,6 +182,9 @@ export default function LeftSidebar({
   workspaceRoot,
   onTrashRestored,
   onCollapse,
+  onToggleFocusMode,
+  onToggleTheme,
+  themeIsDark = false,
 }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
   /** Focus 工作区头：展示工作区目录名 */
@@ -172,33 +220,49 @@ export default function LeftSidebar({
   // 搜索胶囊聚焦态：React state 驱动（inline style 优先级 > 工具类，
   // focus-within:ring-ring 会因 inline borderColor 被压制——不用工具类方案）
   const [searchFocused, setSearchFocused] = useState(false)
-  // QuickNav 当前激活（参考稿：全部文档 = sidebar-primary 底白字，aria-current=page）
-  const [nav, setNav] = useState<'all' | 'recent' | 'tags' | 'trash'>('all')
+  // Focus IA：当前侧栏视图（知识库=默认；搜索/模块/资料/回收站为一等视图；recent/tags 为知识库子视图）
+  const [view, setView] = useState<View>('library')
+  // 每次「聚焦搜索」请求 +1：即使已经在 search 视图（setView 同值不重渲染）也能触发聚焦副作用
+  const [searchFocusNonce, setSearchFocusNonce] = useState(0)
   const searchRef = useRef<HTMLInputElement | null>(null)
 
-  // Ctrl/Cmd+K：聚焦全局搜索（handoff §6）
+  /** Focus IA：搜索是独立视图 —— 默认视图已不渲染搜索框，
+   * 所以「聚焦搜索」必须先切到 search 视图，再由 effect 在输入框挂载后聚焦。 */
+  const focusSearch = useCallback(() => {
+    setView('search')
+    setSearchFocusNonce((n) => n + 1)
+  }, [])
+
+  // 搜索视图挂载 / 聚焦请求变化后聚焦输入框（Ctrl/Cmd+K、命令条搜索按钮、自定义快捷键共用）
+  useEffect(() => {
+    if (view !== 'search') return
+    searchRef.current?.focus()
+    searchRef.current?.select()
+  }, [view, searchFocusNonce])
+
+  // Ctrl/Cmd+K：切到搜索视图并聚焦全局搜索（handoff §6）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // F5：IME 组合中的 Ctrl+K 不得抢焦点（组合态按键是输入法上屏的一部分）
       if (shouldIgnoreKeyEvent(e)) return
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        searchRef.current?.focus()
+        focusSearch()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [focusSearch])
 
   // task-35（ADP-1 收口）：自定义快捷键 —— 本组件内部的两个动作注册为**真实闭包**
-  // （搜索框 ref 与 nav 状态都封在本组件内，App 层拿不到；不改任何 UI/既有行为）。
-  // `app.search.focus` 与上面的 Ctrl+K 走同一行代码；`app.trash.open` 即切到回收站视图。
+  // （搜索框 ref 与 view 状态都封在本组件内，App 层拿不到；不改任何 UI/既有行为）。
+  // `app.search.focus`（命令条搜索按钮 / 自定义键位）现在也会先切到 search 视图再聚焦。
   useEffect(() => {
     return registerActionHandlers({
-      'app.search.focus': () => searchRef.current?.focus(),
-      'app.trash.open': () => setNav('trash'),
+      'app.search.focus': focusSearch,
+      'app.trash.open': () => setView('trash'),
     })
-  }, [])
+  }, [focusSearch])
   const searchTimer = useRef<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -507,44 +571,52 @@ export default function LeftSidebar({
     return c
   }
   const renderNode = (node: TreeNode, depth: number) => {
-    const indent = { paddingLeft: `${6 + depth * 14}px` }
+    // 参考稿 .fb-tree .tree-row：单级缩进 14px（10 + depth*14），行高 30，圆角 7，字号 12.5
+    const indent = { paddingLeft: `${10 + depth * 14}px` }
     const isOpen = expanded.has(node.relPath)
     if (node.type === 'folder') {
       const count = countChildren(node)
       return (
         <div key={node.relPath}>
           <div
-            className="group flex h-[30px] cursor-pointer items-center gap-2 rounded-[6px] px-1 py-0 text-[13px] text-foreground hover:bg-accent"
+            className="group flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] pr-1.5 text-[12.5px] text-text-2 transition-colors hover:bg-surface-2 focus-visible:outline-none"
             style={indent}
             onClick={() => toggle(node.relPath)}
             onContextMenu={(e) => openCtx(e, node)}
           >
-            <span className="w-3.5 text-muted-foreground">{isOpen ? <Icon name="chevron-down" className="size-3.5" /> : <Icon name="chevron-right" className="size-3.5" />}</span>
-            <Icon name={isOpen ? 'folder' : 'folder'} className="size-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1 whitespace-nowrap">{node.name}</span>
+            <span className="grid w-3.5 shrink-0 place-items-center text-text-3">
+              {isOpen ? <Icon name="chevron-down" className="size-[11px]" /> : <Icon name="chevron-right" className="size-[11px]" />}
+            </span>
+            <span className="flex-1 overflow-visible whitespace-nowrap font-medium">{node.name}</span>
             {count > 0 ? (
-              <span className="shrink-0 text-[11px] text-muted-foreground">{count}</span>
+              <span className="shrink-0 text-[11.5px] text-text-3">
+                {count}
+              </span>
             ) : null}
-            <span className="hidden gap-0.5 group-hover:flex">
+            <span className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
               <button
+                type="button"
                 title="新建文档"
-                className="rounded px-1 text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-primary"
+                aria-label={`在「${node.name}」下新建文档`}
+                className="grid size-5 place-items-center rounded-[4px] text-text-3 transition-colors hover:bg-surface-3 hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring"
                 onClick={(e) => {
                   e.stopPropagation()
                   void handleNewDoc(node.relPath)
                 }}
               >
-                <Icon name="plus" className="size-3" />
+                <Icon name="plus" className="size-[13px]" />
               </button>
               <button
+                type="button"
                 title="新建文件夹"
-                className="rounded px-1 text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-primary"
+                aria-label={`在「${node.name}」下新建文件夹`}
+                className="grid size-5 place-items-center rounded-[4px] text-text-3 transition-colors hover:bg-surface-3 hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring"
                 onClick={(e) => {
                   e.stopPropagation()
                   void handleNewFolder(node.relPath)
                 }}
               >
-                <Icon name="folder-plus" className="size-3" />
+                <Icon name="folder-plus" className="size-[13px]" />
               </button>
             </span>
           </div>
@@ -555,27 +627,33 @@ export default function LeftSidebar({
       )
     }
     const active = activeId === node.relPath
-    const ver = node.relPath.startsWith('Modules/') ? moduleVersions[node.relPath] : undefined
+    const isModule = node.relPath.startsWith('Modules/')
+    const ver = isModule ? moduleVersions[node.relPath] : undefined
     return (
       <div
         key={node.relPath}
-        className={`flex h-[30px] cursor-pointer items-center gap-2 rounded-[6px] px-1 py-0 text-[13px] hover:bg-accent ${
-          active ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-foreground'
+        className={`flex h-[30px] cursor-pointer items-center gap-[7px] rounded-[7px] pr-1.5 text-[12.5px] transition-colors ${
+          active
+            ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+            : 'text-text-2 hover:bg-surface-2 hover:text-foreground'
         }`}
         style={indent}
         onClick={() => handleOpenFromTree(node)}
         onContextMenu={(e) => openCtx(e, node)}
-        title={node.relPath.startsWith('Modules/') ? `${node.relPath}（v${ver ?? '?'}）` : node.relPath}
+        title={isModule ? `${node.relPath}（v${ver ?? '?'}）` : node.relPath}
       >
-        <span className="w-3.5" />
-        {node.relPath.startsWith('Modules/') ? (
-          <Icon name="box" className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <Icon name="file-text" className="size-4 shrink-0 text-muted-foreground" />
-        )}
+        <span className="w-3.5 shrink-0" />
+        <span
+          className={`grid size-3.5 shrink-0 place-items-center ${active ? 'text-primary' : 'text-text-3'}`}
+          style={{ opacity: active ? 1 : 0.8 }}
+        >
+          <Icon name={isModule ? 'box' : 'file-text'} className="size-[13px]" />
+        </span>
         <span className="flex-1 whitespace-nowrap">{node.name}</span>
         {ver != null ? (
-          <span className="shrink-0 text-[10px] text-muted-foreground/70">v{ver}</span>
+          <span className="shrink-0 text-[10px] text-text-3">
+            v{ver}
+          </span>
         ) : null}
       </div>
     )
@@ -599,7 +677,10 @@ export default function LeftSidebar({
 
   // ---------- 渲染 ----------
   return (
-    <aside className="flex h-full w-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+    <aside
+      className="flex h-full w-full shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar"
+      data-sidebar-view={view}
+    >
       {/* 工作区头（Focus §3：30px 头像 + 工作区名 + 副标题 + « 收起） */}
       <div className="flex h-[54px] shrink-0 items-center gap-2.5 px-3">
         <span
@@ -610,10 +691,10 @@ export default function LeftSidebar({
           研
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-semibold leading-tight" style={{ color: 'var(--foreground)' }}>
+          <div className="truncate text-[13.5px] font-semibold leading-tight" style={{ color: 'var(--foreground)' }}>
             {workspaceName}
           </div>
-          <div className="text-[11px] leading-tight" style={{ color: 'var(--text-3)' }}>
+          <div className="text-[12px] leading-tight text-text-3">
             本地工作区
           </div>
         </div>
@@ -630,6 +711,7 @@ export default function LeftSidebar({
           </button>
         ) : null}
       </div>
+
       {/* 新建文档主按钮（Focus §3：全宽蓝色主按钮，高 38） */}
       <div className="shrink-0 px-3 pb-1 pt-1">
         <button
@@ -642,10 +724,92 @@ export default function LeftSidebar({
           <span>新建文档</span>
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {/* GlobalSearchBox（handoff §3.2：胶囊搜索 + Ctrl K 提示 + 重建按钮） */}
-        <div className="px-3 pb-2 pt-2">
-          <div className="relative">
+
+      {/* Focus §3：5 项主导航（34px 行 / 17px 图标 / 激活 accent 底；导航底部 border-bottom） */}
+      <nav aria-label="主导航" className="shrink-0 px-2 pt-0.5">
+        <div className="flex flex-col gap-px border-b border-border pb-2">
+          {NAV_ITEMS.map((item) => (
+            <NavItem
+              key={item.id}
+              active={
+                item.id === 'library'
+                  ? view === 'library' || view === 'recent' || view === 'tags'
+                  : view === item.id
+              }
+              label={item.label}
+              icon={item.icon}
+              onClick={() => setView(item.id)}
+            />
+          ))}
+        </div>
+      </nav>
+
+      {/* ---------- 视图内容 ---------- */}
+      {view === 'library' ? (
+        <>
+          {/* 既有功能入口：最近更新 / 标签（紧凑文本行，保留原最近/标签视图与测试） */}
+          <div className="flex shrink-0 items-center gap-2 px-2 pt-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTag(null)
+                setView('recent')
+              }}
+              className="rounded-[4px] px-1 text-[12px] text-text-3 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              最近更新
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('tags')}
+              className="rounded-[4px] px-1 text-[12px] text-text-3 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              标签
+            </button>
+          </div>
+
+          {/* 文件区标题：「文件」+ 新建文档 / 新建文件夹 图标按钮（参考稿 .fb-label） */}
+          <div className="flex shrink-0 items-center justify-between pb-1 pl-3 pr-2 pt-1.5">
+            <span className="text-[12px] font-semibold text-text-3">
+              文件
+            </span>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                title="新建文档"
+                aria-label="新建文档"
+                onClick={() => void handleNewDoc(TOP_ARTICLES)}
+                className="grid size-[22px] place-items-center rounded-[6px] text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <Icon name="plus" className="size-[15px]" />
+              </button>
+              <button
+                type="button"
+                title="新建文件夹"
+                aria-label="新建文件夹"
+                onClick={() => void handleNewFolder(TOP_ARTICLES)}
+                className="grid size-[22px] place-items-center rounded-[6px] text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <Icon name="folder-plus" className="size-[15px]" />
+              </button>
+            </div>
+          </div>
+
+          {/* 文章文件树（文件名不省略：nowrap + 容器横向滚动；加载失败给可见错误 + 重试） */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto px-2 pb-2">
+            {treeError ? (
+              <LoadError onRetry={() => void loadTree()} />
+            ) : articlesTree.length === 0 ? (
+              <Empty text="暂无文章" />
+            ) : (
+              articlesTree.map((n) => renderNode(n, 0))
+            )}
+          </div>
+        </>
+      ) : view === 'search' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-2 pt-2">
+          {/* GlobalSearchBox（handoff §3.2：胶囊搜索 + Ctrl K 提示 + 重建按钮） */}
+          <div className="relative shrink-0">
             <div
               className="flex h-9 w-full items-center gap-2 rounded-[999px] border px-2.5 transition-[background-color,border-color,box-shadow] duration-150 motion-reduce:transition-none"
               style={{
@@ -688,36 +852,6 @@ export default function LeftSidebar({
           ) : searchResults !== null && searchResults.length === 0 ? (
             <Empty text="无匹配结果" />
           ) : null}
-          {/* QuickNav（handoff §3.2：全部文档[默认激活] / 最近更新 / 标签 / 回收站） */}
-          <nav aria-label="快捷访问" className="pt-2">
-            <div className="flex flex-col gap-[6px]">
-              <NavItem
-                active={nav === 'all'}
-                icon={<Icon name="file-text" className="size-4" />}
-                label="全部文档"
-                onClick={() => { setNav('all'); setActiveTag(null) }}
-              />
-              <NavItem
-                active={nav === 'recent'}
-                icon={<Icon name="history" className="size-4" />}
-                label="最近更新"
-                onClick={() => setNav('recent')}
-              />
-              <NavItem
-                active={nav === 'tags'}
-                icon={<Icon name="tags" className="size-4" />}
-                label="标签"
-                onClick={() => setNav('tags')}
-              />
-              <NavItem
-                active={nav === 'trash'}
-                icon={<Icon name="trash" className="size-4" />}
-                label="回收站"
-                title="回收站：删除的文档可在此恢复"
-                onClick={() => setNav('trash')}
-              />
-            </div>
-          </nav>
           {searchResults && searchResults.length > 0 ? (
             <div className="mt-1 space-y-0.5">
               {searchResults.slice(0, 20).map((r) => (
@@ -748,9 +882,216 @@ export default function LeftSidebar({
             </div>
           ) : null}
         </div>
+      ) : view === 'modules' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {/* 模块（Phase 5：文件夹分类 + 文件树管理，单击在编辑器打开） */}
+          <Section title="模块" action={
+            <button
+              className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary"
+              title="新建模块"
+              onClick={() => void handleNewDoc('Modules')}
+            >
+              <Icon name="plus" className="size-3" /> 新建
+            </button>
+          }>
+            {treeError ? (
+              <LoadError onRetry={() => void loadTree()} />
+            ) : modulesTree.length === 0 ? (
+              <Empty text="暂无模块" />
+            ) : (
+              modulesTree.map((n) => renderNode(n, 0))
+            )}
+          </Section>
+        </div>
+      ) : view === 'assets' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {/* 附件（task-12：附件能力的家；task-22：默认收起）—— 可折叠小节；行点击看「附属情况与附属记录」；
+              行右侧独立「打开文件」<a>（不嵌套在行按钮内）；孤儿附件仅手动删除 */}
+          <div className="py-1.5">
+            <div className="mb-1 flex items-center justify-between gap-1 px-3">
+              <div className="flex min-w-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAttachOpen((v) => !v)}
+                  aria-expanded={attachOpen}
+                  aria-label={attachOpen ? '收起附件' : '展开附件'}
+                  title={attachOpen ? '收起附件' : '展开附件'}
+                  data-testid="attachments-toggle"
+                  className="flex items-center gap-1 text-[12px] font-normal text-sidebar-foreground transition-colors hover:text-foreground/80"
+                >
+                  <Icon name={attachOpen ? 'chevron-down' : 'chevron-right'} className="size-3.5" />
+                  附件{' '}{attachments.length}
+                  {/* 收起后孤儿信号不能丢：徽章常驻表头（在折叠按钮内 → 点它即展开） */}
+                  {orphans.length > 0 && (
+                    <span
+                      data-testid="orphan-badge"
+                      title={`${orphans.length} 个孤儿附件未被任何 Markdown 引用（展开附件可处理）`}
+                      className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-amber-600"
+                    >
+                      <Icon name="alert" className="size-3" />
+                      孤儿附件 {orphans.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+              <button
+                type="button"
+                aria-label="刷新附件"
+                title="刷新附件"
+                onClick={() => void loadAttachments()}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Icon name="rotate-ccw" className="size-3.5" />
+              </button>
+            </div>
 
-        {/* QuickNav 联动：recent = 最近文档区；tags = 标签列表区；trash = 回收站；all = 模块 + 文档树 */}
-        {nav === 'recent' ? (
+            {/* 收起态只留一行表头：行 / 详情 / 孤儿区块均不渲染 */}
+            {attachOpen && (
+              <div className="px-1.5">
+                {attachError ? (
+                  <LoadError onRetry={() => void loadAttachments()} />
+                ) : attachments.length === 0 ? (
+                  <Empty text="暂无附件" />
+                ) : null}
+                {/* 每行 = 触发按钮 + 独立「打开文件」<a> + 可选就地详情（详情内引用文档也是按钮） */}
+                {attachments.map((a) => {
+                  const cited = a.referenced_by.length > 0
+                  const catIcon = a.category === 'images' ? 'image' : a.category === 'videos' ? 'video' : 'file-text'
+                  const detailOpen = expandedAttach === a.rel_path
+                  return (
+                    <div key={a.rel_path} data-attachment={a.rel_path} className="mb-0.5">
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          data-attachment-row={a.rel_path}
+                          aria-expanded={detailOpen}
+                          onClick={() => toggleAttachmentDetail(a.rel_path)}
+                          title={cited ? `已被 ${a.referenced_by.length} 篇文档引用 · ${a.rel_path}` : `未被引用 · ${a.rel_path}`}
+                          className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded px-1.5 text-left text-[12px] transition-colors hover:bg-accent focus-visible:outline-none"
+                        >
+                          <Icon name={catIcon as 'image'} className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1 truncate text-foreground">{a.name}</span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">{fmtSize(a.size)}</span>
+                          <span
+                            className={`shrink-0 rounded-full px-1.5 text-[10px] ${
+                              cited ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {cited ? '已引用' : '未引用'}
+                          </span>
+                        </button>
+                        {/* 原有「打开文件」能力保留：独立 <a>，禁止嵌套在行按钮内 */}
+                        <a
+                          href={attachmentUrl(a.rel_path)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="打开附件"
+                          aria-label={`打开附件 ${a.name}`}
+                          data-attachment-open={a.rel_path}
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                          <Icon name="export" className="size-3.5" />
+                        </a>
+                      </div>
+
+                      {/* 附属情况与附属记录（就地展开，只读展示） */}
+                      {detailOpen && (
+                        <div
+                          data-attachment-detail={a.rel_path}
+                          data-ref-count={a.referenced_by.length}
+                          className="mx-1 mb-1 rounded-[6px] border border-border bg-muted/50 px-2 py-1.5"
+                        >
+                          <div className="text-[11px] font-medium text-foreground">附属情况与附属记录</div>
+                          <div className="mt-0.5 flex items-center gap-1 text-[11px]">
+                            <span className="text-muted-foreground">引用篇数</span>
+                            <span className="text-foreground">{a.referenced_by.length}</span>
+                          </div>
+                          {cited ? (
+                            // 全部引用文档（不是只取 referenced_by[0]），逐条点击 → onOpenArticle 跳转
+                            <ul className="mt-0.5 space-y-0.5">
+                              {a.referenced_by.map((docRel) => (
+                                <li key={docRel}>
+                                  <button
+                                    type="button"
+                                    data-ref-doc={docRel}
+                                    onClick={() => onOpenArticle(docRel)}
+                                    title={`打开文档：${docRel}`}
+                                    className="block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-primary hover:bg-accent hover:underline"
+                                  >
+                                    <Icon name="file-text" className="mr-1 inline size-3 align-[-2px] text-muted-foreground" />
+                                    {docRel}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
+                              <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">
+                                未被引用
+                              </span>
+                              <span className="text-muted-foreground">未被任何文档引用</span>
+                            </div>
+                          )}
+                          {/* 附件自身详情（未被引用时的主要信息；已引用时同样保留全路径） */}
+                          <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px]">
+                            <span className="text-muted-foreground">路径</span>
+                            <span className="break-all font-mono text-foreground">{a.rel_path}</span>
+                            <span className="text-muted-foreground">大小</span>
+                            <span className="text-foreground">{fmtSize(a.size)}</span>
+                            <span className="text-muted-foreground">修改时间</span>
+                            <span className="text-foreground">{fmtTime(a.mtime)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {attachments.length > 0 && (
+                  <p className="px-1.5 pb-0.5 pt-0.5 text-[11px] text-muted-foreground">
+                    孤儿附件仅支持手动删除，不随笔记回滚。
+                  </p>
+                )}
+
+                {/* 孤儿附件（仅手动删除、绝不自动）——随展开态；收缩后信号由表头琥珀徽章承载 */}
+                {orphans.length > 0 && (
+                  <div data-testid="orphans-block" className="mx-1 mb-1 mt-1 rounded border border-amber-100 bg-amber-50/50 p-2">
+                    <div className="mb-1 text-[11px] font-medium text-amber-600">孤儿附件（{orphans.length}）</div>
+                    <p className="mb-2 text-[10px] leading-4 text-muted-foreground">
+                      未被任何 Markdown 引用。仅手动删除，绝不自动；被引用附件后端会拒绝删除。
+                    </p>
+                    {orphans.map((o) => (
+                      <div key={o.path} className="mb-1 flex items-start justify-between gap-1">
+                        <div className="truncate font-mono text-[10px] text-foreground" title={o.path}>
+                          {o.name}
+                          <span className="ml-1.5 text-[10px] text-muted-foreground">{fmtSize(o.size)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={deletingAttach === o.path}
+                          onClick={() => void handleDeleteOrphan(o)}
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {deletingAttach === o.path ? '删除中…' : '删除'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : view === 'trash' ? (
+        /* 回收站（MVP）：恢复成功后经 App 的 setTreeRefresh 刷新文件树 */
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <TrashPanel
+            activeId={activeId}
+            refreshKey={refreshKey}
+            onRestored={(restoredTo) => onTrashRestored?.(restoredTo)}
+          />
+        </div>
+      ) : view === 'recent' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <Section title="最近" action={
             recent.length > 0 ? (
               <button
@@ -785,294 +1126,68 @@ export default function LeftSidebar({
               </button>
             ))}
           </Section>
-        ) : nav === 'tags' ? (
-          <>
-            <Section title="标签">
-              {tags.length === 0 && <Empty text="暂无标签" />}
-              {tags.slice(0, 30).map((t) => (
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <Section title="标签">
+            {tags.length === 0 && <Empty text="暂无标签" />}
+            {tags.slice(0, 30).map((t) => (
+              <button
+                key={t.name}
+                className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                  activeTag === t.name ? 'bg-sidebar-accent text-blue-700' : 'text-foreground'
+                }`}
+                onClick={() => (activeTag === t.name ? setActiveTag(null) : void selectTag(t.name))}
+              >
+                <span className="flex-1 truncate">#{t.name}</span>
+                <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{t.count}</span>
+              </button>
+            ))}
+          </Section>
+
+          {/* 标签筛选结果 */}
+          {activeTag && (
+            <Section title={`筛选：#${activeTag}`} action={
+              <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground/80" onClick={() => setActiveTag(null)}>
+                <Icon name="close" className="size-3" />
+              </button>
+            }>
+              {tagFiles.length === 0 && <Empty text="无匹配文档" />}
+              {tagFiles.map((f) => (
                 <button
-                  key={t.name}
-                  className={`flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
-                    activeTag === t.name ? 'bg-sidebar-accent text-blue-700' : 'text-foreground'
+                  key={f.rel_path}
+                  className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
+                    activeId === f.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
                   }`}
-                  onClick={() => (activeTag === t.name ? setActiveTag(null) : void selectTag(t.name))}
+                  title={f.rel_path}
+                  onClick={() => onOpenArticle(f.rel_path)}
                 >
-                  <span className="flex-1 truncate">#{t.name}</span>
-                  <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">{t.count}</span>
+                  {f.title || f.rel_path}
                 </button>
               ))}
             </Section>
-
-            {/* 标签筛选结果 */}
-            {activeTag && (
-              <Section title={`筛选：#${activeTag}`} action={
-                <button className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground/80" onClick={() => setActiveTag(null)}>
-                  <Icon name="close" className="size-3" />
-                </button>
-              }>
-                {tagFiles.length === 0 && <Empty text="无匹配文档" />}
-                {tagFiles.map((f) => (
-                  <button
-                    key={f.rel_path}
-                    className={`block w-full truncate rounded px-2 py-1 text-left text-[12px] hover:bg-accent ${
-                      activeId === f.rel_path ? 'bg-sidebar-accent font-medium text-blue-700' : 'text-foreground'
-                    }`}
-                    title={f.rel_path}
-                    onClick={() => onOpenArticle(f.rel_path)}
-                  >
-                    {f.title || f.rel_path}
-                  </button>
-                ))}
-              </Section>
-            )}
-          </>
-        ) : nav === 'trash' ? (
-          /* 回收站（MVP）：恢复成功后经 App 的 setTreeRefresh 刷新文件树 */
-          <TrashPanel
-            activeId={activeId}
-            refreshKey={refreshKey}
-            onRestored={(restoredTo) => onTrashRestored?.(restoredTo)}
-          />
-        ) : (
-        <>
-        {/* 模块（Phase 5：文件夹分类 + 文件树管理，双击/单击在编辑器打开） */}
-        <Section title="模块" action={
-          <button
-            className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary"
-            title="新建模块"
-            onClick={() => void handleNewDoc('Modules')}
-          >
-            <Icon name="plus" className="size-3" /> 新建
-          </button>
-        }>
-          {treeError ? (
-            <LoadError onRetry={() => void loadTree()} />
-          ) : modulesTree.length === 0 ? (
-            <Empty text="暂无模块" />
-          ) : (
-            modulesTree.map((n) => renderNode(n, 0))
-          )}
-        </Section>
-
-        {/* 文件树（Phase 4.2）；「文章」Section 承担文档库标题，新建文档/文件夹入口均在此（顶层按钮，不依赖 hover） */}
-        <Section title="文章" action={
-          <div className="flex items-center gap-1">
-            <button
-              className="flex items-center gap-0.5 rounded px-1 text-[11px] text-muted-foreground hover:text-primary"
-              title="新建文档"
-              onClick={() => void handleNewDoc(TOP_ARTICLES)}
-            >
-              <Icon name="plus" className="size-3" /> 新建
-            </button>
-            <button
-              className="flex items-center gap-0.5 rounded px-1 text-[11px] text-muted-foreground hover:text-primary"
-              title="新建文件夹"
-              onClick={() => void handleNewFolder(TOP_ARTICLES)}
-            >
-              <Icon name="folder-plus" className="size-3" /> 新建文件夹
-            </button>
-          </div>
-        }>
-          {treeError ? (
-            <LoadError onRetry={() => void loadTree()} />
-          ) : articlesTree.length === 0 ? (
-            <Empty text="暂无文章" />
-          ) : (
-            articlesTree.map((n) => renderNode(n, 0))
-          )}
-        </Section>
-
-        {/* 附件（task-12：附件能力的家；task-22：默认收起）—— 可折叠小节；行点击看「附属情况与附属记录」；
-            行右侧独立「打开文件」<a>（不嵌套在行按钮内）；孤儿附件仅手动删除 */}
-        <div className="py-1.5">
-          <div className="mb-1 flex items-center justify-between gap-1 px-3">
-            <div className="flex min-w-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setAttachOpen((v) => !v)}
-                aria-expanded={attachOpen}
-                aria-label={attachOpen ? '收起附件' : '展开附件'}
-                title={attachOpen ? '收起附件' : '展开附件'}
-                data-testid="attachments-toggle"
-                className="flex items-center gap-1 text-[12px] font-normal text-sidebar-foreground transition-colors hover:text-foreground/80"
-              >
-                <Icon name={attachOpen ? 'chevron-down' : 'chevron-right'} className="size-3.5" />
-                附件{' '}{attachments.length}
-                {/* 收起后孤儿信号不能丢：徽章常驻表头（在折叠按钮内 → 点它即展开） */}
-                {orphans.length > 0 && (
-                  <span
-                    data-testid="orphan-badge"
-                    title={`${orphans.length} 个孤儿附件未被任何 Markdown 引用（展开附件可处理）`}
-                    className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-amber-600"
-                  >
-                    <Icon name="alert" className="size-3" />
-                    孤儿附件 {orphans.length}
-                  </span>
-                )}
-              </button>
-            </div>
-            <button
-              type="button"
-              aria-label="刷新附件"
-              title="刷新附件"
-              onClick={() => void loadAttachments()}
-              className="grid h-6 w-6 shrink-0 place-items-center rounded text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Icon name="rotate-ccw" className="size-3.5" />
-            </button>
-          </div>
-
-          {/* 收起态只留一行表头：行 / 详情 / 孤儿区块均不渲染 */}
-          {attachOpen && (
-            <div className="px-1.5">
-              {attachError ? (
-                <LoadError onRetry={() => void loadAttachments()} />
-              ) : attachments.length === 0 ? (
-                <Empty text="暂无附件" />
-              ) : null}
-              {/* 每行 = 触发按钮 + 独立「打开文件」<a> + 可选就地详情（详情内引用文档也是按钮） */}
-              {attachments.map((a) => {
-                const cited = a.referenced_by.length > 0
-                const catIcon = a.category === 'images' ? 'image' : a.category === 'videos' ? 'video' : 'file-text'
-                const detailOpen = expandedAttach === a.rel_path
-                return (
-                  <div key={a.rel_path} data-attachment={a.rel_path} className="mb-0.5">
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        data-attachment-row={a.rel_path}
-                        aria-expanded={detailOpen}
-                        onClick={() => toggleAttachmentDetail(a.rel_path)}
-                        title={cited ? `已被 ${a.referenced_by.length} 篇文档引用 · ${a.rel_path}` : `未被引用 · ${a.rel_path}`}
-                        className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded px-1.5 text-left text-[12px] transition-colors hover:bg-accent focus-visible:outline-none"
-                      >
-                        <Icon name={catIcon as 'image'} className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0 flex-1 truncate text-foreground">{a.name}</span>
-                        <span className="shrink-0 text-[11px] text-muted-foreground">{fmtSize(a.size)}</span>
-                        <span
-                          className={`shrink-0 rounded-full px-1.5 text-[10px] ${
-                            cited ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {cited ? '已引用' : '未引用'}
-                        </span>
-                      </button>
-                      {/* 原有「打开文件」能力保留：独立 <a>，禁止嵌套在行按钮内 */}
-                      <a
-                        href={attachmentUrl(a.rel_path)}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="打开附件"
-                        aria-label={`打开附件 ${a.name}`}
-                        data-attachment-open={a.rel_path}
-                        className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      >
-                        <Icon name="export" className="size-3.5" />
-                      </a>
-                    </div>
-
-                    {/* 附属情况与附属记录（就地展开，只读展示） */}
-                    {detailOpen && (
-                      <div
-                        data-attachment-detail={a.rel_path}
-                        data-ref-count={a.referenced_by.length}
-                        className="mx-1 mb-1 rounded-[6px] border border-border bg-muted/50 px-2 py-1.5"
-                      >
-                        <div className="text-[11px] font-medium text-foreground">附属情况与附属记录</div>
-                        <div className="mt-0.5 flex items-center gap-1 text-[11px]">
-                          <span className="text-muted-foreground">引用篇数</span>
-                          <span className="text-foreground">{a.referenced_by.length}</span>
-                        </div>
-                        {cited ? (
-                          // 全部引用文档（不是只取 referenced_by[0]），逐条点击 → onOpenArticle 跳转
-                          <ul className="mt-0.5 space-y-0.5">
-                            {a.referenced_by.map((docRel) => (
-                              <li key={docRel}>
-                                <button
-                                  type="button"
-                                  data-ref-doc={docRel}
-                                  onClick={() => onOpenArticle(docRel)}
-                                  title={`打开文档：${docRel}`}
-                                  className="block w-full truncate rounded px-1 py-0.5 text-left text-[11px] text-primary hover:bg-accent hover:underline"
-                                >
-                                  <Icon name="file-text" className="mr-1 inline size-3 align-[-2px] text-muted-foreground" />
-                                  {docRel}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px]">
-                            <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">
-                              未被引用
-                            </span>
-                            <span className="text-muted-foreground">未被任何文档引用</span>
-                          </div>
-                        )}
-                        {/* 附件自身详情（未被引用时的主要信息；已引用时同样保留全路径） */}
-                        <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px]">
-                          <span className="text-muted-foreground">路径</span>
-                          <span className="break-all font-mono text-foreground">{a.rel_path}</span>
-                          <span className="text-muted-foreground">大小</span>
-                          <span className="text-foreground">{fmtSize(a.size)}</span>
-                          <span className="text-muted-foreground">修改时间</span>
-                          <span className="text-foreground">{fmtTime(a.mtime)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              {attachments.length > 0 && (
-                <p className="px-1.5 pb-0.5 pt-0.5 text-[11px] text-muted-foreground">
-                  孤儿附件仅支持手动删除，不随笔记回滚。
-                </p>
-              )}
-
-              {/* 孤儿附件（仅手动删除、绝不自动）——随展开态；收缩后信号由表头琥珀徽章承载 */}
-              {orphans.length > 0 && (
-                <div data-testid="orphans-block" className="mx-1 mb-1 mt-1 rounded border border-amber-100 bg-amber-50/50 p-2">
-                  <div className="mb-1 text-[11px] font-medium text-amber-600">孤儿附件（{orphans.length}）</div>
-                  <p className="mb-2 text-[10px] leading-4 text-muted-foreground">
-                    未被任何 Markdown 引用。仅手动删除，绝不自动；被引用附件后端会拒绝删除。
-                  </p>
-                  {orphans.map((o) => (
-                    <div key={o.path} className="mb-1 flex items-start justify-between gap-1">
-                      <div className="truncate font-mono text-[10px] text-foreground" title={o.path}>
-                        {o.name}
-                        <span className="ml-1.5 text-[10px] text-muted-foreground">{fmtSize(o.size)}</span>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={deletingAttach === o.path}
-                        onClick={() => void handleDeleteOrphan(o)}
-                        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {deletingAttach === o.path ? '删除中…' : '删除'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           )}
         </div>
-        </>
-        )}
-      </div>
+      )}
 
-      {/* 底部设置按钮（handoff §3.2 / 参考稿：整行 h-8 大按钮 + settings 图标） */}
-      <div className="shrink-0 border-t border-sidebar-border px-2.5 py-2">
+      {/* 底部 footer 三段（Focus §3 / 参考稿 .fb-foot：32px 行、13px、17px 图标、顶部 border-top） */}
+      <div className="shrink-0 border-t border-border px-2 pb-2 pt-2">
+        <FootItem icon="settings" label="设置" ariaLabel="打开设置" onClick={onOpenSettings} />
+        <FootItem icon="focus" label="专注模式" onClick={onToggleFocusMode} />
         <button
           type="button"
-          onClick={onOpenSettings}
-          aria-label="打开设置"
-          title="设置"
-          className="flex h-8 w-full items-center gap-2.5 rounded-[6px] px-2 text-[13px] transition-[background-color,color,transform] duration-150 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground active:scale-[0.97] focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
-          style={{ color: 'var(--sidebar-foreground)' }}
+          aria-label="切换外观"
+          title="切换外观"
+          onClick={onToggleTheme}
+          className="flex h-8 w-full items-center gap-[9px] rounded-[8px] px-[9px] text-left text-[13px] text-text-2 transition-[background-color,color] duration-150 hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none"
         >
-          <Icon name="settings" className="size-4" />
-          <span>设置</span>
+          <span
+            className="grid size-[17px] shrink-0 place-items-center text-text-3"
+            data-appearance-icon={themeIsDark ? 'sun' : 'moon'}
+          >
+            <Icon name={themeIsDark ? 'sun' : 'moon'} className="size-[17px]" />
+          </span>
+          <span>切换外观</span>
         </button>
       </div>
 
@@ -1125,7 +1240,9 @@ function Section({
   return (
     <div className="py-1.5">
       <div className="mb-1 flex items-center justify-between px-3">
-        <span className="text-[12px] font-normal text-sidebar-foreground">{title}</span>
+        <span className="text-[12px] font-semibold text-text-3">
+          {title}
+        </span>
         {action}
       </div>
       <div className="px-1.5">{children}</div>
@@ -1135,7 +1252,7 @@ function Section({
 
 function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button className="block w-full px-3 py-1.5 text-left text-foreground hover:bg-accent" onClick={onClick}>
+    <button className="block w-full px-3 py-1.5 text-left text-foreground hover:bg-surface-2" onClick={onClick}>
       {label}
     </button>
   )

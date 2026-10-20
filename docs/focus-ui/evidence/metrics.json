@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T06:50:38.040Z",
+  "generatedAt": "2026-10-20T07:14:38.659Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -505,6 +505,70 @@
       "note": ""
     },
     {
+      "shot": "01-editor-light",
+      "name": "侧栏含「知识库」",
+      "ok": true,
+      "expected": "包含「知识库」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「搜索」",
+      "ok": true,
+      "expected": "包含「搜索」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「模块」",
+      "ok": true,
+      "expected": "包含「模块」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「资料」",
+      "ok": true,
+      "expected": "包含「资料」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「回收站」",
+      "ok": true,
+      "expected": "包含「回收站」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「设置」",
+      "ok": true,
+      "expected": "包含「设置」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「专注模式」",
+      "ok": true,
+      "expected": "包含「专注模式」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "侧栏含「切换外观」",
+      "ok": true,
+      "expected": "包含「切换外观」",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "note": ""
+    },
+    {
       "shot": "02-collapsed",
       "name": "侧栏已收起（DOM 无 .focus-files-bar）",
       "ok": true,
@@ -646,6 +710,70 @@
       "ok": true,
       "expected": "包含「设置」",
       "actual": "设置\n\n所有偏好只保存在本机，修改后立即生效。\n\nAstraNota v1.2.18 · Alpha\n常规\n外观\n快捷键\n维护\n常规\n\n启动、恢复与保存偏好\n\n启动时恢复上次打开的文档\n\n继续上次的写作现场\n\n切换工作区…\n\n打开工作区选择",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "侧栏 footer「专注模式」可点击",
+      "ok": true,
+      "expected": "clicked",
+      "actual": "clicked",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "专注模式激活（data-focus-mode=1）",
+      "ok": true,
+      "expected": "1",
+      "actual": "1",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "专注模式隐藏侧栏",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "命令条沉到窗口底部（距底 16）",
+      "ok": true,
+      "expected": "16 ±3",
+      "actual": 16,
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "命令条宽度 720 上限",
+      "ok": true,
+      "expected": "720 ±3",
+      "actual": 720,
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "专注模式纸面去边框",
+      "ok": true,
+      "expected": "0px",
+      "actual": "0px",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "专注模式纸面无阴影",
+      "ok": true,
+      "expected": "none",
+      "actual": "none",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "Esc 退出专注模式",
+      "ok": true,
+      "expected": "null",
+      "actual": "null",
       "note": ""
     },
     {
@@ -970,8 +1098,8 @@
     }
   ],
   "summary": {
-    "total": 119,
-    "pass": 119,
+    "total": 135,
+    "pass": 135,
     "fail": 0
   }
 }

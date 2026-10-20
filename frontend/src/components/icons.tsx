@@ -61,8 +61,18 @@ export type IconName =
   | 'more-horizontal'
   | 'sigma'
   | 'image-plus'
+  // Focus（设计交接包侧栏/专注/外观）
+  | 'book'
+  | 'layers'
+  | 'focus'
+  | 'moon'
+  | 'sun'
+  | 'chevrons-left'
+  | 'chevrons-right'
+  | 'arrow-left'
+  | 'panel-left'
 
-const PATHS: Record<IconName, ReactNode> = {
+const PATHS: Partial<Record<IconName, ReactNode>> = {
   search: (
     <>
       <circle cx="7" cy="7" r="4.5" />
@@ -290,6 +300,45 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
 }
 
+/** Focus 新增图标：沿用设计交接包的 24×24 路径（渲染时缩放到 16 网格）。 */
+const PATHS24: Partial<Record<IconName, ReactNode>> = {
+  book: (
+    <>
+      <path d="M12 6.5c1.5-1.8 3.6-2.5 6-2.5h2v14h-2c-2.4 0-4.5.7-6 2.5" />
+      <path d="M12 6.5C10.5 4.7 8.4 4 6 4H4v14h2c2.4 0 4.5.7 6 2.5" />
+      <path d="M12 6.5v14" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="m12 2.8 9.2 4.6-9.2 4.6L2.8 7.4z" />
+      <path d="m2.8 12.1 9.2 4.6 9.2-4.6" />
+      <path d="m2.8 16.8 9.2 4.6 9.2-4.6" />
+    </>
+  ),
+  focus: (
+    <>
+      <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </>
+  ),
+  moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" />,
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  'chevrons-left': <path d="m11 17-5-5 5-5M18 17l-5-5 5-5" />,
+  'chevrons-right': <path d="m13 17 5-5-5-5M6 17l5-5-5-5" />,
+  'arrow-left': <path d="M20 12H4m6 6-6-6 6-6" />,
+  'panel-left': (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </>
+  ),
+}
+
 export interface IconProps {
   name: IconName
   className?: string
@@ -314,7 +363,10 @@ export function Icon({ name, className = 'size-4', label, style }: IconProps) {
       aria-label={label}
       role={label ? 'img' : undefined}
     >
-      {PATHS[name]}
+      {PATHS[name] ??
+        (PATHS24[name] ? (
+          <g transform="scale(0.666667)">{PATHS24[name]}</g>
+        ) : null)}
     </svg>
   )
 }

@@ -30,6 +30,9 @@ export interface AppShellProps {
   /** Focus：右侧信息浮层是否展开 */
   inspectorOpen?: boolean
   onCloseInspector?: () => void
+  /** Focus：专注模式（隐藏侧栏，命令条沉到纸面下方居中，仅留正文） */
+  focusMode?: boolean
+  onExitFocus?: () => void
 }
 
 export function AppShell({
@@ -42,9 +45,23 @@ export function AppShell({
   onToggleSidebar,
   inspectorOpen = false,
   onCloseInspector,
+  focusMode = false,
+  onExitFocus,
 }: AppShellProps) {
   return (
-    <div data-ke-slot="shell-root" className="focus-shell">
+    <div
+      data-ke-slot="shell-root"
+      className="focus-shell"
+      data-focus-mode={focusMode ? '1' : undefined}
+    >
+      {focusMode ? (
+        <div className="focus-exit-bar" data-ke-appearance-scope="chrome">
+          <button type="button" onClick={onExitFocus} title="退出专注模式（Esc）" aria-label="退出专注模式">
+            <span aria-hidden="true">←</span>
+            <span>退出专注</span>
+          </button>
+        </div>
+      ) : null}
       <div
         data-ke-slot="shell-body"
         className="focus-body-row"

@@ -1577,11 +1577,6 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   ) : null
 
   // 正文页眉（参考稿 §3.4：面包屑 + H1 + 元信息行 —— 只读展示，不进入 Markdown）
-  const breadcrumb = useMemo(() => {
-    if (!article) return []
-    const seg = article.id.split('/').filter(Boolean)
-    return seg
-  }, [article])
   const docMeta = useMemo(() => {
     if (!article) return null
     const words = article.word_count ?? 0
@@ -1668,17 +1663,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             )}
             {/* Focus 纸面卡片（HANDOFF §2.3）：最大 860px 居中卡片；阅读列 680px 由 CSS 控制 */}
             <div className="focus-paper" data-focus-paper="true">
-            {/* 正文页眉：面包屑 + 元信息行（参考稿 §3.4；不序列化进 Markdown） */}
+            {/* 正文页眉：标题 + 元信息行（Focus §2.3/§5；不序列化进 Markdown） */}
             <article data-ke-doc-header className="mx-auto w-full max-w-[780px] px-[32px] pb-2 pt-10">
-              <div className="flex items-center gap-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>
-                <Icon name="folder" className="size-3.5" />
-                {breadcrumb.map((seg, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    {i > 0 ? <Icon name="chevron-right" className="size-3 opacity-70" /> : null}
-                    <span>{seg.replace(/\.md$/, '')}</span>
-                  </span>
-                ))}
-              </div>
               {/* 页眉标题：可编辑，blur 同步 frontmatter title + 文件名（dual-title 修复） */}
               <input
                 key={article.id}
@@ -1709,22 +1695,17 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                 <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
                   {docMeta.updatedAt ? (
                     <>
-                      <span>更新于 {formatTime(docMeta.updatedAt)}</span>
+                      <span>{formatMetaTime(docMeta.updatedAt)}</span>
                       <span aria-hidden="true">·</span>
                     </>
                   ) : null}
                   <span>{docMeta.words}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>KE v{KE_VERSION}</span>
-                  {docMeta.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="inline-flex items-center rounded-[999px] px-2 py-[2px] text-[12px]"
-                      style={{ backgroundColor: 'var(--secondary)', color: 'var(--accent-foreground)' }}
-                    >
-                      #{t}
+                  {docMeta.tags.length ? (
+                    <span className="inline-flex items-center gap-1 text-[12px]" style={{ color: 'var(--text-3)' }}>
+                      <span aria-hidden="true">·</span>
+                      {docMeta.tags.join(' / ')}
                     </span>
-                  ))}
+                  ) : null}
                 </div>
               ) : null}
             </article>
@@ -1859,7 +1840,6 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           </svg>
           <div>
             <p className="text-sm font-medium text-foreground/90">从左侧选择一篇文档，或新建一篇开始创作</p>
-            <p className="mt-1 text-xs text-muted-foreground">Markdown 为唯一事实源，所有内容本地存储</p>
           </div>
           <button
             type="button"
@@ -1984,6 +1964,19 @@ function formatTime(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+/** 页眉「更新于」时间：今天 → 今天 HH:mm；今年 → M月D日 HH:mm；否则完整日期（贴近设计稿元信息） */
+function formatMetaTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const now = new Date()
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const sameDay =
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  if (sameDay) return `今天 ${hm}`
+  if (d.getFullYear() === now.getFullYear()) return `${d.getMonth() + 1}月${d.getDate()}日 ${hm}`
+  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
 /** 判定错误是否为「资源不存在」（用于保存 404 时提示文档已被外部删除）。 */

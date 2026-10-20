@@ -3,9 +3,9 @@ import { TextSelection } from '@tiptap/pm/state'
 /**
  * 编辑器工具栏（对齐参考稿 editor.html：单行 h-10 纯图标）。
  * 注意：**文档标签栏已移到工具栏之上独立一行**（`EditorArea` 的 `tab-strip`），本行不再承载 Tab。
- * 从左到右：字号▾ → 分隔线 → B/I/U/S → 分隔线 →
- * 无序/有序/引用/代码/链接/图片/公式 → 模块▾ → 「更多」▾（代码块/注释/信息块/表格/撤销/重做）→
- * 右侧：保存状态 + 历史快照 + 导出主按钮（--primary 底白字）。
+ * Focus §2.4 信息架构（命令条克制化）：
+ *   格式组：正文▾ | B/I/U/S | 行内代码 | 链接 | 列表▾ | 引用 | 行内 Σ | 块 Σ | 插入▾ | 撤销/重做；
+ *   动作组：搜索 | ⋯更多（文档信息/源码模式/历史快照/微分 d）| 保存（浅底 + 状态文字）| 导出（宿主注入）。
  * 图标控件直接映射 Tiptap 命令；激活态（B/I/U）随光标状态实时更新。
  */
 import { useCurrentEditor, useEditorState } from '@tiptap/react'
@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom'
 import { getModule, listModules, uploadAttachment, type ModuleInfo } from '../../api/client'
 import { newId } from '../../editor/ke'
 import { attachmentNode } from '../../editor/upload'
+import { runAction } from '../../state/shortcuts'
 import { Icon } from '../icons'
 import { askPrompt } from '../common/PromptDialog'
 
@@ -57,11 +58,14 @@ function Dropdown({
   onClose,
   trigger,
   children,
+  panelMinWidth = 140,
 }: {
   open: boolean
   onClose: () => void
   trigger: ReactNode
   children: ReactNode
+  /** 面板最小宽度（默认 140；内容较长的菜单可放宽，避免文字截断） */
+  panelMinWidth?: number
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
@@ -100,7 +104,7 @@ function Dropdown({
             <div
               ref={panelRef}
               className="fixed z-50 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-xl"
-              style={{ top: pos.top, left: pos.left, minWidth: Math.max(pos.minWidth, 140) }}
+              style={{ top: pos.top, left: pos.left, minWidth: Math.max(pos.minWidth, panelMinWidth) }}
             >
               {children}
             </div>,
@@ -113,23 +117,41 @@ function Dropdown({
 
 function MenuItem({
   active,
+  disabled,
+  title,
+  testId,
+  ariaPressed,
+  icon,
   onClick,
   children,
 }: {
   active?: boolean
+  disabled?: boolean
+  /** 原生 title（tooltip / 测试按 title 定位）；禁用时承载原因文案 */
+  title?: string
+  /** 菜单项 data-testid（部分入口从可见条移入「更多」菜单，保留原测试钩子） */
+  testId?: string
+  ariaPressed?: boolean
+  icon?: ReactNode
   onClick: () => void
   children: ReactNode
 }) {
   return (
     <button
       type="button"
+      title={title}
+      aria-pressed={ariaPressed}
+      data-testid={testId}
+      disabled={disabled}
       onClick={onClick}
       className={[
-        'block w-full px-3 py-1.5 text-left text-[13px] transition-colors',
+        'flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] transition-colors',
         active ? 'bg-primary-soft font-medium text-blue-700' : 'text-foreground hover:bg-accent',
+        disabled ? 'cursor-not-allowed opacity-40 hover:bg-transparent' : '',
       ].join(' ')}
     >
-      {children}
+      {icon ? <span className="grid size-4 shrink-0 place-items-center text-muted-foreground">{icon}</span> : null}
+      <span className="min-w-0 flex-1 truncate">{children}</span>
     </button>
   )
 }
@@ -377,11 +399,13 @@ export default function EditorToolbar({
 
   const [headingOpen, setHeadingOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
-  const [moduleOpen, setModuleOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
   const [insertOpen, setInsertOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [footnoteOpen, setFootnoteOpen] = useState(false)
   const [modules, setModules] = useState<ModuleInfo[]>([])
+  const [modulesLoaded, setModulesLoaded] = useState(false)
+  const modulesLoadingRef = useRef(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
   const barRef = useRef<HTMLDivElement | null>(null)
 
@@ -447,22 +471,23 @@ export default function EditorToolbar({
 
   const headingLabel = st.headingLevel > 0 ? `标题${st.headingLevel}` : '正文'
 
-  // Phase 5 插入模块：打开下拉时懒加载模块列表
+  // Phase 5 插入模块 + Focus：独立「模块▾」已并入「插入▾」菜单——菜单打开时懒加载模块列表
   const toggleModulePicker = async () => {
-    const next = !moduleOpen
-    setModuleOpen(next)
-    if (next && modules.length === 0) {
-      try {
-        setModules((await listModules()).modules)
-      } catch {
-        setModules([])
-      }
+    if (modulesLoaded || modulesLoadingRef.current) return
+    modulesLoadingRef.current = true
+    try {
+      setModules((await listModules()).modules)
+    } catch {
+      setModules([])
+    } finally {
+      modulesLoadingRef.current = false
+      setModulesLoaded(true)
     }
   }
 
   // 插入模块（约束 2 内容复制 + 来源记录）：
   const insertModule = async (m: ModuleInfo) => {
-    setModuleOpen(false)
+    setInsertOpen(false)
     try {
       const mod = await getModule(m.path)
       const body = stripModuleTitle(mod.content)
@@ -474,6 +499,15 @@ export default function EditorToolbar({
     } catch (e) {
       window.alert(`插入模块失败：${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+
+  /** Focus §2.4：命令条搜索图标 → 全局搜索（优先走快捷键动作，未注册时兜底直接聚焦搜索框） */
+  const focusGlobalSearch = () => {
+    const res = runAction('app.search.focus')
+    if (res.ran) return
+    const el = document.getElementById('ke-global-search') as HTMLInputElement | null
+    el?.focus()
+    el?.select()
   }
 
   return (
@@ -537,6 +571,22 @@ export default function EditorToolbar({
         <Icon name="strike" className="size-4" />
       </ToolIcon>
 
+      <ToolIcon title="行内代码" active={st.code} onClick={() => editor.chain().focus().toggleCode().run()}>
+        <Icon name="code" className="size-4" />
+      </ToolIcon>
+      <ToolIcon title="插入链接" onClick={async () => {
+        const prev = editor.getAttributes('link').href as string | undefined
+        const url = await askPrompt('链接地址：', prev ?? 'https://')
+        if (url === null) return
+        if (url === '') {
+          editor.chain().focus().extendMarkRange('link').unsetLink().run()
+          return
+        }
+        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+      }}>
+        <Icon name="link" className="size-4" />
+      </ToolIcon>
+
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
 
       {/* 列表下拉（无序/有序/取消） */}
@@ -565,21 +615,9 @@ export default function EditorToolbar({
       <ToolIcon title="引用" active={st.blockquote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <Icon name="quote" className="size-4" />
       </ToolIcon>
-      <ToolIcon title="行内代码" active={st.code} onClick={() => editor.chain().focus().toggleCode().run()}>
-        <Icon name="code" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="插入链接" onClick={async () => {
-        const prev = editor.getAttributes('link').href as string | undefined
-        const url = await askPrompt('链接地址：', prev ?? 'https://')
-        if (url === null) return
-        if (url === '') {
-          editor.chain().focus().extendMarkRange('link').unsetLink().run()
-          return
-        }
-        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
-      }}>
-        <Icon name="link" className="size-4" />
-      </ToolIcon>
+
+      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+
       <ToolIcon title="插入公式" onClick={() => {
         // v1.1.7：有选区不吞文本（折叠到末尾）+ 插入后按 id 派发全屏编辑
         const id = newId()
@@ -622,49 +660,24 @@ export default function EditorToolbar({
         </span>
       </ToolIcon>
 
-      {/* 模块▾（box 图标 + 文字 + chevron；懒加载） */}
-      <Dropdown
-        open={moduleOpen}
-        onClose={() => setModuleOpen(false)}
-        trigger={
-          <button
-            type="button"
-            title="插入模块（复制 Modules/ 内容 + 来源标记）"
-            onClick={() => void toggleModulePicker()}
-            className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[8px] border border-border bg-card px-2.5 text-[13px] text-foreground transition-[background-color,color,transform,border-color] duration-150 hover:bg-muted active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
-          >
-            <Icon name="box" className="size-3.5 text-muted-foreground" />
-            <span>模块</span>
-            <Icon name="chevron-down" className="size-3.5 text-muted-foreground" />
-          </button>
-        }
-      >
-        {modules.length === 0 ? (
-          <div className="px-3 py-2 text-[12px] text-muted-foreground">
-            暂无模块（在左侧 Modules 目录创建后刷新）
-          </div>
-        ) : (
-          <div className="max-h-72 overflow-y-auto">
-            {modules.map((m) => (
-              <MenuItem key={m.path} onClick={() => void insertModule(m)}>
-                {moduleLabel(m.path)}
-              </MenuItem>
-            ))}
-          </div>
-        )}
-      </Dropdown>
-
-      {/* 插入 ▾（Focus §2.4：图片/模块/代码块/脚注/信息块/表格收进插入菜单，命令条保持克制） */}
+      {/* 插入 ▾（Focus §2.4：代码块/图片附件/脚注/信息块/表格/模块收进插入菜单，命令条保持克制；
+         原独立「模块▾」已并入此处，模块列表在菜单打开时懒加载） */}
       <Dropdown
         open={insertOpen}
         onClose={() => setInsertOpen(false)}
+        panelMinWidth={180}
         trigger={
           <button
             type="button"
             title="插入"
             aria-label="插入"
-            onClick={() => setInsertOpen((v) => !v)}
-            className="flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[8px] px-2 text-[13px] text-foreground transition-[background-color,color] duration-150 hover:bg-muted focus-visible:outline-none motion-reduce:transition-none"
+            onClick={() => {
+              const next = !insertOpen
+              setInsertOpen(next)
+              if (next) void toggleModulePicker()
+            }}
+            className="flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-[8px] px-2.5 text-[13px] text-foreground transition-[background-color,color] duration-150 hover:brightness-95 focus-visible:outline-none motion-reduce:transition-none"
+            style={{ backgroundColor: 'var(--secondary)' }}
           >
             <Icon name="plus" className="size-4" />
             <span>插入</span>
@@ -672,8 +685,10 @@ export default function EditorToolbar({
           </button>
         }
       >
+        <div className="px-3 pb-1 pt-1 text-[11px] font-medium text-muted-foreground">插入</div>
         <MenuItem
           active={st.codeBlock}
+          icon={<Icon name="code" className="size-3.5" />}
           onClick={() => {
             setInsertOpen(false)
             editor.chain().focus().toggleCodeBlock().run()
@@ -682,6 +697,7 @@ export default function EditorToolbar({
           代码块
         </MenuItem>
         <MenuItem
+          icon={<Icon name="image" className="size-3.5" />}
           onClick={() => {
             setInsertOpen(false)
             fileRef.current?.click()
@@ -690,6 +706,7 @@ export default function EditorToolbar({
           图片 / 附件…
         </MenuItem>
         <MenuItem
+          icon={<Icon name="note" className="size-3.5" />}
           onClick={() => {
             setInsertOpen(false)
             setFootnoteOpen(true)
@@ -698,6 +715,7 @@ export default function EditorToolbar({
           脚注 / 注释…
         </MenuItem>
         <MenuItem
+          icon={<Icon name="bulb" className="size-3.5" />}
           onClick={() => {
             setInsertOpen(false)
             editor.chain().focus().insertNote('', 'blue').run()
@@ -706,6 +724,7 @@ export default function EditorToolbar({
           信息块
         </MenuItem>
         <MenuItem
+          icon={<Icon name="table" className="size-3.5" />}
           onClick={() => {
             setInsertOpen(false)
             setTableOpen(true)
@@ -713,6 +732,27 @@ export default function EditorToolbar({
         >
           表格…
         </MenuItem>
+        <div className="my-1 h-px bg-border" />
+        <div className="px-3 pb-1 pt-1 text-[11px] font-medium text-muted-foreground">模块</div>
+        {!modulesLoaded ? (
+          <div className="px-3 py-2 text-[12px] text-muted-foreground">加载模块…</div>
+        ) : modules.length === 0 ? (
+          <div className="px-3 py-2 text-[12px] text-muted-foreground">
+            暂无模块（在左侧 Modules 目录创建后刷新）
+          </div>
+        ) : (
+          <div className="max-h-56 overflow-y-auto">
+            {modules.map((m) => (
+              <MenuItem
+                key={m.path}
+                icon={<Icon name="layers" className="size-3.5" />}
+                onClick={() => void insertModule(m)}
+              >
+                {moduleLabel(m.path)}
+              </MenuItem>
+            ))}
+          </div>
+        )}
       </Dropdown>
 
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
@@ -724,80 +764,7 @@ export default function EditorToolbar({
         <Icon name="redo" className="size-4" />
       </ToolIcon>
 
-      {/* 右侧：保存 + 保存状态 + 历史 + 附件 + 导出主按钮（--primary 底白字） */}
       </fieldset>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-1.5 px-2">
-        {/* Focus：搜索（聚焦左侧栏全局搜索框，与 Ctrl/Cmd+K 同一入口） */}
-        <button
-          type="button"
-          title="搜索全部文档（Ctrl/Cmd+K）"
-          aria-label="搜索全部文档"
-          data-testid="focus-search"
-          onClick={() => {
-            const el = document.getElementById('ke-global-search') as HTMLInputElement | null
-            el?.focus()
-            el?.select()
-          }}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none motion-reduce:transition-none"
-        >
-          <Icon name="search" className="size-4" />
-        </button>
-        {/* task-41：视图通道切换（正文 ⇄ 源码）。只读/版本预览/无文档时禁用并给出原因 */}
-        {onToggleViewMode ? (
-          <button
-            type="button"
-            aria-pressed={viewMode === 'source'}
-            aria-label={viewMode === 'source' ? '切回正文视图' : '切换到源码模式'}
-            title={
-              viewModeDisabledReason ??
-              (viewMode === 'source'
-                ? '切回正文视图（正文将重新解析，未知语法可能被规范化）'
-                : '源码模式：直接编辑 Markdown 原文（不经过排版引擎）')
-            }
-            data-testid="view-mode-toggle"
-            data-view-mode={viewMode}
-            disabled={!!viewModeDisabledReason}
-            onClick={onToggleViewMode}
-            className={[
-              'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
-              viewMode === 'source' ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              'active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
-              viewModeDisabledReason ? 'cursor-not-allowed opacity-40' : '',
-            ].join(' ')}
-          >
-            <Icon name="code" className="size-4" />
-          </button>
-        ) : null}
-        {onSave ? (
-          <button
-            type="button"
-            title="保存（Ctrl+S）"
-            aria-label="保存"
-            onClick={onSave}
-            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-2.5 text-[13px] font-medium text-foreground transition-[background-color,border-color] duration-150 hover:bg-surface-3 focus-visible:outline-none motion-reduce:transition-none"
-            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}
-          >
-            <Icon name="save" className="size-4" />
-            <span className="hidden min-[960px]:inline">保存</span>
-          </button>
-        ) : null}
-        {saveLabel ? (
-          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
-        ) : null}
-        {onOpenUprightD ? (
-          <ToolIcon title="微分 d 转正体（另存为新文件）" onClick={onOpenUprightD}>
-            <Icon name="formula" className="size-4" />
-          </ToolIcon>
-        ) : null}
-        {onOpenHistory ? (
-          <ToolIcon title="历史快照" onClick={onOpenHistory}>
-            <Icon name="history" className="size-4" />
-          </ToolIcon>
-        ) : null}
-        {extraActions}
-        {exportButton}
       </div>
 
       <input
@@ -808,7 +775,7 @@ export default function EditorToolbar({
         accept="image/*,video/*,.pdf,.zip,.txt,.csv,.xlsx,.docx,.pptx,.epub,.json"
       />
 
-      {/* 表格：行列网格选择器（1~8 行 × 1~8 列）对话框（更多菜单触发） */}
+      {/* 表格：行列网格选择器（1~8 行 × 1~8 列）对话框（插入菜单触发） */}
       {tableOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onMouseDown={() => setTableOpen(false)}>
           <div className="rounded-lg border border-border bg-card p-3 shadow-xl" onMouseDown={(e) => e.stopPropagation()}>
@@ -832,6 +799,107 @@ export default function EditorToolbar({
           else editor.chain().focus().insertFootnote(text).run()
         }}
       />
+
+      {/* Focus §2.4 动作组：搜索 | ⋯更多 | 保存（浅底 + 状态文字）| 导出（描边，App 注入原节点）。
+          视图切换 / 历史快照 / 微分 d 转正体 / 文档信息（extraActions）均收进「⋯ 更多」菜单，
+          可见条只保留设计稿的四个动作入口。 */}
+      <div className="flex shrink-0 items-center gap-1.5 px-2">
+        {/* 搜索：聚焦全局搜索（与 Ctrl/Cmd+K 同一入口；优先走快捷键动作，未注册时兜底聚焦搜索框） */}
+        <button
+          type="button"
+          title="搜索全部文档（Ctrl/Cmd+K）"
+          aria-label="搜索全部文档"
+          data-testid="focus-search"
+          onClick={focusGlobalSearch}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none motion-reduce:transition-none"
+        >
+          <Icon name="search" className="size-4" />
+        </button>
+        {/* ⋯ 更多：文档信息 / 源码模式 / 历史快照 / 微分 d 转正体 */}
+        <Dropdown
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          panelMinWidth={210}
+          trigger={
+            <button
+              type="button"
+              title="更多"
+              aria-label="更多"
+              data-testid="focus-more"
+              onClick={() => setMoreOpen((v) => !v)}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none motion-reduce:transition-none"
+            >
+              <Icon name="more-horizontal" className="size-4" />
+            </button>
+          }
+        >
+          {/* 文档信息：宿主注入的 extraActions 本身就是「更多」菜单里的整行菜单项，
+              直接渲染（保留 data-testid=open-inspector 等契约）；点后关闭菜单。 */}
+          {extraActions ? <div onClick={() => setMoreOpen(false)}>{extraActions}</div> : null}
+          {onToggleViewMode ? (
+            <MenuItem
+              testId="view-mode-toggle"
+              ariaPressed={viewMode === 'source'}
+              active={viewMode === 'source'}
+              title={
+                viewModeDisabledReason ??
+                (viewMode === 'source'
+                  ? '切回正文视图（正文将重新解析，未知语法可能被规范化）'
+                  : '源码模式：直接编辑 Markdown 原文（不经过排版引擎）')
+              }
+              disabled={!!viewModeDisabledReason}
+              icon={<Icon name="code" className="size-3.5" />}
+              onClick={() => {
+                setMoreOpen(false)
+                onToggleViewMode()
+              }}
+            >
+              源码模式
+            </MenuItem>
+          ) : null}
+          {onOpenHistory ? (
+            <MenuItem
+              icon={<Icon name="history" className="size-3.5" />}
+              onClick={() => {
+                setMoreOpen(false)
+                onOpenHistory()
+              }}
+            >
+              历史快照
+            </MenuItem>
+          ) : null}
+          {onOpenUprightD ? (
+            <MenuItem
+              title="微分 d 转正体（另存为新文件）"
+              icon={<Icon name="formula" className="size-3.5" />}
+              onClick={() => {
+                setMoreOpen(false)
+                onOpenUprightD()
+              }}
+            >
+              微分 d 转正体…
+            </MenuItem>
+          ) : null}
+        </Dropdown>
+        <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+        {onSave ? (
+          <button
+            type="button"
+            title="保存（Ctrl+S）"
+            aria-label="保存"
+            onClick={onSave}
+            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-2.5 text-[13px] font-medium text-foreground transition-[background-color,border-color] duration-150 hover:bg-surface-3 focus-visible:outline-none motion-reduce:transition-none"
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}
+          >
+            <Icon name="save" className="size-4" />
+            <span className="hidden min-[960px]:inline">保存</span>
+          </button>
+        ) : null}
+        {saveLabel ? (
+          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
+        ) : null}
+        {exportButton}
+      </div>
     </div>
   )
 }

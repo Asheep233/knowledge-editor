@@ -138,13 +138,31 @@ async function mountEditorArea() {
   await act(async () => { await Promise.resolve() })
 }
 
+/**
+ * Focus §2.4：命令条可见动作组已收敛为 搜索 / ⋯更多 / 保存 / 导出，
+ * 「微分 d 转正体」入口移入「⋯更多」菜单（portal 到 body）——先点开菜单再找按钮。
+ */
+async function openMoreMenu() {
+  const more = [...container.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === '更多')
+  expect(more, '命令条缺少「更多」菜单按钮').toBeTruthy()
+  await act(async () => { (more as HTMLButtonElement).click() })
+  await act(async () => { await Promise.resolve() })
+}
+
+/** 「更多」菜单经 Dropdown 的 portal 渲染到 document.body，需要在 body 范围内查找 */
+async function findUprightDButton(): Promise<HTMLButtonElement> {
+  const btn = [...document.body.querySelectorAll('button')].find((b) => (b.getAttribute('title') ?? '').includes('微分 d 转正体'))
+  expect(btn, '「更多」菜单缺少「微分 d 转正体」按钮').toBeTruthy()
+  return btn as HTMLButtonElement
+}
+
 describe('task-74 接线：工具条按钮 → 预览 → 另存，不动当前文档', () => {
   it('点击按钮出现对话框，且**不额外调用 getMarkdown()**（正文取已保存状态）', async () => {
     await mountEditorArea()
     const before = CS.getMarkdownCalls
-    const btn = [...container.querySelectorAll('button')].find((b) => (b.getAttribute('title') ?? '').includes('微分 d 转正体'))
-    expect(btn, '工具条缺少「微分 d 转正体」按钮').toBeTruthy()
-    await act(async () => { (btn as HTMLButtonElement).click() })
+    await openMoreMenu()
+    const btn = await findUprightDButton()
+    await act(async () => { btn.click() })
     await act(async () => { await Promise.resolve() })
     expect(container.querySelector('[data-ke-upright-summary]')?.textContent).toContain('将修改')
     expect(CS.getMarkdownCalls, '打开预览不得触发序列化').toBe(before)
@@ -152,7 +170,8 @@ describe('task-74 接线：工具条按钮 → 预览 → 另存，不动当前�
 
   it('另存：新文件 <原名>-正体d、当前文档 sha256 未变、无 PUT、不自动打开新文件', async () => {
     await mountEditorArea()
-    const btn = [...container.querySelectorAll('button')].find((b) => (b.getAttribute('title') ?? '').includes('微分 d 转正体')) as HTMLButtonElement
+    await openMoreMenu()
+    const btn = await findUprightDButton()
     await act(async () => { btn.click() })
     await act(async () => { await Promise.resolve() })
     const save = container.querySelector('[data-ke-upright-save]') as HTMLButtonElement

@@ -317,11 +317,11 @@ body {
   border-left: 3px solid var(--line-2);
   color: var(--text-2);
   font-size: 1.02em;
-  background: color-mix(in srgb, var(--surface-2) calc(var(--quote-bg-alpha, 0) * 100%), transparent);
+  background: transparent;
   border-radius: 0;
 }
 [data-theme='dark'] .ke-editor-prose blockquote {
-  background: color-mix(in srgb, var(--popover) calc(var(--quote-bg-alpha, 1) * 100%), transparent);
+  background: transparent;
 }
 .ke-editor-prose code {
   font-family: var(--font-family-mono);
@@ -1198,6 +1198,62 @@ body {
 
 /* 占位文本（编辑器 placeholder） */
 [data-theme='dark'] .is-editor-empty::before { color: var(--text-3); }
+
+/* ==========================================================================
+ * Focus · 专注模式（HANDOFF §6 / screenshots/focus.png）
+ * 隐藏侧栏与浮层，命令条沉到纸面下方居中，仅留正文与极简退出入口；Esc 退出。
+ * ========================================================================== */
+.focus-exit-bar {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+}
+.focus-exit-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 13px;
+  box-shadow: var(--elev-sm);
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.focus-exit-bar button:hover {
+  color: var(--foreground);
+  background: var(--surface-2);
+}
+.focus-shell[data-focus-mode='1'] .focus-body-row {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.focus-shell[data-focus-mode='1'] .focus-files-bar,
+.focus-shell[data-focus-mode='1'] .focus-sidebar-reopen,
+.focus-shell[data-focus-mode='1'] .focus-drawer-scrim,
+.focus-shell[data-focus-mode='1'] .focus-inspector-layer {
+  display: none !important;
+}
+.focus-shell[data-focus-mode='1'] .focus-main-col > main > .ke-scroll {
+  padding-top: 40px;
+}
+.focus-shell[data-focus-mode='1'] .focus-paper {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-top: 30px;
+}
+.focus-shell[data-focus-mode='1'] [data-ke-toolbar] > div {
+  top: auto;
+  bottom: 16px;
+  width: min(720px, calc(100% - 40px));
+  height: 44px;
+  box-shadow: var(--elev-lg);
+}
 
 /* ============ AstraNota 品牌资产（浅/深主题双版本） ============ */
 /* 默认（浅色）显示 light 版；data-theme=dark 切换 dark 版 */

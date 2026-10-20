@@ -45,7 +45,7 @@ import { AppShell } from './components/shell/AppShell'
 import { Icon } from './components/icons'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
-import { applyTheme, loadSettings, type AppSettings } from './settings'
+import { applyTheme, loadSettings, saveSettings, type AppSettings } from './settings'
 import { initializeAppearance } from './appearance/controller'
 import { shouldBlockUnload } from './state/closeGuard'
 import { bootMark, BOOT_PHASE, type BootPhase } from './bootTimings'
@@ -116,6 +116,10 @@ export default function App() {
   const [, setWsMenuOpen] = useState(false)
   /** Phase 7 M3：设置面板开关 */
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Focus：专注模式（隐藏侧栏，命令条沉到纸面下方，仅留正文；Esc 退出） */
+  const [focusMode, setFocusMode] = useState(false)
+  /** Focus：当前是否为深色主题（供侧栏「切换外观」图标显示 moon/sun） */
+  const [themeIsDark, setThemeIsDark] = useState(false)
   /** Phase 6.2：启动时检测到的未恢复内容 */
   const [recoveryModal, setRecoveryModal] = useState<RecoveryItem[] | null>(null)
   const recoveryCheckedFor = useRef<string | null>(null)
@@ -602,6 +606,29 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    // 主题图标跟随 data-theme（设置面板/系统主题变化都会改它）
+    const el = document.documentElement
+    const sync = () => setThemeIsDark(el.dataset.theme === 'dark')
+    sync()
+    const mo = new MutationObserver(sync)
+    mo.observe(el, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => mo.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!focusMode) return
+    const onExit = (e: KeyboardEvent) => {
+      if (shouldIgnoreKeyEvent(e)) return
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setFocusMode(false)
+      }
+    }
+    window.addEventListener('keydown', onExit)
+    return () => window.removeEventListener('keydown', onExit)
+  }, [focusMode])
+
+  useEffect(() => {
     const onToggleSidebarKey = (e: KeyboardEvent) => {
       // IME 组词中的按键不触发壳层快捷键（与既有键盘入口同一守卫）
       if (shouldIgnoreKeyEvent(e)) return
@@ -613,6 +640,29 @@ export default function App() {
     window.addEventListener('keydown', onToggleSidebarKey)
     return () => window.removeEventListener('keydown', onToggleSidebarKey)
   }, [toggleSidebar])
+
+  /** Focus：切换浅色/深色主题（等价设计侧栏底部「切换外观」） */
+  const toggleTheme = useCallback(() => {
+    const current = settingsRef.current?.ui.theme ?? 'light'
+    const resolved =
+      current === 'system'
+        ? typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+        : current
+    const next = resolved === 'dark' ? 'light' : 'dark'
+    void saveSettings({ ui: { theme: next } })
+      .then((s) => {
+        settingsRef.current = s
+        applyTheme(s.ui.theme, s.ui.accentColor)
+      })
+      .catch(() => {
+        /* 持久化失败时保持当前主题，不阻塞 UI */
+      })
+  }, [])
+
+  /** Focus：切换专注模式 */
+  const toggleFocusMode = useCallback(() => setFocusMode((v) => !v), [])
 
   // 外部修改弹窗：重新加载 / 保留当前编辑
   // R2：用户选择「重新加载外部版本」= 以磁盘内容为准。
@@ -1035,7 +1085,7 @@ export default function App() {
     </button>
   ) : null
 
-  /** Focus：浮动命令条右侧的「文档信息」入口（打开右侧 InspectorSheet） */
+  /** Focus：浮动命令条「⋯ 更多」菜单里的「文档信息」入口（打开右侧 InspectorSheet） */
   const inspectorButton = article ? (
     <button
       type="button"
@@ -1045,12 +1095,13 @@ export default function App() {
       data-testid="open-inspector"
       onClick={() => toggleRight(!rightOpen)}
       className={[
-        'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
-        rightOpen ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-        'active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
+        'flex w-full items-center gap-2.5 rounded-[8px] px-3 py-1.5 text-left text-[13px] transition-colors',
+        rightOpen ? 'text-primary' : 'text-foreground hover:bg-accent',
+        'focus-visible:outline-none',
       ].join(' ')}
     >
       <Icon name="file-text" className="size-4" />
+      <span>文档信息</span>
     </button>
   ) : null
 
@@ -1122,6 +1173,8 @@ export default function App() {
       onToggleSidebar={toggleSidebar}
       inspectorOpen={rightOpen && !!article}
       onCloseInspector={() => toggleRight(false)}
+      focusMode={focusMode}
+      onExitFocus={() => setFocusMode(false)}
       header={
         <>
         {/* 菜单栏由桌面壳 Tauri 原生菜单（menu.rs）提供，前端不再 mock，避免重复 */}
@@ -1148,6 +1201,9 @@ export default function App() {
           workspaceRoot={workspace?.root ?? null}
           onTrashRestored={handleTrashRestored}
           onCollapse={toggleSidebar}
+          onToggleFocusMode={toggleFocusMode}
+          onToggleTheme={toggleTheme}
+          themeIsDark={themeIsDark}
         />
 
       }

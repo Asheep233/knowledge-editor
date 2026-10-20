@@ -312,8 +312,17 @@ function attachLink(rel: string): HTMLAnchorElement | null {
   return container.querySelector<HTMLAnchorElement>(`[data-attachment-open="${rel}"]`)
 }
 
+/** Focus IA：附件区现在位于「资料」视图（默认视图是「知识库」文件树）。
+ *  涉及附件 DOM 的用例先切到「资料」——入口变化，行为断言不变。 */
+async function openAssetsView(): Promise<void> {
+  const nav = findButton('资料')
+  if (!nav) throw new Error('未找到「资料」导航项')
+  await click(nav)
+}
+
 /** task-22：附件小节默认收起 —— 所有涉及行/详情/孤儿区块/错误的用例都需先点表头展开 */
 async function expandAttachments(): Promise<void> {
+  await openAssetsView()
   await click(attachToggle())
 }
 
@@ -321,6 +330,7 @@ describe('LeftSidebar 附件区（task-12 迁入；task-22 默认收起）— �
   it('默认收起：表头显示「附件 N」+ 刷新按钮，不渲染行/详情/孤儿区块；点表头展开后行信息齐全', async () => {
     await setAttachments([SHARED_ITEM, LONE_ITEM])
     await render()
+    await openAssetsView()
 
     // —— 默认收起：只留一行表头 ——
     expect(attachToggle().getAttribute('aria-expanded')).toBe('false')
@@ -370,6 +380,7 @@ describe('LeftSidebar 附件区（task-12 迁入；task-22 默认收起）— �
     await setAttachments([SHARED_ITEM])
     await setOrphans([ORPHAN_ITEM])
     await render()
+    await openAssetsView()
 
     const badge = container.querySelector<HTMLElement>('[data-testid="orphan-badge"]')
     expect(badge).toBeTruthy()
@@ -396,6 +407,7 @@ describe('LeftSidebar 附件区（task-12 迁入；task-22 默认收起）— �
 
   it('0 附件：表头计数为 0 且默认收起不渲染空态文案；展开后显示「暂无附件」', async () => {
     await render()
+    await openAssetsView()
 
     expect(container.textContent).toContain('附件 0')
     expect(container.textContent, '默认收起不得渲染空态文案').not.toContain('暂无附件')
@@ -412,6 +424,7 @@ describe('LeftSidebar 附件区（task-12 迁入；task-22 默认收起）— �
     await setAttachments([SHARED_ITEM])
     await setOrphans([])
     await render()
+    await openAssetsView()
 
     expect(attachToggle().getAttribute('aria-expanded')).toBe('false')
     expect(container.querySelector('[data-testid="orphan-badge"]')).toBeNull()
@@ -575,5 +588,93 @@ describe('LeftSidebar 附件区（task-12 迁入 / task-22 默认收起）— �
 
     await rerender({ refreshKey: 1 })
     expect(vi.mocked(api.listAttachments).mock.calls.length).toBe(2)
+  })
+})
+
+// ============================================================================
+// C. Focus IA（设计交接包 HANDOFF.md §3）：5 项导航 / 视图切换 / 文件区 / footer 三段
+// ============================================================================
+describe('LeftSidebar Focus IA — 5 项主导航与视图切换', () => {
+  it('导航 5 项齐全，「知识库」默认激活（aria-current=page）', async () => {
+    await render()
+    for (const label of ['知识库', '搜索', '模块', '资料', '回收站']) {
+      expect(findButton(label), `缺少导航项：${label}`).toBeTruthy()
+    }
+    expect(findButton('知识库')!.getAttribute('aria-current')).toBe('page')
+    expect(findButton('搜索')!.getAttribute('aria-current')).toBeNull()
+  })
+
+  it('默认 = 知识库文件树：「文件」label + 新建文档/新建文件夹入口 + 最近更新/标签；搜索框与附件不在默认视图', async () => {
+    await render()
+    const fileLabel = Array.from(container.querySelectorAll('span')).find((s) => s.textContent?.trim() === '文件')
+    expect(fileLabel, '缺少「文件」区标题').toBeTruthy()
+    expect(container.querySelector('button[aria-label="新建文档"]')).toBeTruthy()
+    expect(container.querySelector('button[aria-label="新建文件夹"]')).toBeTruthy()
+    expect(findButton('最近更新')).toBeTruthy()
+    expect(findButton('标签')).toBeTruthy()
+    expect(container.querySelector('#ke-global-search')).toBeNull()
+    expect(container.querySelector('[data-testid="attachments-toggle"]')).toBeNull()
+  })
+
+  it('点击「搜索」切到搜索视图（输入框出现）；点击「知识库」回到文件树', async () => {
+    await render()
+    await click(findButton('搜索')!)
+    expect(container.querySelector('#ke-global-search')).toBeTruthy()
+
+    await click(findButton('知识库')!)
+    expect(container.querySelector('#ke-global-search')).toBeNull()
+    expect(container.querySelector('button[aria-label="新建文档"]')).toBeTruthy()
+  })
+
+  it('Ctrl/Cmd+K 切到搜索视图并聚焦搜索框', async () => {
+    await render()
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
+    })
+    await settle()
+    const input = container.querySelector<HTMLInputElement>('#ke-global-search')
+    expect(input).toBeTruthy()
+    expect(document.activeElement).toBe(input)
+  })
+
+  it('点击「模块」显示模块区；点击「资料」显示附件区（文章树/附件不再并列展示）', async () => {
+    await render()
+    await click(findButton('模块')!)
+    expect(container.textContent).toContain('暂无模块')
+    expect(container.querySelector('button[aria-label="新建文档"]')).toBeNull()
+
+    await click(findButton('资料')!)
+    expect(container.querySelector('[data-testid="attachments-toggle"]')).toBeTruthy()
+  })
+})
+
+describe('LeftSidebar Focus IA — footer 三段与回调', () => {
+  it('footer 渲染 设置 / 专注模式 / 切换外观，点击分别回调', async () => {
+    const onOpenSettings = vi.fn()
+    const onToggleFocusMode = vi.fn()
+    const onToggleTheme = vi.fn()
+    await render({ onOpenSettings, onToggleFocusMode, onToggleTheme })
+
+    const settings = findButton('设置')!
+    const focusMode = findButton('专注模式')!
+    const theme = findButton('切换外观')!
+    expect(settings.getAttribute('aria-label')).toBe('打开设置')
+    expect(theme.getAttribute('aria-label')).toBe('切换外观')
+
+    await click(settings)
+    await click(focusMode)
+    await click(theme)
+    expect(onOpenSettings).toHaveBeenCalledTimes(1)
+    expect(onToggleFocusMode).toHaveBeenCalledTimes(1)
+    expect(onToggleTheme).toHaveBeenCalledTimes(1)
+  })
+
+  it('外观图标随 themeIsDark 切换 moon/sun', async () => {
+    const onToggleTheme = vi.fn()
+    await render({ onToggleTheme })
+    expect(container.querySelector('[data-appearance-icon="moon"]')).toBeTruthy()
+
+    await rerender({ onToggleTheme, themeIsDark: true })
+    expect(container.querySelector('[data-appearance-icon="sun"]')).toBeTruthy()
   })
 })

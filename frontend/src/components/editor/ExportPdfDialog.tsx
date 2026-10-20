@@ -53,6 +53,13 @@ export function computePageCount(totalHeightPx: number, pageHeightPx: number = A
 
 /** task-76：选项/文档变化后的预览重生成防抖（同一时刻只留一个 in-flight） */
 export const PDF_PREVIEW_DEBOUNCE_MS = 400
+/**
+ * DOM 回退预览最多渲染的页数。
+ * 回退预览把整篇正文 HTML **按页复制 N 份**；长文档（数万节点 / 2MB+ HTML）在 20+ 页时
+ * 会把主线程冻住数秒（1.3.0-pre.1 用户实测「导出 PDF 很卡顿」根因）。
+ * 桌面态正常走真 PDF 预览，不触发该路径；此上限只兜底非桌面/预览失败场景。
+ */
+export const DOM_PREVIEW_MAX_PAGES = 8
 
 export const PDF_OPTIONS_STORAGE_KEY = 'ke.exportPdf.options'
 export const PRINT_OVERRIDES_STYLE_ID = 'ke-print-overrides'
@@ -237,6 +244,14 @@ export default function ExportPdfDialog({
   /** 是否可走 Tauri 真 PDF 预览：显式 prop 优先，否则运行时探测 */
   const realPdfEnabled =
     desktopPreview ?? (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window)
+  /** 真 PDF 预览失败信息（提前声明：决定是否需要 DOM 回退预览） */
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  /**
+   * DOM 回退预览只在「非桌面态」或「真 PDF 预览失败」时才需要。
+   * 桌面正常路径下**不做 DOM 克隆、不渲染 N 份正文副本**（大文档 2MB+ HTML / 数万节点会冻住 UI，
+   * 1.3.0-pre.1 用户实测「导出 PDF 很卡顿」的根因之一）。
+   */
+  const domPreviewNeeded = !realPdfEnabled || !!previewError
   const [opts, setOpts] = useState<PdfExportOptions>(() => loadPdfOptions())
   const [busy, setBusy] = useState(false)
   /** task-73：预览分页页数（由隐藏容器实测内容总高得出） */
@@ -258,20 +273,28 @@ export default function ExportPdfDialog({
   // 原因：数学节点（`math` / `mathBlock`）是 React NodeView，其 KaTeX 渲染结果**不在** getHTML() 里
   //（getHTML 只序列化出 `<span data-ke-math data-latex=…>原样 latex</span>` 占位）→ 用 getHTML 预览会
   // 把公式显示成原始 LaTeX 文本（实测预览内 `.katex` 数量为 0）。克隆实时 DOM 则与编辑器**逐字一致**。
-  const previewHtml = useMemo(() => {
-    if (!open || !editor) return ''
+  const [previewHtml, setPreviewHtml] = useState('')
+  useEffect(() => {
+    if (!open) {
+      if (previewHtml) setPreviewHtml('')
+      return
+    }
+    if (!editor || !domPreviewNeeded) return
     // 排除预览自身的容器（否则「再次打开」时会克隆到上一次的预览而不是编辑器）
     const src =
-      typeof document !== 'undefined'
-        ? document.querySelector('.ke-editor-prose:not([data-ke-pdf-preview])')
-        : null
-    if (!src) return editor.getHTML() // 兜底：拿不到实时 DOM 时退回序列化（公式会退化为原文）
-    const clone = src.cloneNode(true) as HTMLElement
-    // 去掉交互件（悬浮工具条/按钮），并让克隆体只读
-    clone.querySelectorAll('.ke-math-tools, [data-ke-hover-tools], button').forEach((el) => el.remove())
-    clone.querySelectorAll('[contenteditable]').forEach((el) => el.setAttribute('contenteditable', 'false'))
-    return clone.innerHTML
-  }, [open, editor])
+      typeof document !== 'undefined' ? document.querySelector('.ke-editor-prose:not([data-ke-pdf-preview])') : null
+    let html = ''
+    if (src) {
+      const clone = src.cloneNode(true) as HTMLElement
+      clone.querySelectorAll('.ke-math-tools, [data-ke-hover-tools], button').forEach((el) => el.remove())
+      clone.querySelectorAll('[contenteditable]').forEach((el) => el.setAttribute('contenteditable', 'false'))
+      html = clone.innerHTML
+    } else {
+      html = editor.getHTML() // 兜底：拿不到实时 DOM 时退回序列化（公式会退化为原文）
+    }
+    setPreviewHtml(html)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editor, domPreviewNeeded])
 
   /**
    * 主题令牌 → CSS 变量名（`background` → `--background`）。
@@ -314,7 +337,7 @@ export default function ExportPdfDialog({
   // 首帧测量 + rAF 复测 + `document.fonts.ready` 复测 + ResizeObserver 复测，**以后测为准**，
   // 避免「页高/内容高算错 → 页框过大」这类首屏错误。
   useEffect(() => {
-    if (!open) return
+    if (!open || !domPreviewNeeded) return
     const m = measureRef.current
     if (!m) return
     let cancelled = false
@@ -338,7 +361,7 @@ export default function ExportPdfDialog({
       if (raf) cancelAnimationFrame(raf)
       ro?.disconnect()
     }
-  }, [open, previewHtml, layoutKey, previewKey])
+  }, [open, domPreviewNeeded, previewHtml, layoutKey, previewKey])
 
   // ---------------- task-76：真 PDF 预览（桌面态） ----------------
   /** 预览 PDF 的绝对路径（用于关闭时删除）；null = 尚未生成 */
@@ -346,7 +369,6 @@ export default function ExportPdfDialog({
   /** 已生成预览的可显示 URL（asset 协议；含 #toolbar=0&navpanes=0 收敛查看器工具栏） */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewBusy, setPreviewBusy] = useState(false)
-  const [previewError, setPreviewError] = useState<string | null>(null)
   /** 单飞 + 旧结果作废：仅最后一次请求可提交 */
   const previewSeqRef = useRef(0)
 
@@ -651,7 +673,15 @@ export default function ExportPdfDialog({
               真 PDF 预览不可用（{previewError}），已回退为 DOM 预览
             </p>
           ) : null}
-          {previewUrl ? null : (
+          {previewUrl ? null : realPdfEnabled && !previewError ? (
+            <div
+              data-testid="pdf-preview-generating"
+              className="flex min-h-0 flex-1 items-center justify-center gap-2 text-[13px] text-text-3"
+            >
+              <span className="size-3.5 animate-spin rounded-full border-2 border-border border-t-primary" />
+              正在生成真 PDF 预览…
+            </div>
+          ) : (
           <div
             ref={scrollRef}
             data-testid="pdf-preview-scroll"
@@ -689,7 +719,7 @@ export default function ExportPdfDialog({
                 task-73 追加：整块以 `previewKey` 重挂 —— 选项/内容变化时旧预览面**整体卸载**，
                 杜绝「深色残留 / 旧布局沿用」只靠切换才复位的现象。 */}
             <div key={previewKey} data-testid="pdf-pages" className="flex flex-col items-center gap-4">
-            {Array.from({ length: pageCount }, (_v, i) => (
+            {Array.from({ length: Math.min(pageCount, DOM_PREVIEW_MAX_PAGES) }, (_v, i) => (
               <div key={i} className="flex shrink-0 flex-col items-center gap-1">
                 <span className="text-[10.5px] text-text-3" data-testid={`pdf-page-label-${i}`}>
                   第 {i + 1} / {pageCount} 页
@@ -728,6 +758,11 @@ export default function ExportPdfDialog({
               </div>
             ))}
             </div>
+            {pageCount > DOM_PREVIEW_MAX_PAGES ? (
+              <p data-testid="pdf-pages-truncated" className="pt-1 text-[11.5px] text-text-3">
+                预览仅显示前 {DOM_PREVIEW_MAX_PAGES} 页（共 {pageCount} 页）；导出为完整 PDF。
+              </p>
+            ) : null}
           </div>
           )}
           </div>

@@ -1,0 +1,28 @@
+{
+  "context": "AstraNota 1.3.0-pre.1 桌面安装包（Windows 11 + WebView2/Edge 155），隔离 APPDATA + 测试工作区，CDP 驱动真实 WebView2。",
+  "issue": "导出 PDF 很卡顿：长文档（41885 元素 / 720 KaTeX / 正文 HTML 2.45MB）点击「导出 PDF」后点击动作>30s 未完成（Playwright click 超时），对话框打开前主线程被冻住。",
+  "root_causes": [
+    "ExportPdfDialog 在打开瞬间用 cloneNode 深克隆整篇 .ke-editor-prose（2.4MB HTML / 4 万节点）",
+    "DOM 回退预览按页渲染 N 份整篇正文副本（长文档 20+ 页 → 数十万节点）",
+    "桌面态真 PDF 预览生成期间同样先渲染 N 份副本（真预览约 1-3s 才到达）"
+  ],
+  "fix": [
+    "预览快照改为按需（仅非桌面态或真 PDF 预览失败时才克隆）",
+    "桌面态生成期间渲染轻量占位（data-testid=pdf-preview-generating），不再渲染 DOM 副本",
+    "DOM 回退预览最多渲染 8 页（DOM_PREVIEW_MAX_PAGES），并提示「预览仅显示前 8 页，导出为完整 PDF」"
+  ],
+  "measurements_before": {
+    "short_doc": { "dialog_open_ms": 83, "real_pdf_preview_ready_ms": 800, "raw_export_invoke_ms": 304, "theme_toggle_regen_ms": 120 },
+    "heavy_doc": { "elements": 41885, "katex": 720, "prose_html_bytes": 2453071, "click_export_pdf_hang_ms": ">30000 (Playwright timeout)", "export_flow_wait_ms": ">150000 (alert 不可由 CDP 观测，文件实际已生成)" }
+  },
+  "measurements_after": {
+    "heavy_doc": { "editor_load_ms": 3248, "dialog_open_ms": 567, "dom_fallback_rendered_while_generating": false, "elements_during_generation": 41943, "real_pdf_preview_ready_ms": 3162 },
+    "environment": "rebuilt desktop app (frontend dist with fix, same 1.3.0-pre.1 code)"
+  },
+  "verification": {
+    "vitest": "149 files / 2055 passed + 1 skipped",
+    "tsc": 0,
+    "build": "exit 0",
+    "visual_verify": "17 图 / 184 断言 PASS"
+  }
+}

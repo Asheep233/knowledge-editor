@@ -47,6 +47,13 @@
   加 `min-height: max(360px, calc(100vh - 340px))`；1440×900 实测 textarea 498px、内部滚动正常。
 - 回归防护：`docs/focus-ui/verify-ui.cjs` 新增源码模式断言（textarea ≥400、容器 ≥500、内部滚动、切回正文 ProseMirror 恢复）+
   `17-source-mode-1440x900.png`；验收脚本扩展为 17 图 / **184/184 PASS**。全量 vitest 2055 绿、build exit 0。
+- **导出 PDF 卡顿（桌面 WebView2 实测复现并修复）**：长文档（41885 节点 / 720 KaTeX / 正文 HTML 2.45MB）点击「导出 PDF」后
+  主线程冻结（Playwright 点击动作 >30s 超时）。根因：①打开对话框瞬间 `cloneNode` 深克隆整篇正文 DOM；②DOM 回退预览
+  **按页复制 N 份整篇正文**（长文档 20+ 页）；③桌面态真 PDF 预览生成期间也先渲染 N 份副本。修复：预览快照改为**按需克隆**
+  （仅非桌面态/真预览失败时），桌面生成期只渲染轻量占位，DOM 回退预览上限 8 页并提示。
+  修复后实测（同一 4 万节点文档）：对话框打开 **567ms**（此前冻结 >30s）、生成期间 DOM 节点数保持 41.9k（无副本爆炸）、
+  真 PDF 预览就绪 3.16s；短文档路径不变（打开 83ms / 预览 800ms / 导出 304ms）。
+  证据：`docs/focus-ui/evidence/export-perf/measurements.json`。
 
 ## 2026-10-18（★ v1.2.18 已发布（Latest）：修复 v1.2.17「导出」按钮无反应回归）
 

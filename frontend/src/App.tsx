@@ -1241,7 +1241,7 @@ export default function App() {
       pageActive={page !== 'editor'}
       focusTitle={article?.title}
       focusSaveStatus={focusSaveStatus}
-      showFocusSavedDot={saveState === 'saved'}
+      showFocusSavedDot={saveState === 'saved' || saveState === 'idle'}
       focusThemeIsDark={themeIsDark}
       onToggleTheme={toggleTheme}
       header={

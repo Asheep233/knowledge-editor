@@ -12,6 +12,7 @@
  * 兼容：保留原 AppShell props 形状（header/left/main/right/statusBar），业务状态仍由 App 持有。
  */
 import type { ReactNode } from 'react'
+import { Icon } from '../icons'
 
 export interface AppShellProps {
   /** 顶栏（可选：如隐藏的导入 input；Focus 版不渲染可视顶栏） */
@@ -35,6 +36,14 @@ export interface AppShellProps {
   onExitFocus?: () => void
   /** Focus：当前主画布是页面（知识库/搜索/模块/资料/回收站）→ 隐藏浮动命令条 */
   pageActive?: boolean
+  /** 专注模式顶栏：当前文档标题 */
+  focusTitle?: string
+  /** 专注模式顶栏：保存状态文案（如「已保存」） */
+  focusSaveStatus?: string
+  showFocusSavedDot?: boolean
+  /** 专注模式顶栏：切换外观 */
+  focusThemeIsDark?: boolean
+  onToggleTheme?: () => void
 }
 
 export function AppShell({
@@ -50,6 +59,11 @@ export function AppShell({
   focusMode = false,
   onExitFocus,
   pageActive = false,
+  focusTitle,
+  focusSaveStatus,
+  showFocusSavedDot = true,
+  focusThemeIsDark = false,
+  onToggleTheme,
 }: AppShellProps) {
   return (
     <div
@@ -62,8 +76,27 @@ export function AppShell({
         <div className="focus-exit-bar" data-ke-appearance-scope="chrome">
           <button type="button" onClick={onExitFocus} title="退出专注模式（Esc）" aria-label="退出专注模式">
             <span aria-hidden="true">←</span>
-            <span>退出专注</span>
+            <span className="focus-exit-title">{focusTitle || '退出专注'}</span>
           </button>
+          <div className="focus-exit-status">
+            {focusSaveStatus ? (
+              <span className="focus-exit-save">
+                {showFocusSavedDot ? <span className="focus-exit-dot" aria-hidden="true" /> : null}
+                {focusSaveStatus}
+              </span>
+            ) : null}
+            {onToggleTheme ? (
+              <button
+                type="button"
+                onClick={onToggleTheme}
+                title={focusThemeIsDark ? '切换到浅色' : '切换到深色'}
+                aria-label={focusThemeIsDark ? '切换到浅色外观' : '切换到深色外观'}
+                className="focus-exit-theme"
+              >
+                <Icon name={focusThemeIsDark ? 'sun' : 'moon'} className="size-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       <div

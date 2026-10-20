@@ -73,8 +73,9 @@ describe('S-0 既有默认键位不变动（硬裁决 · 源码级快照）', ()
     expect(editorArea, 'Ctrl+S 绑定丢失/改键').toMatch(/key\.toLowerCase\(\)\s*===\s*['"]s['"]/)
     expect(editorArea, 'Ctrl+S 不再 preventDefault').toMatch(/e\.preventDefault\(\)/)
 
-    const sidebar = readSrc('../components/layout/LeftSidebar.tsx')
-    expect(sidebar, 'Ctrl+K 绑定丢失/改键').toMatch(/key\.toLowerCase\(\)\s*===\s*['"]k['"]/)
+    // Focus：Ctrl/Cmd+K 的绑定点由侧栏迁到 App（⌘K 命令面板；侧栏搜索框已迁为搜索页）
+    const appSrc = readSrc('../App.tsx')
+    expect(appSrc, 'Ctrl+K 绑定丢失/改键').toMatch(/e\.key\s*===\s*['"]k['"]/)
 
     const lightbox = readSrc('../components/editor/nodeviews/ImageLightbox.tsx')
     expect(lightbox, 'ImageLightbox Escape 关闭丢失').toMatch(/e\.key\s*===\s*['"]Escape['"]/)
@@ -700,10 +701,10 @@ describe('S-6b 生产接线（settings.ts 自动安装的分发器 + handler 注
   })
 
   it('ADP-1 收口不变量：真实 handler 注册点存在（App / EditorArea / LeftSidebar 批量注册，非 DOM 兜底）', () => {
+    // Focus 页面化：搜索/回收站入口迁到 App 的页面路由（侧栏不再注册动作 handler）
     const points = [
-      ['../App.tsx', 'App（应用级动作）'],
+      ['../App.tsx', 'App（应用级动作 + 搜索/回收站页面路由）'],
       ['../components/layout/EditorArea.tsx', 'EditorArea（编辑器动作）'],
-      ['../components/layout/LeftSidebar.tsx', 'LeftSidebar（搜索/回收站）'],
     ] as const
     for (const [file, label] of points) {
       expect(

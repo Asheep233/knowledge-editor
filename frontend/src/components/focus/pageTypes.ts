@@ -17,6 +17,8 @@ export interface FocusPageProps {
   onNewArticle: () => void
   /** 数据刷新令牌：文件系统变更后 App 自增，页面据此重新取数 */
   refreshToken: number
+  /** 文件系统变更后通知 App 刷新侧栏文件树（如回收站恢复） */
+  onFsChanged?: () => void
 }
 
 /** 侧栏导航项标识（与设计稿 .fb-nav 一致） */

@@ -240,6 +240,14 @@ interface Props {
   toolbarExtra?: ReactNode
   /** Focus 壳层：注入浮动命令条左侧的前置动作（窄屏文件抽屉按钮） */
   toolbarLeading?: ReactNode
+  /** task-13（Focus ⋯ 更多菜单）：打开「文档信息」浮层并展开大纲（App 注入：切右栏 + 派发 ke:outline-open） */
+  onOpenOutline?: () => void
+  /** task-13：切换专注模式 */
+  onToggleFocusMode?: () => void
+  /** task-13：切换浅色/深色外观 */
+  onToggleTheme?: () => void
+  /** task-13：打开设置 */
+  onOpenSettings?: () => void
 }
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -252,7 +260,7 @@ const SAVE_LABEL: Record<SaveState, { text: string; cls: string; kind: SaveState
   error: { text: '保存失败', cls: 'text-rose-600 font-medium', kind: 'error' },
 }
 
-export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0, autosavePaused = false, flushToken = 0, toolbarExtra, toolbarLeading }: Props) {
+export default function EditorArea({ article, loading, onNewArticle, onSaveStateChange, onSaved, onArticleRestored, onRenamed, reloadToken = 0, autosavePaused = false, flushToken = 0, toolbarExtra, toolbarLeading, onOpenOutline, onToggleFocusMode, onToggleTheme, onOpenSettings }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   /** M-10：外部修改冲突弹窗期间暂停自动保存（读取用 ref，避免 handleUpdate 闭包陈旧） */
   const autosavePausedRef = useRef(false)
@@ -1296,6 +1304,20 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     return () => window.removeEventListener('ke:open-history', onOpen)
   }, [handleOpenHistory])
 
+  // task-13：历史浮层 Esc 关闭（与「关闭」按钮同语义；不拦截编辑器其它按键）
+  useEffect(() => {
+    if (!historyOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      // F5：输入法组词中的 Esc 是取消候选，不得关浮层（与 PromptDialog 同口径）
+      if (shouldIgnoreKeyEvent(e)) return
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      setHistoryOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [historyOpen])
+
   // ---------------------------------------------------------------------------
   // task-35（ADP-1 收口）：自定义快捷键 → **真实 handler 闭包**（不再走 DOM 过渡适配层）
   // ---------------------------------------------------------------------------
@@ -1643,6 +1665,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               stillValid: isUploadTargetCurrent,
               onLost: notifyUploadTargetLost,
             }}
+            // task-13（Focus ⋯ 更多菜单）：宿主动作由 App 注入；打印预览/导入在工具栏内用自定义事件
+            onOpenOutline={onOpenOutline}
+            onToggleFocusMode={onToggleFocusMode}
+            onToggleTheme={onToggleTheme}
+            onOpenSettings={onOpenSettings}
           />
           </div>
           <TableBubbleMenu />
@@ -1864,72 +1891,91 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         </div>
       )}
 
-      {/* 历史版本面板（Phase 6.3） */}
+      {/* 历史版本浮层（task-13：全屏模态 → 右侧 sheet；列表 / 预览 / 恢复逻辑与全部文案保持不变） */}
       {historyOpen && article && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25">
-          <div className="flex h-[480px] w-[680px] flex-col rounded-lg bg-white p-5 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800">历史版本</h3>
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-40">
+          {/* 遮罩：点击关闭（与「关闭」/ Esc 同语义） */}
+          <button
+            type="button"
+            aria-label="关闭历史版本浮层"
+            onClick={() => setHistoryOpen(false)}
+            className="absolute inset-0 cursor-default"
+            style={{ background: 'var(--scrim)' }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="历史版本"
+            data-testid="history-sheet"
+            className="absolute bottom-2.5 right-2.5 top-2.5 flex w-[420px] max-w-[calc(100vw-20px)] flex-col overflow-hidden rounded-panel border border-border bg-card shadow-overlay"
+          >
+            <div className="flex items-start gap-3 border-b border-border px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[15px] font-semibold leading-snug tracking-[-0.02em] text-foreground">历史版本</h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-text-2">
+                  最近 30 份自动快照，可随时恢复。快照保存在文档旁，不进入索引。
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => void loadHistory()}
-                  className="text-[11px] text-gray-400 hover:text-gray-600"
+                  className="h-7 shrink-0 rounded-control px-2 text-[12px] text-text-2 transition-colors hover:bg-surface-2 hover:text-foreground"
                 >
                   刷新
                 </button>
                 <button
                   type="button"
                   onClick={() => setHistoryOpen(false)}
-                  className="rounded border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 hover:bg-gray-50"
+                  className="h-7 shrink-0 rounded-control border border-border bg-card px-2.5 text-[12px] text-foreground transition-colors hover:bg-surface-2"
                 >
                   关闭
                 </button>
               </div>
             </div>
-            <div className="flex min-h-0 flex-1 gap-3">
-              {/* 版本列表 */}
-              <div className="w-56 shrink-0 overflow-y-auto rounded border border-gray-100">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+              {/* 版本列表（「当前版本」与版本行保持同一父节点：接线测试按 parentElement 取第 2 个按钮） */}
+              <div className="max-h-[38%] shrink-0 overflow-y-auto rounded-menu border border-border">
                 <button
                   type="button"
                   onClick={handlePreviewCurrent}
-                  className={`block w-full border-b border-gray-100 px-3 py-2 text-left hover:bg-gray-50 ${
-                    showCurrent && !previewing ? 'bg-blue-50' : ''
+                  className={`block w-full border-b border-border px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
+                    showCurrent && !previewing ? 'bg-primary-soft' : ''
                   }`}
                 >
-                  <span className="text-[11px] font-medium text-gray-700">当前版本</span>
-                  <span className="ml-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-600">
+                  <span className="text-[12px] font-medium text-foreground">当前版本</span>
+                  <span className="ml-1 rounded-full bg-primary-soft px-1.5 py-px text-[10.5px] text-accent-foreground">
                     当前
                   </span>
-                  <div className="mt-0.5 text-[11px] text-gray-400">
+                  <div className="mt-0.5 text-[11px] text-text-3">
                     {formatTime(article.updated_at ?? '')}
                   </div>
                 </button>
                 {historyError ? (
-                  <div className="px-3 py-2 text-[11px] text-rose-500">
+                  <div className="px-3 py-2 text-[12px] text-danger">
                     加载失败：{historyError}
                     <button
                       type="button"
-                      className="ml-1 text-blue-600 hover:underline"
+                      className="ml-1 text-primary hover:underline"
                       onClick={() => void loadHistory()}
                     >
                       重试
                     </button>
                   </div>
                 ) : versions.length === 0 ? (
-                  <div className="px-3 py-2 text-[11px] text-gray-300">暂无历史版本</div>
+                  <div className="px-3 py-2 text-[12px] text-text-3">暂无历史版本</div>
                 ) : (
                   versions.map((v) => (
                     <button
                       key={v.id}
                       type="button"
                       onClick={() => void handlePreviewVersion(v)}
-                      className={`block w-full border-b border-gray-50 px-3 py-2 text-left hover:bg-gray-50 ${
-                        previewing?.id === v.id ? 'bg-blue-50' : ''
+                      className={`block w-full border-b border-border px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-surface-2 ${
+                        previewing?.id === v.id ? 'bg-primary-soft' : ''
                       }`}
                     >
-                      <div className="text-[12px] text-gray-700">{formatTime(v.timestamp)}</div>
-                      <div className="text-[10px] text-gray-400">{formatSize(v.size)}</div>
+                      <div className="text-[12px] text-foreground">{formatTime(v.timestamp)}</div>
+                      <div className="text-[11px] text-text-3">{formatSize(v.size)}</div>
                     </button>
                   ))
                 )}
@@ -1938,8 +1984,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
               <div className="flex min-h-0 flex-1 flex-col">
                 {previewing || showCurrent ? (
                   <>
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[11px] text-gray-500">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-[11.5px] text-text-2">
                         {showCurrent
                           ? '当前版本内容（只读）'
                           : `${formatTime(previewing?.timestamp ?? '')} 的历史内容（只读）`}
@@ -1948,18 +1994,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
                         <button
                           type="button"
                           onClick={() => void handleRestoreVersion(previewing)}
-                          className="rounded bg-primary px-3 py-1 text-[11px] text-primary-foreground hover:brightness-95"
+                          className="h-7 shrink-0 rounded-control bg-primary px-2.5 text-[12px] font-medium text-white transition-colors hover:bg-primary-hover"
                         >
                           恢复此版本
                         </button>
                       )}
                     </div>
-                    <pre className="ke-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all rounded border border-gray-100 bg-gray-50 p-3 text-[12px] leading-relaxed text-gray-700">
+                    <pre className="ke-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all rounded-menu border border-border bg-surface-2 p-3 text-[12px] leading-relaxed text-foreground">
                       {previewContent ?? '加载中…'}
                     </pre>
                   </>
                 ) : (
-                  <div className="flex flex-1 items-center justify-center text-[12px] text-gray-300">
+                  <div className="flex flex-1 items-center justify-center rounded-menu border border-dashed border-border text-[12px] text-text-3">
                     点击左侧版本查看内容预览
                   </div>
                 )}

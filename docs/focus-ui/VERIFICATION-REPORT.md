@@ -231,3 +231,70 @@ node docs/focus-ui/verify-ui.cjs
 
 **最终结论：Focus 集成快照 `5ed8fa2` 通过集成验收（typecheck / 全量测试 / 构建 / 视觉验收 119/119 / 禁止回退项 10/10 / 焦点环实测）。**
 无阻塞问题；§5 列出的 4 项 P2/P3 视觉与 IA 差异需 Lead 决策是否在本轮修，其余为低风险细节与后续专项建议。
+
+---
+
+## 10. 保真第二轮独立验收（快照 `focus-ui` @ `ffe3ffe`）
+
+> 触发：Lead 完成「保真第二轮」（侧栏 IA / 命令条收敛 / 专注模式 / 正文元信息与引用块 / 启动器品牌标）后提交 `ffe3ffe`，
+> 要求 QA 独立验收。执行者 qa-visual（只读产品代码，只写 `docs/focus-ui/`；未 commit/push/checkout）。
+>
+> **快照说明（重要）**：本次验收运行于 `2026-10-20 15:22–15:24`，当时 `git status` 干净、`HEAD=ffe3ffe`（见 `evidence/run-meta.json` 的 `git` 字段）。
+> 验收过程中观察到大工作树随后被 Lead 的**下一轮未提交改动**占用（`M App.tsx / EditorArea.tsx / LeftSidebar.tsx / AppShell.tsx` +
+> 新增未跟踪 `frontend/src/components/focus/`，共 +138 行，用途是补「知识库/搜索/模块/资料/回收站」整页路由）。
+> 本 §10 的结论**只针对已提交的 `ffe3ffe`**；该未提交改动不在本次判定范围内（见 §10.5-1）。
+
+### 10.1 命令与结果
+
+| 项 | 命令 | 结果 | 证据 |
+|---|---|---|---|
+| TypeScript | `cd frontend && npx tsc -b --noEmit` | **PASS**（0 错，无输出） | 本次实测 |
+| 全量测试 | Lead 在 `ffe3ffe` 工作树执行：`npx vitest run --maxWorkers=2` | **PASS**：`Test Files 143 passed (143)`；`Tests 1988 passed \| 1 skipped (1989)`；`EXIT=0`；Start 15:14:43，Duration 409.26s | `/tmp/focus-final-vitest2.log`（解析完成结果；未并行重跑，遵守“不双份负载”） |
+| 生产构建 | `cd frontend && npm run build` | **PASS**：`BUILD_EXIT=0`，`✓ built in 5.33s`，`dist-build` 3.0 MB | `/tmp/focus-final-build2.log` |
+| 视觉验收 | `KE_STRICT=1 node docs/focus-ui/verify-ui.cjs` | **PASS**：9 张截图，**135/135 断言 PASS，0 DIFF**，`EXIT=0` | `/tmp/focus-qa-round2-verify.log`、`docs/focus-ui/evidence/{metrics.json,summary.md,run-meta.json}` |
+
+> 全量测试相对上一轮（1981 passed）新增 7 个用例（1988 passed），对应专注模式/侧栏视图等新增逻辑，无失败、无 flaky。
+> 视觉脚本本轮由 Lead 更新：文档信息入口改走「⋯ 更多」菜单、新增 `09-focus-mode` 截图与 8 项专注模式断言、侧栏导航/footer 文案断言，
+> QA 独立复跑结果与 Lead 实测一致（135/135，0 DIFF）。
+
+### 10.2 本轮改动逐项核验（对照 Lead 改动摘要）
+
+| # | 改动点 | 核验方式 | 结论 |
+|---|---|---|---|
+| 1 | 侧栏 IA：5 导航（知识库/搜索/模块/资料/回收站）+ footer 三段（设置/专注模式/切换外观）+ footer 主题图标 | 干净快照 `01` 截图 + 脚本软断言 + `git show HEAD` 源码 | **PASS**：导航文案 5/5、footer 3/3 均命中（`metrics.json`）；footer「切换外观」图标随主题 moon/sun 切换（`LeftSidebar.tsx:1190-1199`）；搜索框已不在知识库默认视图 |
+| 2 | 命令条：右侧仅 搜索 / ⋯更多 / 保存 / 导出；文档信息/源码模式/历史/微分 d 收进 ⋯ | `01` 截图 + `git show HEAD` 源码 | **PASS**：右侧动作组恰为 4 个（`搜索全部文档`/`更多`/`保存`/`导出`）；`EditorToolbar.tsx:804-845` 注释与实现一致，视图切换/历史/微分 d/文档信息均为菜单项 |
+| 3 | 专注模式：侧栏隐藏、命令条沉底居中、纸面去边框/阴影、Esc 或「退出专注」返回 | 脚本 8 项断言 + `09` 截图 | **PASS**：`data-focus-mode=1`、侧栏 display:none、命令条 720×44 距底 16、纸面 border 0/shadow none、Esc 退出后 `data-focus-mode=null` |
+| 4 | 正文：去面包屑与 KE 版本小字；元信息「今天 12:50 · 341 字 · 物理 / 习题」；引用块纯左竖线无底色；空态去小字 | 干净快照 `01` 截图目检 + `git show HEAD` 源码 | **PASS**：截图元信息为 `今天 12:50 · 341 字 · 物理 / 习题`（无 Articles 面包屑、无 KE v）；引用块 `background: transparent` + `border-left: 3px solid var(--line-2)`（`index.css:313-322`） |
+| 5 | 启动器：官方品牌图标 84px + 46px 标题 + 720 列 | 脚本断言 05 + 截图 + `git show HEAD` 源码 | **PASS**：hero 品牌图 `size-[84px]`、标题 46px、内容列 720（断言 actual 46/720）；装饰性小字（顶部/底部声明、hero 副标题）已移除 |
+| 6 | `verify-ui.cjs` 更新 + 09 专注模式截图 | 独立复跑 | **PASS**：脚本 9 张截图全产出，`KE_STRICT=1` 下 exit 0（135/135） |
+
+### 10.3 对照设计基线截图（人工）
+
+| 基线截图 | 对应本次截图 | 结论 | 说明 |
+|---|---|---|---|
+| `editor.png` | `01-editor-light-1440x900.png` | **PASS（重点项）** | 侧栏 5 导航 + footer 三段 + 主题图标对齐；命令条右侧四入口对齐；元信息格式对齐；引用块无底色对齐；纸面 860/阅读列 680/命令条 46 等既有断言全 PASS。仅剩数据驱动差异（文件树内容/最近列表条数） |
+| `editor-dark.png` | `04-editor-dark-1440x900.png` | **PASS** | 深色令牌 8/8、纸面/侧栏 #0e0e10、标题 #f5f5f7、命令条与侧栏结构同浅色一致 |
+| `focus.png` | `09-focus-mode-1440x900.png` | **PASS（布局）/ 有 3 处视觉差异** | 无侧栏、无顶栏、命令条沉底居中、纸面去边框阴影 ✓；差异见 §10.4-2/3/4 |
+| `library.png` | 无对应整页截图（见 §10.4-1） | **DIFF（P2）** | `ffe3ffe` 未实现整页知识库：5 导航只切换**侧栏视图**，主画布仍是编辑器；距离基线 library.png（整页知识库：标题+统计+继续写作卡+最近编辑列表）仍有差距 |
+| `launcher.png` | `05-launcher-1440x900.png` | **PASS（结构/品牌）** | 官方品牌标 84px、标题 46px、内容列 720、两操作卡+最近使用结构对齐；差异见 §10.4-5 |
+| `settings.png` | `06-settings-1440x900.png` | 维持上轮结论 | 居中卡片浮层（按 Lead 指令形态），内容分组与基线一致 |
+
+### 10.4 本轮新增差异清单（只记录，未改产品代码）
+
+| # | 优先级 | 差异 | 证据 | 建议 |
+|---|---|---|---|---|
+| 1 | **P2** | **知识库/搜索/模块/资料/回收站「整页」视图未在 `ffe3ffe` 实现**：导航点击只切换侧栏视图（`setView`），主画布始终是编辑器；`App.tsx` 在 `ffe3ffe` 无 page 路由/`focus-page-layer`/`LibraryPage`，`LeftSidebar` 也无 `onNavigate`/`activePage` 接线。基线 `library.png` 是完整知识库页（标题/统计/导入/新建/继续写作/最近编辑）。 | `git show HEAD:frontend/src/App.tsx \| grep -c "LibraryPage\|focus-page-layer"` → 0；`git show HEAD:...LeftSidebar.tsx:741` 仅 `setView(item.id)`；干净快照 `01` 截图即知识库默认视图（主画布仍是编辑器） | **已在进行中**：验收时工作树出现 Lead 未提交的 `components/focus/{LibraryPage,SearchPage,ModulesPage,AssetsPage,TrashPage,PageShell,CommandPalette}.tsx` + App/LeftSidebar 路由改动（不在本快照判定内）。建议下一轮提交后补 `10-library-1440x900` 等整页截图并对照 `library.png`/`search.png` |
+| 2 | P3 | 专注模式底部工具条仍是**完整命令条**：含 搜索/⋯/保存/导出 与全部格式项；基线 `focus.png` 的底部是**极简格式条**（无保存/导出/搜索/⋯），且顶部为「← + 文档标题面包屑」，当前是左上「← 退出专注」胶囊。 | `09` 截图 vs `focus.png`；脚本 `09-focus` 断言通过（未约束此差异） | 若产品要求与基线像素级一致：专注模式隐藏动作组（或仅保留格式组）；顶栏改面包屑 + 右上保存状态。当前实现仍满足「隐藏侧栏/命令条沉底」的功能目标 |
+| 3 | P3 | 专注模式无「已保存 / 锁」状态指示（基线右上角有绿色已保存圆点 + 锁图标） | `09` 截图 vs `focus.png` | 可后续在专注模式补保存状态浮标 |
+| 4 | P3 | `focus.png` 基线为深色截图，本次 `09` 为浅色（专注模式与主题正交，功能已验证；深浅色截图的专注模式未单独取证） | `09` 截图 vs `focus.png` | 可选：脚本增加深色专注模式一张（低优先） |
+| 5 | P3 | 启动器仍有基线差异：无**常驻**路径输入+浏览按钮（按交互展开）；「最近使用」条数依真实数据（本次 1 条，基线示意多条含失效态）；右上无主题/信息图标 | `05` 截图 vs `launcher.png` + `git show HEAD` 源码 | 期望与设计逐像素一致时再补；当前符合「去装饰小字」的本轮方向 |
+| 6 | P3 | 侧栏知识库视图的「最近更新/标签」为紧凑文本入口（符合 Lead 本轮设计），基线 editor.png 中为文件树+计数；数据驱动差异（测试工作区仅 1 文档/1 模块），非回归 | `01` 截图 vs `editor.png` | 无需修；真实工作区数据下自然对齐 |
+| 7 | P2（承上轮） | 上轮 §5-1 侧栏 IA 差异**已解决**（本轮 5 导航 + footer 三段对齐）；§5-2 文档信息浮层顺序、§5-3 设置形态、§5-4 启动器细节、§5-7 ≤760 截图取证仍维持原状态 | 见 §5 | 维持上轮建议 |
+| 8 | 环境 | 已确认 WSL `/mnt/f` 下复用旧 vite dev server 会服务陈旧模块；本次脚本自起全新实例（端口 5273 空闲→自起，跑完关闭），`run-meta.json` 记录 `head=ffe3ffe dirty=0` | `evidence/run-meta.json` | 维持：视觉自查不要复用长跑 dev server |
+
+### 10.5 结论
+
+- **`ffe3ffe` 通过保真第二轮独立验收**：TypeScript 0 错、全量测试 143/143 文件（1988 passed + 1 skipped，EXIT=0）、构建成功、视觉脚本 9 图 **135/135 断言 PASS（KE_STRICT=1，0 DIFF）**。
+- 本轮重点项（侧栏 IA、命令条右侧四入口、专注模式、引用块无底色、元信息格式、启动器品牌标）**全部验证通过**。
+- 剩余差异集中在 **整页二级视图（P2，验收时 Lead 已在未提交改动中实施，待下轮提交后补证）** 与 **专注模式/启动器与基线的视觉细节（P3）**，均不阻断当前提交。
+- 证据刷新：`docs/focus-ui/screenshots/`（9 张，含 `09-focus-mode-1440x900.png`）、`docs/focus-ui/evidence/`（`metrics.json` 135 项断言 / `summary.md` / `run-meta.json`）。

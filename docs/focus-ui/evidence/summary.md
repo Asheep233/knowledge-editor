@@ -1,13 +1,13 @@
 # Focus 视觉验收 · 运行摘要（verify-ui.cjs 自动生成）
 
-- 时间：2026-10-20T07:14:38.659Z（耗时 35.8s）
+- 时间：2026-10-20T07:46:00.654Z（耗时 41.5s）
 - 仓库：/mnt/f/Work/KE Project/knowledge-editor
-- git：focus-ui @ 06c0567（脏文件 11 个）
-- 前端：http://127.0.0.1:5273（脚本独立拉起 pid=89556）
+- git：focus-ui @ de13f2d（脏文件 30 个）
+- 前端：http://127.0.0.1:5273（脚本独立拉起 pid=109248）
 - 后端：http://127.0.0.1:8000（复用现有）
-- 截图：9 张 → /tmp/focus-shots/
+- 截图：16 张 → /tmp/focus-shots/
 
-## 断言：135/135 PASS，0 DIFF
+## 断言：168/168 PASS，0 DIFF
 
 ## 截图清单
 
@@ -16,6 +16,13 @@
 - `/tmp/focus-shots/03-editor-inspector-sheet-1440x900.png`（1440×900）
 - `/tmp/focus-shots/06-settings-1440x900.png`（1440×900）
 - `/tmp/focus-shots/09-focus-mode-1440x900.png`（1440×900）
+- `/tmp/focus-shots/10-library-page-1440x900.png`（1440×900）
+- `/tmp/focus-shots/11-search-page-1440x900.png`（1440×900）
+- `/tmp/focus-shots/12-modules-page-1440x900.png`（1440×900）
+- `/tmp/focus-shots/13-assets-page-1440x900.png`（1440×900）
+- `/tmp/focus-shots/14-trash-page-1440x900.png`（1440×900）
+- `/tmp/focus-shots/15-command-palette-1440x900.png`（1440×900）
+- `/tmp/focus-shots/16-settings-page-1440x900.png`（1440×900）
 - `/tmp/focus-shots/04-editor-dark-1440x900.png`（1440×900）
 - `/tmp/focus-shots/05-launcher-1440x900.png`（1440×900）
 - `/tmp/focus-shots/07-editor-drawer-1024x800.png`（1024×800）

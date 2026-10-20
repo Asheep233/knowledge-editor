@@ -84,6 +84,14 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
     window.alert(`跳转到标题：${item.text}`)
   }, [])
 
+  // task-13（Focus ⋯ 更多 →「大纲与信息」）：App 切出右侧浮层后派发 `ke:outline-open`，
+  // 本面板收到即展开大纲（浮层首次挂载时 outlineOpen 默认已为 true，此监听覆盖「已打开但被收起」）。
+  useEffect(() => {
+    const onOutlineOpen = () => setOutlineOpen(true)
+    window.addEventListener('ke:outline-open', onOutlineOpen)
+    return () => window.removeEventListener('ke:outline-open', onOutlineOpen)
+  }, [])
+
   // 切换文档时同步元信息表单（F4）。
   // 旧实现只要 `article.title/tags` 变化就无条件 `setTitle/setTags`：用户正在编辑（未点保存）时，
   // 外部刷新（编辑器页眉改标题 / 保存回包 / 文件系统事件）会在下一次渲染**静默覆盖**输入，
@@ -187,7 +195,7 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
   return (
     <aside className="flex h-full w-[300px] shrink-0 flex-col border-l border-border bg-background">
       <div className="flex h-12 shrink-0 items-center justify-between px-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <span className="text-[14px] font-semibold" style={{ color: 'var(--foreground)' }}>文档属性</span>
+        <span className="text-[14px] font-semibold" style={{ color: 'var(--foreground)' }}>文档信息</span>
         <button
           type="button"
           onClick={onCollapse}
@@ -201,8 +209,69 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
-        {/* ============ DocPropertiesCard（参考稿字段行堆叠） ============ */}
+        {/* ============ 1. 大纲（Focus 文档信息浮层「大纲优先」，task-13） ============ */}
+        <div
+          className="rounded-[8px] border"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}
+          data-testid="inspector-outline"
+        >
+          <div className="flex items-center gap-1 px-3.5 py-2.5">
+            <button
+              type="button"
+              onClick={() => setOutlineOpen((v) => !v)}
+              aria-expanded={outlineOpen}
+              className="flex items-center gap-1.5 text-[13px] font-semibold"
+              style={{ color: 'var(--foreground)' }}
+            >
+              <Icon name={outlineOpen ? 'chevron-down' : 'chevron-right'} className="size-3.5 text-muted-foreground" />
+              大纲
+            </button>
+            <span className="ml-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>{outline.length}</span>
+            {outline.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setCollapseDepth((d) => (d > 0 ? 0 : 1))}
+                className="ml-auto h-7 shrink-0 rounded-[6px] px-2 text-[12px] transition-colors hover:bg-muted"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                {collapseDepth > 0 ? '展开全部' : '折叠至一级'}
+              </button>
+            ) : null}
+          </div>
+          {outlineOpen && (
+            <div className="px-2 pb-2">
+              {outline.length === 0 ? (
+                <p className="px-1.5 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>暂无标题（使用 # / ## / ###）</p>
+              ) : (
+                <ul className="space-y-0.5">
+                  {visibleOutline.map((it, idx) => (
+                    <li key={`${it.offset}-${idx}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleOutlineClick(it)}
+                        className="block w-full truncate rounded-[6px] px-1.5 py-1 text-left text-[12px] transition-colors hover:bg-muted"
+                        style={{ paddingLeft: `${(it.level - 1) * 12 + 12}px`, color: 'var(--foreground)' }}
+                        title={it.text}
+                      >
+                        <span className="mr-1 text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
+                          {'#'.repeat(it.level)}
+                        </span>
+                        {it.text}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ============ 2. DocPropertiesCard（参考稿字段行堆叠；属性卡在大纲之后） ============ */}
         <div className="rounded-[8px] border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card)' }}>
+          {/* 卡头：与大纲/历史卡同级视觉（也避免「折叠至一级」与下面字段标签在纯文本上粘连） */}
+          <div className="flex items-center px-3.5 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
+            <span className="text-[13px] font-semibold" style={{ color: 'var(--foreground)' }}>属性</span>
+          </div>
           {!article ? (
             <div className="px-3.5 py-2.5 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>未打开文档</div>
           ) : (
@@ -313,55 +382,6 @@ export default function RightPanel({ article, onMetaUpdate, onCollapse, onOpenHi
                 </div>
               )}
             </>
-          )}
-        </div>
-
-        {/* ============ 大纲（可折叠小节，原有功能保留） ============ */}
-        <div>
-          <div className="flex items-center px-1">
-            <button
-              type="button"
-              onClick={() => setOutlineOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-[13px] font-semibold"
-              style={{ color: 'var(--foreground)' }}
-            >
-              <Icon name={outlineOpen ? 'chevron-down' : 'chevron-right'} className="size-3.5 text-muted-foreground" />
-              大纲
-            </button>
-            <span className="ml-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>{outline.length}</span>
-          </div>
-          {outlineOpen && (
-            <div className="mt-1.5">
-              {outline.length === 0 ? (
-                <p className="px-1 text-[12px]" style={{ color: 'var(--muted-foreground)' }}>暂无标题（使用 # / ## / ###）</p>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setCollapseDepth((d) => (d > 0 ? 0 : 1))}
-                    className="mb-1 px-1 text-[11px] text-primary hover:underline"
-                  >
-                    {collapseDepth > 0 ? '展开全部' : '收缩至一级'}
-                  </button>
-                  <ul className="space-y-0.5">
-                    {visibleOutline.map((it, idx) => (
-                      <li key={`${it.offset}-${idx}`}>
-                        <button
-                          type="button"
-                          onClick={() => handleOutlineClick(it)}
-                          className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[12px] hover:bg-accent"
-                          style={{ paddingLeft: `${(it.level - 1) * 12 + 6}px`, color: 'var(--foreground)' }}
-                          title={it.text}
-                        >
-                          <span className="mr-1 text-[10px] text-muted-foreground">{'#'.repeat(it.level)}</span>
-                          {it.text}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
           )}
         </div>
 

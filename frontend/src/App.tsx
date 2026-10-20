@@ -687,8 +687,35 @@ export default function App() {
       })
   }, [])
 
-  /** Focus：切换专注模式 */
-  const toggleFocusMode = useCallback(() => setFocusMode((v) => !v), [])
+  /** Focus：切换专注模式（专注模式只属于编辑器主画布，进入时先切回 editor 页） */
+  const toggleFocusMode = useCallback(() => {
+    setPage('editor')
+    setFocusMode((v) => !v)
+  }, [])
+
+  /** Focus：专注模式顶栏保存状态文案（与命令条一致：dirty/saving/saved/error） */
+  const focusSaveStatus =
+    saveState === 'dirty'
+      ? '未保存…'
+      : saveState === 'saving'
+        ? '保存中…'
+        : saveState === 'saved'
+          ? '已保存'
+          : saveState === 'error'
+            ? '保存失败'
+            : ''
+
+  /** Focus：⌘K/⋯ 菜单动作 → 编辑器内部事件（打印预览复用 PDF 导出对话框；导入复用隐藏 input） */
+  useEffect(() => {
+    const onPrintPreview = () => window.dispatchEvent(new CustomEvent('ke:palette-export'))
+    const onImport = () => fileInputRef.current?.click()
+    window.addEventListener('ke:print-preview', onPrintPreview)
+    window.addEventListener('ke:open-import', onImport)
+    return () => {
+      window.removeEventListener('ke:print-preview', onPrintPreview)
+      window.removeEventListener('ke:open-import', onImport)
+    }
+  }, [])
 
   // 外部修改弹窗：重新加载 / 保留当前编辑
   // R2：用户选择「重新加载外部版本」= 以磁盘内容为准。
@@ -1075,6 +1102,9 @@ export default function App() {
         'app.settings.open': () => setSettingsOpen(true),
         'app.workspace.open': () => void handleOpenWorkspaceMenu(),
         'app.panel.right.toggle': () => toggleRight(!rightOpen),
+        // Focus 页面化：搜索/回收站入口由侧栏内视图迁到主画布页面
+        'app.search.focus': () => setPage('search'),
+        'app.trash.open': () => setPage('trash'),
       }),
     ]
     // 无标签时不注册 doc.*（未打开文档时空按键不被吞，与 S-6 一致）
@@ -1203,6 +1233,11 @@ export default function App() {
       focusMode={focusMode}
       onExitFocus={() => setFocusMode(false)}
       pageActive={page !== 'editor'}
+      focusTitle={article?.title}
+      focusSaveStatus={focusSaveStatus}
+      showFocusSavedDot={saveState === 'saved'}
+      focusThemeIsDark={themeIsDark}
+      onToggleTheme={toggleTheme}
       header={
         <>
         {/* 菜单栏由桌面壳 Tauri 原生菜单（menu.rs）提供，前端不再 mock，避免重复 */}
@@ -1242,6 +1277,13 @@ export default function App() {
         <EditorArea
           toolbarLeading={fileDrawerButton}
           toolbarExtra={inspectorButton}
+          onOpenOutline={() => {
+            toggleRight(true)
+            window.dispatchEvent(new CustomEvent('ke:outline-open'))
+          }}
+          onToggleFocusMode={toggleFocusMode}
+          onToggleTheme={toggleTheme}
+          onOpenSettings={() => setSettingsOpen(true)}
           article={article}
           loading={loading}
           reloadToken={reloadToken}
@@ -1268,6 +1310,7 @@ export default function App() {
                 onOpenArticle={(id) => void requestOpenArticle(id)}
                 onNewArticle={() => void handleNewArticle()}
                 refreshToken={treeRefresh}
+                onFsChanged={() => setTreeRefresh((n) => n + 1)}
               />
             ) : null}
             {page === 'search' ? (
@@ -1276,6 +1319,7 @@ export default function App() {
                 onOpenArticle={(id) => void requestOpenArticle(id)}
                 onNewArticle={() => void handleNewArticle()}
                 refreshToken={treeRefresh}
+                onFsChanged={() => setTreeRefresh((n) => n + 1)}
               />
             ) : null}
             {page === 'modules' ? (
@@ -1284,6 +1328,7 @@ export default function App() {
                 onOpenArticle={(id) => void requestOpenArticle(id)}
                 onNewArticle={() => void handleNewArticle()}
                 refreshToken={treeRefresh}
+                onFsChanged={() => setTreeRefresh((n) => n + 1)}
               />
             ) : null}
             {page === 'assets' ? (
@@ -1292,6 +1337,7 @@ export default function App() {
                 onOpenArticle={(id) => void requestOpenArticle(id)}
                 onNewArticle={() => void handleNewArticle()}
                 refreshToken={treeRefresh}
+                onFsChanged={() => setTreeRefresh((n) => n + 1)}
               />
             ) : null}
             {page === 'trash' ? (
@@ -1300,6 +1346,7 @@ export default function App() {
                 onOpenArticle={(id) => void requestOpenArticle(id)}
                 onNewArticle={() => void handleNewArticle()}
                 refreshToken={treeRefresh}
+                onFsChanged={() => setTreeRefresh((n) => n + 1)}
               />
             ) : null}
           </div>

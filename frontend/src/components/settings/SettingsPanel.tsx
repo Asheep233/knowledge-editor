@@ -1,14 +1,14 @@
-/** 设置面板（Phase 7 M3，规划第 7 章 7.3）：右侧抽屉。
+/** 设置面板（Phase 7 M3）：Focus 设计·独立页面形态（参考稿 settings.html / screenshots/settings.png）。
  *
  * 四组设置（schema v1，读写经 Rust 命令，Web 降级 localStorage）：
  * 启动（恢复上次状态 / 自动打开最近 Workspace）、编辑器（自动保存间隔 / 历史版本保留数量）、
- * 界面（主题 system/light/dark）、维护（查看日志 / 打开数据目录 / 重建索引）。
+ * 界面（主题 system/light/dark）、维护（查看日志 / 打开数据目录 / 重建索引）+ 关于。
  * 改动即时保存并即时生效（autosave 间隔经 settings 缓存由 EditorArea 读取）。
  *
- * 本文件为「对齐参考稿 settings.html 卡片式布局」重排：右内容区 max-w-[680px] 居中，
- * 每组 = 标题行（14px 标题 + 右侧副文案）+ 一张 rounded-lg border bg-card 卡片，
- * 卡片内每行 px-4 py-3.5、行间 divide-y，行内左侧 14px 标题 + 12px 描述、右侧控件。
- * 仅为视觉重排，未改任何设置 schema / 持久化 / 锚点逻辑。
+ * 形态：全屏灰底独立页（无卡片外壳 / 无 scrim）；左上「← 知识库」返回（onClose）、
+ * 40px 标题 + 副标题，分组 tab 横向分段（button[data-nav-group] / aria-current 契约保留），
+ * 内容列 max-width 680（728 含左右各 24px 内边距）居中，四组 bg-card 18px 分组卡、行 divide-y。
+ * 仅为视觉/布局重排，未改任何设置 schema / 持久化 / 锚点逻辑。
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { rebuildIndex } from '../../api/client'
@@ -26,6 +26,8 @@ import { askConfirm } from '../common/PromptDialog'
 import ShortcutsSection from './ShortcutsSection'
 import AppearanceSection from './AppearanceSection'
 import { getAppearanceStatus } from '../../appearance/controller'
+import astranotaIconLight from '../../assets/astranota/astranota-icon-light-256.png'
+import astranotaIconDark from '../../assets/astranota/astranota-icon-dark-256.png'
 
 interface Props {
   open: boolean
@@ -243,88 +245,71 @@ export default function SettingsPanel({ open, onClose }: Props) {
     <div
       data-ke-slot="settings"
       data-ke-appearance-scope="chrome"
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      className="fixed inset-0 z-50 flex flex-col bg-background"
       style={previewing ? { display: 'none' } : undefined}
       aria-hidden={previewing || undefined}
     >
-      {/* 遮罩：点击空白处返回编辑器（阻断式浮层，scrim 取设计令牌） */}
-      <div
-        aria-hidden="true"
-        onClick={onClose}
-        className="absolute inset-0"
-        style={{ backgroundColor: 'var(--scrim)' }}
-      />
+      {/* 独立页面形态（参考稿 settings.html / settings.png）：灰底、无卡片外壳、无 scrim。
+          头部（返回 + 40px 标题 + 副标题 + 分组 tab）固定在页面上方，设置内容在下方独立滚动。 */}
+      <header className="shrink-0">
+        <div className="mx-auto w-full max-w-[728px] px-6 pt-16">
+          <button
+            type="button"
+            data-action="close-settings"
+            onClick={onClose}
+            title="返回知识库"
+            aria-label="返回知识库"
+            className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-border bg-card px-2.5 text-[12.5px] text-text-2 shadow-sm transition-colors hover:text-foreground motion-reduce:transition-none"
+          >
+            <Icon name="chevron-left" className="size-3.5" />
+            知识库
+          </button>
 
-      {/* 居中设置浮层：宽 min(760px, 100vw-48px)、高 ≤ 85vh、24px 圆角卡片 */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-        className="relative z-10 flex max-h-[85vh] flex-col overflow-hidden rounded-[24px] border border-border bg-card"
-        style={{ width: 'min(760px, calc(100vw - 48px))', boxShadow: 'var(--elev-lg)' }}
-      >
-        {/* 头部：返回 / 标题 / 版本号 */}
-        <div className="shrink-0 border-b border-border">
-          <header className="flex flex-wrap items-start gap-3 px-6 pb-3 pt-5">
-            <button
-              type="button"
-              data-action="close-settings"
-              onClick={onClose}
-              title="返回编辑器"
-              aria-label="返回编辑器"
-              className="grid size-8 shrink-0 place-items-center rounded-control border border-border bg-card text-text-2 shadow-sm transition-colors hover:bg-surface-2 hover:text-foreground motion-reduce:transition-none"
-            >
-              <Icon name="chevron-left" className="size-4" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <h1 id="settings-title" className="font-display text-[21px] font-semibold tracking-tight text-foreground">
-                设置
-              </h1>
-              <p className="mt-0.5 text-[12px] leading-5 text-text-3">所有偏好只保存在本机，修改后立即生效。</p>
+          {/* .focus-page-title 自带 margin:0（非 layer 级联优先），上间距放在外层容器上 */}
+          <div className="mt-6">
+            <h1 id="settings-title" className="focus-page-title">设置</h1>
+          </div>
+          <p className="focus-page-sub">所有偏好只保存在本机，修改后立即生效。</p>
+
+          {/* 分组导航：内容上方横向分段 tab（button[data-nav-group] / aria-current="page" 契约保留） */}
+          <nav aria-label="设置分组" className="mt-8">
+            <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-[10px] bg-surface-2 p-1">
+              {(
+                [
+                  ['general', '常规'],
+                  ['appearance', '外观'],
+                  ['shortcuts', '快捷键'],
+                  ['maintenance', '维护'],
+                ] as const
+              ).map(([g, label]) => (
+                <button
+                  key={g}
+                  type="button"
+                  // task-37：激活态补 aria-current（与视觉高亮同源，便于断言/读屏）
+                  aria-current={group === g ? 'page' : undefined}
+                  data-nav-group={g}
+                  onClick={() => jumpToGroup(g)}
+                  className={[
+                    'flex h-8 items-center rounded-[7px] px-3.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none',
+                    group === g ? 'bg-card text-foreground shadow-sm' : 'text-text-2 hover:text-foreground',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            <span className="whitespace-nowrap pt-1 text-[12px] text-text-3">
-              AstraNota v{APP_VERSION} · Alpha
-            </span>
-          </header>
-
-          {/* 分组导航：卡片内顶部横向分段；点击滚动到对应分组
-              （button[data-nav-group] / aria-current="page" 契约保留，供滚动联动与读屏） */}
-          <nav aria-label="设置分组" className="flex flex-wrap items-center gap-1 px-6 pb-3">
-            {(
-              [
-                ['general', '常规'],
-                ['appearance', '外观'],
-                ['shortcuts', '快捷键'],
-                ['maintenance', '维护'],
-              ] as const
-            ).map(([g, label]) => (
-              <button
-                key={g}
-                type="button"
-                // task-37：激活态补 aria-current（与视觉高亮同源，便于断言/读屏）
-                aria-current={group === g ? 'page' : undefined}
-                data-nav-group={g}
-                onClick={() => jumpToGroup(g)}
-                className={[
-                  'flex h-8 items-center rounded-menu px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 active:scale-[.98] motion-reduce:transition-none',
-                  group === g
-                    ? 'bg-primary-soft text-accent-foreground'
-                    : 'text-text-2 hover:bg-surface-2 hover:text-foreground',
-                ].join(' ')}
-              >
-                {label}
-              </button>
-            ))}
           </nav>
         </div>
+      </header>
 
-        {/* 内容区：全量多组滚动（一页从上到下全部设置项，分组卡片式）
-            class 保持 min-h-0 flex-1 overflow-y-auto bg-background —— 是 task-37 滚动联动的根节点契约 */}
-        <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
+      {/* 内容滚动区：全页多组滚动（参考稿：一页从上到下全部设置项，分组卡片式）。
+          class 保持 min-h-0 flex-1 overflow-y-auto bg-background —— task-37 滚动联动与测试选择器的根节点契约 */}
+      <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto bg-background">
+        <div className="mx-auto w-full max-w-[728px] px-6 pb-32 pt-6">
           {!ready ? (
             <p className="py-10 text-center text-[13px] text-text-3">加载设置中…</p>
           ) : (
-            <div className="mx-auto flex w-full flex-col gap-5 px-6 py-6">
+            <div className="flex flex-col gap-7">
               {/* 常规：启动、恢复与保存偏好（锚点 general） */}
               <GroupAnchor group="general">
                 <section
@@ -340,13 +325,13 @@ export default function SettingsPanel({ open, onClose }: Props) {
                         onChange={(v) => void patchAndSave({ startup: { restoreLastState: v } })}
                       />
                     </SettingRow>
-                    <SettingRow label="切换工作区…" desc="打开工作区选择窗口（与菜单「文件 → 打开工作区」等效）">
+                    <SettingRow label="切换工作区" desc="打开工作区选择窗口（与菜单「文件 → 打开工作区」等效）">
                       <button
                         type="button"
                         onClick={() => window.dispatchEvent(new CustomEvent('ke:open-workspace-dialog'))}
-                        className="h-9 rounded-control bg-surface-2 px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-3"
+                        className="h-9 whitespace-nowrap rounded-control bg-surface-2 px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-surface-3"
                       >
-                        切换…
+                        切换工作区
                       </button>
                     </SettingRow>
                     <SettingRow label="启动时自动打开最近 Workspace" desc="自动打开最近使用的工作区">
@@ -511,6 +496,38 @@ export default function SettingsPanel({ open, onClose }: Props) {
                   </div>
                 </section>
               </GroupAnchor>
+
+              {/* 关于：品牌、版本与本地优先说明（参考稿 settings.html「关于」分组；无锚点，不参与分组 tab） */}
+              <section
+                aria-labelledby="section-about"
+                className="overflow-hidden rounded-[18px] border border-border bg-card shadow-sm"
+              >
+                <GroupHeading id="section-about" title="关于" desc="版本信息与本地优先说明" />
+                <div className="border-t border-border px-6 py-5">
+                  <div className="flex items-center gap-3.5">
+                    <img
+                      src={astranotaIconLight}
+                      alt="AstraNota"
+                      className="an-logo-light size-12 rounded-[12px]"
+                      draggable={false}
+                    />
+                    <img
+                      src={astranotaIconDark}
+                      alt="AstraNota"
+                      className="an-logo-dark size-12 rounded-[12px]"
+                      draggable={false}
+                    />
+                    <div>
+                      <p className="font-display text-[18px] font-semibold tracking-tight text-foreground">AstraNota</p>
+                      <p className="mt-0.5 text-[12px] text-text-3">版本 {APP_VERSION} · Alpha · 本地优先</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 max-w-[560px] text-[13px] leading-[1.7] text-text-2">
+                    一个本地优先的个人知识创作软件。Markdown 文件是唯一事实源，索引可以整体重建；
+                    程序与数据分离，卸载不会删除工作区。没有账户，也不上传。
+                  </p>
+                </div>
+              </section>
             </div>
           )}
         </div>
@@ -528,10 +545,10 @@ function GroupAnchor({ group, children }: { group: Group; children: ReactNode })
   )
 }
 
-/** 分组卡头部：17px display 标题 + 12px text-3 说明（Focus 分组卡） */
+/** 分组卡头部：17px display 标题 + 12px text-3 说明（参考稿 .settings-group-head/sub） */
 function GroupHeading({ id, title, desc }: { id: string; title: string; desc: string }) {
   return (
-    <header className="px-5 pb-2.5 pt-5">
+    <header className="px-6 pb-3 pt-5">
       <h2 id={id} className="font-display text-[17px] font-semibold tracking-tight text-foreground">
         {title}
       </h2>
@@ -540,7 +557,7 @@ function GroupHeading({ id, title, desc }: { id: string; title: string; desc: st
   )
 }
 
-/** 卡片行：左侧 14px 标题 + 12px 描述，右侧控件（Focus §6 分组卡行结构） */
+/** 卡片行：左侧 14px 标题 + 12px 描述，右侧控件（参考稿 .set-row 行结构） */
 function SettingRow({
   label,
   desc,
@@ -551,7 +568,7 @@ function SettingRow({
   children: ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-5 py-3.5">
+    <div className="flex items-start justify-between gap-6 px-6 py-4">
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-medium leading-5 text-foreground">{label}</p>
         {desc ? <p className="mt-0.5 text-[12px] leading-4 text-text-3">{desc}</p> : null}

@@ -1203,27 +1203,75 @@ body {
  * Focus · 专注模式（HANDOFF §6 / screenshots/focus.png）
  * 隐藏侧栏与浮层，命令条沉到纸面下方居中，仅留正文与极简退出入口；Esc 退出。
  * ========================================================================== */
+/* 专注模式顶栏（参考稿 focus：左 ← 文档标题，右 保存态 + 主题切换） */
 .focus-exit-bar {
   position: fixed;
-  top: 12px;
-  left: 12px;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 12px;
+  pointer-events: none;
 }
-.focus-exit-bar button {
+.focus-exit-bar > button:first-child {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 52vw;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+.focus-exit-bar > button:first-child:hover {
+  color: var(--foreground);
+  background: var(--surface-2);
+}
+.focus-exit-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.focus-exit-status {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+.focus-exit-save {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
+}
+.focus-exit-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--success);
+}
+.focus-exit-theme {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
   border-radius: var(--radius-control);
-  background: var(--card);
-  color: var(--text-2);
-  font-size: 13px;
-  box-shadow: var(--elev-sm);
+  background: transparent;
+  color: var(--text-3);
   transition: color 140ms ease, background-color 140ms ease;
 }
-.focus-exit-bar button:hover {
+.focus-exit-theme:hover {
   color: var(--foreground);
   background: var(--surface-2);
 }
@@ -1238,7 +1286,7 @@ body {
   display: none !important;
 }
 .focus-shell[data-focus-mode='1'] .focus-main-col > main > .ke-scroll {
-  padding-top: 40px;
+  padding-top: 56px;
 }
 .focus-shell[data-focus-mode='1'] .focus-paper {
   border: 0;

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T07:14:38.659Z",
+  "generatedAt": "2026-10-20T07:46:00.654Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -509,7 +509,7 @@
       "name": "侧栏含「知识库」",
       "ok": true,
       "expected": "包含「知识库」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -517,7 +517,7 @@
       "name": "侧栏含「搜索」",
       "ok": true,
       "expected": "包含「搜索」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -525,7 +525,7 @@
       "name": "侧栏含「模块」",
       "ok": true,
       "expected": "包含「模块」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -533,7 +533,7 @@
       "name": "侧栏含「资料」",
       "ok": true,
       "expected": "包含「资料」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -541,7 +541,7 @@
       "name": "侧栏含「回收站」",
       "ok": true,
       "expected": "包含「回收站」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -549,7 +549,7 @@
       "name": "侧栏含「设置」",
       "ok": true,
       "expected": "包含「设置」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -557,7 +557,7 @@
       "name": "侧栏含「专注模式」",
       "ok": true,
       "expected": "包含「专注模式」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -565,7 +565,7 @@
       "name": "侧栏含「切换外观」",
       "ok": true,
       "expected": "包含「切换外观」",
-      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站最近更新标签文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
+      "actual": "研focus-ws本地工作区新建文档知识库搜索模块资料回收站文件碰撞动力学-质心系与动量.md设置专注模式切换外观",
       "note": ""
     },
     {
@@ -709,7 +709,7 @@
       "name": "设置页含「设置」标题",
       "ok": true,
       "expected": "包含「设置」",
-      "actual": "设置\n\n所有偏好只保存在本机，修改后立即生效。\n\nAstraNota v1.2.18 · Alpha\n常规\n外观\n快捷键\n维护\n常规\n\n启动、恢复与保存偏好\n\n启动时恢复上次打开的文档\n\n继续上次的写作现场\n\n切换工作区…\n\n打开工作区选择",
+      "actual": "知识库\n设置\n\n所有偏好只保存在本机，修改后立即生效。\n\n常规\n外观\n快捷键\n维护\n常规\n\n启动、恢复与保存偏好\n\n启动时恢复上次打开的文档\n\n继续上次的写作现场\n\n切换工作区\n\n打开工作区选择窗口（与菜单「文件 → 打开工作区」等效）\n\n",
       "note": ""
     },
     {
@@ -770,10 +770,274 @@
     },
     {
       "shot": "09-focus",
+      "name": "专注模式顶栏存在",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "专注模式顶栏高 44",
+      "ok": true,
+      "expected": "44 ±2",
+      "actual": 44,
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
+      "name": "专注模式顶栏含文档标题",
+      "ok": true,
+      "expected": "包含标题",
+      "actual": "←碰撞动力学：质心系与动量",
+      "note": ""
+    },
+    {
+      "shot": "09-focus",
       "name": "Esc 退出专注模式",
       "ok": true,
       "expected": "null",
       "actual": "null",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "知识库 页面已渲染（.focus-page-layer）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "知识库 页面标题",
+      "ok": true,
+      "expected": "知识库",
+      "actual": "知识库",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "知识库 页面标题 40px",
+      "ok": true,
+      "expected": "40 ±1",
+      "actual": 40,
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "知识库 页激活时隐藏命令条",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "搜索 页面已渲染（.focus-page-layer）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "搜索 页面标题",
+      "ok": true,
+      "expected": "搜索",
+      "actual": "搜索",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "搜索 页面标题 40px",
+      "ok": true,
+      "expected": "40 ±1",
+      "actual": 40,
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "搜索 页激活时隐藏命令条",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "模块 页面已渲染（.focus-page-layer）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "模块 页面标题",
+      "ok": true,
+      "expected": "模块",
+      "actual": "模块",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "模块 页面标题 40px",
+      "ok": true,
+      "expected": "40 ±1",
+      "actual": 40,
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "模块 页激活时隐藏命令条",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "资料 页面已渲染（.focus-page-layer）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "资料 页面标题",
+      "ok": true,
+      "expected": "资料",
+      "actual": "资料",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "资料 页面标题 40px",
+      "ok": true,
+      "expected": "40 ±1",
+      "actual": 40,
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "资料 页激活时隐藏命令条",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "回收站 页面已渲染（.focus-page-layer）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "回收站 页面标题",
+      "ok": true,
+      "expected": "回收站",
+      "actual": "回收站",
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "回收站 页面标题 40px",
+      "ok": true,
+      "expected": "40 ±1",
+      "actual": 40,
+      "note": ""
+    },
+    {
+      "shot": "10-pages",
+      "name": "回收站 页激活时隐藏命令条",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "15-palette",
+      "name": "⌘K 打开命令面板",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "15-palette",
+      "name": "面板含「最近文档」分组",
+      "ok": true,
+      "expected": "包含",
+      "actual": "ESC最近文档碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.md命令新建文档⌘N导出 PDF…⌘⇧E切换到源码模式⌘/进入专注模式⌘.切换外观打开设置⌘,知识库搜索模块资料回收站打开的文档碰撞动力学：质心系与动量当前↑",
+      "note": ""
+    },
+    {
+      "shot": "15-palette",
+      "name": "面板含「命令」分组",
+      "ok": true,
+      "expected": "包含",
+      "actual": "",
+      "note": ""
+    },
+    {
+      "shot": "15-palette",
+      "name": "面板含「打开的文档」分组",
+      "ok": true,
+      "expected": "包含",
+      "actual": "",
+      "note": ""
+    },
+    {
+      "shot": "15-palette",
+      "name": "面板输入框自动聚焦",
+      "ok": true,
+      "expected": true,
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "16-settings-page",
+      "name": "设置页渲染",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "16-settings-page",
+      "name": "设置页全屏（宽）",
+      "ok": true,
+      "expected": "1440 ±1",
+      "actual": 1440,
+      "note": ""
+    },
+    {
+      "shot": "16-settings-page",
+      "name": "设置页全屏（高）",
+      "ok": true,
+      "expected": "900 ±1",
+      "actual": 900,
+      "note": ""
+    },
+    {
+      "shot": "16-settings-page",
+      "name": "设置页标题",
+      "ok": true,
+      "expected": "设置",
+      "actual": "设置",
+      "note": ""
+    },
+    {
+      "shot": "16-settings-page",
+      "name": "设置页标题 40px",
+      "ok": true,
+      "expected": "40 ±1",
+      "actual": 40,
       "note": ""
     },
     {
@@ -1098,8 +1362,8 @@
     }
   ],
   "summary": {
-    "total": 135,
-    "pass": 135,
+    "total": 168,
+    "pass": 168,
     "fail": 0
   }
 }

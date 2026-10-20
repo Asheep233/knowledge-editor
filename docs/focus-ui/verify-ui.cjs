@@ -962,6 +962,16 @@ async function main() {
       near('09-focus', '命令条宽度 720 上限', fm.bar ? fm.bar.w : NaN, 720, 3)
       eq('09-focus', '专注模式纸面去边框', fm.paperBorder, '0px')
       eq('09-focus', '专注模式纸面无阴影', fm.paperShadow, 'none')
+      // 参考稿 focus：顶栏 = ← 文档标题 | 保存态 + 主题切换
+      const focusTop = await page.evaluate(() => {
+        const bar = document.querySelector('.focus-exit-bar')
+        const btn = bar ? bar.querySelector('button') : null
+        const b = bar ? bar.getBoundingClientRect() : null
+        return { exists: !!bar, h: b ? Math.round(b.height) : null, title: btn ? (btn.textContent || '').trim() : '' }
+      })
+      eq('09-focus', '专注模式顶栏存在', focusTop.exists, true)
+      near('09-focus', '专注模式顶栏高 44', focusTop.h, 44, 2)
+      soft('09-focus', '专注模式顶栏含文档标题', focusTop.title.includes('碰撞动力学'), '包含标题', focusTop.title)
       await shot(page, '09-focus-mode-1440x900')
       await page.keyboard.press('Escape')
       await page.waitForTimeout(500)
@@ -970,6 +980,103 @@ async function main() {
         return shell ? shell.getAttribute('data-focus-mode') : 'missing'
       })
       eq('09-focus', 'Esc 退出专注模式', fmExit, null)
+
+      // ---------- H. 主画布页面（知识库/搜索/模块/资料/回收站）+ ⌘K 面板 + 设置页 ----------
+      currentShot = 'H-pages'
+      const clickNav = (label) =>
+        page.evaluate((t) => {
+          const nav = document.querySelector('[aria-label="主导航"]')
+          const btn = nav ? [...nav.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === t) : null
+          if (btn) btn.click()
+          return !!btn
+        }, label)
+      const clickFooter = (label) =>
+        page.evaluate((t) => {
+          const bar = document.querySelector('.focus-files-bar')
+          const btn = bar ? [...bar.querySelectorAll('button')].find((b) => (b.textContent || '').trim().includes(t)) : null
+          if (btn) btn.click()
+          return !!btn
+        }, label)
+      const pageInfo = () =>
+        page.evaluate(() => {
+          const layer = document.querySelector('.focus-page-layer')
+          const title = layer ? layer.querySelector('.focus-page-title') : null
+          const toolbar = document.querySelector('[data-ke-toolbar]')
+          return {
+            active: !!layer,
+            page: layer ? layer.getAttribute('data-page') : null,
+            title: title ? (title.textContent || '').trim() : null,
+            titleSize: title ? getComputedStyle(title).fontSize : null,
+            toolbarHidden: toolbar ? getComputedStyle(toolbar).display === 'none' : false,
+          }
+        })
+      const PAGES = [
+        ['知识库', '10-library-page-1440x900', '知识库'],
+        ['搜索', '11-search-page-1440x900', '搜索'],
+        ['模块', '12-modules-page-1440x900', '模块'],
+        ['资料', '13-assets-page-1440x900', '资料'],
+        ['回收站', '14-trash-page-1440x900', '回收站'],
+      ]
+      for (const [label, shotName, expectTitle] of PAGES) {
+        await clickNav(label)
+        await page.waitForTimeout(900)
+        const info = await pageInfo()
+        eq('10-pages', `${label} 页面已渲染（.focus-page-layer）`, info.active, true)
+        eq('10-pages', `${label} 页面标题`, info.title, expectTitle)
+        near('10-pages', `${label} 页面标题 40px`, parseFloat(info.titleSize || 'NaN'), 40, 1)
+        eq('10-pages', `${label} 页激活时隐藏命令条`, info.toolbarHidden, true)
+        await shot(page, shotName)
+      }
+
+      // 命令面板（⌘K）
+      await clickNav('知识库')
+      await page.waitForTimeout(500)
+      await page.keyboard.press('Control+k')
+      await page.waitForTimeout(800)
+      const palette = await page.evaluate(() => {
+        const dlg = document.querySelector('[role="dialog"][aria-label="命令面板"]')
+        const active = document.activeElement
+        return {
+          open: !!dlg,
+          text: dlg ? (dlg.textContent || '') : '',
+          inputFocused: !!active && active.tagName === 'INPUT',
+        }
+      })
+      eq('15-palette', '⌘K 打开命令面板', palette.open, true)
+      soft('15-palette', '面板含「最近文档」分组', palette.text.includes('最近文档'), '包含', palette.text.slice(0, 120))
+      soft('15-palette', '面板含「命令」分组', palette.text.includes('命令'), '包含', '')
+      soft('15-palette', '面板含「打开的文档」分组', palette.text.includes('打开的文档'), '包含', '')
+      soft('15-palette', '面板输入框自动聚焦', palette.inputFocused, true, String(palette.inputFocused))
+      await shot(page, '15-command-palette-1440x900')
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(400)
+
+      // 设置页（独立页形态，参考稿 settings.png）
+      await clickFooter('设置')
+      await page.waitForTimeout(900)
+      const settingsInfo = await page.evaluate(() => {
+        const root = document.querySelector('[data-ke-slot="settings"]')
+        const title = root ? root.querySelector('.focus-page-title') : null
+        const b = root ? root.getBoundingClientRect() : null
+        return {
+          exists: !!root,
+          w: b ? Math.round(b.width) : null,
+          h: b ? Math.round(b.height) : null,
+          title: title ? (title.textContent || '').trim() : null,
+          titleSize: title ? getComputedStyle(title).fontSize : null,
+        }
+      })
+      eq('16-settings-page', '设置页渲染', settingsInfo.exists, true)
+      near('16-settings-page', '设置页全屏（宽）', settingsInfo.w, 1440, 1)
+      near('16-settings-page', '设置页全屏（高）', settingsInfo.h, 900, 1)
+      eq('16-settings-page', '设置页标题', settingsInfo.title, '设置')
+      near('16-settings-page', '设置页标题 40px', parseFloat(settingsInfo.titleSize || 'NaN'), 40, 1)
+      await shot(page, '16-settings-page-1440x900')
+      await page.evaluate(() => {
+        const btn = document.querySelector('[data-action="close-settings"]')
+        if (btn) btn.click()
+      })
+      await page.waitForTimeout(400)
       await context.close()
     }
 

@@ -502,8 +502,9 @@ describe('task-35 收口 — 真实 handler 闭包 + doc.close + 无 DOM 兜底'
     expect(app).toMatch(/registerActionHandler\('doc\.prev'/)
     // task-64 A01：正文命令经 guardBodyCommands 包装后注册（源码态不分派）
     expect(editorArea).toMatch(/registerActionHandlers\(/)
-    expect(leftSidebar).toMatch(/'app\.search\.focus'/)
-    expect(leftSidebar).toMatch(/'app\.trash\.open'/)
+    // Focus 页面化：搜索/回收站动作注册点由侧栏迁到 App（主画布页面路由）
+    expect(app).toMatch(/'app\.search\.focus'/)
+    expect(app).toMatch(/'app\.trash\.open'/)
     // K10/K11：两条导出路径都必须把源 frontmatter 区块拼回（zip 路径修前只写 ke_version）
     const pkgStart = editorArea.indexOf('const handleExportPackage')
     expect(pkgStart, 'EditorArea 缺少 handleExportPackage').toBeGreaterThan(0)

@@ -122,6 +122,7 @@ function MenuItem({
   testId,
   ariaPressed,
   icon,
+  shortcut,
   onClick,
   children,
 }: {
@@ -133,6 +134,8 @@ function MenuItem({
   testId?: string
   ariaPressed?: boolean
   icon?: ReactNode
+  /** 右侧快捷键提示（参考稿菜单项 tail，如 ⌘K / ⌘. / ⌘,） */
+  shortcut?: string
   onClick: () => void
   children: ReactNode
 }) {
@@ -152,6 +155,7 @@ function MenuItem({
     >
       {icon ? <span className="grid size-4 shrink-0 place-items-center text-muted-foreground">{icon}</span> : null}
       <span className="min-w-0 flex-1 truncate">{children}</span>
+      {shortcut ? <span className="ml-1 shrink-0 text-[11.5px] text-muted-foreground">{shortcut}</span> : null}
     </button>
   )
 }
@@ -357,6 +361,17 @@ export interface EditorToolbarProps {
    * 只读当前已保存正文 + 当前文档公式节点；另存为新文件，**不改动当前文档**。
    */
   onOpenUprightD?: () => void
+  /**
+   * task-13（Focus ⋯ 更多菜单）：打开「文档信息」浮层并展开大纲。
+   * 由 App 注入（实现 = 切右栏 + 派发 `ke:outline-open`）；未传时本组件兜底直接派发该事件。
+   */
+  onOpenOutline?: () => void
+  /** task-13：切换专注模式（未传 = 菜单项不渲染） */
+  onToggleFocusMode?: () => void
+  /** task-13：切换浅色/深色外观（未传 = 菜单项不渲染） */
+  onToggleTheme?: () => void
+  /** task-13：打开设置（未传 = 菜单项不渲染） */
+  onOpenSettings?: () => void
 }
 
 export default function EditorToolbar({
@@ -369,6 +384,10 @@ export default function EditorToolbar({
   viewModeDisabledReason,
   uploadGuard,
   onOpenUprightD,
+  onOpenOutline,
+  onToggleFocusMode,
+  onToggleTheme,
+  onOpenSettings,
   extraActions,
   leadingActions,
 }: EditorToolbarProps = {}) {
@@ -508,6 +527,23 @@ export default function EditorToolbar({
     const el = document.getElementById('ke-global-search') as HTMLInputElement | null
     el?.focus()
     el?.select()
+  }
+
+  /**
+   * task-13（Focus ⋯ 更多菜单）：宿主级动作走自定义事件，避免工具栏直接耦合 App。
+   * - `ke:print-preview`：App 转 `ke:palette-export` → EditorArea 打开 PDF 导出对话框（打印预览）；
+   * - `ke:open-import`：App 触发隐藏文件 input（Markdown / 文档包导入）。
+   */
+  const dispatchHostAction = (name: 'ke:print-preview' | 'ke:open-import') => {
+    setMoreOpen(false)
+    window.dispatchEvent(new CustomEvent(name))
+  }
+
+  /** task-13：大纲与信息 —— 未注入 onOpenOutline 时兜底派发 `ke:outline-open`（RightPanel 监听展开大纲） */
+  const openOutline = () => {
+    setMoreOpen(false)
+    if (onOpenOutline) onOpenOutline()
+    else window.dispatchEvent(new CustomEvent('ke:outline-open'))
   }
 
   return (
@@ -815,11 +851,11 @@ export default function EditorToolbar({
         >
           <Icon name="search" className="size-4" />
         </button>
-        {/* ⋯ 更多：文档信息 / 源码模式 / 历史快照 / 微分 d 转正体 */}
+        {/* ⋯ 更多：对齐参考稿 doc-more-menu（10 条：信息/历史 → 视图/工具 → 模式/外观） */}
         <Dropdown
           open={moreOpen}
           onClose={() => setMoreOpen(false)}
-          panelMinWidth={210}
+          panelMinWidth={240}
           trigger={
             <button
               type="button"
@@ -833,9 +869,33 @@ export default function EditorToolbar({
             </button>
           }
         >
-          {/* 文档信息：宿主注入的 extraActions 本身就是「更多」菜单里的整行菜单项，
+          {/* 组 1：大纲与信息 / 文档属性（宿主注入 open-inspector）/ 历史快照 */}
+          <MenuItem
+            testId="more-outline"
+            icon={<Icon name="list" className="size-3.5" />}
+            onClick={openOutline}
+          >
+            大纲与信息
+          </MenuItem>
+          {/* 文档属性：宿主注入的 extraActions 本身就是「更多」菜单里的整行菜单项，
               直接渲染（保留 data-testid=open-inspector 等契约）；点后关闭菜单。 */}
           {extraActions ? <div onClick={() => setMoreOpen(false)}>{extraActions}</div> : null}
+          {onOpenHistory ? (
+            <MenuItem
+              testId="more-history"
+              icon={<Icon name="history" className="size-3.5" />}
+              onClick={() => {
+                setMoreOpen(false)
+                onOpenHistory()
+              }}
+            >
+              历史快照
+            </MenuItem>
+          ) : null}
+
+          <div className="my-1 h-px bg-border" />
+
+          {/* 组 2：源码模式 / 微分 d / 打印预览 / 导入 */}
           {onToggleViewMode ? (
             <MenuItem
               testId="view-mode-toggle"
@@ -857,17 +917,6 @@ export default function EditorToolbar({
               源码模式
             </MenuItem>
           ) : null}
-          {onOpenHistory ? (
-            <MenuItem
-              icon={<Icon name="history" className="size-3.5" />}
-              onClick={() => {
-                setMoreOpen(false)
-                onOpenHistory()
-              }}
-            >
-              历史快照
-            </MenuItem>
-          ) : null}
           {onOpenUprightD ? (
             <MenuItem
               title="微分 d 转正体（另存为新文件）"
@@ -880,6 +929,56 @@ export default function EditorToolbar({
               微分 d 转正体…
             </MenuItem>
           ) : null}
+          <MenuItem
+            testId="more-print-preview"
+            icon={<Icon name="export" className="size-3.5" />}
+            onClick={() => dispatchHostAction('ke:print-preview')}
+          >
+            打印预览
+          </MenuItem>
+          <MenuItem
+            testId="more-import"
+            icon={<Icon name="box" className="size-3.5" />}
+            onClick={() => dispatchHostAction('ke:open-import')}
+          >
+            导入…
+          </MenuItem>
+
+          <div className="my-1 h-px bg-border" />
+
+          {/* 组 3：专注模式 / 切换外观 / 设置 */}
+          <MenuItem
+            testId="more-focus-mode"
+            shortcut="⌘."
+            icon={<Icon name="focus" className="size-3.5" />}
+            onClick={() => {
+              setMoreOpen(false)
+              onToggleFocusMode?.()
+            }}
+          >
+            专注模式
+          </MenuItem>
+          <MenuItem
+            testId="more-toggle-theme"
+            icon={<Icon name="moon" className="size-3.5" />}
+            onClick={() => {
+              setMoreOpen(false)
+              onToggleTheme?.()
+            }}
+          >
+            切换外观
+          </MenuItem>
+          <MenuItem
+            testId="more-settings"
+            shortcut="⌘,"
+            icon={<Icon name="settings" className="size-3.5" />}
+            onClick={() => {
+              setMoreOpen(false)
+              onOpenSettings?.()
+            }}
+          >
+            设置
+          </MenuItem>
         </Dropdown>
         <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
         {onSave ? (

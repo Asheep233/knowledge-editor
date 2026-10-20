@@ -663,7 +663,7 @@ async function measure(page) {
         const card = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').includes('打开已有工作区'))
         const cb = card ? card.getBoundingClientRect() : null
         const cardStyle = card ? getComputedStyle(card) : null
-        const container = h1.closest('[class*="w-[560px]"]')
+        const container = h1.closest('[class*="w-[720px]"]')
         return {
           h1: {
             x: Math.round(hb.x),
@@ -959,8 +959,8 @@ async function main() {
       eq('05-launcher', '启动器页已渲染（无编辑器壳）', m.hasLauncherHero, true)
       eq('05-launcher', '启动器页不是编辑器（无 .focus-shell）', !!m.shell, false)
       if (m.launcher) {
-        near('05-launcher', '启动器 hero 标题 32px', parseFloat(m.launcher.h1.fontSize), 32, 1)
-        near('05-launcher', '启动器内容列宽 560', m.launcher.containerW ?? NaN, 560, 2)
+        near('05-launcher', '启动器 hero 标题 46px（设计 launcher-hero）', parseFloat(m.launcher.h1.fontSize), 46, 1)
+        near('05-launcher', '启动器内容列宽 720（设计 launcher-card）', m.launcher.containerW ?? NaN, 720, 2)
         soft('05-launcher', '主操作卡为蓝底（--primary #0071e3）', m.launcher.primaryCard ? m.launcher.primaryCard.bg === 'rgb(0, 113, 227)' : false, 'rgb(0, 113, 227)', m.launcher.primaryCard ? m.launcher.primaryCard.bg : 'missing')
         soft('05-launcher', '启动器含「打开已有工作区 / 创建新工作区」', m.launcher.text.includes('打开已有工作区') && m.launcher.text.includes('创建新工作区'), '两操作卡可见', m.launcher.text.slice(0, 160))
       }

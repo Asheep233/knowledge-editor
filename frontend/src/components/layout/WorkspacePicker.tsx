@@ -15,8 +15,8 @@ import { shouldIgnoreReactKeyEvent } from '../../state/shortcuts'
 import { removeRecentWorkspace } from '../../state/workspaceRecent'
 import type { RecentWorkspace, WorkspaceState } from '../../types'
 import { Icon } from '../icons'
-import horizontalLogoLight from '../../assets/astranota/astranota-horizontal-light-800x200.png'
-import horizontalLogoDark from '../../assets/astranota/astranota-horizontal-dark-800x200.png'
+import brandIconLight from '../../assets/astranota/astranota-icon-light-256.png'
+import brandIconDark from '../../assets/astranota/astranota-icon-dark-256.png'
 import { askPrompt } from '../common/PromptDialog'
 
 interface Props {
@@ -125,26 +125,32 @@ export default function WorkspacePicker({ onOpened, guide = false, onUseDefault 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* 顶部品牌条（无整宽顶栏，只有一条极简品牌行） */}
-      <header className="flex h-[52px] shrink-0 items-center px-6">
-        <div className="flex items-center gap-2">
-          <img src={horizontalLogoLight} alt="AstraNota" className="an-logo-light h-5 w-auto" draggable={false} />
-          <img src={horizontalLogoDark} alt="AstraNota" className="an-logo-dark h-5 w-auto" draggable={false} />
-        </div>
+      <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-6">
+        <img src={brandIconLight} alt="" aria-hidden="true" className="an-logo-light size-[26px] shrink-0" draggable={false} />
+        <img src={brandIconDark} alt="" aria-hidden="true" className="an-logo-dark size-[26px] shrink-0" draggable={false} />
+        <span className="text-[15px] font-[650] tracking-[-0.02em]" style={{ color: 'var(--foreground)' }}>
+          AstraNota
+        </span>
       </header>
 
       <div className="flex flex-1 items-start justify-center px-6 pb-16 pt-[6vh]">
-        <div className="w-[560px] max-w-full">
-          {/* Hero */}
-          <div className="mb-8 flex flex-col items-center text-center">
-            <div
-              className="mb-5 grid size-14 place-items-center rounded-[16px] text-[20px] font-bold text-white"
-              style={{ backgroundColor: 'var(--primary)' }}
-              aria-hidden="true"
-            >
-              A
-            </div>
+        <div className="w-[720px] max-w-full">
+          {/* Hero（对齐设计 launcher-hero：品牌图标 84px + 46px 标题） */}
+          <div className="mb-11 flex flex-col items-center text-center">
+            <img
+              src={brandIconLight}
+              alt="AstraNota"
+              className="an-logo-light mb-[26px] size-[84px]"
+              draggable={false}
+            />
+            <img
+              src={brandIconDark}
+              alt="AstraNota"
+              className="an-logo-dark mb-[26px] size-[84px]"
+              draggable={false}
+            />
             <h1
-              className="text-[32px] font-[650] leading-[1.2] tracking-[-0.03em]"
+              className="text-[46px] font-[680] leading-[1.08] tracking-[-0.05em]"
               style={{ color: 'var(--foreground)', fontFamily: 'var(--font-family-display)' }}
             >
               让写作回到本地

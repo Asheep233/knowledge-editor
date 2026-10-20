@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T06:43:07.977Z",
+  "generatedAt": "2026-10-20T06:50:38.040Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -802,18 +802,18 @@
     },
     {
       "shot": "05-launcher",
-      "name": "启动器 hero 标题 32px",
+      "name": "启动器 hero 标题 46px（设计 launcher-hero）",
       "ok": true,
-      "expected": "32 ±1",
-      "actual": 32,
+      "expected": "46 ±1",
+      "actual": 46,
       "note": ""
     },
     {
       "shot": "05-launcher",
-      "name": "启动器内容列宽 560",
+      "name": "启动器内容列宽 720（设计 launcher-card）",
       "ok": true,
-      "expected": "560 ±2",
-      "actual": 560,
+      "expected": "720 ±2",
+      "actual": 720,
       "note": ""
     },
     {
@@ -829,7 +829,7 @@
       "name": "启动器含「打开已有工作区 / 创建新工作区」",
       "ok": true,
       "expected": "两操作卡可见",
-      "actual": "A\n让写作回到本地\n打开已有工作区\n选择一个包含 Markdown 的文件夹\n创建新工作区\n从空白文件夹开始\n最近使用\n仅保存在本机\nfocus-ws\n/tmp/focus-ws",
+      "actual": "AstraNota\n让写作回到本地\n打开已有工作区\n选择一个包含 Markdown 的文件夹\n创建新工作区\n从空白文件夹开始\n最近使用\n仅保存在本机\nfocus-ws\n/tmp/focus-ws",
       "note": ""
     },
     {

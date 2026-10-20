@@ -149,9 +149,9 @@ KE_REUSE_VITE=1 node docs/focus-ui/verify-ui.cjs
 2. **文档信息浮层结构顺序**：基线以「大纲」为主体（含「折叠至一级」），属性/标签/历史随后；当前以「文档属性」为主体、属性在前、大纲在后。功能都在，视觉/信息优先级与设计基线不同。
 3. **设置页形态**：当前为居中卡片浮层（含顶部返回、分组 tab、内部滚动），基线为独立设置页；按 Lead task-1 指令属预期，待产品定稿。
 4. **启动器**：hero 品牌标被蓝底方块 "A" 替代；「最近使用」列表常驻卡片在基线下最多 3 条且含失效态示例；路径输入行未常驻。功能可用，视觉与基线有差距。
-5. **阅读列 678 vs 680（-2px）**：`.focus-paper` 左右 padding 用 `clamp(24px, calc((100% - 680px)/2), 90px)`，在 1440 档命中 90px 上限导致内容宽 678px。视觉不可辨，但严格意义上与「阅读列固定 680」差 2px；若要求像素级一致，把 clamp 上限提高到 ≥91px 即可（属产品代码，本清单只记录不改）。
+5. ~~**阅读列 678 vs 680（-2px）**~~ **已修复并复验**：Lead 把 `.focus-paper` padding 的 clamp 上限 90→89px，1440 档复验实测 **680.0**（修复前 678）。800 档实测仍 678（clamp 百分比基数为滚动容器宽而非纸面内容宽，-2px 视觉不可辨，不再追）。
 6. **设置页「切换工作区」按钮文字可能被截断**（截图中显示「切换...」）：建议设置专项目检确认按钮宽度/文案。
-7. **壳层自定义过渡未适配 `prefers-reduced-motion`**：`frontend/src/index.css` 里 `.focus-body-row` 的 220ms padding 过渡、`.focus-sidebar-collapse/.focus-sidebar-reopen` 的 140ms 颜色过渡没有媒体查询降级（带 `motion-reduce:` Tailwind 类的组件在 reduce 下已正确 `transition-property:none`）。低风险，建议补 `@media (prefers-reduced-motion: reduce){ .focus-body-row,...{transition:none} }`。
+7. ~~**壳层自定义过渡未适配 `prefers-reduced-motion`**~~ **已修复并复验**：Lead 补充了 `@media (prefers-reduced-motion: reduce)`（`.focus-body-row / .focus-sidebar-collapse / .focus-sidebar-reopen / 命令条 / inspector-sheet` 过渡置 none）；实测 reduce 下 `.focus-body-row transitionDuration 0.22s → 0s`。
 
 ## 10. 运行记录
 

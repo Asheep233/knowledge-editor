@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T05:54:37.135Z",
+  "generatedAt": "2026-10-20T05:56:58.210Z",
   "evidence": [],
   "focusVisible": {
     "pass": true,
@@ -9,7 +9,7 @@
         "label": "收起文件侧栏",
         "outlineWidth": "2px",
         "outlineStyle": "solid",
-        "outlineColor": "rgb(1, 113, 226)",
+        "outlineColor": "rgb(3, 113, 224)",
         "outlineOffset": "2px",
         "rect": {
           "x": 225,
@@ -55,7 +55,14 @@
         "transitionDuration": "0.15s",
         "transitionProperty": "background-color, color, transform"
       },
-      "shellCollapseBtn": null,
+      "bodyRow": {
+        "transitionDuration": "0.22s, 0.22s",
+        "transitionProperty": "padding-left, padding-right"
+      },
+      "commandBar": {
+        "transitionDuration": "0s",
+        "transitionProperty": "all"
+      },
       "paper": {
         "transitionDuration": "0s",
         "transitionProperty": "all"
@@ -67,7 +74,14 @@
         "transitionDuration": "0.15s",
         "transitionProperty": "none"
       },
-      "shellCollapseBtn": null,
+      "bodyRow": {
+        "transitionDuration": "0s",
+        "transitionProperty": "none"
+      },
+      "commandBar": {
+        "transitionDuration": "0s",
+        "transitionProperty": "none"
+      },
       "paper": {
         "transitionDuration": "0s",
         "transitionProperty": "all"

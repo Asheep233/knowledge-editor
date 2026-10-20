@@ -101,7 +101,7 @@ HEAD 5ed8fa2（dirty 0）
 | 纸面宽 / 圆角 / 边框 | 860 / 18 / 1px | 860 / 18px / 1px | PASS |
 | 纸面居中 | 中心 = 窗口中心 | 1440→720；1024→512；800→400 | PASS |
 | 纸面左边缘（侧栏展开） | 280+10 = 290 | 290 | PASS |
-| 阅读列宽 | 680 | **678**（-2px，见 §4.4） | PASS（±3 容差） |
+| 阅读列宽 | 680 | **678**（验收快照时；Lead 随后把 padding clamp 上限 90→89px，复验 1440 档 = **680**，见 §9） | PASS |
 | 正文 | 17px / 行高 1.8 | 17px / 30.6px | PASS |
 | 标题 | 42px / 1.1 / -0.045em / 650 | 42px / 46.2px / -1.9px / 650 | PASS |
 | 命令条 | 高 46 / top 12 / 圆角 13 / 与纸面同宽 | 46 / 12 / 13px / 860（x 对齐 290） | PASS |
@@ -151,8 +151,8 @@ HEAD 5ed8fa2（dirty 0）
 | 2 | P3 | 文档信息浮层信息优先级不同：基线标题「文档信息」且大纲优先；当前标题「文档属性」且属性优先 | `03` 截图 vs `overlays.png` 02 区 | 若设计定稿要求大纲优先，调整 RightPanel 分区顺序与标题 |
 | 3 | P3 | 设置页形态与基线截图不同（居中卡片浮层 vs 独立页）；「切换工作区」按钮文字疑似被截断为「切换...」 | `06` 截图 | 按 Lead task-1 指令本形态属预期；截断问题建议设置专项目检 |
 | 4 | P3 | 启动器视觉细节：品牌标被蓝色方块 "A" 替代；路径输入/浏览按钮不常驻；「最近使用」条目数取决于真实数据 | `05` 截图 vs `launcher.png` | 若要求与基线像素级一致，需补品牌资产与常驻路径行 |
-| 5 | P3 | 阅读列实测 678px（基线 680px，-2px）：`.focus-paper` padding 的 `clamp(..., 90px)` 上限在 1440 档命中 | `metrics.json`「阅读列宽 680」actual=678 | 视觉不可辨；若要求像素级一致，把 clamp 上限提到 ≥91px 即可 |
-| 6 | P3 | 壳层自定义过渡（`index.css`：侧栏 padding 220ms、收起/展开 140ms）未加 `@media (prefers-reduced-motion: reduce)` 覆盖（组件层 Tailwind `motion-reduce:` 已正确生效） | `a11y-probe.json`：reduce 下组件 `transition-property:none`；`index.css` 无该媒体查询 | 低风险，建议补一条壳层过渡的 reduced-motion 降级 |
+| 5 | P3 | 阅读列实测 678px（基线 680px，-2px）：`.focus-paper` padding 的 `clamp(..., 90px)` 上限在 1440 档命中 | `metrics.json`「阅读列宽 680」actual=678 | **已由 Lead 修复（clamp 90→89px）并复验 PASS：1440 档 = 680**；800 档仍 678（padding 百分比基数是滚动容器宽，非纸面内容宽），视觉不可辨 |
+| 6 | P3 | 壳层自定义过渡（`index.css`：侧栏 padding 220ms、收起/展开 140ms）未加 `@media (prefers-reduced-motion: reduce)` 覆盖（组件层 Tailwind `motion-reduce:` 已正确生效） | `a11y-probe.json`：reduce 下组件 `transition-property:none`；`index.css` 无该媒体查询 | **已由 Lead 补媒体查询并复验 PASS：reduce 下 `.focus-body-row` transitionDuration 0.22s→0s**（§9） |
 | 7 | P3 | ≤760 断点未截图覆盖（800 档属于 760–1280 区间）：纸面全宽去边框圆角行为未取证 | `VISUAL-ACCEPTANCE.md` §5 | 建议后续加 700×900 一张（脚本扩展一小段即可） |
 | 8 | 环境 | 已在跑的 vite dev server `127.0.0.1:5273` **服务陈旧模块**（WSL drvfs watcher 漏事件）：`curl /src/App.tsx` 缺新标识符，`?t=` 才重新 transform | 本次实测（见 `VISUAL-ACCEPTANCE.md` §0） | 用 5273 做视觉自查前先重启该 server，或直接用 `verify-ui.cjs`（默认自起全新实例） |
 
@@ -199,6 +199,29 @@ KE_STRICT=1 node docs/focus-ui/verify-ui.cjs
 | 焦点环/reduced-motion 探针 | `/tmp/focus-shots/a11y-probe.json`、`/tmp/focus-shots/evidence-focus-ring-1440x900.png` |
 | 验收清单（112 检查项） | `docs/focus-ui/VISUAL-ACCEPTANCE.md` |
 | 截图脚本 | `docs/focus-ui/verify-ui.cjs` |
+
+## 9. 复验：对 Lead 两处修复的抽查（验收后追加）
+
+> 说明：本报告 §1–§8 对应快照 `5ed8fa2`（工作树干净）。验收完成后 Lead 在本地修了
+> `frontend/src/index.css` 两处（对应本报告 §5-5 / §5-6），QA 随即做了一次只读复验：
+> `node docs/focus-ui/verify-ui.cjs` + a11y 探针（脚本自起全新 vite，避免陈旧模块）。
+> 复验时 git 状态：`HEAD 5ed8fa2` + 未提交修改（`M frontend/src/index.css`，非 QA 所改）。
+
+| 修复项 | 修复内容 | 复验结果 | 证据 |
+|---|---|---|---|
+| 阅读列 680 | `.focus-paper` 左右 padding `clamp(..., 90px)` → `clamp(..., 89px)` | **PASS**：1440×900 阅读列实测 **680.0**（修复前 678）；119 项断言仍全 PASS。800 档仍 678（padding 百分比基数为滚动容器宽 800 → 60px/侧；属预期，-2px 视觉不可辨） | `/tmp/focus-shots/metrics.json`（actual=680）、`docs/focus-ui/evidence/metrics.json` |
+| reduced-motion 壳层降级 | 新增 `@media (prefers-reduced-motion: reduce)`：`.focus-body-row / .focus-sidebar-collapse / .focus-sidebar-reopen / 命令条 / inspector-sheet` `transition: none !important` | **PASS**：`reducedMotion=reduce` 下 `.focus-body-row transitionDuration` **0.22s → 0s**；命令条同步 0s；焦点环仍 PASS（Tab → 2px solid accent, offset 2px） | `/tmp/focus-shots/a11y-probe.json`、`docs/focus-ui/evidence/a11y-probe.json` |
+
+复验命令与结果：
+
+```
+node docs/focus-ui/verify-ui.cjs
+→ HEAD 5ed8fa2 + dirty 6；截图 8 张；断言 119/119 PASS；EXIT=0
+```
+
+复验结论：**两处 P3 修复均生效，无回归**；`docs/focus-ui/evidence/`、`docs/focus-ui/screenshots/`
+已同步为修复后的最新证据（覆盖修复前副本）。§5 剩余待决项为 1（侧栏 IA，P2，需产品决策）、
+2/3/4（浮层/设置/启动器与基线差异，待设计定稿）、7（≤760 断点截图覆盖）、8（环境：5273 dev server 陈旧）。
 
 ### 附：日志中的非失败噪声（供参考，不影响判定）
 

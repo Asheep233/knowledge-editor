@@ -838,6 +838,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     else void enterSourceMode()
   }, [enterSourceMode, exitSourceMode])
 
+  // Focus ⌘K 命令面板：通过自定义事件驱动编辑器内部动作（导出 PDF / 切换源码视图）
+  useEffect(() => {
+    const openExport = () => setExportOpen(true)
+    const toggleSource = () => toggleViewMode()
+    window.addEventListener('ke:palette-export', openExport)
+    window.addEventListener('ke:palette-toggle-source', toggleSource)
+    return () => {
+      window.removeEventListener('ke:palette-export', openExport)
+      window.removeEventListener('ke:palette-toggle-source', toggleSource)
+    }
+  }, [toggleViewMode])
+
   // Phase 6.4：content 固定为空，文档内容统一由下方 useEffect 的
   // setKeContent 加载一次，避免初始化与切换时重复解析大文档（Document Model）。
   const editor = useKeEditor({

@@ -1255,6 +1255,65 @@ body {
   box-shadow: var(--elev-lg);
 }
 
+/* ==========================================================================
+ * Focus · 主画布页面（知识库/搜索/模块/资料/回收站）
+ * 参考稿 page-area / page-inner / page-head / page-title / page-sub / page-actions
+ * ========================================================================== */
+.focus-page-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  overflow-y: auto;
+  background: var(--background);
+}
+.focus-page-area {
+  min-height: 100%;
+}
+.focus-page-inner {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 64px 32px 120px;
+}
+.focus-page-inner[data-narrow='1'] {
+  max-width: 840px;
+}
+.focus-page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+.focus-page-head-grow {
+  flex: 1;
+  min-width: 0;
+}
+.focus-page-title {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-family-display);
+  font-size: 40px;
+  font-weight: 660;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.focus-page-sub {
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.focus-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+/* 页面激活时隐藏浮动命令条（编辑器仍在页面层下挂载，切回不丢状态） */
+.focus-shell[data-page-active='1'] [data-ke-toolbar] {
+  display: none !important;
+}
+
 /* ============ AstraNota 品牌资产（浅/深主题双版本） ============ */
 /* 默认（浅色）显示 light 版；data-theme=dark 切换 dark 版 */
 .an-logo-dark {

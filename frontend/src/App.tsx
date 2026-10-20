@@ -43,6 +43,13 @@ import {
 import { registerActionHandler, registerActionHandlers, shouldIgnoreKeyEvent } from './state/shortcuts'
 import { AppShell } from './components/shell/AppShell'
 import { Icon } from './components/icons'
+import { LibraryPage } from './components/focus/LibraryPage'
+import { SearchPage } from './components/focus/SearchPage'
+import { ModulesPage } from './components/focus/ModulesPage'
+import { AssetsPage } from './components/focus/AssetsPage'
+import { TrashPage } from './components/focus/TrashPage'
+import { CommandPalette } from './components/focus/CommandPalette'
+import type { AppPage } from './components/focus/pageTypes'
 import { StatusBar, StatusBarPath } from './components/shell/StatusBar'
 import { isDesktop, pickDirectory } from './desktop'
 import { applyTheme, loadSettings, saveSettings, type AppSettings } from './settings'
@@ -116,6 +123,10 @@ export default function App() {
   const [, setWsMenuOpen] = useState(false)
   /** Phase 7 M3：设置面板开关 */
   const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Focus：主画布页面（editor=纸面编辑器；其余为知识库/搜索/模块/资料/回收站页面） */
+  const [page, setPage] = useState<AppPage>('editor')
+  /** Focus：⌘K 命令面板 */
+  const [paletteOpen, setPaletteOpen] = useState(false)
   /** Focus：专注模式（隐藏侧栏，命令条沉到纸面下方，仅留正文；Esc 退出） */
   const [focusMode, setFocusMode] = useState(false)
   /** Focus：当前是否为深色主题（供侧栏「切换外观」图标显示 moon/sun） */
@@ -456,6 +467,7 @@ export default function App() {
   // （带 3s 超时再强切），并用 confirm 兜底，避免防抖窗口内切换静默丢失输入。
   const requestOpenArticle = useCallback(
     async (id: string) => {
+      setPage('editor')
       if (hasUnsaved && articleIdRef.current) {
         const docId = articleIdRef.current
         const flushed = await flushWithTimeout(docId)
@@ -603,6 +615,20 @@ export default function App() {
       }
       return next
     })
+  }, [])
+
+  useEffect(() => {
+    const onPaletteKey = (e: KeyboardEvent) => {
+      if (shouldIgnoreKeyEvent(e)) return
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+        return
+      }
+      if (e.key === 'Escape') setPaletteOpen(false)
+    }
+    window.addEventListener('keydown', onPaletteKey)
+    return () => window.removeEventListener('keydown', onPaletteKey)
   }, [])
 
   useEffect(() => {
@@ -808,6 +834,7 @@ export default function App() {
   }, [hasUnsaved, applyWorkspace])
 
   const handleNewArticle = useCallback(async () => {
+    setPage('editor')
     // P0-2：新建会替换当前文档，先处理未保存修改（flush + confirm 兜底）
     if (hasUnsaved && articleIdRef.current) {
       const docId = articleIdRef.current
@@ -1175,6 +1202,7 @@ export default function App() {
       onCloseInspector={() => toggleRight(false)}
       focusMode={focusMode}
       onExitFocus={() => setFocusMode(false)}
+      pageActive={page !== 'editor'}
       header={
         <>
         {/* 菜单栏由桌面壳 Tauri 原生菜单（menu.rs）提供，前端不再 mock，避免重复 */}
@@ -1204,10 +1232,13 @@ export default function App() {
           onToggleFocusMode={toggleFocusMode}
           onToggleTheme={toggleTheme}
           themeIsDark={themeIsDark}
+          activePage={page === 'editor' ? 'library' : page}
+          onNavigate={(p) => setPage(p)}
         />
 
       }
       main={
+        <>
         <EditorArea
           toolbarLeading={fileDrawerButton}
           toolbarExtra={inspectorButton}
@@ -1229,6 +1260,51 @@ export default function App() {
             setTreeRefresh((n) => n + 1)
           }}
         />
+        {page !== 'editor' ? (
+          <div className="focus-page-layer" data-page={page}>
+            {page === 'library' ? (
+              <LibraryPage
+                onNavigate={setPage}
+                onOpenArticle={(id) => void requestOpenArticle(id)}
+                onNewArticle={() => void handleNewArticle()}
+                refreshToken={treeRefresh}
+              />
+            ) : null}
+            {page === 'search' ? (
+              <SearchPage
+                onNavigate={setPage}
+                onOpenArticle={(id) => void requestOpenArticle(id)}
+                onNewArticle={() => void handleNewArticle()}
+                refreshToken={treeRefresh}
+              />
+            ) : null}
+            {page === 'modules' ? (
+              <ModulesPage
+                onNavigate={setPage}
+                onOpenArticle={(id) => void requestOpenArticle(id)}
+                onNewArticle={() => void handleNewArticle()}
+                refreshToken={treeRefresh}
+              />
+            ) : null}
+            {page === 'assets' ? (
+              <AssetsPage
+                onNavigate={setPage}
+                onOpenArticle={(id) => void requestOpenArticle(id)}
+                onNewArticle={() => void handleNewArticle()}
+                refreshToken={treeRefresh}
+              />
+            ) : null}
+            {page === 'trash' ? (
+              <TrashPage
+                onNavigate={setPage}
+                onOpenArticle={(id) => void requestOpenArticle(id)}
+                onNewArticle={() => void handleNewArticle()}
+                refreshToken={treeRefresh}
+              />
+            ) : null}
+          </div>
+        ) : null}
+        </>
       }
       right={
         rightOpen ? (
@@ -1308,6 +1384,37 @@ export default function App() {
       <WorkshopEntry enabled={(import.meta.env.VITE_KE_WORKSHOP ?? '') === '1'} />
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Focus：⌘K 命令面板 + 打开的文档切换 */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={(p) => {
+          setPaletteOpen(false)
+          setPage(p)
+        }}
+        onOpenArticle={(id) => {
+          setPaletteOpen(false)
+          void requestOpenArticle(id)
+        }}
+        onNewArticle={() => {
+          setPaletteOpen(false)
+          void handleNewArticle()
+        }}
+        tabs={tabs}
+        activeId={article?.id ?? null}
+        onActivateTab={(id) => {
+          setPaletteOpen(false)
+          activateTab(id)
+          setPage('editor')
+        }}
+        onCloseTab={(id) => void closeTabById(id)}
+        onExport={() => window.dispatchEvent(new CustomEvent('ke:palette-export'))}
+        onToggleSource={() => window.dispatchEvent(new CustomEvent('ke:palette-toggle-source'))}
+        onToggleFocusMode={toggleFocusMode}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onToggleTheme={toggleTheme}
+      />
 
       {/* 外部修改提示（Phase 4.3） */}
       {extModal && (

@@ -71,6 +71,10 @@ interface Props {
   onToggleTheme?: () => void
   /** 当前是否为深色主题 —— 决定 footer「切换外观」图标显示 moon（浅色）还是 sun（深色） */
   themeIsDark?: boolean
+  /** Focus 页面路由：当前主画布页面（editor 时高亮「知识库」） */
+  activePage?: 'library' | 'search' | 'modules' | 'assets' | 'trash'
+  /** Focus 页面路由：导航点击 → 切换主画布页面 */
+  onNavigate?: (page: 'library' | 'search' | 'modules' | 'assets' | 'trash') => void
 }
 
 interface CtxMenu {
@@ -185,6 +189,8 @@ export default function LeftSidebar({
   onToggleFocusMode,
   onToggleTheme,
   themeIsDark = false,
+  activePage,
+  onNavigate,
 }: Props) {
   const [tree, setTree] = useState<TreePayload | null>(null)
   /** Focus 工作区头：展示工作区目录名 */
@@ -732,13 +738,18 @@ export default function LeftSidebar({
             <NavItem
               key={item.id}
               active={
-                item.id === 'library'
-                  ? view === 'library' || view === 'recent' || view === 'tags'
-                  : view === item.id
+                activePage
+                  ? item.id === activePage
+                  : item.id === 'library'
+                    ? view === 'library' || view === 'recent' || view === 'tags'
+                    : view === item.id
               }
               label={item.label}
               icon={item.icon}
-              onClick={() => setView(item.id)}
+              onClick={() => {
+                setView(item.id)
+                onNavigate?.(item.id)
+              }}
             />
           ))}
         </div>

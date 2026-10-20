@@ -33,6 +33,8 @@ export interface AppShellProps {
   /** Focus：专注模式（隐藏侧栏，命令条沉到纸面下方居中，仅留正文） */
   focusMode?: boolean
   onExitFocus?: () => void
+  /** Focus：当前主画布是页面（知识库/搜索/模块/资料/回收站）→ 隐藏浮动命令条 */
+  pageActive?: boolean
 }
 
 export function AppShell({
@@ -47,12 +49,14 @@ export function AppShell({
   onCloseInspector,
   focusMode = false,
   onExitFocus,
+  pageActive = false,
 }: AppShellProps) {
   return (
     <div
       data-ke-slot="shell-root"
       className="focus-shell"
       data-focus-mode={focusMode ? '1' : undefined}
+      data-page-active={pageActive ? '1' : undefined}
     >
       {focusMode ? (
         <div className="focus-exit-bar" data-ke-appearance-scope="chrome">

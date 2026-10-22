@@ -35,6 +35,7 @@
 **验证**：tsc 0、前端全量 vitest 150 文件 / 2057 passed + 1 skipped、视觉验收 17 图 186/186 PASS、侧车运行时版本 `1.3.0-pre.4`。
 
 **发版动作**：`bump-version.mjs 1.3.0-pre.4`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest（79 产物）+ Tauri/NSIS → tag `v1.3.0-pre.4` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest）。
+**资产**：安装包 51,127,496 B / sha256 `3987a6cd…2ba5`；侧车 46,244,751 B / `1e0d1f89…c0b9`；manifest 9,930 B；versions.json 16,026 B。
 
 ## 2026-10-22（★ v1.3.0-pre.3 预发布：命令条与参考前端逐项对齐）
 

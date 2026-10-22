@@ -24,6 +24,18 @@
 - **回归防护**：`verify-ui.cjs` 新增 2 条断言（格式组 `scrollWidth ≤ clientWidth`、「插入」按钮右缘不超出容器）；断言总数 184→**186**。
 - **实测**：1440 / 1366 / 1280 / 1200 / 1100 / 1024 / 900 / 800 八档宽度全部 `overflow=0`、插入按钮完整可见（修复前 1280 档裁切 140px）。
 
+## 2026-10-22（★ v1.3.0-pre.4 预发布：修复「插入」按钮裁切 + 块级公式 \tag 叠字）
+
+**Tag** `v1.3.0-pre.4`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**修复**（相对 pre.3）：
+1. **命令条「插入」按钮被裁切**（pre.3 回归）：格式组去 item 间距 + ≤1400px 紧凑规则（图标 22px、隐藏竖线、保存/导出图标化）；8 档宽度（800~1440）实测 `overflow=0`、插入完整。
+2. **块级公式 `\tag` 叠字**（历史遗留）：KaTeX tag 的 `right:0` 锚在收缩宽度的 inline-block 容器上 → 编号压住公式；块级公式容器改 `display:block; width:100%`，编号右对齐正文列（1440 实测容器 680px、无重叠）；新增 `MathNodeView.tagLayout.test.tsx` 双层回归。
+
+**验证**：tsc 0、前端全量 vitest 150 文件 / 2057 passed + 1 skipped、视觉验收 17 图 186/186 PASS、侧车运行时版本 `1.3.0-pre.4`。
+
+**发版动作**：`bump-version.mjs 1.3.0-pre.4`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest（79 产物）+ Tauri/NSIS → tag `v1.3.0-pre.4` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest）。
+
 ## 2026-10-22（★ v1.3.0-pre.3 预发布：命令条与参考前端逐项对齐）
 
 **Tag** `v1.3.0-pre.3`（预发布，非 Latest；正式版仍为 v1.2.18）

@@ -4,6 +4,19 @@
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
 > 最后更新：2026-10-20（**v1.3.0-pre.1 预发布**：Focus UI 全面对齐，分支 `focus-ui` + tag `v1.3.0-pre.1`，未创建 Release）
 
+## 2026-10-22（★ v1.3.0-pre.3 预发布：命令条与参考前端逐项对齐）
+
+**Tag** `v1.3.0-pre.3`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**变化**（相对 pre.2）：撤销/重做移到右侧固定组（不再随格式组滚走）；列表/公式改参考稿 `tb-split`（主按钮 + ▾ 菜单）；
+移除命令条内「已保存」chip；导出按钮去 chevron；保存按钮改 `btn-secondary` 浅底；分隔线按参考稿分组。
+包含 pre.2 两个修复（源码模式编辑框塌陷 / 导出 PDF 卡顿）与 pre.1 全部 Focus UI 内容。
+
+**验证**：tsc 0、前端全量 vitest 149 文件 / 2055 passed + 1 skipped、视觉验收 17 图 184/184 PASS、侧车运行时版本 `1.3.0-pre.3`。
+
+**发版动作**：`bump-version.mjs 1.3.0-pre.3`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest + Tauri/NSIS →
+tag `v1.3.0-pre.3` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest）。
+
 ## 2026-10-22（命令条与参考前端逐项对齐 · 待下个 pre 打包）
 
 主理人反馈「pre.2 与参考前端的命令条不一致」。逐项对照参考实现（`AstraNota-Focus-Handoff/prototype/screens/editor.html` 的 `.format-bar`）后修正：

@@ -506,6 +506,19 @@ body {
   background: transparent;
   padding: 0;
 }
+/* 2026-10-22（用户实测：`\tag` 公式编号叠在公式上——历史遗留 bug）：
+   KaTeX 的 `.katex-tag` 是 `position:absolute; right:0`，相对最近的定位祖先（`.katex-html` →
+   `.katex`）取右边界。此前块级公式的渲染容器 `.ke-math-render` 是 `display:inline-block`
+   （宽度收缩到公式内容宽）→ `\tag` 的 right:0 落在公式右缘 → 编号与公式本体**叠在一起**。
+   块级公式改为占满正文列宽（与 KaTeX 官方 display math 的容器宽度一致），编号才会排到列右端。 */
+.ke-math--block .ke-math-render {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ke-math--block .ke-math-render .katex-display {
+  width: 100%;
+}
 .ke-math-render {
   cursor: text;
   display: inline-block;
@@ -1326,8 +1339,9 @@ body {
   width: 0;
   height: 0;
 }
-/* 窄窗口（<1360）处压缩命令条内边距与间距，减少格式组溢出 */
-@media (max-width: 1360px) {
+/* 窄窗口（≤1400）压缩命令条：缩小图标按钮 + 隐藏分组竖线 + 保存/导出收成图标，保证格式组不溢出、
+ * 「插入」等末端按钮不被横向滚动容器裁掉一半（1.3.0-pre.3 用户实测）。 */
+@media (max-width: 1400px) {
   .focus-shell [data-ke-toolbar] > div {
     padding: 0 4px;
   }
@@ -1335,6 +1349,16 @@ body {
     gap: 0;
     padding-left: 6px;
     padding-right: 2px;
+  }
+  .focus-shell [data-ke-toolbar] .ke-tool-btn {
+    width: 22px !important;
+    height: 30px;
+  }
+  .focus-shell [data-ke-toolbar] .ke-bar-sep {
+    display: none;
+  }
+  .focus-shell [data-ke-toolbar] .ke-btn-label {
+    display: none;
   }
 }
 

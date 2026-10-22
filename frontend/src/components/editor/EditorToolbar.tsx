@@ -41,7 +41,7 @@ function ToolIcon({
       disabled={disabled}
       onClick={onClick}
       className={[
-        'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
+        'ke-tool-btn grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
         active ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
         'active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
         disabled ? 'cursor-not-allowed opacity-40' : '',
@@ -568,7 +568,7 @@ export default function EditorToolbar({
           历史/导出）固定不滚动。修复前整条工具栏 `overflow-x-auto`，导出下拉菜单是
           本容器内的 `absolute` 子元素 → 被滚动容器裁剪（菜单不可见/点「导出」无反应）。
           回归守卫见 `EditorToolbar.structure.test.tsx`（断言导出按钮祖先链无裁剪容器）。 */}
-      <div className="ke-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2">
+      <div className="ke-scroll flex min-w-0 flex-1 items-center gap-0 overflow-x-auto px-1.5">
 
       {leadingActions}
 
@@ -600,7 +600,7 @@ export default function EditorToolbar({
         ))}
       </Dropdown>
 
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+      <span className="ke-bar-sep mx-0.5 h-5 w-px shrink-0 bg-border" />
 
       {/* A01：源码态下正文命令整体禁用 —— setEditable(false) 挡不住程序命令，
           必须从入口关闭（隐藏 PM 若被改写会用旧正文覆盖源码编辑） */}
@@ -639,7 +639,7 @@ export default function EditorToolbar({
         <Icon name="link" className="size-4" />
       </ToolIcon>
 
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+      <span className="ke-bar-sep mx-0.5 h-5 w-px shrink-0 bg-border" />
 
       {/* 列表（参考稿 tb-split：主按钮=无序列表切换，▾ 菜单=无序/有序/清除） */}
       <span className="inline-flex shrink-0 items-center">
@@ -671,7 +671,7 @@ export default function EditorToolbar({
         <Icon name="quote" className="size-4" />
       </ToolIcon>
 
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+      <span className="ke-bar-sep mx-0.5 h-5 w-px shrink-0 bg-border" />
 
       {/* 公式（参考稿 tb-split：主按钮=行内公式，▾ 菜单=行内/块级） */}
       <span className="inline-flex shrink-0 items-center">
@@ -989,7 +989,7 @@ export default function EditorToolbar({
             设置
           </MenuItem>
         </Dropdown>
-        <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+        <span className="ke-bar-sep mx-0.5 h-5 w-px shrink-0 bg-border" />
         {onSave ? (
           <button
             type="button"
@@ -1000,7 +1000,7 @@ export default function EditorToolbar({
             style={{ backgroundColor: 'var(--secondary)' }}
           >
             <Icon name="save" className="size-4" />
-            <span className="hidden min-[960px]:inline">保存</span>
+            <span className="ke-btn-label hidden min-[960px]:inline">保存</span>
           </button>
         ) : null}
         {exportButton}

@@ -854,6 +854,23 @@ async function main() {
       assertDesktopGeometry('01-editor-light', m, 1440, 900)
       eq('01-editor-light', '页面主题 = light', m.theme, 'light')
       soft('01-editor-light', '保存按钮有浅底（非透明）', m.saveBtn ? m.saveBtn.bg !== 'rgba(0, 0, 0, 0)' : 'not-measured', '非透明背景', m.saveBtn ? JSON.stringify(m.saveBtn) : '未找到保存按钮')
+      // 命令条：格式组不得溢出横向容器（1.3.0-pre.3 用户实测「插入按钮被砍一半」回归）
+      const barFit = await page.evaluate(() => {
+        const bar = document.querySelector('[data-ke-toolbar] > div')
+        const sc = bar ? bar.querySelector('.ke-scroll') : null
+        const insert = [...document.querySelectorAll('[data-ke-toolbar] button')].find((b) => (b.textContent || '').includes('插入'))
+        if (!sc || !insert) return { missing: true }
+        const scRect = sc.getBoundingClientRect()
+        const insRect = insert.getBoundingClientRect()
+        return {
+          overflow: sc.scrollWidth - sc.clientWidth,
+          insertCut: Math.round(insRect.right - scRect.right),
+          barW: Math.round(bar.getBoundingClientRect().width),
+        }
+      })
+      eq('01-editor-light', '命令条格式组不溢出（scrollWidth ≤ clientWidth）', (barFit.overflow || 0) <= 1, true)
+      eq('01-editor-light', '「插入」按钮完全在命令条内（不被裁切）', (barFit.insertCut ?? 1) <= 0, true)
+
       // Focus 保真：侧栏 5 导航 + footer 三段（设计 .fb-nav / .fb-foot）
       const sideText = await page.evaluate(() => {
         const bar = document.querySelector('.focus-files-bar')

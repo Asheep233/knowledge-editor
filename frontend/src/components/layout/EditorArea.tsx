@@ -1545,7 +1545,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
         style={{ borderColor: 'var(--line-2)', backgroundColor: 'var(--card)' }}
       >
         <Icon name="download" className="size-4" />
-        <span>{exporting ? '打包中…' : '导出'}</span>
+        <span className="ke-btn-label">{exporting ? '打包中…' : '导出'}</span>
       </button>
       {exportOpen ? (
         <>

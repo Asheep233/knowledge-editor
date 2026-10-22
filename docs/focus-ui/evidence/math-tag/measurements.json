@@ -1,0 +1,17 @@
+{
+  "issue": "块级公式 \\tag 编号与公式本体叠字（历史遗留 bug）",
+  "root_cause": "KaTeX .katex-tag 为 position:absolute; right:0，锚定最近定位祖先（.katex-html/.katex）；此前块级公式渲染容器 .ke-math-render 为 display:inline-block（宽度收缩到公式内容宽），tag 右边界落在公式右缘 → 与本体重叠。",
+  "fix": ".ke-math--block .ke-math-render { display:block; width:100%; box-sizing:border-box } + .ke-math--block .ke-math-render .katex-display { width:100% }",
+  "measurements_after_fix": {
+    "viewport": "1440x900",
+    "block_width_px": 680,
+    "render_container_width_px": 680,
+    "katex_width_px": 672,
+    "tag_text": "(1) / (S.1)",
+    "tag_right_px": 1056,
+    "reading_column_right_px": 1060,
+    "overlap_with_formula_base": false,
+    "screenshot": "tag-fixed-1440.png"
+  },
+  "regression_guard": "frontend/src/components/editor/nodeviews/MathNodeView.tagLayout.test.tsx（结构：.katex-tag 存在且文本正确；样式契约：块级容器 display:block + width:100%）"
+}

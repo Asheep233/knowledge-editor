@@ -4,6 +4,26 @@
 > 维护方式：按时间倒序（最新在上）或按版本顺序追加均可，保持每条记录字段完整。
 > 最后更新：2026-10-20（**v1.3.0-pre.1 预发布**：Focus UI 全面对齐，分支 `focus-ui` + tag `v1.3.0-pre.1`，未创建 Release）
 
+### 追加修复（2026-10-22）：块级公式 `\tag` 编号叠字（历史遗留 bug）
+
+主理人实测：块级公式 `$$L = \mathbb{R} \tag{1}$$` 的编号 `(1)` **叠在公式本体上**，而不是排在正文列右端。
+根因：KaTeX 的 `.katex-tag` 是 `position:absolute; right:0`，锚定最近的定位祖先；此前块级公式渲染容器
+`.ke-math-render` 是 `display:inline-block`（宽度收缩到公式内容宽）→ tag 右边界落在公式右缘，与正文重叠。
+
+- **修复**：`.ke-math--block .ke-math-render { display:block; width:100%; box-sizing:border-box }` +
+  `.ke-math--block .ke-math-render .katex-display { width:100% }`（块级公式占满正文列宽，与 KaTeX 官方 display math 一致）。
+- **实测（1440×900）**：块 680px、渲染容器 680px、KaTeX 672px；`(1)` / `(S.1)` 右对齐于列右端（距右缘 4px），与公式本体无重叠。
+- **回归防护**：新增 `frontend/src/components/editor/nodeviews/MathNodeView.tagLayout.test.tsx`（结构层：`.katex-tag` 存在且文本正确；样式层：块级容器必须 `display:block` + `width:100%`）。
+- 证据：`docs/focus-ui/evidence/math-tag/{measurements.json,tag-fixed-1440.png}`。
+
+### 追加修复（2026-10-22）：命令条「插入」按钮被裁切
+
+主理人实测 pre.3：命令条右端的「+ 插入 ▾」按钮被横向滚动容器**裁掉一半**（1440 窗口可复现：格式组 scrollWidth 529 > clientWidth 509，插入按钮右缘超出容器 12px；1280 窗口更严重，溢出 142px）。
+
+- **修复**：① 格式组去掉 item 间距（gap 2px→0）、收窄内边距；② ≤1400px 视口启用紧凑规则：图标按钮 32→22px、隐藏分组竖线、保存/导出收成图标（标签隐藏）——保证任何常见窗口宽度下格式组都不溢出、末端按钮完整可见。
+- **回归防护**：`verify-ui.cjs` 新增 2 条断言（格式组 `scrollWidth ≤ clientWidth`、「插入」按钮右缘不超出容器）；断言总数 184→**186**。
+- **实测**：1440 / 1366 / 1280 / 1200 / 1100 / 1024 / 900 / 800 八档宽度全部 `overflow=0`、插入按钮完整可见（修复前 1280 档裁切 140px）。
+
 ## 2026-10-22（★ v1.3.0-pre.3 预发布：命令条与参考前端逐项对齐）
 
 **Tag** `v1.3.0-pre.3`（预发布，非 Latest；正式版仍为 v1.2.18）

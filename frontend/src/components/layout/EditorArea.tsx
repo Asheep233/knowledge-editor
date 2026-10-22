@@ -1546,7 +1546,6 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       >
         <Icon name="download" className="size-4" />
         <span>{exporting ? '打包中…' : '导出'}</span>
-        <Icon name="chevron-down" className="size-3.5" />
       </button>
       {exportOpen ? (
         <>

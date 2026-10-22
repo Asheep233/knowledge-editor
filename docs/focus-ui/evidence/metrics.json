@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T14:16:25.576Z",
+  "generatedAt": "2026-10-22T00:37:16.161Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -501,7 +501,7 @@
       "name": "保存按钮有浅底（非透明）",
       "ok": true,
       "expected": "非透明背景",
-      "actual": "{\"bg\":\"rgb(242, 242, 244)\",\"borderWidth\":\"1px\",\"borderColor\":\"rgb(232, 232, 237)\",\"label\":\"保存\"}",
+      "actual": "{\"bg\":\"rgb(242, 242, 244)\",\"borderWidth\":\"0px\",\"borderColor\":\"rgb(29, 29, 31)\",\"label\":\"保存\"}",
       "note": ""
     },
     {

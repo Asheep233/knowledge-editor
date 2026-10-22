@@ -375,7 +375,6 @@ export interface EditorToolbarProps {
 }
 
 export default function EditorToolbar({
-  saveLabel,
   onOpenHistory,
   exportButton,
   onSave,
@@ -418,6 +417,7 @@ export default function EditorToolbar({
 
   const [headingOpen, setHeadingOpen] = useState(false)
   const [listOpen, setListOpen] = useState(false)
+  const [formulaOpen, setFormulaOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
   const [insertOpen, setInsertOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -464,6 +464,22 @@ export default function EditorToolbar({
       editor.chain().focus().clearNodes().run()
     }
     setListOpen(false)
+  }
+
+  /** 插入行内/块级公式（v1.1.7：有选区不吞文本，折叠到末尾；插入后按 id 派发全屏编辑） */
+  const insertMathNode = (type: 'math' | 'mathBlock') => {
+    const id = newId()
+    editor
+      .chain()
+      .focus()
+      .command(({ tr }) => {
+        if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
+        return true
+      })
+      .insertContent({ type, attrs: { id, latex: '' } })
+      .run()
+    openMathEditorById(editor, id)
+    setFormulaOpen(false)
   }
 
   const onPickFile = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -625,76 +641,63 @@ export default function EditorToolbar({
 
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
 
-      {/* 列表下拉（无序/有序/取消） */}
-      <Dropdown
-        open={listOpen}
-        onClose={() => setListOpen(false)}
-        trigger={
-          <button
-            type="button"
-            title="列表类型"
-            onClick={() => setListOpen((v) => !v)}
-            className={[
-              'grid h-8 w-8 shrink-0 place-items-center rounded-[6px] transition-[background-color,color,transform] duration-150',
-              st.bulletList || st.orderedList ? 'text-primary' : 'text-muted-foreground',
-              'hover:bg-muted hover:text-foreground active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none',
-            ].join(' ')}
-          >
-            <Icon name="list" className="size-4" />
-          </button>
-        }
-      >
-        <MenuItem active={st.bulletList} onClick={() => applyList('bullet')}>无序列表</MenuItem>
-        <MenuItem active={st.orderedList} onClick={() => applyList('ordered')}>有序列表</MenuItem>
-        <MenuItem active={!st.bulletList && !st.orderedList} onClick={() => applyList('none')}>无（清除格式）</MenuItem>
-      </Dropdown>
+      {/* 列表（参考稿 tb-split：主按钮=无序列表切换，▾ 菜单=无序/有序/清除） */}
+      <span className="inline-flex shrink-0 items-center">
+        <ToolIcon title="无序列表" active={st.bulletList} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+          <Icon name="list" className="size-4" />
+        </ToolIcon>
+        <Dropdown
+          open={listOpen}
+          onClose={() => setListOpen(false)}
+          panelMinWidth={200}
+          trigger={
+            <button
+              type="button"
+              title="列表类型"
+              aria-label="列表类型"
+              onClick={() => setListOpen((v) => !v)}
+              className="grid h-8 w-5 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none motion-reduce:transition-none"
+            >
+              <Icon name="chevron-down" className="size-3.5" />
+            </button>
+          }
+        >
+          <MenuItem active={st.bulletList} onClick={() => applyList('bullet')}>无序列表</MenuItem>
+          <MenuItem active={st.orderedList} onClick={() => applyList('ordered')}>有序列表</MenuItem>
+          <MenuItem active={!st.bulletList && !st.orderedList} onClick={() => applyList('none')}>无（清除格式）</MenuItem>
+        </Dropdown>
+      </span>
       <ToolIcon title="引用" active={st.blockquote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
         <Icon name="quote" className="size-4" />
       </ToolIcon>
 
       <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
 
-      <ToolIcon title="插入公式" onClick={() => {
-        // v1.1.7：有选区不吞文本（折叠到末尾）+ 插入后按 id 派发全屏编辑
-        const id = newId()
-        editor
-          .chain()
-          .focus()
-          .command(({ tr }) => {
-            if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
-            return true
-          })
-          .insertContent({ type: 'math', attrs: { id, latex: '' } })
-          .run()
-        openMathEditorById(editor, id)
-      }}>
-        <Icon name="sigma" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="插入块级公式" onClick={() => {
-        const id = newId()
-        editor
-          .chain()
-          .focus()
-          .command(({ tr }) => {
-            if (!tr.selection.empty) tr.setSelection(TextSelection.create(tr.doc, tr.selection.to))
-            return true
-          })
-          .insertContent({ type: 'mathBlock', attrs: { id, latex: '' } })
-          .run()
-        openMathEditorById(editor, id)
-      }}>
-        {/* v1.1.6 二3：块级公式 = Σ 外框（背景边框放大版，与行内公式区分） */}
-        <span
-          className="inline-grid h-5 w-5 place-items-center rounded-[3px] border border-current/60"
-          style={{ background: 'color-mix(in srgb, var(--foreground) 6%, transparent)' }}
+      {/* 公式（参考稿 tb-split：主按钮=行内公式，▾ 菜单=行内/块级） */}
+      <span className="inline-flex shrink-0 items-center">
+        <ToolIcon title="插入公式" onClick={() => insertMathNode('math')}>
+          <Icon name="sigma" className="size-4" />
+        </ToolIcon>
+        <Dropdown
+          open={formulaOpen}
+          onClose={() => setFormulaOpen(false)}
+          panelMinWidth={210}
+          trigger={
+            <button
+              type="button"
+              title="公式类型"
+              aria-label="公式类型"
+              onClick={() => setFormulaOpen((v) => !v)}
+              className="grid h-8 w-5 shrink-0 place-items-center rounded-[6px] text-muted-foreground transition-[background-color,color] duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none motion-reduce:transition-none"
+            >
+              <Icon name="chevron-down" className="size-3.5" />
+            </button>
+          }
         >
-          {/* 与行内公式同规格（size-4），正方形外框、grid 严格居中 */}
-          {/* Σ 路径墨迹中心略偏右（viewBox 内 ≈1.2px），补偿平移保持视觉正中 */}
-          <span className="block" style={{ transform: 'translateX(-1.2px)' }}>
-            <Icon name="sigma" className="size-4 leading-none" />
-          </span>
-        </span>
-      </ToolIcon>
+          <MenuItem icon={<Icon name="sigma" className="size-3.5" />} onClick={() => insertMathNode('math')}>行内公式</MenuItem>
+          <MenuItem icon={<Icon name="formula" className="size-3.5" />} onClick={() => insertMathNode('mathBlock')}>块级公式</MenuItem>
+        </Dropdown>
+      </span>
 
       {/* 插入 ▾（Focus §2.4：代码块/图片附件/脚注/信息块/表格/模块收进插入菜单，命令条保持克制；
          原独立「模块▾」已并入此处，模块列表在菜单打开时懒加载） */}
@@ -791,17 +794,23 @@ export default function EditorToolbar({
         )}
       </Dropdown>
 
-      <span className="mx-0.5 h-5 w-px shrink-0 bg-border" />
-
-      <ToolIcon title="撤销" disabled={!st.canUndo} onClick={() => editor.chain().focus().undo().run()}>
-        <Icon name="undo" className="size-4" />
-      </ToolIcon>
-      <ToolIcon title="重做" disabled={!st.canRedo} onClick={() => editor.chain().focus().redo().run()}>
-        <Icon name="redo" className="size-4" />
-      </ToolIcon>
-
       </fieldset>
       </div>
+
+      {/* Focus §2.4 / 参考稿 format-end：撤销/重做固定在最右（不随格式组横向滚动，窗口窄时也常驻） */}
+      <fieldset
+        disabled={viewMode === 'source'}
+        className="flex shrink-0 items-center gap-0.5"
+        aria-label="历史命令"
+      >
+        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+        <ToolIcon title="撤销" disabled={!st.canUndo} onClick={() => editor.chain().focus().undo().run()}>
+          <Icon name="undo" className="size-4" />
+        </ToolIcon>
+        <ToolIcon title="重做" disabled={!st.canRedo} onClick={() => editor.chain().focus().redo().run()}>
+          <Icon name="redo" className="size-4" />
+        </ToolIcon>
+      </fieldset>
 
       <input
         ref={fileRef}
@@ -987,15 +996,12 @@ export default function EditorToolbar({
             title="保存（Ctrl+S）"
             aria-label="保存"
             onClick={onSave}
-            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-2.5 text-[13px] font-medium text-foreground transition-[background-color,border-color] duration-150 hover:bg-surface-3 focus-visible:outline-none motion-reduce:transition-none"
-            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}
+            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] font-medium text-foreground transition-[background-color] duration-150 hover:bg-surface-3 focus-visible:outline-none motion-reduce:transition-none"
+            style={{ backgroundColor: 'var(--secondary)' }}
           >
             <Icon name="save" className="size-4" />
             <span className="hidden min-[960px]:inline">保存</span>
           </button>
-        ) : null}
-        {saveLabel ? (
-          <span className="flex items-center gap-1 text-[12px] text-muted-foreground">{saveLabel}</span>
         ) : null}
         {exportButton}
       </div>

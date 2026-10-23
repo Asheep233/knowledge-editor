@@ -35,6 +35,7 @@
 
 **发版动作**：`bump-version.mjs 1.3.0-pre.5`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest + Tauri/NSIS
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
+**资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
 ## 2026-10-24（真机审查处置：关窗挂起加固 + 跨工作区最近文档隔离）
 

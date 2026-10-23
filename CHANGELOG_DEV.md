@@ -24,6 +24,18 @@
 - **回归防护**：`verify-ui.cjs` 新增 2 条断言（格式组 `scrollWidth ≤ clientWidth`、「插入」按钮右缘不超出容器）；断言总数 184→**186**。
 - **实测**：1440 / 1366 / 1280 / 1200 / 1100 / 1024 / 900 / 800 八档宽度全部 `overflow=0`、插入按钮完整可见（修复前 1280 档裁切 140px）。
 
+## 2026-10-24（★ v1.3.0-pre.5 预发布：真机审查处置版）
+
+**Tag** `v1.3.0-pre.5`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**相对 pre.4**：① 关窗挂起加固（P2-1，8s 硬超时 watchdog + 诊断日志）；② 跨工作区最近文档隔离（P3-4，
+知识库/⌘K 按当前工作区树过滤 + lastArticleId 404 清理 + 回归测试）。其余同 pre.4（含四个已修复项）。
+
+**验证**：cargo check 通过；tsc 0；前端全量 vitest 150 文件 / 2058 passed + 1 skipped；视觉验收 17 图 186/186 PASS；侧车运行时版本 `1.3.0-pre.5`。
+
+**发版动作**：`bump-version.mjs 1.3.0-pre.5`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest + Tauri/NSIS
+→ tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
+
 ## 2026-10-24（真机审查处置：关窗挂起加固 + 跨工作区最近文档隔离）
 
 来源：2026-10-22 Windows 真机独立审查（报告原件 `F:\Work\KE Project\real-device-review-2026-10-22\REPORT.md`，

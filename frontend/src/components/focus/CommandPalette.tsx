@@ -13,11 +13,12 @@
  * 键盘：↑↓ 选择、Enter 执行、Esc 关闭；点击遮罩关闭。输入框自动聚焦。
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getRecentDocuments } from '../../api/client'
-import type { RecentDocument } from '../../types'
+import { getRecentDocuments, getTree } from '../../api/client'
+import type { RecentDocument, TreePayload } from '../../types'
 import { Icon, type IconName } from '../icons'
 import type { TabItem } from '../layout/TabBar'
 import type { AppPage } from './pageTypes'
+import { filterRecentToWorkspace } from './recentDocs'
 
 export interface CommandPaletteProps {
   open: boolean
@@ -103,14 +104,20 @@ export function CommandPalette({
     inputRef.current?.focus()
   }, [open])
 
-  // 最近文档：每次打开重新取（取前 5），组件卸载/关闭后丢弃回包
+  // 最近文档：每次打开重新取（前 5），**并按当前工作区文件树过滤**（真机审查 P3-4：
+  // 全局最近记录会混入其它工作区文档，点击 404）。树取不到时退回不过滤，只丢过滤能力。
   useEffect(() => {
     if (!open) return
     let cancelled = false
     setRecentLoading(true)
-    getRecentDocuments()
-      .then((r) => {
-        if (!cancelled) setRecent(Array.isArray(r.documents) ? r.documents.slice(0, RECENT_LIMIT) : [])
+    Promise.all([
+      getRecentDocuments().catch(() => ({ documents: [] as RecentDocument[] })),
+      getTree().catch(() => null as TreePayload | null),
+    ])
+      .then(([r, tree]) => {
+        if (cancelled) return
+        const docs = Array.isArray(r.documents) ? r.documents : []
+        setRecent(filterRecentToWorkspace(docs, tree).slice(0, RECENT_LIMIT))
       })
       .catch(() => {
         if (!cancelled) setRecent([])

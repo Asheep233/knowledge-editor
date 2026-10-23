@@ -10,7 +10,7 @@
  *  ⑥ Esc 关闭、点击遮罩关闭、点击面板内部不关闭；
  *  ⑦ ↑↓ 选择 + Enter 执行、输入框自动聚焦。
  *
- * 数据层只 mock `getRecentDocuments`（组件唯一的 API 依赖）。
+ * 数据层 mock `getRecentDocuments` + `getTree`（最近文档按当前工作区过滤，见 |recentDocs|）。
  */
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,6 +22,7 @@ import { CommandPalette, type CommandPaletteProps } from './CommandPalette'
 
 vi.mock('../../api/client', () => ({
   getRecentDocuments: vi.fn(),
+  getTree: vi.fn(),
 }))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -35,6 +36,14 @@ const RECENTS: RecentDocument[] = [
   { rel_path: 'Articles/最近文档5.md', title: '最近文档5', opened_at: '2026-10-20T10:00:00+08:00' },
   { rel_path: 'Articles/最近文档6.md', title: '最近文档6', opened_at: '2026-10-20T09:00:00+08:00' },
 ]
+
+/** 当前工作区文件树：包含 RECENTS 里的文档（过滤后应全部保留） */
+const TREE = {
+  root: '/ws',
+  articles: [...RECENTS.map((d) => d.rel_path), 'Articles/子目录/'],
+  modules: [] as string[],
+  attachments: { images: [] as string[], videos: [] as string[], files: [] as string[] },
+}
 
 const TABS: TabItem[] = [
   { id: 'Articles/甲.md', title: '标签甲' },
@@ -120,6 +129,7 @@ async function pressKey(key: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(api.getRecentDocuments).mockResolvedValue({ documents: RECENTS })
+  vi.mocked(api.getTree).mockResolvedValue(TREE)
   container = document.createElement('div')
   document.body.appendChild(container)
 })
@@ -139,6 +149,26 @@ describe('CommandPalette · 渲染与数据', () => {
     expect(container!.innerHTML).toBe('')
     expect($('[role="dialog"]')).toBeNull()
     expect(api.getRecentDocuments).not.toHaveBeenCalled()
+    expect(api.getTree).not.toHaveBeenCalled()
+  })
+
+  it('跨工作区：最近文档按当前工作区文件树过滤（真机审查 P3-4）', async () => {
+    vi.mocked(api.getRecentDocuments).mockResolvedValue({
+      documents: [
+        { rel_path: 'Articles/本工作区.md', title: '本工作区', opened_at: '2026-10-20T14:00:00+08:00' },
+        { rel_path: 'Articles/其它工作区.md', title: '其它工作区', opened_at: '2026-10-20T13:00:00+08:00' },
+      ],
+    })
+    vi.mocked(api.getTree).mockResolvedValue({
+      root: '/ws',
+      articles: ['Articles/本工作区.md'],
+      modules: [],
+      attachments: { images: [], videos: [], files: [] },
+    })
+    await mount()
+    expect(api.getTree).toHaveBeenCalledTimes(1)
+    expect(container!.textContent).toContain('本工作区')
+    expect(container!.textContent, '不属于当前工作区的最近文档应被过滤').not.toContain('其它工作区')
   })
 
   it('最近文档：取前 5 篇，且渲染「最近文档/命令/打开的文档」三个分组', async () => {

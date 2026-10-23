@@ -31,6 +31,7 @@ import {
 import type { ArticleMeta, RecentDocument, SearchResult, TagInfo, TreePayload } from '../../types'
 import { Icon } from '../icons'
 import { PageShell } from './PageShell'
+import { filterRecentToWorkspace } from './recentDocs'
 import type { FocusPageProps } from './pageTypes'
 
 /** 最近编辑列表展示上限（参考稿 6 篇） */
@@ -385,7 +386,9 @@ export function LibraryPage({
     void loadTags()
   }, [loadTags, refreshToken])
 
-  const heroDoc = recent[0]
+  // P3-4（真机审查）：最近文档是全局记录，这里只展示属于当前工作区的条目
+  const workspaceRecent = useMemo(() => filterRecentToWorkspace(recent, tree), [recent, tree])
+  const heroDoc = workspaceRecent[0]
   const heroId = heroDoc?.rel_path
 
   // hero 摘要需要正文：对最近打开的那篇取一次 getArticle（失败只损失摘要，不阻塞页面）
@@ -479,16 +482,16 @@ export function LibraryPage({
   }, [loadRecent])
 
   // ---------- 派生数据 ----------
-  const folders = useMemo(() => collectFolders(tree, recent), [tree, recent])
+  const folders = useMemo(() => collectFolders(tree, workspaceRecent), [tree, workspaceRecent])
   const visibleRecent = useMemo(
-    () => (activeFolder ? recent.filter((doc) => folderOf(doc.rel_path) === activeFolder) : recent),
-    [recent, activeFolder],
+    () => (activeFolder ? workspaceRecent.filter((doc) => folderOf(doc.rel_path) === activeFolder) : workspaceRecent),
+    [workspaceRecent, activeFolder],
   )
   const shownRecent = visibleRecent.slice(0, RECENT_LIMIT)
   const subtitle = tree
     ? `${tree.articles.length} 篇文档 · ${folders.length} 个文件夹 · ${tree.modules.length} 个模块`
     : undefined
-  const isEmpty = tree !== null && tree.articles.length === 0 && recent.length === 0
+  const isEmpty = tree !== null && tree.articles.length === 0 && workspaceRecent.length === 0
 
   const heroTitle = hero?.title ?? heroDoc?.title ?? ''
   const heroExcerpt = hero ? toExcerpt(hero.content) : ''

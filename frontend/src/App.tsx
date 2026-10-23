@@ -449,7 +449,17 @@ export default function App() {
     } catch (e) {
       // UI-9：后端 down / 404 / 409 时给出可见反馈与重试入口，不再只有 console
       console.error('打开文档失败', e)
-      setOpenError({ id, message: e instanceof Error ? e.message : String(e) })
+      const message = e instanceof Error ? e.message : String(e)
+      setOpenError({ id, message })
+      // P3-4（真机审查）：恢复「上次打开的文档」时会跨工作区命中陈旧 id → 404。
+      // 这里在 404 时清掉 persisted lastArticleId，避免每次启动重复失败并弹提示。
+      if (/404|不存在|not found/i.test(message)) {
+        try {
+          if (localStorage.getItem('ke.lastArticleId') === id) localStorage.removeItem('ke.lastArticleId')
+        } catch {
+          /* localStorage 不可用忽略 */
+        }
+      }
     } finally {
       loadingCountRef.current -= 1
       if (loadingCountRef.current <= 0) {

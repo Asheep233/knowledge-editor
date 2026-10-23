@@ -23,6 +23,34 @@ const MID_SETTINGS: &str = "ke-menu:settings";
 const MID_EXIT: &str = "ke-menu:exit";
 /// 退出清理预算：主线程最多等这么久，超时**无条件退出**（侧车清理由独立线程继续，通常更快）。
 const CLEANUP_BUDGET: std::time::Duration = std::time::Duration::from_millis(2000);
+/// 退出**硬超时 watchdog**：真机审查 P2-1（2026-10-22）发现，在 CDP 调试会话异常终止等
+/// WebView2 异常场景下，窗口已隐藏、侧车/端口已清理，但 `app.exit(0)` 之后主进程仍可能 >20s
+/// 不退出（事件循环被 WebView2 卡住）。这里在退出第二阶段启动独立 watchdog：超过该时限直接
+/// `std::process::exit(0)` 强制结束进程（此时 flush 握手已完成、侧车清理已触发）。
+/// 正常退出时进程会在 watchdog 醒来前结束，不会触发；触发时尽力写诊断日志便于定位。
+const HARD_EXIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(8);
+
+/// 启动退出硬超时 watchdog（仅在 request_exit 内调用一次）。
+fn spawn_hard_exit_watchdog() {
+    std::thread::spawn(|| {
+        std::thread::sleep(HARD_EXIT_TIMEOUT);
+        // 能走到这里说明 app.exit(0) 没有让进程结束（正常退出时本线程已随进程消亡）
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let msg = format!(
+            "exit-watchdog: app.exit(0) 超过 {}s 未生效（WebView2/事件循环异常兜底），强制 process::exit(0) @ unix_ms={ts}\n",
+            HARD_EXIT_TIMEOUT.as_secs()
+        );
+        // 尽力写诊断日志（data_dir/runtime/exit-watchdog.log）；失败不阻塞强退
+        let dir = crate::sidecar::data_dir().join("runtime");
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::write(dir.join("exit-watchdog.log"), msg.as_bytes());
+        eprintln!("{msg}");
+        std::process::exit(0);
+    });
+}
 
 const MID_RELOAD: &str = "ke-menu:reload";
 #[cfg(debug_assertions)]
@@ -190,6 +218,8 @@ pub fn reload_main_window(app: AppHandle) {
 /// 前端二次 close 或 1.5s 兜底定时器到达后调用本函数。**不要**在首次退出请求时直接调用
 /// （那会跳过 flush 握手，见 B2）。
 pub fn request_exit(app: &AppHandle) {
+    // P2-1 加固：无论后续清理/退出如何卡住，HARD_EXIT_TIMEOUT 后进程一定结束。
+    spawn_hard_exit_watchdog();
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
     }

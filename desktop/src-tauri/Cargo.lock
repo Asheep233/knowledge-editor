@@ -2056,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "knowledgeeditor"
-version = "1.3.0-pre.5"
+version = "1.3.0-pre.6"
 dependencies = [
  "ed25519-dalek",
  "serde",

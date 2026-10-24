@@ -75,6 +75,7 @@ import MathEditorModal from '../editor/MathEditorModal'
 import { MATH_EDIT_EVENT, type MathEditRequest } from '../editor/nodeviews/MathNodeView'
 import EditorToolbar, { stripModuleTitle, type UploadTarget } from '../editor/EditorToolbar'
 import { TabBarSlot } from './TabBar'
+import { EditorScrollbar } from './EditorScrollbar'
 import TableBubbleMenu from '../editor/TableBubbleMenu'
 import { askConfirm, askPrompt } from '../common/PromptDialog'
 
@@ -253,7 +254,8 @@ interface Props {
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
 const SAVE_LABEL: Record<SaveState, { text: string; cls: string; kind: SaveState }> = {
-  idle: { text: '', cls: '', kind: 'idle' },
+  // 2026-10-24 用户实测：空闲态不显示状态 → 看起来「没有保存状态」；空闲态与已保存等价，恒显示「已保存」。
+  idle: { text: '已保存', cls: 'text-emerald-600', kind: 'idle' },
   dirty: { text: '未保存…', cls: 'text-amber-600 font-medium', kind: 'dirty' },
   saving: { text: '保存中…', cls: 'text-blue-600 font-medium', kind: 'saving' },
   saved: { text: '已保存', cls: 'text-emerald-600', kind: 'saved' },
@@ -266,6 +268,8 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   const autosavePausedRef = useRef(false)
   autosavePausedRef.current = autosavePaused
   const [exportOpen, setExportOpen] = useState(false)
+  /** 2026-10-24：正文滚动容器 ref（供自绘滚动条同步几何） */
+  const editorScrollRef = useRef<HTMLDivElement | null>(null)
   const [exporting, setExporting] = useState(false)
   // 拖拽附件悬停遮罩（实际插入由 editorProps.handleDrop 完成）
   const [dragOver, setDragOver] = useState(false)
@@ -1622,7 +1626,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   }, [article])
 
   return (
-    <main className="flex h-full min-w-0 flex-1 flex-col bg-background">
+    <main className="relative flex h-full min-w-0 flex-1 flex-col bg-background">
       {loading || parsingLarge ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
           <span>{loading ? '加载中…' : '正在解析大文档…'}</span>
@@ -1671,9 +1675,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             onOpenSettings={onOpenSettings}
           />
           </div>
+          {/* 2026-10-24：右侧自绘竖向滚动条（始终可见/可拖动；原生滚动条仍隐藏以免纸面横向位移） */}
+          <EditorScrollbar scrollRef={editorScrollRef} />
           <TableBubbleMenu />
           <div
-            className="ke-scroll relative flex-1 overflow-y-auto overflow-x-hidden"
+            ref={editorScrollRef}
+            className="ke-scroll ke-editor-scroll relative flex-1 overflow-y-auto overflow-x-hidden"
             onDragOver={(e) => {
               // 必须 preventDefault 才允许 drop；遮罩仅作视觉反馈，
               // 实际文件插入由 editorProps.handleDrop（PM 层）完成

@@ -891,6 +891,30 @@ body {
   width: 0;
   height: 0;
 }
+/* 2026-10-24 用户要求：正文右侧显示可上下拖动的滚动条。
+ * 原生滚动条继续隐藏（纸面不横向位移 / Windows「自动隐藏滚动条」策略不可靠），
+ * 改用 `<EditorScrollbar>` 自绘：绝对定位覆盖在正文右侧留白，不占正文列宽。 */
+.ke-editor-scrollbar {
+  border-radius: 5px;
+  background: transparent;
+}
+.ke-editor-scrollbar:hover {
+  background: color-mix(in srgb, var(--line-2) 35%, transparent);
+}
+.ke-editor-scrollbar-thumb {
+  background: var(--line-2);
+  transition: background-color 0.15s ease;
+}
+.ke-editor-scrollbar-thumb:hover {
+  background: var(--text-3);
+}
+
+
+.focus-main-col > main > .ke-scroll.ke-editor-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
 /* 侧栏文件区可横向滚动（长文件名不省略） */
 .focus-files-bar > aside > div.flex-1 {
   overflow-x: auto;

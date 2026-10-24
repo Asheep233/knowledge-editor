@@ -60,6 +60,7 @@ node docs/focus-ui/verify-ui.cjs
 - **独立验收**：qa-visual 两轮（`6c53695` §11、`472d861` §12）全 PASS；`fbc2461` 绿点修复由 Lead 自测并按同一脚本复验（16 图 178/178）。
 - **证据**：`docs/focus-ui/screenshots/`（01–16 + focus-ring）、`evidence/{metrics.json,summary.md,run-meta.json,a11y-probe.json,probe-round3/,probe-round4/}`。
 - **源码模式修复（2026-10-20，发布后用户实测）**：Focus 纸面为 auto 高度使 `SourceModeView` 的 `h-full` 链断裂，源码编辑框塌成 ~66px 一行；已加 `[data-testid='source-mode-view'] { min-height: max(360px, calc(100vh - 340px)); }`（1440×900 实测 textarea 66→498px，内部滚动正常），并在 `verify-ui.cjs` 增加源码模式回归段（1600×? 见下）：验收脚本扩展为 **17 图 / 184 断言全 PASS**。
+- **pre.6 用户实测三项（2026-10-24）**：① 启动看门狗（双击无反应的无窗口僵尸 → 30s 检测+错误框+自动退出）；② 恢复保存状态显示（命令条右下方常驻已保存/未保存/保存中/失败）；③ 编辑器右侧自绘滚动条（固定窗口最右侧、可拖动，替代隐藏的原生滚动条）。验收 190/190 PASS。
 - **真机审查处置（2026-10-24）**：Windows 真机审查（`F:\Work\KE Project\real-device-review-2026-10-22\REPORT.md`）结论「无 P0/P1、四个修复项真机 PASS」；已修 P2-1 关窗挂起（8s 硬超时 watchdog）与 P3-4 跨工作区最近文档混杂（按当前工作区树过滤 + lastArticleId 404 清理），接收记录见 `docs/focus-ui/REAL-DEVICE-REVIEW-2026-10-22.md`；未处理项（签名/非整数缩放/多屏/附件模块端到端/大文档性能）已列入该记录 §2–3。
 - **块级公式 `\tag` 叠字修复（2026-10-22，历史遗留）**：KaTeX tag 的 `right:0` 锚在收缩宽度的 inline-block 渲染容器上 → 编号压住公式；块级公式渲染容器改 `display:block; width:100%`，编号右对齐于正文列（1440 实测：容器 680px、tag 距右缘 4px、无重叠）；新增 `MathNodeView.tagLayout.test.tsx` 结构+样式双层回归；证据 `evidence/math-tag/`。
 - **命令条「插入」按钮裁切修复（2026-10-22）**：pre.3 实测右端「插入」被横向滚动容器裁半（1440 溢出 12px / 1280 溢出 142px）；已去 item 间距 + ≤1400px 紧凑规则（图标 22px、隐藏竖线、保存/导出图标化），8 档宽度实测 overflow=0、插入完整；验收脚本加 2 条裁切断言（186/186 PASS）。

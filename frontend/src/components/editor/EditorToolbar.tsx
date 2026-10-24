@@ -377,6 +377,7 @@ export interface EditorToolbarProps {
 export default function EditorToolbar({
   onOpenHistory,
   exportButton,
+  saveLabel,
   onSave,
   viewMode = 'wysiwyg',
   onToggleViewMode,
@@ -996,12 +997,23 @@ export default function EditorToolbar({
             title="保存（Ctrl+S）"
             aria-label="保存"
             onClick={onSave}
-            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] font-medium text-foreground transition-[background-color] duration-150 hover:bg-surface-3 focus-visible:outline-none motion-reduce:transition-none"
+            className="ml-1 flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] font-medium text-foreground transition-[background-color,transform] duration-150 hover:bg-surface-3 active:scale-[0.97] focus-visible:outline-none motion-reduce:transition-none"
             style={{ backgroundColor: 'var(--secondary)' }}
           >
             <Icon name="save" className="size-4" />
             <span className="ke-btn-label hidden min-[960px]:inline">保存</span>
           </button>
+        ) : null}
+        {/* 2026-10-24 用户实测：「保存状态不见了」「保存按钮像点不了」——
+            恢复状态显示；绝对定位到浮动命令条下方（不占命令条横向宽度，避免再次把「插入」挤裁切）。 */}
+        {saveLabel ? (
+          <span
+            data-testid="save-status"
+            aria-live="polite"
+            className="pointer-events-none absolute right-2 top-[calc(100%+4px)] flex items-center gap-1 whitespace-nowrap text-[11px] leading-none text-muted-foreground"
+          >
+            {saveLabel}
+          </span>
         ) : null}
         {exportButton}
       </div>

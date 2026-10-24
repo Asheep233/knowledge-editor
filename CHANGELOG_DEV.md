@@ -37,6 +37,25 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-10-24（★ v1.3.0-pre.6 预发布：启动看门狗 + 保存状态恢复 + 右侧滚动条）
+
+**Tag** `v1.3.0-pre.6`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**相对 pre.5**
+1. **启动看门狗**（真机事故：双击图标无反应，进程+sidecar 已起但 WebView2 初始化挂起、主窗口未创建）：
+   进程启动即拉独立 watchdog（Win32 轮询）；30s 无可见主窗口 → 写 `runtime/startup-watchdog.log` +
+   原生错误框 + 自动退出；窗口隐藏/最小化则尝试恢复；关窗握手中让路。正常启动 0.5s 内退出该线程，无感。
+2. **保存状态恢复**（用户实测「保存状态不见了」）：命令条右下方常驻 `✓ 已保存 / 未保存… / 保存中… / 保存失败`；
+   空闲态=已保存；绝对定位不占命令条宽度；保存按钮加按压反馈。
+3. **编辑器右侧滚动条**（用户要求「能上下滑动的滑块，在右边」）：自绘滚动条固定窗口最右侧，常驻可见、可拖动、
+   点击轨道跳转；无溢出自动隐藏；打印隐藏；不占正文列宽。新增 `EditorScrollbar` 几何单测 + 验收 3 条断言。
+
+**验证**：cargo check 通过；tsc 0；前端全量 vitest 151 文件 / 2061 passed + 1 skipped；视觉验收 17 图 190/190 PASS；
+侧车运行时版本 `1.3.0-pre.6`。
+
+**发版动作**：`bump-version.mjs 1.3.0-pre.6`（9 处版本源）→ Windows 前端 build + PyInstaller 侧车 + manifest + Tauri/NSIS
+→ tag `v1.3.0-pre.6` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**）。
+
 ## 2026-10-24（真机审查处置：关窗挂起加固 + 跨工作区最近文档隔离）
 
 来源：2026-10-22 Windows 真机独立审查（报告原件 `F:\Work\KE Project\real-device-review-2026-10-22\REPORT.md`，

@@ -34,6 +34,105 @@ static RELOAD_DONE: AtomicBool = AtomicBool::new(false);
 /// 握手重载一次，造成「第二次重载销毁窄窗内新输入」。
 static RELOAD_GENERATION: AtomicU32 = AtomicU32::new(0);
 
+/// 启动看门狗（2026-10-24 真机事故处置）。
+///
+/// 事故现场：Modern Standby 刚恢复后双击桌面图标，进程与 sidecar 均已启动（runtime.json/端口都在），
+/// 但 **WebView2 初始化挂起、主窗口从未创建** —— 用户看到「双击没反应」，再次双击只会触发单实例
+/// 回调（找不到主窗口 → 什么都不发生），只能在任务管理器结束进程。8 次干净重启均 0.5s 出窗口，
+/// 属一次性环境异常（会话刚恢复），但**不能留下无窗口僵尸进程**。
+///
+/// 本看门狗在进程启动时拉起独立线程，用纯 Win32 轮询（不依赖可能被卡住的 Tauri 事件循环）：
+///   - 30s 内检测到可见主窗口 → 正常，线程退出；
+///   - 关窗握手中（`CLOSE_REQUESTED`）→ 让路退出；
+///   - 超时仍有窗口但隐藏/最小化 → 尝试恢复（SW_RESTORE/SW_SHOW + 前置）并记录；
+///   - 超时窗口根本不存在 → 写 `runtime/startup-watchdog.log` + 原生错误框 + 强制退出（用户可重试）。
+#[cfg(target_os = "windows")]
+mod startup_watchdog {
+    use std::ffi::c_void;
+
+    pub type HWND = *mut c_void;
+
+    #[link(name = "user32")]
+    extern "system" {
+        pub fn FindWindowW(class: *const u16, title: *const u16) -> HWND;
+        pub fn IsWindowVisible(hwnd: HWND) -> i32;
+        pub fn IsIconic(hwnd: HWND) -> i32;
+        pub fn ShowWindow(hwnd: HWND, cmd: i32) -> i32;
+        pub fn SetForegroundWindow(hwnd: HWND) -> i32;
+        pub fn MessageBoxW(hwnd: HWND, text: *const u16, caption: *const u16, utype: u32) -> i32;
+    }
+
+    pub fn wide(s: &str) -> Vec<u16> {
+        s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+}
+
+/// 见 [`startup_watchdog`]；`std::process::exit` 兜底只在窗口 30s 未出现时触发。
+#[cfg(target_os = "windows")]
+fn spawn_startup_watchdog() {
+    std::thread::spawn(|| {
+        use std::sync::atomic::Ordering;
+        use std::time::{Duration, Instant};
+        let class = startup_watchdog::wide("Tauri Window");
+        let title = startup_watchdog::wide("AstraNota");
+        let find = || unsafe { startup_watchdog::FindWindowW(class.as_ptr(), title.as_ptr()) };
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            // 用户已经触发关窗（握手隐藏窗口）→ 这不是启动失败，让路
+            if CLOSE_REQUESTED.load(Ordering::SeqCst) {
+                return;
+            }
+            let hwnd = find();
+            if !hwnd.is_null() && unsafe { startup_watchdog::IsWindowVisible(hwnd) } != 0 {
+                return; // 正常启动（通常 <2s 就走到这里）
+            }
+            if Instant::now() >= deadline {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(500));
+        }
+
+        let hwnd = find();
+        let mut detail = String::from("主窗口未创建（WebView2 初始化可能失败）");
+        if !hwnd.is_null() {
+            let iconic = unsafe { startup_watchdog::IsIconic(hwnd) } != 0;
+            let cmd = if iconic { 9 /* SW_RESTORE */ } else { 5 /* SW_SHOW */ };
+            unsafe {
+                startup_watchdog::ShowWindow(hwnd, cmd);
+                startup_watchdog::SetForegroundWindow(hwnd);
+            }
+            detail = format!("窗口存在但{}（已尝试恢复）", if iconic { "最小化" } else { "不可见" });
+        }
+
+        // 诊断日志（尽力写；失败不阻塞）
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let msg = format!("startup-watchdog: 启动 30s 后仍未出现可见主窗口 — {detail} @ unix_ms={ts}\n");
+        let dir = crate::sidecar::data_dir().join("runtime");
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::write(dir.join("startup-watchdog.log"), msg.as_bytes());
+        eprintln!("{msg}");
+
+        if hwnd.is_null() {
+            // 给用户可见反馈，而不是又留一个「双击没反应」的僵尸
+            let text = startup_watchdog::wide(
+                "AstraNota 启动超时：主窗口没有创建出来（WebView2 可能初始化失败）。\n\n应用将退出，请重新双击图标重试；若反复出现，请把\n%APPDATA%\\KnowledgeEditor\\runtime\\startup-watchdog.log\n反馈给开发者。",
+            );
+            let caption = startup_watchdog::wide("AstraNota 启动失败");
+            unsafe {
+                startup_watchdog::MessageBoxW(std::ptr::null_mut(), text.as_ptr(), caption.as_ptr(), 0x10);
+            }
+            std::process::exit(1);
+        }
+        // 窗口存在但恢复后仍不可见 → 退出让用户重试（不留僵尸）
+        if unsafe { startup_watchdog::IsWindowVisible(hwnd) } == 0 {
+            std::process::exit(1);
+        }
+    });
+}
+
 /// B2（发布前全面审查修复）：**统一的退出握手**。
 ///
 /// 首次调用：隐藏主窗口 → 通知前端 flush 未决保存（`ke:close-requested`）→ 启动 1.5s 兜底强退，
@@ -124,6 +223,9 @@ fn app_cancel_pending_reload() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 2026-10-24 真机事故：WebView2 初始化偶发挂起会留下「无窗口僵尸进程」；启动即挂看门狗。
+    #[cfg(target_os = "windows")]
+    spawn_startup_watchdog();
     tauri::Builder::default()
         // P1-12：多实例互斥（需在 setup 之前注册）。第二实例启动时回调聚焦已有主窗口后退出。
         // A7：workshop 自定义协议（已安装包独立 origin；包文档自带 CSP）

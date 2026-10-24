@@ -871,6 +871,39 @@ async function main() {
       eq('01-editor-light', '命令条格式组不溢出（scrollWidth ≤ clientWidth）', (barFit.overflow || 0) <= 1, true)
       eq('01-editor-light', '「插入」按钮完全在命令条内（不被裁切）', (barFit.insertCut ?? 1) <= 0, true)
 
+      // 保存状态可见（2026-10-24 用户实测：「保存状态不见了」→ 恢复为命令条右下方状态）
+      const saveStatusText = await page.evaluate(() => {
+        const el = document.querySelector('[data-testid="save-status"]')
+        return el ? (el.textContent || '').trim() : null
+      })
+      eq('01-editor-light', '命令条显示保存状态（空闲态=已保存）', saveStatusText, '已保存')
+
+      // 右侧自绘滚动条（2026-10-24 用户要求：「右侧加个能上下滑动的滑块」）
+      const scrollbar = await page.evaluate(() => {
+        const sb = document.querySelector('[data-testid="editor-scrollbar"]')
+        const th = document.querySelector('[data-testid="editor-scrollbar-thumb"]')
+        const sc = document.querySelector('.ke-editor-scroll')
+        if (!sb || !th || !sc) return { present: false }
+        const beforeTop = th.getBoundingClientRect().top
+        sc.scrollTop = Math.min(400, Math.max(0, sc.scrollHeight - sc.clientHeight))
+        return { present: true, beforeTop, thumbHeight: Math.round(th.getBoundingClientRect().height) }
+      })
+      // thumb 位置由 scroll 事件 → React state → 下一帧重算，等一帧再读
+      await page.waitForTimeout(120)
+      const scrollbarMoved = scrollbar.present
+        ? await page.evaluate((beforeTop) => {
+            const th = document.querySelector('[data-testid="editor-scrollbar-thumb"]')
+            const sc = document.querySelector('.ke-editor-scroll')
+            const moved = !!th && th.getBoundingClientRect().top > beforeTop
+            if (sc) sc.scrollTop = 0
+            return moved
+          }, scrollbar.beforeTop)
+        : false
+      if (scrollbar.present) scrollbar.moved = scrollbarMoved
+      eq('01-editor-light', '右侧自绘滚动条与 thumb 均存在', scrollbar.present === true, true)
+      eq('01-editor-light', '滚动条 thumb 有可拖拽高度', (scrollbar.thumbHeight || 0) >= 36, true)
+      eq('01-editor-light', '正文滚动后滚动条 thumb 同步下移', scrollbar.moved === true, true)
+
       // Focus 保真：侧栏 5 导航 + footer 三段（设计 .fb-nav / .fb-foot）
       const sideText = await page.evaluate(() => {
         const bar = document.querySelector('.focus-files-bar')

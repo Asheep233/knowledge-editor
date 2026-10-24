@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T16:43:02.536Z",
+  "generatedAt": "2026-10-24T14:50:15.672Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -515,6 +515,38 @@
     {
       "shot": "01-editor-light",
       "name": "「插入」按钮完全在命令条内（不被裁切）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "命令条显示保存状态（空闲态=已保存）",
+      "ok": true,
+      "expected": "已保存",
+      "actual": "已保存",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "右侧自绘滚动条与 thumb 均存在",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "滚动条 thumb 有可拖拽高度",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "正文滚动后滚动条 thumb 同步下移",
       "ok": true,
       "expected": "true",
       "actual": "true",
@@ -1117,7 +1149,7 @@
       "name": "面板含「最近文档」分组",
       "ok": true,
       "expected": "包含",
-      "actual": "ESC最近文档TagTestArticles/TagTest.md碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md测度论·第 3 讲：可测",
+      "actual": "ESC最近文档碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.mdTagTestArticles/TagTest.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md测度论·第 3 讲：可测",
       "note": ""
     },
     {
@@ -1506,8 +1538,8 @@
     }
   ],
   "summary": {
-    "total": 186,
-    "pass": 186,
+    "total": 190,
+    "pass": 190,
     "fail": 0
   }
 }

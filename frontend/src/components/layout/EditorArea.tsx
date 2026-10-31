@@ -1693,6 +1693,12 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
             }}
             onDrop={() => setDragOver(false)}
             onClick={(e) => {
+              // 2026-10-31 用户实测「公式编辑框里编辑/复制时有时会改到正文」：
+              // 公式模态是 createPortal 到 body 的，但 React 事件仍会沿 **React 树** 冒泡回本容器
+              // （本组件把各类 Dialog 渲染在滚动容器的 children 里）。因此必须先用 DOM 包含关系
+              // 排除「来自 portal/浮层」的点击 —— 否则点模态里的预览/模板区会触发下面的
+              // editor.commands.focus()，把键盘焦点抢回正文，后续输入/快捷键就写进文档。
+              if (!e.currentTarget.contains(e.target as Node)) return
               // 点击正文区域即聚焦可输入（正文字体）；
               // 但 NodeView 内部交互控件（公式 textarea、math-field、信息块输入等）
               // 不得抢占焦点，否则点击它们时光标会被强制移走。

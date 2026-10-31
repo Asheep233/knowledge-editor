@@ -914,6 +914,51 @@ async function main() {
       for (const label of [...navChecks, ...footChecks]) {
         soft('01-editor-light', `侧栏含「${label}」`, sideText.includes(label), `包含「${label}」`, sideText.slice(0, 200))
       }
+      // 公式编辑框焦点隔离（2026-10-31 用户实测：在公式编辑框里编辑/复制时有时会改到正文）
+      const mathBlockCount = await page.locator('.ke-math--block .ke-math-render').count()
+      if (mathBlockCount > 0) {
+        const dialogSel = '[role="dialog"][aria-label="公式编辑器"]'
+        await page.locator('.ke-math--block .ke-math-render').first().dblclick()
+        await page.waitForSelector(`${dialogSel} textarea`, { timeout: 8000 })
+        await page.waitForTimeout(200)
+        const focusedOnOpen = await page.evaluate(() => document.activeElement?.tagName === 'TEXTAREA')
+        const originalLatex = await page.evaluate((sel) => document.querySelector(`${sel} textarea`)?.value ?? '', dialogSel)
+        await page.locator(`${dialogSel} >> text=渲染预览`).click()
+        await page.waitForTimeout(150)
+        const focusedAfterPreviewClick = await page.evaluate(() => document.activeElement?.tagName === 'TEXTAREA')
+        await page.keyboard.type('XQZ')
+        await page.waitForTimeout(200)
+        const afterTyping = await page.evaluate(
+          (sel) => ({
+            bodyLeaked: (document.querySelector('.ke-editor-prose')?.innerText ?? '').includes('XQZ'),
+            taValue: document.querySelector(`${sel} textarea`)?.value ?? '',
+          }),
+          dialogSel,
+        )
+        // 复原 textarea 值（React 非受控：走原生 setter + input 事件），Esc 保存原内容 → 不污染文档
+        await page.evaluate(
+          ({ sel, original }) => {
+            const ta = document.querySelector(`${sel} textarea`)
+            if (!ta) return
+            const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
+            setter?.call(ta, original)
+            ta.dispatchEvent(new window.Event('input', { bubbles: true }))
+          },
+          { sel: dialogSel, original: originalLatex },
+        )
+        await page.waitForTimeout(150)
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(500)
+        const dialogClosed = (await page.locator(dialogSel).count()) === 0
+        eq('01-editor-light', '公式编辑框打开后焦点在 LaTeX 输入框', focusedOnOpen, true)
+        eq('01-editor-light', '点击公式预览区后焦点仍在输入框（不串回正文）', focusedAfterPreviewClick, true)
+        eq('01-editor-light', '公式编辑框内输入不写进正文', afterTyping.bodyLeaked, false)
+        eq('01-editor-light', '公式编辑框内输入进入 LaTeX 输入框', afterTyping.taValue.includes('XQZ'), true)
+        eq('01-editor-light', 'Esc 保存后公式模态关闭', dialogClosed, true)
+      } else {
+        log('警告：01 文档无可双击的块级公式，跳过公式编辑框焦点断言')
+      }
+
       await shot(page, '01-editor-light-1440x900')
 
       // ---------- 源码模式：编辑区必须占满纸面高度（1.3.0-pre.1 用户实测回归：塌成 ~66px 一行） ----------

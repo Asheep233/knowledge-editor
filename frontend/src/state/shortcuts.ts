@@ -736,11 +736,33 @@ export interface HandledKey {
  *   自定义就等于没生效）；
  * - **以上都不命中 → 零副作用**（默认空映射时既有快捷键行为完全不变）。
  */
+/**
+ * 焦点上下文守卫（2026-10-31 用户实测「公式编辑框里编辑/复制有时改到正文」的加固）：
+ * 在**输入类控件**（公式编辑 textarea / 标题弹窗 input / 搜索框等）或 **aria-modal 对话框**内，
+ * 全局快捷键分发器必须让路 —— 否则若用户自定义过 `Mod+Z` 等键位，会在输入框里触发
+ * `editor.chain().focus()`，把焦点抢回正文并把命令作用到文档上。
+ *
+ * 注意：ProseMirror 主编辑器自身的 contenteditable **不在**拦截范围内（正常编辑快捷键依赖它）。
+ */
+export function isShortcutContextBlocked(target: EventTarget | null): boolean {
+  if (typeof document === 'undefined') return false
+  if (target instanceof Element) {
+    const el = target
+    const tag = el.tagName
+    const editable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el as HTMLElement).isContentEditable
+    if (editable && !el.closest('.ProseMirror')) return true
+  }
+  // 即使焦点已落到 body/遮罩（例如点击对话框空白处），只要存在 aria-modal 对话框就让路
+  return !!document.querySelector('[aria-modal="true"]')
+}
+
 export function handleShortcutKeydown(
   e: KeyEventLike & { preventDefault?: () => void; stopPropagation?: () => void },
   opts: DispatcherOptions,
 ): HandledKey | null {
   if (recording) return null
+  // 输入控件 / 模态对话框内：不消费按键（交给原生控件；Ctrl+S 等由各自窗口监听兜底）
+  if (isShortcutContextBlocked((e as { target?: EventTarget | null }).target ?? null)) return null
   const bindings = opts.getBindings()
   const actionId = resolveActionId(bindings, e, opts.mac)
   if (actionId) {

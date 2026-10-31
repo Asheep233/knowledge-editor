@@ -20,6 +20,7 @@ import {
   findReservedKey,
   formatKeySpec,
   handleShortcutKeydown,
+  isShortcutContextBlocked,
   installShortcutDispatcher,
   isShortcutDispatcherInstalled,
   isSuppressedBuiltin,
@@ -425,6 +426,48 @@ describe('全局分发器（capture 阶段 / 零副作用 / 即改即生效）',
     expect(e.preventDefault).toHaveBeenCalledTimes(1)
   })
 
+  it('焦点上下文守卫：输入框/textarea 内不执行全局快捷键（否则会 focus 回正文）', () => {
+    const ta = document.createElement('textarea')
+    document.body.appendChild(ta)
+    expect(isShortcutContextBlocked(ta)).toBe(true)
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    expect(isShortcutContextBlocked(input)).toBe(true)
+    // 主编辑器 contenteditable 不在拦截范围
+    const pm = document.createElement('div')
+    pm.className = 'ProseMirror'
+    pm.contentEditable = 'true'
+    document.body.appendChild(pm)
+    const inner = document.createElement('span')
+    pm.appendChild(inner)
+    expect(isShortcutContextBlocked(inner)).toBe(false)
+    // aria-modal 打开时（即使焦点掉到 body）让路
+    const dialog = document.createElement('div')
+    dialog.setAttribute('aria-modal', 'true')
+    document.body.appendChild(dialog)
+    expect(isShortcutContextBlocked(document.body)).toBe(true)
+    dialog.remove()
+    document.body.removeChild(ta)
+    document.body.removeChild(input)
+    document.body.removeChild(pm)
+  })
+
+  it('handleShortcutKeydown：textarea 内命中自定义绑定也不消费（不抢焦点）', () => {
+    const ta = document.createElement('textarea')
+    document.body.appendChild(ta)
+    const e = ev({ key: 'b', ctrlKey: true, shiftKey: true })
+    ;(e as unknown as { target: EventTarget }).target = ta
+    const out = handleShortcutKeydown(e, {
+      getBindings: () => ({ 'editor.bold': 'Ctrl+Shift+B' }),
+      run,
+      mac: false,
+    })
+    expect(out).toBeNull()
+    expect(run).not.toHaveBeenCalled()
+    expect(e.preventDefault).not.toHaveBeenCalled()
+    document.body.removeChild(ta)
+  })
+
   it('默认空映射：既不改键也不解绑 → 任何按键都不被消费（既有快捷键不变动）', () => {
     for (const init of [
       { key: 'b', ctrlKey: true },
@@ -466,10 +509,13 @@ describe('task-35 收口 — 真实 handler 闭包 + doc.close + 无 DOM 兜底'
     expect(warn).not.toHaveBeenCalled()
   })
 
-  it('收口不回归：shortcuts.ts 不得再出现 DOM 适配代码', () => {
+  it('收口不回归：shortcuts.ts 不得再出现 DOM 适配代码（唯一例外：焦点上下文守卫）', () => {
     const src = readFileSync(resolve(process.cwd(), 'src/state/shortcuts.ts'), 'utf8')
     expect(src).not.toContain('runActionViaDom')
-    expect(src).not.toContain('querySelector')
+    // 2026-10-31：新增 `isShortcutContextBlocked`（输入框/模态内让路的守卫），它需要 DOM 查询；
+    // 其余任何位置仍不得出现 DOM 适配代码。
+    const withoutContextGuard = src.replace(/export function isShortcutContextBlocked[\s\S]*?\n}\n/, '')
+    expect(withoutContextGuard).not.toContain('querySelector')
   })
 
   it('doc.close：新增定义、默认不绑定（Ctrl+W 保留）、可绑定且纳入冲突检测', () => {

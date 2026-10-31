@@ -429,3 +429,35 @@ describe('task-63 契约守护：v1.2.9 的两条数据安全语义不得回退'
     expect(hi(), 'ArrowUp → 回到第 0 项').toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// 2026-10-31 用户实测：公式编辑框里点预览/空白后焦点掉到 body，接着编辑/复制会串到正文。
+// 契约：模态内点击任何非控件区域后，焦点必须回到公式 textarea（拖选复制态除外）。
+// ---------------------------------------------------------------------------
+describe('2026-10-31 焦点隔离：模态内点击不丢焦点给正文', () => {
+  it('点击「渲染预览」等非控件区域后，activeElement 仍是公式 textarea', async () => {
+    await mount('a+b')
+    await act(async () => textarea().focus())
+    expect(document.activeElement, '前置：textarea 已被聚焦').toBe(textarea())
+    const label = [...document.querySelectorAll('div')].find(
+      (d) => (d.textContent ?? '').trim() === '渲染预览',
+    ) as HTMLElement | undefined
+    expect(label, '未找到预览区标签').toBeTruthy()
+    await act(async () => {
+      label!.click() // 冒泡到模态卡片 → keepEditorFocus
+    })
+    expect(document.activeElement, '点击模态内非控件区域后焦点必须留在公式输入框').toBe(textarea())
+  })
+
+  it('点击模态外的遮罩（scrim）不关闭、也不丢焦点', async () => {
+    await mount('a+b')
+    await act(async () => textarea().focus())
+    const scrim = document.querySelector('[role="dialog"][aria-label="公式编辑器"]')?.parentElement as HTMLElement | undefined
+    expect(scrim, '未找到遮罩层').toBeTruthy()
+    await act(async () => {
+      scrim!.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+    })
+    expect(document.activeElement, '点遮罩后焦点必须回到公式输入框').toBe(textarea())
+    expect(closed, '点击外圈不得关闭模态（防误触丢稿）').toBe(0)
+  })
+})

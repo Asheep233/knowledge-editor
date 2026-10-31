@@ -609,11 +609,14 @@ describe('S-6 分派与动作执行', () => {
     expect(sc.runAction('doc.next'), '未注册 handler → 安全降级').toEqual({ ran: false, via: 'none' })
   })
 
-  it('源码守卫：DOM 过渡适配层已彻底移除（无 runActionViaDom / querySelector / DomEnv）', () => {
+  it('源码守卫：DOM 过渡适配层已彻底移除（无 runActionViaDom / DomEnv；querySelector 仅限焦点上下文守卫）', () => {
     const src = readSrc('./shortcuts.ts')
     expect(src.includes('runActionViaDom'), 'ADP-1 收口后不得残留 DOM 适配层').toBe(false)
-    expect(src.includes('querySelector'), '不得再靠 DOM 查询执行动作').toBe(false)
     expect(src.includes('DomEnv'), 'DomEnv 概念应已删除').toBe(false)
+    // 2026-10-31：新增 `isShortcutContextBlocked` —— 输入框/aria-modal 内让路的焦点守卫，
+    // 需要一次 DOM 查询；除该守卫外，仍不得靠 DOM 查询执行动作。
+    const withoutContextGuard = src.replace(/export function isShortcutContextBlocked[\s\S]*?\n}\n/, '')
+    expect(withoutContextGuard.includes('querySelector'), '不得再靠 DOM 查询执行动作（焦点守卫除外）').toBe(false)
   })
 
   it('未注册 handler 的动作 → via=none 安全降级（不抛错），同类提示只一次', () => {

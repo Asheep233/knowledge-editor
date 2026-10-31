@@ -102,6 +102,20 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     }
   }, [open])
 
+  /**
+   * 2026-10-31 用户实测：在公式编辑框里点「渲染预览 / 模板 / 空白处」时焦点会掉到 body，
+   * 接着打字/复制就落到正文（编辑到正文里）。模态内除表单控件外都算「编辑区的一部分」：
+   * 点击后把焦点交还 textarea；但如果用户刚拖选了预览/原始 LaTeX 文本（准备复制），
+   * 保留选区不动（强行 focus 会清掉选区）。
+   */
+  const keepEditorFocus = (e: React.MouseEvent) => {
+    const t = e.target as HTMLElement | null
+    if (!t) return
+    if (t.closest('textarea, input, select, button, a, [contenteditable="true"]')) return
+    if ((window.getSelection()?.toString() ?? '').length > 0) return
+    textareaRef.current?.focus()
+  }
+
   if (!open) return null
 
   const close = (save: boolean) => {
@@ -282,12 +296,23 @@ export default function MathEditorModal({ open, initialValue, isBlock, onSave, o
     'grid size-8 shrink-0 place-items-center rounded-control text-text-3 transition-colors hover:bg-surface-2 hover:text-foreground'
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" style={{ background: 'var(--scrim)' }}>
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+      style={{ background: 'var(--scrim)' }}
+      onMouseDown={(e) => {
+        // 点击外圈不关闭（防误触丢稿），也不把焦点交给页面：留在公式输入框里
+        if (e.target === e.currentTarget) {
+          e.preventDefault()
+          textareaRef.current?.focus()
+        }
+      }}
+    >
       <div
         className="flex max-h-[92vh] w-[min(860px,100%)] flex-col overflow-hidden rounded-dialog border border-border bg-card shadow-overlay"
         role="dialog"
         aria-modal="true"
         aria-label="公式编辑器"
+        onClick={keepEditorFocus}
       >
         <div className="flex items-start gap-3 border-b border-border px-6 py-4">
           <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-control bg-primary-soft text-accent-foreground">

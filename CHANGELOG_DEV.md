@@ -37,6 +37,25 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-10-31（★ v1.3.0-pre.7 预发布：公式编辑框焦点隔离——修复「编辑/复制串到正文」）
+
+**Tag** `v1.3.0-pre.7`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**用户实测问题**：打开公式编辑框后，点击预览/模板/空白区域再编辑或复制时，输入会串到正文里。
+
+**根因**（调用栈定位）：公式模态虽 `createPortal` 到 body，但仍写在正文滚动容器的 **React children** 中，
+点击模态内区域时 React 合成事件沿 React 树冒泡回滚动容器 `onClick` → `editor.commands.focus()` 把焦点抢回
+ProseMirror；随后输入/复制/快捷键就作用到文档（实测点击预览后 activeElement 变为 `.ProseMirror`）。
+
+**修复**：① 滚动容器 onClick 只处理容器内 DOM 的点击（portal/浮层点击不聚焦正文）；② 模态内点击非控件区域
+焦点交还 LaTeX 输入框（保留拖选复制选区；点外圈遮罩不关闭不丢焦点）；③ 快捷键分发器增加输入框/aria-modal
+上下文守卫，不在输入态执行全局编辑器快捷键。
+
+**回归防护**：verify-ui 新增 5 条真实浏览器断言（190→**195**）；新增 `MathEditorModal` 焦点隔离单测 +
+`shortcuts` 上下文守卫单测。
+
+**验证**：tsc 0；前端全量 vitest 151 文件 / 2065 passed + 1 skipped；视觉验收 17 图 195/195 PASS；侧车版本 `1.3.0-pre.7`。
+
 ## 2026-10-24（★ v1.3.0-pre.6 预发布：启动看门狗 + 保存状态恢复 + 右侧滚动条）
 
 **Tag** `v1.3.0-pre.6`（预发布，非 Latest；正式版仍为 v1.2.18）

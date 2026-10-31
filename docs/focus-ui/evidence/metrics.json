@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T14:50:15.672Z",
+  "generatedAt": "2026-10-31T09:56:21.785Z",
   "thresholds": {
     "sidebarW": 256,
     "sideMargin": 10,
@@ -617,6 +617,46 @@
       "note": ""
     },
     {
+      "shot": "01-editor-light",
+      "name": "公式编辑框打开后焦点在 LaTeX 输入框",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "点击公式预览区后焦点仍在输入框（不串回正文）",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "公式编辑框内输入不写进正文",
+      "ok": true,
+      "expected": "false",
+      "actual": "false",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "公式编辑框内输入进入 LaTeX 输入框",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
+      "shot": "01-editor-light",
+      "name": "Esc 保存后公式模态关闭",
+      "ok": true,
+      "expected": "true",
+      "actual": "true",
+      "note": ""
+    },
+    {
       "shot": "17-source",
       "name": "源码模式 textarea 已渲染",
       "ok": true,
@@ -1149,7 +1189,7 @@
       "name": "面板含「最近文档」分组",
       "ok": true,
       "expected": "包含",
-      "actual": "ESC最近文档碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.mdTagTestArticles/TagTest.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md测度论·第 3 讲：可测",
+      "actual": "ESC最近文档TagTestArticles/TagTest.md碰撞动力学：质心系与动量Articles/碰撞动力学-质心系与动量.md拉格朗日力学：变分原理Articles/理论力学/拉格朗日力学：变分原理.md测度论·第 3 讲：可测",
       "note": ""
     },
     {
@@ -1538,8 +1578,8 @@
     }
   ],
   "summary": {
-    "total": 190,
-    "pass": 190,
+    "total": 195,
+    "pass": 195,
     "fail": 0
   }
 }

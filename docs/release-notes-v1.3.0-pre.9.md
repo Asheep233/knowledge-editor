@@ -46,11 +46,16 @@
 | 视觉验收 | 17 张截图、**195/195 断言 PASS**、0 DIFF |
 | 侧车版本一致性 | 随机端口拉起 sidecar → `/api/health.version = 1.3.0-pre.9` 与源码一致 ✔ |
 
-## 复测验收（待 codex-agent 在 pre.9 独立复测，当前 UNVERIFIED）
+## 复测验收：PASS（codex-agent 独立复测，2026-11-03）
 
-- 5 个**新 WebView profile**：首个长文 preview↔export **页数与规范化全文一致**；
-- 每 profile 连续 2 次正式导出一致；0 误回退 / 0 孤儿预览；
-- 保存资源就绪证据（字体/图片状态、`waitForPrintReadiness` 结果）、IPC 与落盘证据。
+- **5 个全新实际 WebView profile**，每 profile 首 preview + 2 次正式导出：**15 份 PDF 全部 434 页**；规范化全文 SHA 均为 `7f13ad1beb612d4e4298903f6cd0f1a7e0d5adcb50c6ddcaa870e39b20ec3e2f`（跨 profile 全同）；文件均 1,103,945B。
+- **0 误回退 / 原生 reject 0 / 观察窗口内 0 孤儿预览**；无断链/恢复补样。
+- **20 次 `waitForPrintReadiness` 真实返回**：全部 `ok/fontsReady=true/pendingImages=0/timedOut=false`；首等待中位/p95=**19/21ms**；120/120 字体 Promise 成功；`Debugger.paused=0`。
+- 首「菜单→PDF iframe load」中位/p95 = **2.909/4.321s**（带观察探针）。
+- 与 pre.8 的对照：pre.8 首冷 preview 431 页 vs export 434 页的差异在 5 个新 profile **未复现**。
+- 报告：`F:\Work\KE Project\perf-retest-pre9-2026-11-03\REPORT.md`；独立矩阵：`evidence/independent-pdf-verdict.json`。
+
+**边界（本 PASS 不覆盖）**：fixture SVG URI 仍返回 SPA HTML（图片保真未验）；慢资源/超时/真正解码未专项测；第二次导出不保证更快（5 对中 1 对 IPC +44.9%，一致性门槛仍通过）；20MiB 首开与 10k 首次激活未解除（第 2 轮）。
 
 ## 已知限制（未变）
 

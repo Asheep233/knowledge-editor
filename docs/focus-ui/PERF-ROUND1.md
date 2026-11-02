@@ -56,16 +56,15 @@ tree 单次遍历、原生句柄退出、Markdown 解析 Worker 化、异步索�
   ② 正文内未完成 `<img>` 等待（强制 `loading=eager`，load/error 结束，超时返回 ok=false 仅告警）；
   两条路径（`ExportPdfDialog` 预览生成 / `exportPdfWithOverrides` 正式导出）**共用同一守卫**后再向原生发打印请求。
 - **测试**：`pdfPage.test.ts` 新增图片收集/加载/超时/快速通过 4 例；fake-timer 的预览链路测试 mock 守卫，避免测试环境字体 ready 不推进造成阻塞。
-- **验收（待 codex 复测 pre.9）**：5 个新 WebView profile 中**首个长文 preview↔export 页数与规范化全文一致**；每 profile 连续 2 次正式导出一致；0 误回退/孤儿；保留资源就绪/IPC/落盘证据。
+- **验收（codex pre.9 独立复测，2026-11-03）：PASS** —— 5 个全新实际 WebView profile、每 profile 首 preview + 2 次 export 共 **15 份 PDF 全部 434 页**，规范化全文 SHA 跨 profile 全同（`7f13ad1b…ec3e2f`）；0 回退/reject/孤儿；20 次 readiness 真实返回全部 `ok/fontsReady=true/pendingImages=0/timedOut=false`；首等待中位/p95=19/21ms，120/120 字体 Promise 成功；首菜单→iframe load 中位/p95=2.909/4.321s。报告：`F:\Work\KE Project\perf-retest-pre9-2026-11-03\REPORT.md`（独立矩阵 `evidence/independent-pdf-verdict.json`）。
 
 > 20MiB 默认排版首开仍约 2 分钟（Editor 数据项之外），属第 2 轮保护范围；10k 首次激活仍未实施/未复测，不能据此放行该规模正式支持。
 ---
 
-## 验收状态（2026-11-02 收工）
+## 验收状态（2026-11-03 更新）
 
-- 用户决定**本轮暂不安排 pre.9 的 PDF 一致性独立复测**（`v1.3.0-pre.9` 已于 2026-11-02 发布为预发布）。
-  → **R1-D2（预览/导出资源就绪守卫）保持 UNVERIFIED**：代码与单测已就绪，但「5 个新 WebView profile 首个长文 preview↔export 页数/规范化全文一致、每 profile 连续 2 次导出一致、0 误回退/孤儿」尚未在 Windows 真机独立复测。
-  → **正式版前必须补此验收**（阻塞 PDF 一致性放行）；复测口径与目标见上文 R1-D2 与 Codex `perf-retest` 报告 §5。
-- `F:\Work\KE Project\perf-retest-2026-11-02` 已清理会再生成的 `appdata`(1.13G) / `workspace`(0.54G) / `binary-pre8`(0.15G) 共 **1.82G**；保留 `REPORT.md`、`evidence/`、`scripts/`、`corpus-original/`（≈0.1G）供下次复测与审计。
-- 磁盘清理本轮完成：KE 即时项 +6.15G、cargo-target +19.52G、perf-retest 重产物 +1.82G，合计 **+27.49G**；KE Project 剩余仅风险审核证据、仓库与复测报告。
+- **四项全部 PASS**：R1-1 / R1-table / R1-S 已在 pre.8 独立复测 PASS；**R1-D2 已于 pre.9 PDF 专项独立复测 PASS**（5 profile × 3 份 = 15 份 PDF 全 434 页、规范化全文 SHA 全同、0 回退/孤儿、readiness 20/20 正常）。
+- **边界（PASS 不覆盖）**：原 fixture 的 SVG URI 仍返回 SPA HTML（图片保真/富媒体未验）；慢资源/超时/真正解码未专项测；PDF 第二次不保证更快（5 对中 1 对 IPC 上升 44.9%，但一致性门槛通过）；20MiB 首开约 2 分钟与 10k 首次激活**未解除**，属第 2 轮。
+- 复测国产物：`F:\Work\KE Project\perf-retest-pre9-2026-11-03\`（保留 REPORT/evidence/scripts/workspace；`appdata`/`binary-pre9` 0.74G 已清）。
+- 磁盘清理本轮：KE 即时项 +6.15G、cargo-target +19.52G、perf-retest 重产物 +1.82G，合计 **+27.49G**；F: 收工 148G 可用。
 

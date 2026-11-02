@@ -52,7 +52,7 @@
 **验证**：tsc 0；前端全量 vitest 153 文件 / 2083 passed + 1 skipped；视觉验收 17 图 195/195 PASS。
 **资产**：安装包 51,151,392 B / sha256 `2c0a05f4…29e8`；侧车 46,248,061 B / `d3a4bd89…9f7e`；manifest 9,930 B；versions.json 16,026 B。
 
-**UNVERIFIED（待 codex 在 pre.9 复测）**：5 个新 WebView profile 首个长文 preview↔export 页数/规范化全文一致；每 profile 连续 2 次正式导出一致；0 误回退/孤儿。
+**独立复测（2026-11-03，codex-agent）：PASS** —— 5 个全新 WebView profile ×（首 preview+2 export）= 15 份 PDF 全部 434 页、规范化全文 SHA 跨 profile 全同；0 回退/reject/孤儿；20 次 readiness 全部 ok（首等待中位/p95=19/21ms）；首菜单→iframe load 2.909/4.321s。边界：SVG fixture URI 无效（图片保真未验）、慢资源超时未测、20MiB/10k 未解除。
 
 ## 2026-11-02（★ v1.3.0-pre.8 预发布：性能优化第 1 轮 — Codex 独立审查四项落地）
 

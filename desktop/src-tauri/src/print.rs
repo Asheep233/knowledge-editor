@@ -10,7 +10,10 @@
 //! - **绝不覆盖**已存在文件（调用方与本函数双重校验）
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
 use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -85,6 +88,11 @@ async fn render_pdf_to(
     render_window_pdf_to(app, "main".to_string(), target, content_width).await
 }
 
+/// 全局打印串行锁（2026-11-02 R1-D）：预览/正式导出/打印快照共用同一 WebView2 窗口打印；
+/// 并发触发 PrintToPdf 会产生互相干扰、临时文件归属混乱与错误回退。这里让所有打印调用串行，
+/// 后到者等待前一次真实完成（配合上方完成通道；不再用 3s 猜测）。
+static PDF_PRINT_LOCK: OnceLock<tauri::async_runtime::Mutex<()>> = OnceLock::new();
+
 /// 把**指定窗口**打印到 `target`（T16 独立打印 renderer 复用；成功返回路径）。
 pub async fn render_window_pdf_to(
     app: AppHandle,
@@ -92,16 +100,23 @@ pub async fn render_window_pdf_to(
     target: PathBuf,
     content_width: Option<f64>,
 ) -> Result<String, String> {
+    let print_lock = PDF_PRINT_LOCK.get_or_init(|| tauri::async_runtime::Mutex::new(()));
+    let _print_guard = print_lock.lock().await;
     let window = app
         .get_webview_window(&window_label)
         .ok_or_else(|| format!("找不到窗口 {window_label}，无法导出 PDF"))?;
 
-    // with_webview 的闭包必须返回 ()（错误经这个槽带回）
-    let err_slot: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-    // WebView2 完成回调是否报告成功（用于区分「回调失败」与「回调成功但文件没出现」）
-    let ok_slot: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
-    let ok_slot_in = Arc::clone(&ok_slot);
-    let err_slot_in = Arc::clone(&err_slot);
+    // 2026-11-02（Codex 性能审查 R1-D，正确性修复）：
+    // `with_webview` 只是把闭包**异步投递**给 UI 线程就返回，并不等待打印完成；
+    // 修复前外层在投递后立刻读错误槽并最多轮询 3s（30×100ms）—— 长文/UI 忙时
+    // PrintToPdf 的完成回调可能远晚于 3s，于是报「PDF 未出现」假失败，前端随后回退
+    // DOM 克隆/系统打印，既慢又可能产出不一致内容。
+    // 现在：闭包在**真实 COM 完成回调**里通过一次性通道回传 (结果, WebView2 成功标志)，
+    // 异步命令等待该结果（带安全超时）后再校验文件，不再靠 3s 猜。
+    let (tx, rx) = mpsc::channel::<(Result<(), String>, bool)>();
+    // WebView2 完成回调是否报告成功（区分「回调失败」与「回调成功但文件没出现」）
+    let ok_flag = Arc::new(AtomicBool::new(false));
+    let ok_flag_in = Arc::clone(&ok_flag);
     let path_for_closure = target.clone();
 
     window
@@ -158,9 +173,7 @@ pub async fn render_window_pdf_to(
                         }),
                         Box::new(move |result, is_successful| {
                             if is_successful {
-                                if let Ok(mut o) = ok_slot_in.lock() {
-                                    *o = true;
-                                }
+                                ok_flag_in.store(true, Ordering::SeqCst);
                                 Ok(())
                             } else {
                                 result
@@ -171,33 +184,55 @@ pub async fn render_window_pdf_to(
                 }
                 Ok(())
             })();
-            if let Err(e) = outcome {
-                if let Ok(mut slot) = err_slot_in.lock() {
-                    *slot = Some(e);
-                }
-            }
+            let reported_ok = ok_flag.load(Ordering::SeqCst);
+            let _ = tx.send((outcome, reported_ok));
         })
         .map_err(|e| format!("调用打印流程失败：{e}"))?;
 
-    if let Some(e) = err_slot.lock().ok().and_then(|mut s| s.take()) {
-        return Err(e);
+    // 等待真实完成结果：在专用阻塞线程上等，不占用 async 运行时工作线程/UI 线程。
+    // 超时仅是安全兜底（正常完成回调在数秒内返回）；超时后明确报「未完成」，不再伪报失败。
+    const PDF_COMPLETION_TIMEOUT: Duration = Duration::from_secs(180);
+    let wait = tauri::async_runtime::spawn_blocking(move || rx.recv_timeout(PDF_COMPLETION_TIMEOUT));
+    let received = wait
+        .await
+        .map_err(|e| format!("等待打印结果失败：{e}"))?;
+    match received {
+        Ok((Ok(()), true)) => {}
+        Ok((Err(e), _)) => return Err(e),
+        Ok((Ok(()), false)) => {
+            return Err(format!(
+                "打印流程已返回，但 WebView2 报告失败：{}（请检查该目录是否存在/可写，或被安全软件拦截）",
+                target.display()
+            ))
+        }
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            return Err(format!(
+                "打印超时（{}s 未收到完成回调）：{}",
+                PDF_COMPLETION_TIMEOUT.as_secs(),
+                target.display()
+            ))
+        }
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            return Err(format!(
+                "打印任务没有返回结果（窗口可能已关闭）：{}",
+                target.display()
+            ))
+        }
     }
-    // 有些环境下文件落盘比完成回调稍晚 → 轮询等待最多 ~3s，并核对非空
+    // 完成回调后文件通常已落盘；少数环境文件系统刷新稍晚 → 最多再等 ~5s 并核对非空
     let mut waited = 0u32;
-    while waited < 30 {
+    while waited < 50 {
         if let Ok(meta) = std::fs::metadata(&target) {
             if meta.len() > 0 {
                 return Ok(target.to_string_lossy().to_string());
             }
         }
-        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(100));
         waited += 1;
     }
-    let reported_ok = ok_slot.lock().map(|v| *v).unwrap_or(false);
     Err(format!(
-        "打印流程已结束，但目标 PDF 未出现：{}（WebView2 报告{}；请检查该目录是否存在/可写，或被安全软件拦截）",
-        target.display(),
-        if reported_ok { "成功" } else { "失败" }
+        "打印完成但目标 PDF 未出现/为空：{}（请检查该目录是否存在/可写，或被安全软件拦截）",
+        target.display()
     ))
 }
 

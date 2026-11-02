@@ -371,6 +371,14 @@ export default function ExportPdfDialog({
   const [previewBusy, setPreviewBusy] = useState(false)
   /** 单飞 + 旧结果作废：仅最后一次请求可提交 */
   const previewSeqRef = useRef(0)
+  /**
+   * 2026-11-02（Codex 性能审查 R1-D）：**打印单飞队列**。
+   * 修复前：选项/内容变化会并发发起多次 `preview_pdf`，而 WebView2 同一窗口的 PrintToPdf
+   * 并发/重入会产生不可预期结果（多余的整文渲染、临时文件竞态、错误回退）。
+   * seq 只能丢弃**旧结果**，不能阻止旧请求已经开始的打印。这里把生成串行化：
+   * 排队任务执行前先复查 seq，被更新请求取代的直接跳过（不浪费一次打印）。
+   */
+  const previewQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   /** 删除临时预览文件（尽力而为；越权路径由后端拒绝） */
   const discardPreview = useCallback(async (abs: string | null) => {
@@ -392,6 +400,9 @@ export default function ExportPdfDialog({
     let disposed = false
     const generate = async () => {
       let restoreContext: (() => void) | null = null
+      // 排队到上一次打印完成之后；执行前复查「是否仍是最新请求」，过期请求直接跳过。
+      const run = async () => {
+      if (disposed || seq !== previewSeqRef.current) return
       try {
         const { invoke, convertFileSrc } = await import('@tauri-apps/api/core')
         // SD-03/SD-04（2026-10-17 审查）：真 PDF 预览打印的是当前主 WebView ——
@@ -421,6 +432,10 @@ export default function ExportPdfDialog({
         if (restoreContext) restoreContext()
         if (!disposed && seq === previewSeqRef.current) setPreviewBusy(false)
       }
+      }
+      const task = previewQueueRef.current.then(run, run)
+      previewQueueRef.current = task.catch(() => undefined)
+      await task
     }
     timer = setTimeout(() => void generate(), PDF_PREVIEW_DEBOUNCE_MS)
     return () => {

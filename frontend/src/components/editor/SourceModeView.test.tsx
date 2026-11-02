@@ -117,6 +117,7 @@ vi.mock('../../editor', () => ({
         return CS.isEditable
       },
       isFocused: false,
+      state: { doc: {} },
       commands: { focus: () => undefined, setContent: () => undefined, command: () => undefined },
     }
   },

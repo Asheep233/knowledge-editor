@@ -21,7 +21,14 @@
 
 ## 发布资产
 
-（构建完成后补全）
+| 资产 | 大小 | sha256 |
+|---|---|---|
+| `AstraNota_1.3.0-rc.1_x64-setup.exe` | 51,153,193 B | `278c690e79359049ba3c339840c88f982a9faabdb0da8fb06bcedb7c9ac54bf5` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（侧车） | 46,248,666 B | `6cd5fcb51478a6456b7f6d6f7de76c7de5a242151219625163af31d907d65045` |
+| `manifest.sha256`（79 个产物） | 9,930 B | `69401ce51872554744ad91a4bcf992797cda918c251373a8126164dfd8ebcd4f` |
+| `versions.json` | 16,026 B | `a096619b4ceddb57fb6772ad671c617e8f5f698522c52f364f5cab90f2ec0825` |
+
+安装包版本信息：ProductVersion = FileVersion = `1.3.0-rc.1`（NSIS x64，未签名）。
 
 ## 验证
 
@@ -31,7 +38,7 @@
 | 前端全量测试 | **153/153 文件、2083 passed + 1 skipped**、EXIT=0 |
 | 视觉验收 | 17 张截图、**195/195 断言 PASS**、0 DIFF |
 | 性能第 1 轮复测 | 编辑器三项 PASS（pre.8 独立复测）；R1-D2 PDF 一致性 PASS（pre.9 专项独立复测） |
-| 侧车版本一致性 | 待 Windows 构建补填 |
+| 侧车版本一致性 | 随机端口拉起 sidecar → `/api/health.version = 1.3.0-rc.1` 与源码一致 ✔ |
 
 ## 已知限制（RC 不覆盖，正式版前需处理/确认）
 

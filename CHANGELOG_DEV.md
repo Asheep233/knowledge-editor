@@ -37,6 +37,22 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-11-02（★ v1.3.0-pre.9 预发布：PDF 预览一致性修复 — 资源就绪守卫）
+
+**Tag** `v1.3.0-pre.9`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+**背景（pre.8 独立复测）**：编辑器三项 PASS（R1-1 首 dirty p95 196.6→14.3 / 953.4→46.5ms；R1-table 原生 parse −27.46%/−42.81%；R1-S 20MiB no-op parse=0、最大 13.74s）。
+但 PDF 一致性 **FAIL**：冷 profile 首次真预览 431 页 vs 正式导出 434 页（MediaBox/内容宽/主题/DPR 相同，规范化全文不同，新 profile 可复现）。
+报告：`F:\Work\KE Project\perf-retest-2026-11-02\REPORT.md`。
+
+**修复（R1-D2）**：新增 `editor/pdfPage.ts::waitForPrintReadiness()`（有界 8s、不抛）——等 KaTeX 字族 + document.fonts.ready + 正文未完成图片；
+**真预览与正式导出共用同一守卫**后再向原生发打印请求（修复前仅导出路径等字体、预览路径立刻打印）。
+不加大超时、不改既有 seq/disposed/单飞；资源未就绪只告警不阻塞。新增 4 条图片就绪/超时单测。
+
+**验证**：tsc 0；前端全量 vitest 153 文件 / 2083 passed + 1 skipped；视觉验收 17 图 195/195 PASS。
+
+**UNVERIFIED（待 codex 在 pre.9 复测）**：5 个新 WebView profile 首个长文 preview↔export 页数/规范化全文一致；每 profile 连续 2 次正式导出一致；0 误回退/孤儿。
+
 ## 2026-11-02（★ v1.3.0-pre.8 预发布：性能优化第 1 轮 — Codex 独立审查四项落地）
 
 **Tag** `v1.3.0-pre.8`（预发布，非 Latest；正式版仍为 v1.2.18）

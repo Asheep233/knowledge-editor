@@ -35,3 +35,28 @@
 ## 未包含（第 2 轮 / 候选）
 
 tree 单次遍历、原生句柄退出、Markdown 解析 Worker 化、异步索引启动、lazy 加载/内存预算、10k 首次激活保护、20MiB 超预算源码优先入口。
+---
+
+## 独立复测结论（pre.8 · codex-agent，2026-11-02）
+
+报告：`F:\Work\KE Project\perf-retest-2026-11-02\REPORT.md`（证据/可复跑脚本同根）
+
+| 项 | 结论 | 关键数字（Windows 原生/解包 pre.8） |
+|---|---|---|
+| R1-1 PDF 量测离屏 | **PASS** | 默认 3s 首 dirty p95：1MiB 640.3→27.3ms、5MiB 3248.1→80.9ms；严格 8s 确认：196.6→14.3ms / 953.4→46.5ms（各 n5）；root data-theme 写入 pre.7 各 8–12 次 → pre.8 **0 次** |
+| R1-table 早拒绝 | **PASS** | 原生 1MiB 同字节纯 parse 两组改善 **27.46% / 42.81%**（≥20% 目标达成） |
+| R1-S 源码 no-op 复用 | **PASS** | 20MiB 原始 n5 + 保存后 n3 均 **parse=0**、PM 引用/JSON 不变；20MiB 返回样本全部 ≤20s（最大 13.74s；保存后最大 13.87s）；真编辑反例仍重解析/正确保存 |
+| R1-D PDF 真实完成链 | **部分 PASS / 一致性 FAIL** | 正式导出重复稳定（20 份 = 19+1 恢复，页数/全文一致，0 回退/孤儿）；但**冷 profile 首次真预览 431 页 vs 正式导出 434 页**（MediaBox/内容宽/主题/DPR 相同，规范化全文不同），新 profile 复现 → **PDF 整体 FAIL**，阻塞正式版 PDF 一致性放行 |
+
+### R1-D2（pre.9 追加修复）：预览与导出共享资源就绪守卫
+
+- **根因（Codex 静态强候选 + 冷路径复现）**：正式导出路径有 `waitForPrintFonts()`，而**真预览路径应用打印样式后立即 invoke `preview_pdf`**；新 WebView profile 首次打印时 KaTeX 字族（Size1..4 等）尚未加载/解码 → 分页与最终导出不一致。图片 NodeView 懒加载且两路径均无图片就绪守卫（次要候选）。
+- **修复**：新增 `editor/pdfPage.ts::waitForPrintReadiness()`（有界 8s，不抛）：
+  ① `waitForPrintFonts`（6 个 KaTeX 字族 + `document.fonts.ready`）；
+  ② 正文内未完成 `<img>` 等待（强制 `loading=eager`，load/error 结束，超时返回 ok=false 仅告警）；
+  两条路径（`ExportPdfDialog` 预览生成 / `exportPdfWithOverrides` 正式导出）**共用同一守卫**后再向原生发打印请求。
+- **测试**：`pdfPage.test.ts` 新增图片收集/加载/超时/快速通过 4 例；fake-timer 的预览链路测试 mock 守卫，避免测试环境字体 ready 不推进造成阻塞。
+- **验收（待 codex 复测 pre.9）**：5 个新 WebView profile 中**首个长文 preview↔export 页数与规范化全文一致**；每 profile 连续 2 次正式导出一致；0 误回退/孤儿；保留资源就绪/IPC/落盘证据。
+
+> 20MiB 默认排版首开仍约 2 分钟（Editor 数据项之外），属第 2 轮保护范围；10k 首次激活仍未实施/未复测，不能据此放行该规模正式支持。
+

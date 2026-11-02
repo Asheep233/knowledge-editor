@@ -59,4 +59,13 @@ tree 单次遍历、原生句柄退出、Markdown 解析 Worker 化、异步索�
 - **验收（待 codex 复测 pre.9）**：5 个新 WebView profile 中**首个长文 preview↔export 页数与规范化全文一致**；每 profile 连续 2 次正式导出一致；0 误回退/孤儿；保留资源就绪/IPC/落盘证据。
 
 > 20MiB 默认排版首开仍约 2 分钟（Editor 数据项之外），属第 2 轮保护范围；10k 首次激活仍未实施/未复测，不能据此放行该规模正式支持。
+---
+
+## 验收状态（2026-11-02 收工）
+
+- 用户决定**本轮暂不安排 pre.9 的 PDF 一致性独立复测**（`v1.3.0-pre.9` 已于 2026-11-02 发布为预发布）。
+  → **R1-D2（预览/导出资源就绪守卫）保持 UNVERIFIED**：代码与单测已就绪，但「5 个新 WebView profile 首个长文 preview↔export 页数/规范化全文一致、每 profile 连续 2 次导出一致、0 误回退/孤儿」尚未在 Windows 真机独立复测。
+  → **正式版前必须补此验收**（阻塞 PDF 一致性放行）；复测口径与目标见上文 R1-D2 与 Codex `perf-retest` 报告 §5。
+- `F:\Work\KE Project\perf-retest-2026-11-02` 已清理会再生成的 `appdata`(1.13G) / `workspace`(0.54G) / `binary-pre8`(0.15G) 共 **1.82G**；保留 `REPORT.md`、`evidence/`、`scripts/`、`corpus-original/`（≈0.1G）供下次复测与审计。
+- 磁盘清理本轮完成：KE 即时项 +6.15G、cargo-target +19.52G、perf-retest 重产物 +1.82G，合计 **+27.49G**；KE Project 剩余仅风险审核证据、仓库与复测报告。
 

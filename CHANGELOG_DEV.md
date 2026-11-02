@@ -50,6 +50,7 @@
 不加大超时、不改既有 seq/disposed/单飞；资源未就绪只告警不阻塞。新增 4 条图片就绪/超时单测。
 
 **验证**：tsc 0；前端全量 vitest 153 文件 / 2083 passed + 1 skipped；视觉验收 17 图 195/195 PASS。
+**资产**：安装包 51,151,392 B / sha256 `2c0a05f4…29e8`；侧车 46,248,061 B / `d3a4bd89…9f7e`；manifest 9,930 B；versions.json 16,026 B。
 
 **UNVERIFIED（待 codex 在 pre.9 复测）**：5 个新 WebView profile 首个长文 preview↔export 页数/规范化全文一致；每 profile 连续 2 次正式导出一致；0 误回退/孤儿。
 

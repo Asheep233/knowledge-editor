@@ -37,6 +37,20 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-11-03（★ v1.3.0-rc.1 发布候选：1.3.0 功能冻结，第 1 轮性能全部复测 PASS）
+
+**Tag** `v1.3.0-rc.1`（GitHub Pre-release；正式版仍为 v1.2.18）
+
+**变化**：无产品代码变更（相对 pre.9 仅版本号/发布说明/验收归档）。pre.9 的 PDF 一致性修复已由 codex 独立复测 PASS，性能第 1 轮四项全部 PASS：
+- R1-1 旧 dirty p95 8s 口径 1/5MiB = 196.6→14.3 / 953.4→46.5ms；默认 3s 口径 640.3→27.3 / 3248.1→80.9ms；
+- R1-table 原生 1MiB parse −27.46% / −42.81%；
+- R1-S 20MiB no-op parse=0、最大 13.74s（保存后 13.87s）；
+- R1-D2 5 profile × 3 = 15 份 PDF 全 434 页、规范化全文 SHA 全同、0 回退/孤儿、readiness 20/20（中位/p95 首等待 19/21ms）。
+
+**已知限制（RC 不覆盖）**：安装包未签名；125%/150% 缩放与多屏未验；附件/模块端到端未验；10k 首次激活不支持；20MiB 默认排版首开约 2 分钟；富媒体图片保真/慢资源超时未验；系统打印 fallback UNVERIFIED。
+
+**验证**：tsc 0；前端全量 vitest 153 文件 / 2083 passed + 1 skipped；视觉验收 17 图 195/195 PASS；性能第 1 轮四项独立复测全部 PASS（编辑器 pre.8、PDF 一致性 pre.9）。
+
 ## 2026-11-02（★ v1.3.0-pre.9 预发布：PDF 预览一致性修复 — 资源就绪守卫）
 
 **Tag** `v1.3.0-pre.9`（预发布，非 Latest；正式版仍为 v1.2.18）

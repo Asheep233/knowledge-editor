@@ -235,14 +235,23 @@ export const tableTokenizer = {
   // tokenize 已严格要求「表头行 + 分隔行」，孤立的 `|` 行自然退回普通段落（GFM 口径）。
   start: () => -1,
   tokenize(src: string): MarkdownToken | undefined {
-    const lines = src.split('\n')
-    const header = parseTableRow(lines[0])
+    // 2026-11-02 性能优化（Codex 审查 R1-table）：
+    // 本 tokenizer 是 block 级候选判定，src = **从当前块到文末的全部剩余文本**。
+    // 修复前第一步就 `src.split('\n')` 切整条长尾，而绝大多数块根本不是表格 ——
+    // 20MiB 文档 CPU profile 中本函数 self 约 107.6s（全 suite 18.4%），dev 纯 parse 1MiB
+    // 原型去掉该前缀成本后中位 −36.6%。现在先只读**头两行**做「表头 + 分隔行」候选判定，
+    // 不匹配立即 return（不 split 全文）；确认候选后才构造 lines。
+    const firstEnd = src.indexOf('\n')
+    if (firstEnd < 0) return undefined
+    const header = parseTableRow(src.slice(0, firstEnd))
     if (!header || header.length === 0) return undefined
-    // 单行输入（无 EOF 换行）→ lines[1] 为 undefined，必须安全返回 undefined（不得抛错）
-    const sep = parseTableRow(lines[1])
+    const secondEnd = src.indexOf('\n', firstEnd + 1)
+    const sep = parseTableRow(src.slice(firstEnd + 1, secondEnd < 0 ? undefined : secondEnd))
     // GFM：分隔线单元格为 `:?-+:?`（**至少一个** `-`），列数须与表头一致
     if (!sep || sep.length !== header.length) return undefined
     if (sep.some((c) => !/^:?-+:?$/.test(c.trim()))) return undefined
+    // —— 已确认候选表格：此时才切全文（行读取语义与原实现一致） ——
+    const lines = src.split('\n')
     const rows: string[][] = []
     let i = 2
     while (i < lines.length) {

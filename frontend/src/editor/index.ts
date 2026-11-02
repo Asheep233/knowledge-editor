@@ -310,7 +310,7 @@ let emptyHistoryBranch: unknown
  * 灌进当前文档。这里通过向 history 插件注入一份「空历史状态」元数据，把 undo/redo
  * 栈一并清空（后续用户输入仍会正常记录）。
  */
-function clearUndoRedoHistory(editor: Editor): void {
+export function clearUndoRedoHistory(editor: Editor): void {
   const histPlugin = editor.state.plugins.find((p) => {
     const s = p.getState(editor.state) as Record<string, unknown> | undefined
     return !!s && typeof s === 'object' && 'done' in s && 'undone' in s && 'prevTime' in s

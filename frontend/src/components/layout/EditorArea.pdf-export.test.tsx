@@ -21,7 +21,10 @@ const CS = vi.hoisted(() => ({
   alerts: [] as string[],
   printCalls: 0,
   autosaveMs: 1,
+  setKeContentCalls: 0,
 }))
+
+const PM_DOC = { type: 'doc', content: [] }
 
 // 浏览器态：isDesktop()=false → 走 window.print() 兜底（桌面静默导出路径见文件末尾的用例）
 vi.mock('../../desktop', () => ({
@@ -48,6 +51,8 @@ vi.mock('../../editor', () => ({
       },
       isFocused: false,
       schema: {},
+      // R1-S：exitSourceMode 会读 ed.state.doc 做驻留模型身份比较
+      state: { doc: PM_DOC },
       // task-72：对话框预览调用 getHTML()（只读快照）
       getHTML: () => '<p>正文</p>',
       commands: { focus: () => undefined, setContent: () => undefined, command: () => undefined },
@@ -59,7 +64,10 @@ vi.mock('../../editor', () => ({
   },
   setKeContent: (_ed: unknown, md: string) => {
     CS.md = md
+    CS.setKeContentCalls += 1
   },
+  // R1-S：源码 no-op 回程复用驻留 PM 后，用 0 步 history 元数据保持「返回清 undo/redo」策略
+  clearUndoRedoHistory: () => undefined,
 }))
 vi.mock('../../settings', () => ({ getAutosaveIntervalMs: () => CS.autosaveMs }))
 vi.mock('../editor/EditorToolbar', () => ({
@@ -132,6 +140,7 @@ beforeEach(() => {
   CS.requests = []
   CS.alerts = []
   CS.printCalls = 0
+  CS.setKeContentCalls = 0
   ;(globalThis as { fetch: unknown }).fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
     CS.requests.push({ method: (init?.method ?? 'GET').toUpperCase(), url: String(input) })
     return { ok: true, status: 200, statusText: '200', json: async () => ({}), text: async () => '{}' } as unknown as Response
@@ -220,3 +229,75 @@ describe('task-70 ❶ 导出 PDF 入口（只读 DOM）', () => {
     expect(area, 'EditorArea 未渲染工具栏钩子（规则不会生效）').toContain('data-ke-toolbar')
   })
 })
+
+// ---------------------------------------------------------------------------
+// 2026-11-02 性能优化（Codex 审查 R1-1 / R1-S）回归守卫
+// ---------------------------------------------------------------------------
+describe('性能优化回归：PDF 量测离屏 + 源码 no-op 往返复用', () => {
+  it('R1-1：PDF 对话框关闭时任意 re-render 不得触发 PDF 主题量测（root data-theme 写入 0 次）', async () => {
+    await render()
+    const themeWrites: string[] = []
+    const mo = new MutationObserver((muts) => {
+      for (const m of muts) if (m.attributeName === 'data-theme') themeWrites.push(String(m.oldValue ?? ''))
+    })
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'], attributeOldValue: true })
+    // 强制多次 re-render（toolbarExtra 每次是新元素 → EditorArea 重渲染）
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        root!.render(
+          <EditorArea
+            article={article('---\nke_version: 1\n---\n\n正文\n')}
+            loading={false}
+            onNewArticle={() => undefined}
+            onSaved={() => undefined}
+            toolbarExtra={<span data-x={i} />}
+          />,
+        )
+      })
+      await settle()
+    }
+    mo.disconnect()
+    expect(themeWrites, 'PDF 关闭时不得临时改写 root data-theme（readThemeTokens 只能在打开导出对话框时调用）').toHaveLength(0)
+  })
+
+  it('R1-S：源码未编辑的往返不重新解析（setKeContent 不再被调用）', async () => {
+    await render()
+    const callsAfterLoad = CS.setKeContentCalls
+    expect(callsAfterLoad, '前置：文档装载会解析一次').toBeGreaterThan(0)
+    // 进入源码（无未保存修改 → 直接切换）
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('ke:palette-toggle-source'))
+    })
+    await settle(10)
+    // 未编辑 → 切回正文应复用驻留 PM（不 setKeContent）
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('ke:palette-toggle-source'))
+    })
+    await settle(10)
+    expect(CS.setKeContentCalls, 'no-op 源码往返必须复用驻留 PM，不得重新解析 Markdown').toBe(callsAfterLoad)
+  })
+
+  it('R1-S 反例：源码有改动时仍走重解析链路（setKeContent 会被调用）', async () => {
+    await render()
+    const callsAfterLoad = CS.setKeContentCalls
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('ke:palette-toggle-source'))
+    })
+    await settle(10)
+    const ta = container.querySelector<HTMLTextAreaElement>('textarea')
+    expect(ta, '未找到源码模式 textarea').toBeTruthy()
+    // 非受控 textarea：原生 setter + input 事件（与真实键盘输入同路径）
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
+      setter?.call(ta, '# 改过的正文\n')
+      ta!.dispatchEvent(new window.Event('input', { bubbles: true }))
+    })
+    await settle(10)
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('ke:palette-toggle-source'))
+    })
+    await settle(10)
+    expect(CS.setKeContentCalls, '源码有改动时必须重新解析（不得误复用旧 PM）').toBeGreaterThan(callsAfterLoad)
+  })
+})
+

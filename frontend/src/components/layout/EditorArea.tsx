@@ -22,7 +22,8 @@ import {
   updateArticleMeta,
   uploadAttachment,
 } from '../../api/client'
-import { openMathEditorById, setKeContent, useKeEditor } from '../../editor'
+import { clearUndoRedoHistory, openMathEditorById, setKeContent, useKeEditor } from '../../editor'
+import { canReusePmOnSourceExit, type SourceCheckpoint } from '../../editor/sourceReuse'
 import { isDesktop } from '../../desktop'
 import { keExportPayload, packageExportAndSave, plainExportPayload, runExport } from '../../editor/export-actions'
 import { metaFromArticle, plainMarkdown } from '../../editor/plain-export'
@@ -364,6 +365,11 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
   /** A12（第三份审查 P1）：文档**装载代次** —— 切档/外部重载时递增。
    * 异步上传在 await 后据此判断「发起时的文档是否仍是当前文档」。 */
   const docLoadGenRef = useRef(0)
+  /** R1-S：源码模式「进入快照」——仅当原文未改且身份/代次全一致时才复用驻留 PM，跳过 re-parse */
+  const sourceCheckpointRef = useRef<SourceCheckpoint | null>(null)
+  /** R1-S：reloadToken 的实时镜像（exitSourceMode 的闭包不依赖该 prop 的渲染周期） */
+  const reloadTokenRef = useRef(reloadToken)
+  reloadTokenRef.current = reloadToken
   // F-S1-2：编辑器**此刻实际载入**的文档 id（实时内容的可信域）。切档快照的守卫必须用它，
   // 而不是 articleRef —— 后者的同步 effect 声明更早，切档 effect 跑到时它已指向新文档，
   // 导致 `articleRef.current?.id === prevId` 恒假、快照从未写入（旧文档最后 <3s 编辑静默丢弃）。
@@ -821,6 +827,20 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     persistViewMode('source')
     // 单视图排他：源码态正文编辑器不可写
     ed.setEditable(false, false)
+    // R1-S：记录「进入源码」检查点。只有编辑器确实载着本文档、且 PM 模型已驻留时才有效；
+    // 退出时若原文未改且身份/代次/reloadToken/PM doc 引用全部一致 → 复用 PM，跳过 81–93% 的重复解析。
+    // 防御：极端环境下（编辑器尚未就绪/测试替身）读不到 state → 不建立检查点（走既有重解析）
+    const pmDocAtEntry = (ed as unknown as { state?: { doc?: unknown } }).state?.doc
+    sourceCheckpointRef.current =
+      editorDocIdRef.current === doc.id && pmDocAtEntry !== undefined
+        ? {
+            docId: doc.id,
+            loadGeneration: docLoadGenRef.current,
+            reloadToken: reloadTokenRef.current,
+            pmDoc: pmDocAtEntry,
+            sourceBody: body,
+          }
+        : null
   }, [saveState])
 
   /** 切回正文：先保存源码改动，再按已保存原文重新解析（§6.2-5：提示未知语法可能被规范化） */
@@ -829,11 +849,39 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     const doc = articleRef.current
     if (!ed || !doc) return
     const body = sourceValueRef.current
-    if (sourceDirtyRef.current) {
+    const dirtyAtExit = sourceDirtyRef.current
+    // R1-S（2026-11-02 性能）：原文未改（且身份/代次/reloadToken/驻留 PM doc 全一致）时，
+    // 直接复用进入源码前的 PM 模型 —— 不调用 setKeContent / 不重新解析 Markdown。
+    // 保持既有「源码返回清空 undo/redo」策略：用 0 步 transaction 重写 history 插件状态（不触发 update）。
+    const checkpoint = sourceCheckpointRef.current
+    const computeCanReuse = () =>
+      canReusePmOnSourceExit(checkpoint, {
+        docId: doc.id,
+        loadGeneration: docLoadGenRef.current,
+        reloadToken: reloadTokenRef.current,
+        pmDoc: (ed as unknown as { state?: { doc?: unknown } }).state?.doc,
+        editorDocId: editorDocIdRef.current,
+        sourceBodyAtExit: body,
+      })
+    let canReuse = computeCanReuse()
+    if (dirtyAtExit) {
       const flushed = await flushWithTimeout(doc.id)
       if (!flushed && !(await askConfirm('源码改动尚未保存，仍要切回正文？未知语法可能被规范化。'))) return
-    } else if (hasUnknownKeMarkers(body)) {
+      // 保存完成后重算：若正文回到进入时快照（改后又改回），仍可安全复用驻留 PM
+      canReuse = computeCanReuse()
+    } else if (!canReuse && hasUnknownKeMarkers(body)) {
+      // 仅在**确实要重新解析**时才提示未知语法可能被规范化（可复用时不会发生规范化）
       if (!(await askConfirm('切回正文将重新解析 Markdown：未知语法可能被规范化。是否继续？'))) return
+    }
+    sourceCheckpointRef.current = null
+    if (canReuse) {
+      setViewModeState('wysiwyg')
+      persistViewMode('wysiwyg')
+      ed.setEditable(true, false)
+      clearUndoRedoHistory(ed)
+      editorDocIdRef.current = doc.id
+      setSaveState('idle')
+      return
     }
     const raw = lastSavedRawRef.current.get(doc.id) ?? sourceBaseRawRef.current
     setViewModeState('wysiwyg')
@@ -1089,6 +1137,26 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
 
   // task-72：导出 PDF 对话框（选项 + A4 预览）
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false)
+
+  /**
+   * 2026-11-02 性能优化（Codex 审查 R1-1）：PDF 专用快照只在**打开导出对话框时**采集一次。
+   *
+   * 修复前：`<ExportPdfDialog>` 常驻 JSX，即使 `open=false`，每次 EditorArea render 仍会求值
+   * `measureEditorContentWidth()`、`getComputedStyle(prose).color`、`readThemeTokens('light')`、
+   * `readThemeTokens('dark')`（后两者会临时改 root.dataset.theme 再强制读样式）——
+   * 实测单次击键触发 16 次 root data-theme 写入 / 27 次 getComputedStyle，是首次 dirty 卡顿热点。
+   * 修复后：对话框关闭时**零 PDF 量测**；打开时采集快照，内容宽在打开期间随窗口 resize 更新。
+   */
+  type PdfSnapshot = {
+    themeVars: { background: string; foreground: string }
+    contentWidthPx: number | null
+    editorTextColor: string
+    themeVarsByChoice: {
+      light: { background: string; foreground: string }
+      dark: { background: string; foreground: string }
+    }
+  }
+  const [pdfSnapshot, setPdfSnapshot] = useState<PdfSnapshot | null>(null)
   /** task-74：微分 d 转正体对话框；打开瞬间**取一次快照**（已保存正文 + 当前文档 JSON），
    *  之后不再读编辑器 → 不触发序列化、不与保存链耦合、不改动当前文档。 */
   const [uprightDCtx, setUprightDCtx] = useState<{
@@ -1148,15 +1216,37 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     return Number.isFinite(inner) && inner > 200 ? Math.round(inner) : null
   }, [])
 
-  /** 当前主题下的令牌（预览/导出的「跟随当前」基线） */
-  const currentThemeTokens = useMemo(() => {
-    if (typeof document === 'undefined') return { background: '#ffffff', foreground: '#111111' }
-    const cs = getComputedStyle(document.documentElement)
+  /** R1-1：只在打开 PDF 对话框时采集一次 PDF 快照（关闭时零量测）。 */
+  const capturePdfSnapshot = useCallback((): PdfSnapshot => {
+    const rootStyle = getComputedStyle(document.documentElement)
+    const proseEl = document.querySelector('.ke-editor-prose') as HTMLElement | null
+    const editorTextColor =
+      (proseEl ? getComputedStyle(proseEl).color : '') || rootStyle.color || '#1f2937'
     return {
-      background: cs.getPropertyValue('--background').trim() || '#ffffff',
-      foreground: cs.getPropertyValue('--foreground').trim() || '#111111',
+      themeVars: {
+        background: rootStyle.getPropertyValue('--background').trim() || '#ffffff',
+        foreground: rootStyle.getPropertyValue('--foreground').trim() || '#111111',
+      },
+      contentWidthPx: measureEditorContentWidth(),
+      editorTextColor,
+      themeVarsByChoice: { light: readThemeTokens('light'), dark: readThemeTokens('dark') },
     }
-  }, [pdfDialogOpen])
+  }, [measureEditorContentWidth, readThemeTokens])
+
+  useEffect(() => {
+    if (!pdfDialogOpen) {
+      // 关闭：清空快照（下次打开重新采集；关闭期间不做任何 PDF 量测）
+      setPdfSnapshot((prev) => (prev === null ? prev : null))
+      return
+    }
+    setPdfSnapshot(capturePdfSnapshot())
+    const onResize = () => {
+      const next = measureEditorContentWidth()
+      setPdfSnapshot((prev) => (prev && prev.contentWidthPx === next ? prev : prev ? { ...prev, contentWidthPx: next } : prev))
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [pdfDialogOpen, capturePdfSnapshot, measureEditorContentWidth])
 
   /**
    * 导出 PDF（task-72）：临时写 `#ke-print-overrides`（颜色覆盖）→ 走既有导出路径
@@ -1805,21 +1895,18 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
           }}
         />
       )}
-      <ExportPdfDialog
-        open={pdfDialogOpen}
-        onClose={() => setPdfDialogOpen(false)}
-        editor={editor}
-        themeVars={currentThemeTokens}
-        contentWidthPx={measureEditorContentWidth()}
-        editorTextColor={
-          typeof document !== 'undefined'
-            ? getComputedStyle(document.querySelector('.ke-editor-prose') ?? document.documentElement).color ||
-              '#1f2937'
-            : '#1f2937'
-        }
-        themeVarsByChoice={{ light: readThemeTokens('light'), dark: readThemeTokens('dark') }}
-        onExport={runPdfExport}
-      />
+      {pdfDialogOpen && pdfSnapshot ? (
+        <ExportPdfDialog
+          open
+          onClose={() => setPdfDialogOpen(false)}
+          editor={editor}
+          themeVars={pdfSnapshot.themeVars}
+          contentWidthPx={pdfSnapshot.contentWidthPx}
+          editorTextColor={pdfSnapshot.editorTextColor}
+          themeVarsByChoice={pdfSnapshot.themeVarsByChoice}
+          onExport={runPdfExport}
+        />
+      ) : null}
 
       {/* v1.1.7 M2：全屏公式模态（编辑器根——PM 事务安全；nodeview 独立 React 根会 #300） */}
             {mathEdit?.open && (

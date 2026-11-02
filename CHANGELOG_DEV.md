@@ -37,6 +37,28 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-11-02（★ v1.3.0-pre.8 预发布：性能优化第 1 轮 — Codex 独立审查四项落地）
+
+**Tag** `v1.3.0-pre.8`（预发布，非 Latest；正式版仍为 v1.2.18）
+
+来源：Codex 独立性能审查（`F:\Work\KE Project\perf-review-2026-11-01\REPORT.md` / `PLAN.md`）；Lead 抽检通过后实施。
+实现说明与本地证据：`docs/focus-ui/PERF-ROUND1.md`、`docs/focus-ui/evidence/perf-round1/measurements.json`。
+
+**本轮四项**
+1. **R1-1 PDF 量测离屏**：`ExportPdfDialog` 只在打开时挂载，PDF 快照（主题令牌/正文色/内容宽）打开时采集一次；关闭时零 PDF 量测。
+   本地 dev A/B：单次击键 root `data-theme` 写入 16→**0**；`getComputedStyle` 27→11。
+2. **R1-table tokenizer 早拒绝**：表格 tokenizer 先只读头两行判候选，不再 `split` 全文；确认候选后才切行。
+   本地 dev 1MiB 纯 parse 中位 294→**228ms（−22.4%）**；新增 `tokenizers.table-guard.test.ts` 语义守卫。
+3. **R1-S 源码 no-op 复用 PM**：进入源码记录 checkpoint，退出时身份/代次/reloadToken/PM doc/源文全一致则跳过 `setKeContent` 重解析；
+   仍用 0 步 history 事务保持「源码返回清 undo/redo」策略。`sourceReuse.ts` + 6 类失效反例单测；集成测试断言 no-op 不调 `setKeContent`、有改动仍重解析。
+4. **R1-D PDF 等待真实完成**：`with_webview` 闭包通过通道回传真实 COM 结果 + 180s 安全超时；新增 PDF 打印全局串行锁；
+   预览生成队列化（单飞 + 过期 seq 跳过），消除 3s 猜测造成的假失败/并发打印。
+
+**验证**：cargo check 通过；tsc 0；前端全量 vitest 153 文件 / 2079 passed + 1 skipped；视觉验收 17 图 195/195 PASS。
+
+**UNVERIFIED（需 Windows 真机复测，已排 codex-agent 独立复测）**：1/5MiB 首次 dirty rAF p95、原生 parse 收益、20MiB no-op 返回、PDF 固定快照连续 2 次/累计 5 轮 0 误回退。
+第 2 轮/候选（tree 单次遍历、原生句柄退出、Worker 解析、异步索引、lazy/内存预算、10k 首次激活保护、20MiB 源码优先保护）本轮未实施。
+
 ## 2026-10-31（★ v1.3.0-pre.7 预发布：公式编辑框焦点隔离——修复「编辑/复制串到正文」）
 
 **Tag** `v1.3.0-pre.7`（预发布，非 Latest；正式版仍为 v1.2.18）

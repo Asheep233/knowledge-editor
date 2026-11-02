@@ -1,0 +1,34 @@
+{
+  "round": "性能优化第 1 轮（Codex 审查 R1-1 / R1-D / R1-S / R1-table）",
+  "measured_at": "2026-11-02T00:30:00Z",
+  "environment": {
+    "kind": "dev preview + headless Chromium 1243 (Linux, WSL) —— 非 Windows/WebView2，非产品验收",
+    "harness": "Playwright-core + CDP 真实键鼠/DOM；语料 = perf-review-2026-11-01/workspace/Articles/mixed-1mb.md (1,049,353 B)",
+    "note": "所有数字仅用于机制/方向复核；最终验收必须由 Windows 真机 + 打包版按同语料同探针复测"
+  },
+  "r1_1_theme_measurement_ab": {
+    "method": "打开 PDF 未打开状态的小文档（TagTest），真实输入 1 个字符，MutationObserver(documentElement data-theme) + getComputedStyle 计数",
+    "pre_fix_pre7": { "theme_writes": 16, "gcs_total": 27, "gcs_root": 8, "gcs_prose": 10 },
+    "post_fix": { "theme_writes": 0, "gcs_total": 11, "gcs_root": 0, "gcs_prose": 2 },
+    "conclusion": "PDF 关闭时不再发生 root data-theme 临时写入；getComputedStyle 调用显著下降（机制达成）。首次 dirty rAF p95 目标需 Windows 真机复测。"
+  },
+  "r1_table_parse_ab": {
+    "method": "同一 1MiB 混合语料，纯 MarkdownManager.parse，n=3，dev preview",
+    "pre_fix_pre7_ms": { "runs": [305, 294, 275], "median": 294 },
+    "post_fix_ms": { "runs": [224, 228, 247], "median": 228 },
+    "median_reduction_pct": 22.4,
+    "conclusion": "dev 纯 parse 中位下降 22.4%（≥20% 目标达成于 dev 参考口径）；原生 parse 需 Windows 复测。"
+  },
+  "r1_s_source_noop": {
+    "method": "1MiB 文档：进入源码（不编辑）→ 返回正文；post-fix 独立探针（Playwright 真实点击事件）",
+    "post_fix": { "enter_wall_ms": 264, "exit_wall_ms": 755, "reparse_calls": 0 },
+    "unit_guard": "EditorArea.pdf-export.test.tsx：no-op 往返 setKeContent 调用数不增加；源码有改动时仍重新解析；sourceReuse.test.ts 覆盖 6 类失效条件",
+    "pre_fix_native_baseline_from_codex": { "20MiB_exit_wall_ms": 169350.1, "reparse_ms": 156727.1, "reparse_share_pct": 92.55 },
+    "conclusion": "功能与单测层面 no-op 已不重新解析；Windows 原生 20MiB 数字由 Codex 用同脚本独立复测。"
+  },
+  "r1_d_pdf_completion": {
+    "rust": "cargo check OK；with_webview 闭包通过 mpsc 回传真实 COM 完成结果（原子 ok 标志）+ 180s 安全超时；PDF_PRINT_LOCK 串行化同窗口打印",
+    "frontend": "ExportPdfDialog 预览生成队列化（单飞 + 过期 seq 跳过），避免并发 PrintToPdf",
+    "acceptance_status": "UNVERIFIED（需 Windows 真机：晚回调/固定快照连续 2 次+累计 5 轮、页数/正文一致、0 误回退）"
+  }
+}

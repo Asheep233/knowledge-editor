@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-31T09:56:21.785Z",
-  "durationSec": 53.3,
+  "generatedAt": "2026-11-02T00:44:57.135Z",
+  "durationSec": 50,
   "repo": "/mnt/f/Work/KE Project/knowledge-editor",
   "git": {
     "branch": "focus-ui",
-    "head": "5469d0e",
-    "dirty": 6
+    "head": "cb73d38",
+    "dirty": 11
   },
   "baseUrl": "http://127.0.0.1:5273",
   "backend": {
@@ -222,11 +222,13 @@
         "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task.",
         "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task.",
         "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task.",
-        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents",
+        "404 http://127.0.0.1:5273/api/articles/Articles%2FPerfMixed1mb.md"
       ]
     },
     {

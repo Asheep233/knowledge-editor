@@ -55,6 +55,7 @@
    预览生成队列化（单飞 + 过期 seq 跳过），消除 3s 猜测造成的假失败/并发打印。
 
 **验证**：cargo check 通过；tsc 0；前端全量 vitest 153 文件 / 2079 passed + 1 skipped；视觉验收 17 图 195/195 PASS。
+**资产**：安装包 51,149,739 B / sha256 `7e7dd6d1…0f63`；侧车 46,248,066 B / `ea47a24c…a205`；manifest 9,930 B；versions.json 16,026 B。
 
 **UNVERIFIED（需 Windows 真机复测，已排 codex-agent 独立复测）**：1/5MiB 首次 dirty rAF p95、原生 parse 收益、20MiB no-op 返回、PDF 固定快照连续 2 次/累计 5 轮 0 误回退。
 第 2 轮/候选（tree 单次遍历、原生句柄退出、Worker 解析、异步索引、lazy/内存预算、10k 首次激活保护、20MiB 源码优先保护）本轮未实施。

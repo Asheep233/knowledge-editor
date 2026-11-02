@@ -32,7 +32,14 @@
 
 ## 发布资产
 
-（构建完成后补全）
+| 资产 | 大小 | sha256 |
+|---|---|---|
+| `AstraNota_1.3.0-pre.8_x64-setup.exe` | 51,149,739 B | `7e7dd6d1587dc881b51c7d7cd7a487eb9357d44c564a7503a4d49e9526fd0f63` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（侧车） | 46,248,066 B | `ea47a24c383d6c8fd401af07a089efb4cdd14e1f3e70bed53488ef03ed98a205` |
+| `manifest.sha256`（79 个产物） | 9,930 B | `3c6de705f513754cb4a3476d31e7da50a7a17c48ad8aa30ea0777c4da1dbdf4e` |
+| `versions.json` | 16,026 B | `263503e5cc3f3c3ee1631e5798a08d25b67b049cbd55557df62a64c43236e8be` |
+
+安装包版本信息：ProductVersion = FileVersion = `1.3.0-pre.8`（NSIS x64，未签名——未提供证书）。
 
 ## 验证
 

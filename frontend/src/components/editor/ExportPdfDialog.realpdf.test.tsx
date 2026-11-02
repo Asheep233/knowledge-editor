@@ -16,6 +16,15 @@ const CS = vi.hoisted(() => ({
   fetchCalls: [] as string[],
 }))
 
+vi.mock('../../editor/pdfPage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../editor/pdfPage')>()
+  return {
+    ...actual,
+    // fake timers 下真实资源等待不会推进；守卫逻辑由 pdfPage.test 覆盖，这里只验证预览链路。
+    waitForPrintReadiness: async () => ({ ok: true, timedOut: false, fontsReady: true, totalImages: 0, pendingImages: 0, waitedMs: 0 }),
+  }
+})
+
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: async (cmd: string, args?: Record<string, unknown>) => {
     CS.invokes.push({ cmd, args })

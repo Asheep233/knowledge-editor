@@ -17,7 +17,7 @@ import {
   pageHeightCss,
   pageWidthCss,
   PAGE_HEIGHT_PX,
-  waitForPrintFonts,
+  waitForPrintReadiness,
 } from '../../editor/pdfPage'
 
 export type PdfThemeChoice = 'current' | 'light' | 'dark'
@@ -184,6 +184,18 @@ export function applyPrintContext(opts: PdfExportOptions): () => void {
  * 导出执行器：**写 overrides → 执行导出 → 无论成功/失败立即移除**。
  * 产品路径（EditorArea::runPdfExport）直接调用本函数，保证「不留副作用」这条是被测单元。
  */
+/** 守卫安全包装：有界、不抛；超时只告警（便于诊断资源未就绪），不阻塞用户导出。 */
+async function waitForPrintReadinessSafe(): Promise<void> {
+  try {
+    const readiness = await waitForPrintReadiness()
+    if (!readiness.ok) {
+      console.warn('[pdf] 打印资源就绪守卫超时/未就绪', readiness)
+    }
+  } catch (err) {
+    console.warn('[pdf] 打印资源就绪守卫异常（不阻塞导出）', err)
+  }
+}
+
 export async function exportPdfWithOverrides(
   opts: PdfExportOptions,
   run: () => Promise<void> | void,
@@ -192,7 +204,10 @@ export async function exportPdfWithOverrides(
   try {
     // task-75 线索 B：导出前必须等字体就绪（KaTeX `\sqrt` 的高字形/横线来自 Size1..4；
     // 未就绪就打印会退化成「只剩一条长横线」）。字体 API 不可用时不阻塞。
-    await waitForPrintFonts()
+    // 2026-11-02（pre.8 复测 FAIL R1-D2）：与**真预览**共用同一「资源就绪守卫」——
+    // 字体 + 正文未完成图片 + 两帧布局稳定，再向原生发打印请求；否则首次冷预览可能
+    // 在字族/图片未就绪时分页（实测预览 431 页 vs 导出 434 页，冷 profile 可复现）。
+    await waitForPrintReadinessSafe()
     // task-75 B（fallback，Lead 已批准）：Chromium/WebView2 的 PDF 后端会把 `.hide-tail` 内的
     // 400em svg 整条画出来（A/B 实测横线 5208pt ≈ 页宽 8.8 倍；overflow/clip-path/contain/
     // max-width/width 五连 CSS 全部无效）→ 仅在**导出窗口期**把装饰性尾巴 svg 换成等宽上横线；
@@ -409,6 +424,9 @@ export default function ExportPdfDialog({
         // 必须与正式导出共用同一套覆盖样式与显式主题，否则预览颜色/浅深主题与
         // 导出结果不一致。生成结束后（finally）无条件还原。
         restoreContext = applyPrintContext(opts)
+        // R1-D2：真预览与正式导出必须共享同一资源就绪守卫，否则首次冷启动预览会缺字族/图片，
+        // 分页与最终导出不一致（pre.8 复测：预览 431 页 / 导出 434 页，冷 profile 可复现）。
+        await waitForPrintReadinessSafe()
         const path = await invoke<string>('preview_pdf', {
           contentWidth: typeof contentWidthPx === 'number' ? contentWidthPx : undefined,
         })

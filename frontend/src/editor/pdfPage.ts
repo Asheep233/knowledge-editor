@@ -64,6 +64,16 @@ export function pageHeightCss(): string {
 /** 页高（px，96dpi）—— 预览分页测量用 */
 export const PAGE_HEIGHT_PX = PAGE_HEIGHT_IN * CSS_PX_PER_INCH
 
+/**
+ * 2026-11-03：PDF 上下页边距（mm）。与 `print.css` 的 `@page { margin: 16mm 0 }` 同源；
+ * 实际可用内容高 = 页高 - 2×该值，DOM 回退预览的页数/分页位移必须用它。
+ */
+export const PDF_PAGE_MARGIN_MM = 16
+/** 去掉上下页边距后的内容高（mm） */
+export const PAGE_CONTENT_HEIGHT_MM = PAGE_HEIGHT_MM - PDF_PAGE_MARGIN_MM * 2
+/** 去掉上下页边距后的内容高（px，96dpi）—— DOM 回退预览分页测量用 */
+export const PAGE_CONTENT_HEIGHT_PX = (PAGE_CONTENT_HEIGHT_MM * CSS_PX_PER_INCH) / MM_PER_INCH
+
 /** KaTeX 高字形（\sqrt 等）依赖的字族；字体未就绪时打印会退化成「一条长横线」 */
 export const PRINT_FONT_SPECS = [
   '1em KaTeX_Main',

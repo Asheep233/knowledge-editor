@@ -7,7 +7,7 @@ import { resolve } from 'node:path'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, type Root } from 'react-dom/client'
-import { computePageSize, pageWidthCss } from '../../editor/pdfPage'
+import { PAGE_CONTENT_HEIGHT_MM, PAGE_CONTENT_HEIGHT_PX, pageWidthCss } from '../../editor/pdfPage'
 import ExportPdfDialog, {
   A4_PAGE_HEIGHT_PX,
   applyPrintContext,
@@ -250,11 +250,12 @@ describe('task-72 ⑤ 取消零写盘', () => {
 
 describe('task-73 预览分页 / 滚动 / 只读', () => {
   it('① 页数 = ceil(内容总高/页高)（纯函数）', () => {
+    // 2026-11-03：默认页高 = A4 页高 - 上下 16mm 页边距（PAGE_CONTENT_HEIGHT_PX）
     expect(computePageCount(0)).toBe(1)
-    expect(computePageCount(A4_PAGE_HEIGHT_PX * 0.2)).toBe(1)
-    expect(computePageCount(A4_PAGE_HEIGHT_PX)).toBe(1)
-    expect(computePageCount(A4_PAGE_HEIGHT_PX * 1.01)).toBe(2)
-    expect(computePageCount(A4_PAGE_HEIGHT_PX * 3.4)).toBe(4)
+    expect(computePageCount(PAGE_CONTENT_HEIGHT_PX * 0.2)).toBe(1)
+    expect(computePageCount(PAGE_CONTENT_HEIGHT_PX)).toBe(1)
+    expect(computePageCount(PAGE_CONTENT_HEIGHT_PX * 1.01)).toBe(2)
+    expect(computePageCount(PAGE_CONTENT_HEIGHT_PX * 3.4)).toBe(4)
     expect(computePageCount(Number.NaN)).toBe(1)
   })
 
@@ -271,7 +272,7 @@ describe('task-73 预览分页 / 滚动 / 只读', () => {
     expect(container.querySelector('[data-testid="pdf-page-label-3"]')?.textContent).toContain('第 4 / 4 页')
     // 页内位移：第 i 页 translateY(-i × 页高 mm)
     const shifted = (pages[2] as HTMLElement).querySelector('div[style*="translateY"]') as HTMLElement
-    expect(shifted.style.transform).toBe(`translateY(-${computePageSize(null).heightMm * 2}mm)`)
+    expect(shifted.style.transform).toBe(`translateY(-${PAGE_CONTENT_HEIGHT_MM * 2}mm)`)
     for (const page of Array.from(pages)) {
       expect((page as HTMLElement).style.overflow).toBe('hidden')
     }

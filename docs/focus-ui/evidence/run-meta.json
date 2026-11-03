@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-11-02T17:16:07.148Z",
-  "durationSec": 47.6,
+  "generatedAt": "2026-11-03T11:49:25.819Z",
+  "durationSec": 66.5,
   "repo": "/mnt/f/Work/KE Project/knowledge-editor",
   "git": {
     "branch": "focus-ui",
-    "head": "c147a6b",
-    "dirty": 11
+    "head": "38bc2c6",
+    "dirty": 6
   },
-  "baseUrl": "http://127.0.0.1:5275",
+  "baseUrl": "http://127.0.0.1:5273",
   "backend": {
     "url": "http://127.0.0.1:8000",
-    "started": false
+    "started": true
   },
   "vite": {
-    "url": "http://127.0.0.1:5275",
+    "url": "http://127.0.0.1:5273",
     "started": true,
     "reused": false,
-    "port": 5275
+    "port": 5273
   },
   "playwrightCore": "/tmp/pw-core/node_modules/playwright-core",
   "chromium": "/home/Asheep233/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome",
@@ -200,8 +200,8 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5275/api/workspace/recent-documents",
-        "403 http://127.0.0.1:5275/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents",
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -228,9 +228,9 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5275/api/workspace/recent-documents",
-        "404 http://127.0.0.1:5275/api/articles/Articles%2FPerfMixed1mb.md",
-        "404 http://127.0.0.1:5275/api/articles/Articles%2FPerfMixed1mb.md"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents",
+        "404 http://127.0.0.1:5273/api/articles/Articles%2FPerfMixed1mb.md",
+        "404 http://127.0.0.1:5273/api/articles/Articles%2FPerfMixed1mb.md"
       ]
     },
     {
@@ -255,7 +255,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5275/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -286,7 +286,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5275/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     },
     {
@@ -311,7 +311,7 @@
       ],
       "pageErrors": [],
       "requestFailures": [
-        "403 http://127.0.0.1:5275/api/workspace/recent-documents"
+        "403 http://127.0.0.1:5273/api/workspace/recent-documents"
       ]
     }
   ]

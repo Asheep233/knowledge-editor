@@ -36,9 +36,10 @@ describe('task-70 打印样式契约', () => {
     expect(cssCode).toContain('-webkit-print-color-adjust: exact')
   })
 
-  it('③ 主题底色铺满整页：html/body 上色 + @page 边距归零', () => {
+  it('③ 主题底色铺满整页 + 上下 16mm 页边距（@page background 随 --card，避免深色白边）', () => {
     expect(cssCode).toMatch(/html,\s*body\s*\{[^}]*background:\s*var\(--card\)/s)
-    expect(cssCode).toMatch(/@page\s*\{[^}]*margin:\s*0/s)
+    expect(cssCode).toMatch(/@page\s*\{[^}]*margin:\s*16mm\s+0/s)
+    expect(cssCode).toMatch(/@page\s*\{[^}]*background:\s*var\(--card\)/s)
   })
 
   it('④ 必须含分页规则：公式/表格/图片/信息块不跨页，标题不与后文分离', () => {

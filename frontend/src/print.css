@@ -5,7 +5,7 @@
  * 硬约束：
  *  1) **只用 `index.css` 的 CSS 变量**，绝不硬编码颜色 —— 否则主题漂移（深色主题导出成浅色）；
  *  2) `print-color-adjust: exact` —— 否则打印管线剥离背景色（主题底色 + 代码块底色全没）；
- *  3) 主题底色画在 `html/body` 上并 `@page margin: 0` —— canvas 背景会传播到整页（含页边距）；
+ *  3) 主题底色画在 `html/body` + `@page` 的 background（后者铺满上下 16mm 页边距区域）；
  *  4) 隐藏外壳，只留正文；正文宽 = 纸张内容宽；
  *  5) 分页：公式/表格/图片/信息块不跨页腰斩，标题不与后文分离；
  *  6) CJK 字体**沿用编辑器字体栈**（`inherit`），不新引入字体文件。
@@ -24,7 +24,7 @@
     display: block !important;
     visibility: visible !important;
     margin: 0 auto !important;
-    padding: 14mm 14mm 0 !important;
+    padding: 0 14mm 8mm !important; /* 上边距由 @page margin 提供；与正文留 8mm */
     max-width: none !important;
   }
 
@@ -39,7 +39,13 @@
 
   /* ---- 页面与整页着色 ---- */
   @page {
-    margin: 0; /* 页边距归零：底色才能铺满整页；正文内边距由下面的容器补 */
+    /* 2026-11-03（用户反馈「导出 PDF 顶天顶地」）：
+       - 上下留 16mm 页边距，避免正文/标题贴纸边或页与页之间顶天顶地；
+       - `@page` 的 background 在 Chromium/WebView2 156 实测能铺满页边距区域
+         （Edge 156 headless 实测量过像素），所以深色主题不会出现白边；
+       - 左右保持 0：横向可视边距仍由「页宽含 14mm×2 + 正文 14mm 内边距」提供。 */
+    margin: 16mm 0;
+    background: var(--card);
   }
 
   html,
@@ -145,7 +151,7 @@
     width: auto !important;
     max-width: none !important;
     margin: 0 !important;
-    padding: 16mm 14mm !important; /* 页边距归零后由这里提供可视边距 */
+    padding: 0 14mm !important; /* 上下 16mm 由 @page margin 提供；左右 14mm */
     overflow: visible !important;
     background: transparent !important; /* 底色已在 html/body，避免叠两层 */
     /* 不覆盖 color：文字颜色必须与编辑器一致（见上） */
@@ -253,7 +259,7 @@
   width: auto !important;
   max-width: none !important;
   margin: 0 !important;
-  padding: 16mm 14mm !important;
+  padding: 0 14mm !important;
   overflow: visible !important;
   background: transparent !important;
   font-family: inherit !important;

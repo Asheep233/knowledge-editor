@@ -37,6 +37,17 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-11-03（★ v1.3.0-rc.2 发布候选：PDF 上下页边距 16mm，修复「顶天顶地」）
+
+**Tag** `v1.3.0-rc.2`（GitHub Pre-release；正式版仍为 v1.2.18）
+
+**变化（仅 PDF 页边距）**：
+- `print.css`：`@page { margin: 16mm 0; background: var(--card) }`；正文上下 padding 移除（由页边距提供），页眉与正文间保留 8mm；左右 14mm 不变。
+- 深色主题页边距由 `@page` 背景铺满（Edge/WebView2 156 实测无白边）；真 PDF 预览与导出自动一致；DOM 回退预览页数按 `PAGE_CONTENT_HEIGHT_PX`（页高 − 32mm）计算。
+- 页数相应略增（内容区 296.93 → 264.93mm）。
+
+**验证**：（待填）
+
 ## 2026-11-03（★ v1.3.0-rc.1 发布候选：1.3.0 功能冻结，第 1 轮性能全部复测 PASS）
 
 **Tag** `v1.3.0-rc.1`（GitHub Pre-release；正式版仍为 v1.2.18）

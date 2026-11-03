@@ -8,8 +8,11 @@ import {
   computePageSize,
   CONTENT_WIDTH_MAX_PX,
   CONTENT_WIDTH_MIN_PX,
+  PAGE_CONTENT_HEIGHT_MM,
+  PAGE_CONTENT_HEIGHT_PX,
   PAGE_HEIGHT_IN,
   PAGE_HEIGHT_MM,
+  PDF_PAGE_MARGIN_MM,
   PAGE_WIDTH_FALLBACK_IN,
   pageHeightCss,
   pageWidthCss,
@@ -37,6 +40,12 @@ describe('task-75 A：纸张尺寸与 Rust 同源', () => {
       expect(pageWidthIn(bad as number | null | undefined), `bad=${String(bad)}`).toBe(PAGE_WIDTH_FALLBACK_IN)
     }
     expect(pageWidthIn(CONTENT_WIDTH_MIN_PX + 1)).toBeCloseTo((201 + PRINT_PADDING_PX * 2) / 96, 12)
+  })
+
+  it('上下页边距常量：16mm，内容高 = 页高 - 32mm（与 print.css @page 同源）', () => {
+    expect(PDF_PAGE_MARGIN_MM).toBe(16)
+    expect(PAGE_CONTENT_HEIGHT_MM).toBeCloseTo(PAGE_HEIGHT_MM - 32, 6)
+    expect(PAGE_CONTENT_HEIGHT_PX).toBeCloseTo((PAGE_CONTENT_HEIGHT_MM * 96) / 25.4, 6)
   })
 
   it('页高恒 11.69in / 297.03mm（与 Rust SetPageHeight(11.69) 一致）', () => {

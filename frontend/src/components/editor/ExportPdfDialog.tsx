@@ -13,10 +13,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Icon } from '../icons'
 import {
-  computePageSize,
   pageHeightCss,
   pageWidthCss,
+  PAGE_CONTENT_HEIGHT_MM,
+  PAGE_CONTENT_HEIGHT_PX,
   PAGE_HEIGHT_PX,
+  PDF_PAGE_MARGIN_MM,
   waitForPrintReadiness,
 } from '../../editor/pdfPage'
 
@@ -42,10 +44,11 @@ export const MM_TO_PX = 96 / 25.4
 export const A4_PAGE_HEIGHT_PX = PAGE_HEIGHT_PX
 
 /**
- * task-73 ①：按内容总高算页数（`ceil(总高/页高)`，至少 1 页）。
+ * task-73 ①：按内容总高算页数（`ceil(总高/内容高)`，至少 1 页）。
  * 内容高度由隐藏容器按 210mm 宽实测（zoom 无关）；纯函数便于单测。
+ * 2026-11-03：页高扣除上下 16mm 打印边距（`@page { margin: 16mm 0 }`）→ 用 PAGE_CONTENT_HEIGHT_PX。
  */
-export function computePageCount(totalHeightPx: number, pageHeightPx: number = A4_PAGE_HEIGHT_PX): number {
+export function computePageCount(totalHeightPx: number, pageHeightPx: number = PAGE_CONTENT_HEIGHT_PX): number {
   if (!Number.isFinite(totalHeightPx) || totalHeightPx <= 0) return 1
   if (!Number.isFinite(pageHeightPx) || pageHeightPx <= 0) return 1
   return Math.max(1, Math.ceil(totalHeightPx / pageHeightPx))
@@ -772,6 +775,8 @@ export default function ExportPdfDialog({
                     // task-75：页框尺寸与 Rust 打印参数同源（此前硬编码 210mm → 分页对不上）
                     width: pageWidthCss(contentWidthPx),
                     height: pageHeightCss(),
+                    // 2026-11-03：与 @page margin 同源——每页上下各留 16mm 空白（深色也由页底色填充）
+                    padding: `${PDF_PAGE_MARGIN_MM}mm 0`,
                     overflow: 'hidden',
                     // 用 `zoom` 而非 `transform: scale()`：Chromium 的 zoom 会**按缩放后尺寸重新排版/栅格化**，
                     // 文字保持清晰；transform 缩放会让小字号预览发虚（主理人反馈「糊」）。
@@ -779,7 +784,7 @@ export default function ExportPdfDialog({
                   }}
                   inert
                 >
-                  <div style={{ transform: `translateY(-${i * computePageSize(contentWidthPx).heightMm}mm)` }}>
+                  <div style={{ transform: `translateY(-${i * PAGE_CONTENT_HEIGHT_MM}mm)` }}>
                     {/* eslint-disable-next-line react/no-danger */}
                     <div
                       className="ke-editor-prose"

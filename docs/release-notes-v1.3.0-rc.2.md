@@ -12,16 +12,23 @@
 
 ## 发布资产
 
-（构建完成后补全）
+| 资产 | 大小 | sha256 |
+|---|---|---|
+| `AstraNota_1.3.0-rc.2_x64-setup.exe` | 51,153,707 B | `bfc0a80ef1c730f668d3134d74b95f03cdd76b8bfa05201790ca16d3bbfecc3d` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（侧车） | 46,248,431 B | `af113786c07038d390623fce8406f42e94a6ef201f6d494e9f46a9bb650e18ed` |
+| `manifest.sha256`（79 个产物） | 9,930 B | `ea8afbf74bfeeb819db169ae61fd03193e84a602c8e769bd337196d0eec3f15c` |
+| `versions.json` | 16,026 B | `c2cc068097f9cf4817e22abc39c0c7c649f4ee5e3e4cb911a46bb4b8781dd26b` |
+
+安装包版本信息：ProductVersion = FileVersion = `1.3.0-rc.2`（NSIS x64，未签名）。
 
 ## 验证
 
 | 项 | 结果 |
 |---|---|
-| 前端类型检查 / 构建 | `tsc -b` 0 错；`vite build` exit 0 |
-| 前端全量测试 | （待填） |
-| 视觉验收 | （待填） |
-| 侧车版本一致性 | （待填） |
+| 前端类型检查 / 构建 | `tsc -b` 0 错；`vite build` exit 0（产物版本 `1.3.0-rc.2`） |
+| 前端全量测试 | **153/153 文件、2084 passed + 1 skipped**、EXIT=0 |
+| 视觉验收 | 17 张截图、**195/195 断言 PASS**、0 DIFF |
+| 侧车版本一致性 | 随机端口拉起 sidecar → `/api/health.version = 1.3.0-rc.2` 与源码一致 ✔ |
 | 页边距像素验证 | Edge 156（与 WebView2 156 同引擎）headless 打印实测：`@page margin 16mm 0` 生效，页边距区域被 `var(--card)` 填满（浅色 #fff / 深色 #0e0e10 均无白条） |
 
 ## 已知限制（未变，RC 不覆盖）

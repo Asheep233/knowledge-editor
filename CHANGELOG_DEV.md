@@ -37,6 +37,19 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-11-06（★ v1.3.0-rc.3 发布候选：修复覆盖安装被残留侧车锁文件 + 侧车孤儿自退）
+
+**Tag** `v1.3.0-rc.3`（GitHub Pre-release；正式版仍为 v1.2.18）
+
+**修复**：
+- **升级安装失败**（rc.2 真机：`D:\AstraNota\knowledgeeditor-backend.exe` 被残留进程锁定 → NSIS「无法打开要写入的文件」）：
+  `NSIS_HOOK_PREINSTALL` 先走 Tauri 官方 `CheckIfAppIsRunning` 处理主程序，再 `taskkill /F /T /IM knowledgeeditor-backend.exe` 清理残留侧车，然后才复制文件。
+- **侧车孤儿**：spawn 时注入 `KE_PARENT_PID`；后端新增 `app/services/parent_watch.py` 心跳（2s 间隔、连续 3 次不可达即退出）；正常关闭仍由 `cleanup_on_exit` 主动结束。
+- 不改编辑器/PDF 业务逻辑；导入/导出行为与 rc.2 相同。
+
+**验证**：tsc 0；前端 vitest 153 文件 / 2084 passed + 1 skipped；后端 pytest EXIT=0（新增 parent_watch 5 例）；视觉验收 195/195 PASS；侧车版本 1.3.0-rc.3 ✓；NSIS 安装器构建成功含 preinstall hook；Windows 实测父进程心跳：存活父进程 8s 不误杀 / 死父进程约 8.2s 自动退出、0 残留。
+**资产**：安装包 51,154,196 B / sha256 `ac558696…02ed`；侧车 46,251,623 B / `fa74426e…e8eb`；manifest 9,930 B；versions.json 16,026 B。
+
 ## 2026-11-03（★ v1.3.0-rc.2 发布候选：PDF 上下页边距 16mm，修复「顶天顶地」）
 
 **Tag** `v1.3.0-rc.2`（GitHub Pre-release；正式版仍为 v1.2.18）

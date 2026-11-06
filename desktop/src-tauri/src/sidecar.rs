@@ -582,6 +582,9 @@ fn spawn_sidecar(
     let (mut rx, child) = sidecar
         .env("KE_HOST", "127.0.0.1")
         .env("KE_PORT", port.to_string())
+        // 2026-11-06（rc.3）：把主程序 PID 交给后端做父进程心跳；主程序异常/强杀退出后
+        // sidecar 自行退出，避免孤儿后端长期存活（会锁住 exe 导致下次升级安装失败）。
+        .env("KE_PARENT_PID", std::process::id().to_string())
         .env("KE_WORKSPACE", workspace.to_string_lossy().to_string())
         .env("KE_APP_CONFIG", app_config.to_string_lossy().to_string())
         .env("KE_CORS_ORIGINS", cors.join(","))

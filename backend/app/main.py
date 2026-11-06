@@ -40,7 +40,7 @@ from .routers import (
     workspace,
 )
 from .routers.workspace import activate_workspace as _activate_workspace_impl
-from .services import self_heal
+from .services import parent_watch, self_heal
 from .services.app_config import AppConfig
 from .services.fs_watch import FsWatcher
 from .services.workspace import UnsafeWorkspaceError as _UnsafeWorkspaceError
@@ -56,6 +56,9 @@ self_heal.install_workspace_hook(workspace)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 2026-11-06（rc.3）：桌面壳通过 KE_PARENT_PID 注入父进程心跳——主程序异常退出后
+    # sidecar 自行退出，避免孤儿进程锁住 exe 导致下次覆盖安装失败。独立启动不受影响。
+    parent_watch.start_if_configured()
     # 0) 软件级配置（与 workspace 无关）
     app_config = AppConfig()
     # 服务启动时间（Phase 5E：health 握手 / 前端版本检查依据）

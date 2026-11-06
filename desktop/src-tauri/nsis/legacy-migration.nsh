@@ -24,6 +24,16 @@
 !include "LogicLib.nsh"
 
 !macro NSIS_HOOK_PREINSTALL
+  ; ── 2026-11-06（rc.3）────────────────────────────────────────────────────
+  ; 覆盖安装/升级时旧进程会锁住 `knowledgeeditor-backend.exe`，NSIS 报
+  ; 「无法打开要写入的文件」并中止（用户 rc.2 实测：主程序已退出但 sidecar 残留）。
+  ; ① 先复用 Tauri 官方宏检查/关闭主程序（silent 直接杀；交互模式提示，含保存机会）；
+  ; ② 主程序退出后强杀可能残留的 sidecar（PyInstaller onefile 需 /T 杀进程树）。
+  !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  nsExec::Exec 'taskkill /F /T /IM knowledgeeditor-backend.exe'
+  Pop $R0
+  Sleep 600
+
   StrCpy $0 ""
   StrCpy $1 ""
   ; ① 64 位视图

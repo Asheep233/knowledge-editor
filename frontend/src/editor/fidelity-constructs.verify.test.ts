@@ -16,6 +16,9 @@ import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { describe, expect, it } from 'vitest'
 import { GenericFallbackExtension, GenericFallbackInlineExtension } from './extensions/GenericFallbackExtension'
 import { HtmlPassthroughExtension, HtmlPassthroughInlineExtension } from './extensions/HtmlPassthroughExtension'
+import { KeParagraph } from './extensions/KeParagraph'
+// 生产同源：强调边界规范化补丁（副作用导入）
+import './markdown-boundary'
 import { ImageMarkdownExtension } from './extensions/ImageMarkdownExtension'
 import { MathExtension } from './extensions/MathExtension'
 import { MathBlockExtension } from './extensions/MathBlockExtension'
@@ -40,11 +43,13 @@ export const PROD_EXTENSIONS = [
   StarterKit.configure({
     orderedList: false,
     listItem: false,
+    paragraph: false,
     link: { openOnClick: false, autolink: true },
     trailingNode: { node: 'paragraph', notAfter: ['paragraph', 'footnotes'] },
   }),
   HtmlPassthroughExtension,
   HtmlPassthroughInlineExtension,
+  KeParagraph,
   GenericFallbackExtension,
   GenericFallbackInlineExtension,
   OrderedListParenExtension,

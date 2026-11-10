@@ -19,11 +19,17 @@ import { Markdown } from '@tiptap/markdown'
 // 本模块只把「词内 `_`」（CommonMark 里既不能开也不能闭强调）放行，其余转义保持不变。
 // 副作用导入：加载即安装（幂等）；实现与判定依据见 markdown-escape.ts。
 import './markdown-escape'
+// 2026-11-10：序列化前规范化强调边界（修复「粗体以标点结尾紧邻文字 → 重开变字面 **」）。
+// 副作用导入：接管 MarkdownManager.prototype.serialize（幂等）。
+import './markdown-boundary'
+// 2026-11-10：加载期修复历史文档中「边界非法」的强调字面量（旧版序列化器写坏的 `**` 文本）。
+import { repairInvalidEmphasis } from './emphasis-repair'
 import { history } from '@tiptap/pm/history'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import Placeholder from '@tiptap/extension-placeholder'
 import { OrderedListParenExtension, KeListItem } from './extensions/ListExtension'
 import { KeBlockquote, KeDocument } from './extensions/KeBlockJoin'
+import { KeParagraph } from './extensions/KeParagraph'
 // F-1（v1.2.0-pre.1）：任务列表 `- [x]` / `- [ ]` 往返保真。Tiptap v3 自带
 // parseMarkdown/renderMarkdown（`- [x] ` 前缀），此前未注册 → 复选框状态被吞成 `- 完成`。
 import { TaskItem, TaskList } from '@tiptap/extension-list'
@@ -152,6 +158,9 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
       StarterKit.configure({
         orderedList: false,
         listItem: false,
+        // 2026-11-10：接管 Paragraph.parseMarkdown —— 修复「空行（上游 &nbsp; 标记）
+        // 被实体保真 tokenizer 认领成字面 &nbsp;」的回归；见 extensions/KeParagraph.ts。
+        paragraph: false,
         // D-1/ADD-3：Document / Blockquote 的块间隔需要在「相邻混排列表」处收紧为单换行
         // （任务项与普通项是不同类型节点）→ 关闭内置实现，改用 KeDocument / KeBlockquote。
         document: false,
@@ -171,6 +180,8 @@ export function useKeEditor({ content, onUpdate, editable = true }: KeEditorOpti
         // 注：StarterKit v3 不含 image 扩展，图片由 ImageMarkdownExtension 提供
         // （补标准 ![]() 的双向转换）。
       }),
+      // 2026-11-10：Paragraph 接管（&nbsp; 空行解析修复）
+      KeParagraph,
       // D-1（混排列表紧凑）+ ADD-3（引用块内同族）：接管 Document / Blockquote 的块间隔
       KeDocument,
       KeBlockquote,
@@ -368,7 +379,10 @@ export function setKeContent(editor: Editor, markdown: string): void {
     // S-2：解析前把 GFM 脚注语法规范化为 ke 方言（规范 document-format.md §2.3.1）。
     // 生产环境 markdown 解析入口仅此一处；无脚注定义时函数原样返回（零行为变化）。
     // 缓存仍以**原始 markdown** 为键，故重复打开同一文件命中缓存。
-    editor.commands.setContent(normalizeGfmFootnotes(markdown), { contentType: 'markdown', emitUpdate: false })
+    editor.commands.setContent(normalizeGfmFootnotes(repairInvalidEmphasis(markdown)), {
+      contentType: 'markdown',
+      emitUpdate: false,
+    })
     mdDocCache.set(markdown, editor.getJSON())
     if (mdDocCache.size > MD_CACHE_MAX) {
       const oldest = mdDocCache.keys().next().value

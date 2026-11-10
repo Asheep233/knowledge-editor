@@ -22,17 +22,24 @@
 
 ## 发布资产
 
-（构建完成后补全）
+| 资产 | 大小 | sha256 |
+|---|---|---|
+| `AstraNota_1.3.0-rc.4_x64-setup.exe` | 51,157,348 B | `52fd16e36be132e56726d42cad6c20184955f4c11a407e74417c0801f437e4c3` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（侧车） | 46,249,706 B | `219d6de2e552da3b1686c4fa09e14f8636d91c66cdf86ade792a507c41905526` |
+| `manifest.sha256`（79 个产物） | 9,930 B | `5f0f2ed6c725b5a142b985a8b88bdb40b416c7ffc143d177bbfb51ca4bf64aa3` |
+| `versions.json` | 16,026 B | `19ef1b0147fdd016c1c4be3c9bc53df8b47058565f9a7f2dbad18dcd13ed1a79` |
+
+安装包版本信息：ProductVersion = FileVersion = `1.3.0-rc.4`（NSIS x64，未签名）。
 
 ## 验证
 
 | 项 | 结果 |
 |---|---|
-| 前端类型检查 / 构建 | （待填） |
-| 前端全量测试 | （待填） |
-| 新增回归测试 | （待填） |
-| 视觉验收 | （待填） |
-| 侧车版本一致性 | （待填） |
+| 前端类型检查 / 构建 | `tsc -b` 0 错；`vite build` exit 0（产物版本 `1.3.0-rc.4`） |
+| 前端全量测试 | **156/156 文件、2101 passed + 1 skipped**、EXIT=0（含既有 F1–F5 严格往返全套） |
+| 新增回归测试 | **17 例**：`KeParagraph.test` 4（&nbsp; 空行解析/幂等/混合实体不回归）+ `markdown-boundary.test` 7（标点边界粗体/斜体/开头边界/纯函数性）+ `emphasis-repair.test` 6（旧文档自愈/代码块跳过/幂等） |
+| 视觉验收 | 17 张截图、**195/195 断言 PASS**、0 DIFF |
+| 侧车版本一致性 | 随机端口拉起 sidecar → `/api/health.version = 1.3.0-rc.4` 与源码一致 ✔ |
 
 ## 已知限制（未变）
 

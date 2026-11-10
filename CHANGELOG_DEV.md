@@ -37,6 +37,17 @@
 → tag `v1.3.0-pre.5` → push 分支/tag → GitHub Pre-release（`--prerelease`，不设 Latest；**未签名**，未提供证书）。
 **资产**：安装包 51,128,402 B / sha256 `d71cf65f…b8af`；侧车 46,248,553 B / `3a24fadd…d77d`；manifest 9,930 B；versions.json 16,026 B。
 
+## 2026-11-11（★ v1.3.0-rc.4 发布候选：修复 Markdown 往返格式崩坏 — 空行 &nbsp; / 粗体字面 **）
+
+**Tag** `v1.3.0-rc.4`（GitHub Pre-release；正式版仍为 v1.2.18）
+
+**修复（用户实测「重开页面格式崩坏」）**：
+- **空行 → 字面 `&nbsp;`**：上游 Paragraph 用 `&nbsp;` 保留连续空行，但仓库的 HTML 实体保真 tokenizer 先把它认领成原子 → 上游「空段落」特判失效。新增 `KeParagraph` 接管 `parseMarkdown`，单 token `&nbsp;`/NBSP 还原为空段落；旧文档打开即自愈。
+- **粗体/斜体/删除线以标点结尾并紧邻文字 → 字面 `**`**：非法 CommonMark 强调边界（right-flanking 失效）。新增 `markdown-boundary.ts` 序列化前把边界标点移出标记（文字不丢、输出合法且幂等）；新增 `emphasis-repair.ts` 加载期把旧文件里边界非法的强调对改写为 `<strong>/<em>/<s>` 再解析（旧文档自愈，保存后写回合法 Markdown）。
+- 安全边界：跳过代码块/行内代码/反斜杠转义；F3-8 实体严格往返与全部既有严格往返用例不回归。
+
+**验证**：（待填）
+
 ## 2026-11-06（★ v1.3.0-rc.3 发布候选：修复覆盖安装被残留侧车锁文件 + 侧车孤儿自退）
 
 **Tag** `v1.3.0-rc.3`（GitHub Pre-release；正式版仍为 v1.2.18）

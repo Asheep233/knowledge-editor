@@ -898,15 +898,24 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     else void enterSourceMode()
   }, [enterSourceMode, exitSourceMode])
 
-  // Focus ⌘K 命令面板：通过自定义事件驱动编辑器内部动作（导出 PDF / 切换源码视图）
+  // Focus ⌘K 命令面板：通过自定义事件驱动编辑器内部动作（导出 PDF / 切换源码视图 / 插入分割线）
   useEffect(() => {
     const openExport = () => setExportOpen(true)
     const toggleSource = () => toggleViewMode()
+    const insertDivider = () => {
+      // 与工具栏「插入 → 分割线」同一命令；源码态不可用（PM 不可写通道）
+      if (viewModeRef.current === 'source') return
+      const ed = editorRef.current
+      if (!ed) return
+      ed.chain().focus().setHorizontalRule().run()
+    }
     window.addEventListener('ke:palette-export', openExport)
     window.addEventListener('ke:palette-toggle-source', toggleSource)
+    window.addEventListener('ke:palette-insert-divider', insertDivider)
     return () => {
       window.removeEventListener('ke:palette-export', openExport)
       window.removeEventListener('ke:palette-toggle-source', toggleSource)
+      window.removeEventListener('ke:palette-insert-divider', insertDivider)
     }
   }, [toggleViewMode])
 

@@ -32,6 +32,8 @@ export interface CommandPaletteProps {
   onCloseTab: (id: string) => void
   /** 导出（PDF 菜单） */
   onExport: () => void
+  /** 在当前文档光标处插入分割线（水平线） */
+  onInsertDivider: () => void
   /** 切换源码/正文视图 */
   onToggleSource: () => void
   onToggleFocusMode: () => void
@@ -84,6 +86,7 @@ export function CommandPalette({
   onActivateTab,
   onCloseTab,
   onExport,
+  onInsertDivider,
   onToggleSource,
   onToggleFocusMode,
   onOpenSettings,
@@ -164,6 +167,14 @@ export function CommandPalette({
         run: onExport,
       },
       {
+        key: 'cmd:divider',
+        group: 'command',
+        icon: 'minus',
+        label: '插入分割线',
+        keywords: ['divider', 'hr', '分割线', '水平线', '分隔线', 'horizontal', 'rule'],
+        run: onInsertDivider,
+      },
+      {
         key: 'cmd:source',
         group: 'command',
         icon: 'code',
@@ -227,6 +238,7 @@ export function CommandPalette({
     onOpenArticle,
     onNewArticle,
     onExport,
+    onInsertDivider,
     onToggleSource,
     onToggleFocusMode,
     onToggleTheme,

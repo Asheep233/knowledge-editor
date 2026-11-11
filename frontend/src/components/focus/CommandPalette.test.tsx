@@ -66,6 +66,7 @@ function baseProps(overrides: Partial<CommandPaletteProps> = {}): CommandPalette
     onActivateTab: vi.fn(),
     onCloseTab: vi.fn(),
     onExport: vi.fn(),
+    onInsertDivider: vi.fn(),
     onToggleSource: vi.fn(),
     onToggleFocusMode: vi.fn(),
     onOpenSettings: vi.fn(),
@@ -184,6 +185,7 @@ describe('CommandPalette · 渲染与数据', () => {
     for (const label of [
       '新建文档',
       '导出 PDF',
+      '插入分割线',
       '切换到源码模式',
       '进入专注模式',
       '切换外观',
@@ -225,6 +227,7 @@ describe('CommandPalette · 命令执行', () => {
     const cases: Array<[string, keyof CommandPaletteProps, unknown]> = [
       ['新建文档', 'onNewArticle', undefined],
       ['导出 PDF', 'onExport', undefined],
+      ['插入分割线', 'onInsertDivider', undefined],
       ['切换到源码模式', 'onToggleSource', undefined],
       ['进入专注模式', 'onToggleFocusMode', undefined],
       ['切换外观', 'onToggleTheme', undefined],

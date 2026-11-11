@@ -1451,6 +1451,7 @@ export default function App() {
       {/* Focus：⌘K 命令面板 + 打开的文档切换 */}
       <CommandPalette
         open={paletteOpen}
+        onInsertDivider={() => window.dispatchEvent(new CustomEvent('ke:palette-insert-divider'))}
         onClose={() => setPaletteOpen(false)}
         onNavigate={(p) => {
           setPaletteOpen(false)

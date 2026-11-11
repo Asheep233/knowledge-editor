@@ -772,6 +772,15 @@ export default function EditorToolbar({
         >
           表格…
         </MenuItem>
+        <MenuItem
+          icon={<Icon name="minus" className="size-3.5" />}
+          onClick={() => {
+            setInsertOpen(false)
+            editor.chain().focus().setHorizontalRule().run()
+          }}
+        >
+          分割线
+        </MenuItem>
         <div className="my-1 h-px bg-border" />
         <div className="px-3 pb-1 pt-1 text-[11px] font-medium text-muted-foreground">模块</div>
         {!modulesLoaded ? (

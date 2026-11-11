@@ -47,7 +47,7 @@ vi.mock('@tiptap/react', () => ({
 }))
 vi.mock('../../api/client', () => ({
   getModule: vi.fn(async () => ({ content: '' })),
-  listModules: vi.fn(async () => []),
+  listModules: vi.fn(async () => ({ modules: [] })),
   uploadAttachment: vi.fn(async () => ({ rel_path: 'Attachments/x' })),
 }))
 vi.mock('../../editor', () => ({ openMathEditorById: vi.fn() }))
@@ -110,5 +110,18 @@ describe('UI-01 工具栏结构回归（导出菜单不得被滚动容器裁剪�
       cur = cur.parentElement
     }
     expect(clipAncestors, `导出按钮祖先链存在裁剪容器: ${clipAncestors.join(' | ')}`).toEqual([])
+  })
+})
+
+describe('插入菜单 · 分割线入口（2026-11-11）', () => {
+  it('「插入」菜单包含「分割线」项（与命令面板同一命令）', async () => {
+    await renderToolbar()
+    const insertBtn = container!.querySelector('button[title="插入"]') as HTMLElement
+    expect(insertBtn, '缺少「插入」按钮').toBeTruthy()
+    await act(async () => {
+      insertBtn.click()
+    })
+    // 插入菜单通过 createPortal 渲染到 document.body
+    expect(document.body.textContent, '插入菜单缺少「分割线」').toContain('分割线')
   })
 })

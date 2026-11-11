@@ -17,16 +17,24 @@
 
 ## 发布资产
 
-（构建完成后补全）
+| 资产 | 大小 | sha256 |
+|---|---|---|
+| `AstraNota_1.3.0-rc.5_x64-setup.exe` | 51,160,835 B | `2c791b9f78edb46b59d2d248f9305a2c07750a20d223be3116db27c284216ad7` |
+| `knowledgeeditor-backend-x86_64-pc-windows-msvc.exe`（侧车） | 46,252,175 B | `e77bac70d584d1de8e9b840fbc41a25c02ce6d72fcbd7c885130c044f14b57a5` |
+| `manifest.sha256`（79 个产物） | 9,930 B | `44d23cabc483ef23e10a2f8745d6d1dfff242b35a9ca08ea95ca8eb76f7efa4e` |
+| `versions.json` | 16,026 B | `65cfabe2b8645da821f4a0fbfd8c9eaa7c072b42716c98496865c5add8676f1a` |
+
+安装包版本信息：ProductVersion = FileVersion = `1.3.0-rc.5`（NSIS x64，未签名）。
 
 ## 验证
 
 | 项 | 结果 |
 |---|---|
-| 前端类型检查 / 构建 | （待填） |
-| 前端全量测试 | （待填） |
-| 视觉验收 | （待填） |
-| 侧车版本一致性 | （待填） |
+| 前端类型检查 / 构建 | `tsc -b` 0 错；`vite build` exit 0（产物版本 `1.3.0-rc.5`） |
+| 前端全量测试 | **157/157 文件、2105 passed + 1 skipped**、EXIT=0（新增分割线/工具栏/命令面板断言） |
+| 视觉验收 | 17 张截图、**195/195 断言 PASS**、0 DIFF |
+| 侧车版本一致性 | 随机端口拉起 sidecar → `/api/health.version = 1.3.0-rc.5` 与源码一致 ✔ |
+| 分割线专项 | `---` ↔ horizontalRule 双向、`setHorizontalRule` 保存/重开、幂等 3 例；工具栏插入菜单含「分割线」；⌘K 命令「插入分割线」可执行 |
 
 ## 已知限制（未变）
 

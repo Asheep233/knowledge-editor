@@ -8,7 +8,7 @@
  */
 import { askConfirm } from './components/common/PromptDialog'
 import { isTauri } from './settings'
-import { flushPendingAll, unsafeDocIds } from './state/saveQueue'
+import { flushPendingAll, unsafeDocs } from './state/saveQueue'
 
 /** 桌面破坏性动作前的 flush 预算（与 Rust 1.5s 兜底定时器对齐） */
 const DESKTOP_FLUSH_TIMEOUT_MS = 1500
@@ -23,14 +23,32 @@ async function flushForDesktopAction(): Promise<boolean> {
   ])
 }
 
-/** 调用 Rust 命令；旧版壳/测试环境没有该命令时静默忽略（走各自兜底路径）。 */
-async function invokeMaybe(cmd: string): Promise<void> {
+/** 调用 Rust 命令；旧版壳/测试环境没有该命令时返回 false（走各自兜底路径）。 */
+async function invokeMaybe(cmd: string): Promise<boolean> {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     await invoke(cmd)
+    return true
   } catch {
-    /* ignore */
+    return false
   }
+}
+
+/**
+ * 2026-11-18：退出/重载确认框文案 —— 明确列出**哪几篇**文档保存失败
+ * （旧实现只说「有 N 篇」，用户无法判断该不该退出）。
+ */
+export function formatUnsafeDocsMessage(
+  items: Array<{ docId: string; label?: string }>,
+  action: 'exit' | 'reload',
+): string {
+  const names = items.map((i) => i.label?.trim() || i.docId)
+  const list = names.length > 0 ? `：${names.slice(0, 5).join('、')}${names.length > 5 ? ` 等 ${names.length} 篇` : ''}` : ''
+  const tail =
+    action === 'exit'
+      ? '立即退出将丢失这些修改。仍要退出？'
+      : '重新加载将丢失这些修改。仍要重新加载？'
+  return `有 ${items.length || 1} 篇文档未保存成功${list}。${tail}`
 }
 
 export function isDesktop(): boolean {
@@ -72,37 +90,38 @@ export async function setupCloseHandshake(): Promise<() => void> {
     // 有丢失窗口。改由 Rust emit `ke:reload-requested`，前端 await 完 flush 再触发 reload；
     // Rust 侧 1.5s 兜底保证即使前端异常也会刷新。
     const unlistenReload = await listen('ke:reload-requested', async () => {
+      // 立即取消 1.5s 兜底刷新：确认框期间不得自动刷新
+      await invokeMaybe('app_cancel_pending_reload')
       const flushed = await flushForDesktopAction()
-      const unsafe = unsafeDocIds()
+      const unsafe = unsafeDocs()
       if (!flushed || unsafe.length > 0) {
-        // SD-02：有内容未落盘 → 先取消 Rust 兜底刷新，让用户明确选择
-        await invokeMaybe('app_cancel_pending_reload')
-        const ok = await askConfirm(
-          `有 ${unsafe.length || 1} 篇文档未保存成功，重新加载将丢失这些修改。仍要重新加载？`,
-        )
+        const ok = await askConfirm(formatUnsafeDocsMessage(unsafe, 'reload'))
         if (!ok) return
       }
       await invokeMaybe('reload_main_window')
     })
     const unlisten = await listen('ke:close-requested', async () => {
+      // 1) 立即取消 1.5s 兜底强退 —— 用户在确认框上思考时不能被强杀
+      await invokeMaybe('app_hold_exit')
+      // 2) 全速 flush（失败条目会自动重试一次）
       const flushed = await flushForDesktopAction()
-      const unsafe = unsafeDocIds()
+      const unsafe = unsafeDocs()
       if (!flushed || unsafe.length > 0) {
-        // SD-02（2026-10-17 审查）：旧实现 flush 后无条件 win.close() ——
-        // 保存失败时窗口直接消失、编辑静默丢失。现在先取消 Rust 的 1.5s 兜底
-        // 强退（给用户确认时间）：取消 → 撤销待定退出并恢复窗口；确认 → 正常二次 close。
-        await invokeMaybe('app_hold_exit')
-        const ok = await askConfirm(
-          `有 ${unsafe.length || 1} 篇文档未保存成功，立即退出将丢失这些修改。仍要退出？`,
-        )
+        // 3) 有未落盘内容：窗口保持可见，明确列出文档标题让用户决定
+        const ok = await askConfirm(formatUnsafeDocsMessage(unsafe, 'exit'))
         if (!ok) {
           await invokeMaybe('app_cancel_pending_exit')
           return
         }
       }
-      // 用 close() 触发第二次关窗（走 Rust 正常清理），不要用 destroy()。
-      const win = getCurrentWindow()
-      void win.close()
+      // 4) 确认退出：直接调用 Rust 最终退出（含 sidecar 清理 + 8s 硬超时 watchdog）。
+      //    不再依赖隐藏窗口上的二次 CloseRequested（用户实测点确定后不退出）。
+      const forced = await invokeMaybe('app_force_exit')
+      if (!forced) {
+        // 旧壳兜底：没有 app_force_exit 命令时退回二次 close
+        const win = getCurrentWindow()
+        void win.close()
+      }
     })
     return () => {
       try {

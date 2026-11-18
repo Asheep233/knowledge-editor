@@ -685,7 +685,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     if (autosavePausedRef.current) return
     // M3：自动保存间隔由应用设置驱动（默认 3000ms）。统一走 saveQueue：
     // 同一 doc 防抖合并；在途时 latest-wins；完成后若有新内容再补一次。
-    enqueueSave(docId, buildSaveFn(docId), getAutosaveIntervalMs())
+    enqueueSave(docId, buildSaveFn(docId), getAutosaveIntervalMs(), articleRef.current?.title ?? docId)
     // S-1：同时喂给恢复点登记调度器（O(1)，不序列化）。它的计时器**不因后续编辑重置**，
     // 因此在 saveQueue 的尾沿防抖被连续输入无限推迟时，恢复点仍至多 3s 登记一次。
     ensureDraftReg().touch()
@@ -786,7 +786,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
       setSaveState('dirty')
       // M-10：外部冲突弹窗期间同样暂停源码通道自动保存（与 PM 通道一致）
       if (autosavePausedRef.current) return
-      enqueueSave(docId, buildSourceSaveFn(docId), getAutosaveIntervalMs())
+      enqueueSave(docId, buildSourceSaveFn(docId), getAutosaveIntervalMs(), articleRef.current?.title ?? docId)
       ensureDraftReg().touch()
     },
     [buildSourceSaveFn, bumpSeq, ensureDraftReg],
@@ -798,8 +798,9 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     if (!flushToken) return
     const docId = articleRef.current?.id
     if (!docId) return
-    if (getViewMode() === 'source') enqueueSave(docId, buildSourceSaveFn(docId), 0)
-    else enqueueSave(docId, buildSaveFn(docId), 0)
+    const saveLabel = articleRef.current?.title ?? docId
+    if (getViewMode() === 'source') enqueueSave(docId, buildSourceSaveFn(docId), 0, saveLabel)
+    else enqueueSave(docId, buildSaveFn(docId), 0, saveLabel)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flushToken])
 
@@ -1128,7 +1129,7 @@ export default function EditorArea({ article, loading, onNewArticle, onSaveState
     // 手动保存覆盖未决的防抖自动保存：以 debounce=0 立即入队并串行化；
     // 内容已在 in-flight 时则 latest-wins，保存后不会二次提交冗余内容。
     // task-41：源码态用字符串直存通道
-    await enqueueSave(doc.id, viewModeRef.current === 'source' ? buildSourceSaveFn(doc.id) : buildSaveFn(doc.id), 0)
+    await enqueueSave(doc.id, viewModeRef.current === 'source' ? buildSourceSaveFn(doc.id) : buildSaveFn(doc.id), 0, doc.title)
   }, [editor, buildSaveFn, buildSourceSaveFn])
 
   useEffect(() => {

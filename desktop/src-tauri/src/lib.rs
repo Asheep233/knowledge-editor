@@ -147,9 +147,11 @@ pub fn begin_close_handshake(app: &AppHandle) -> bool {
     if CLOSE_REQUESTED.swap(true, Ordering::SeqCst) {
         return false;
     }
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.hide();
-    }
+    // 2026-11-18 用户实测「关闭时提示未保存，点确定后不退出」修复：
+    // 旧实现首次关窗**立即 hide()**，随后前端在隐藏窗口里弹确认框 —— 用户看不见，
+    // 从任务栏重新唤起又走单实例 show → cancel_pending_exit 复位握手 → 再次点 X 又 hide，
+    // 形成「一直提示、不退出、窗口消失」的循环。现在保留窗口可见，让用户在正常窗口里确认；
+    // 真正退出统一走 app_force_exit（前端确认后显式调用，不依赖二次 CloseRequested）。
     let _ = app.emit("ke:close-requested", ());
     let generation = CLOSE_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     let app_handle = app.clone();
@@ -202,6 +204,16 @@ pub fn reload_main_window_now(app: &AppHandle) {
 #[tauri::command]
 fn app_hold_exit() {
     CLOSE_GENERATION.fetch_add(1, Ordering::SeqCst);
+}
+
+/// 2026-11-18：前端在关窗确认框里点「仍要退出」后的**最终退出命令**。
+///
+/// 为什么不复用二次 CloseRequested：首次关窗已被 prevent_close + 隐藏/阻止，
+/// 隐藏窗口上的 `Window.close()` 在部分 WebView2/多窗口状态下不可靠（用户实测点确定后不退出）。
+/// 本命令直接走 `request_exit`（含 sidecar 清理 + 8s 硬超时 watchdog），退出路径确定有界。
+#[tauri::command]
+fn app_force_exit(app: AppHandle) {
+    menu::request_exit(&app);
 }
 
 /// SD-02：用户在「有内容未保存成功，仍要退出？」里选择取消 → 撤销待定退出并恢复窗口。
@@ -324,6 +336,7 @@ pub fn run() {
             menu::app_request_exit,
             menu::app_request_reload,
             app_hold_exit,
+            app_force_exit,
             app_cancel_pending_exit,
             app_cancel_pending_reload,
             sidecar::get_runtime_info,

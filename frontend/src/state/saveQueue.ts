@@ -26,8 +26,13 @@ export const DEFAULT_DEBOUNCE_MS = 3000
 
 interface Entry {
   docId: string
+  /** 人类可读标题（关窗/重载确认框列出「哪几篇」；缺省时回退 docId） */
+  label?: string
   /** 最新待保存函数（防抖中或在途期间追加的内容，latest-wins） */
   latest?: SaveFn
+  /** 2026-11-18：最近一次**失败**的保存函数。flush 时自动重试一次 ——
+   *  否则外部删除/改名导致 PUT 404 的文档会永远停在 failed，关窗永远提示「N 篇」且无法恢复。 */
+  retry?: SaveFn
   /** 进行中的串行保存链 */
   running: Promise<void> | null
   /** 防抖计时器 */
@@ -102,6 +107,7 @@ function drain(e: Entry): Promise<void> {
           // R01：显式记录成功（只有 saveFn 正常 resolve 才算落盘）
           e.outcome = 'saved'
           e.lastError = undefined
+          e.retry = undefined
           outcomes.set(e.docId, { outcome: 'saved' })
         } catch (err) {
           // R01：失败/中止必须区分记录 —— 失败时保留脏状态（条目不删除）以便重试与提示；
@@ -117,6 +123,9 @@ function drain(e: Entry): Promise<void> {
           } else {
             e.outcome = 'failed'
             e.lastError = err
+            // 2026-11-18：保留失败函数供下次 flush 自动重试（外部删除导致 404 时，
+            // 用户不会/无法再编辑该文档，没有这次重试就会永久卡在「未保存」）。
+            e.retry = fn
             outcomes.set(e.docId, { outcome: 'failed', error: err })
           }
         } finally {
@@ -145,9 +154,16 @@ function drain(e: Entry): Promise<void> {
  * @param debounceMs 防抖毫秒数（0 表示立即）
  * @returns 一个 Promise：若当前已有在途链则等待其完成后 resolve；否则立即 resolve。
  */
-export function enqueueSave(docId: string, saveFn: SaveFn, debounceMs = DEFAULT_DEBOUNCE_MS): Promise<void> {
+export function enqueueSave(
+  docId: string,
+  saveFn: SaveFn,
+  debounceMs = DEFAULT_DEBOUNCE_MS,
+  label?: string,
+): Promise<void> {
   const e = entryFor(docId)
+  if (label) e.label = label
   e.latest = saveFn
+  e.retry = undefined
   // 新一轮内容入队：上一轮的失败/拒绝标记作废（结果只反映最近一次尝试）
   if (e.outcome === 'failed' || e.outcome === 'declined') {
     e.outcome = undefined
@@ -175,6 +191,12 @@ export function flushPending(docId: string): Promise<void> {
     clearTimeout(e.timer)
     e.timer = null
   }
+  if (e.latest === undefined && e.retry !== undefined && e.outcome === 'failed') {
+    // 2026-11-18：失败条目的自动重试（flushPendingAll 在关窗/重载前会走到这里）。
+    // 只重试一次：retry 取出后清空；再次失败会在 drain 的 catch 里重新写回。
+    e.latest = e.retry
+    e.retry = undefined
+  }
   if (e.latest !== undefined) return drain(e)
   return e.running ?? Promise.resolve()
 }
@@ -199,6 +221,7 @@ export function cancelPending(docId: string): void {
     e.timer = null
   }
   e.latest = undefined
+  e.retry = undefined
   // R01：显式取消 → 该 doc 不再有「未落盘的失败」语义（调用方随后可安全离开）
   outcomes.delete(docId)
   if (e.running === null) entries.delete(docId)
@@ -216,6 +239,7 @@ export function abortPending(docId: string): void {
     e.timer = null
   }
   e.latest = undefined
+  e.retry = undefined
   e.abort?.abort()
   // R01：放弃/中止同样清结果（内容已被有意丢弃，不再算「未落盘的编辑」）
   outcomes.delete(docId)
@@ -273,6 +297,11 @@ export function unsafeDocIds(): string[] {
     const outcome = outcomes.get(id)?.outcome ?? 'none'
     return !isFlushSafe(outcome)
   })
+}
+
+/** 同 [`unsafeDocIds`]，但带人类可读标题（关窗/重载确认框用）。 */
+export function unsafeDocs(): Array<{ docId: string; label?: string }> {
+  return unsafeDocIds().map((docId) => ({ docId, label: entries.get(docId)?.label }))
 }
 
 /** 每 doc 最近一次保存失败原因（无失败 = undefined） */

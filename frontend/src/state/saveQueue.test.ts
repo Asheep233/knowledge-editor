@@ -17,6 +17,7 @@ import {
   pendingDocIds,
   SaveDeclinedError,
   unsafeDocIds,
+  unsafeDocs,
   type SaveFn,
 } from './saveQueue'
 
@@ -589,6 +590,62 @@ describe('FE-01 — 用户拒绝保存必须与成功区分（不得记成 saved
     expect(lastSaveOutcome('doc-declined-2')).toBe('saved')
     expect(hasPending('doc-declined-2')).toBe(false)
     expect(isFlushSafe(lastSaveOutcome('doc-declined-2') ?? 'none')).toBe(true)
+  })
+})
+
+describe('2026-11-18 — 失败自动重试 + 文档标题（关窗提示「哪几篇」）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('失败条目在 flushPendingAll 时自动重试一次：重试成功 → 不再 unsafe（关窗不再永久提示）', async () => {
+    let fail = true
+    const flaky: SaveFn = async () => {
+      if (fail) throw new Error('404 文档已被外部删除')
+    }
+    enqueueSave('doc-retry', flaky, 0, '被删的文档')
+    // 第一次保存失败（编辑触发）
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(lastSaveOutcome('doc-retry')).toBe('failed')
+    expect(unsafeDocIds()).toContain('doc-retry')
+
+    fail = false
+    // 关窗/重载前只 flush、不重新编辑 —— 必须自动重试才能恢复
+    await flushPendingAll()
+    expect(lastSaveOutcome('doc-retry')).toBe('saved')
+    expect(unsafeDocIds()).not.toContain('doc-retry')
+    expect(hasFailedSave('doc-retry')).toBe(false)
+  })
+
+  it('unsafeDocs 返回人类可读标题（缺省回退 docId）', async () => {
+    const boom: SaveFn = async () => {
+      throw new Error('boom')
+    }
+    enqueueSave('Articles/甲.md', boom, 0, '甲文档')
+    enqueueSave('Articles/乙.md', boom, 0)
+    await Promise.resolve()
+    await Promise.resolve()
+    const docs = unsafeDocs()
+    const byId = new Map(docs.map((d) => [d.docId, d.label]))
+    expect(byId.get('Articles/甲.md')).toBe('甲文档')
+    expect(byId.get('Articles/乙.md')).toBeUndefined()
+  })
+
+  it('重试再次失败仍保留 unsafe（不能假报成功）', async () => {
+    const alwaysFail: SaveFn = async () => {
+      throw new Error('still 404')
+    }
+    enqueueSave('doc-retry2', alwaysFail, 0, '永远失败')
+    await Promise.resolve()
+    await Promise.resolve()
+    await flushPendingAll()
+    expect(lastSaveOutcome('doc-retry2')).toBe('failed')
+    expect(unsafeDocIds()).toContain('doc-retry2')
   })
 })
 
